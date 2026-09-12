@@ -41,6 +41,24 @@ export const Bset: number[][] = [
   [27,28,29,36,37,38,45,46,47],[30,31,32,39,40,41,48,49,50],[33,34,35,42,43,44,51,52,53],
   [54,55,56,63,64,65,72,73,74],[57,58,59,66,67,68,75,76,77],[60,61,62,69,70,71,78,79,80]
 ];
+
+// Global sector ids used by the original mini-sector tables:
+// rows 0..8, columns 9..17, boxes 18..26.
+export const Rsec: number[] = Array.from({ length: 9 }, (_, row) => row);
+export const Csec: number[] = Array.from({ length: 9 }, (_, col) => col + 9);
+export const Bsec: number[] = Array.from({ length: 9 }, (_, box) => box + 18);
+
+export const UNITS: number[][] = [...Rset, ...Cset, ...Bset];
+
+export const PEERS: number[][] = Array.from({ length: 81 }, (_, cell) => {
+  const peers = new Set<number>();
+  for (const unit of UNITS) {
+    if (!unit.includes(cell)) continue;
+    for (const other of unit) if (other !== cell) peers.add(other);
+  }
+  return [...peers];
+});
+
 for (let i = 0; i < 81; i++) {
   const r = (i / 9) | 0, c = i % 9, b = ((r / 3) | 0) * 3 + ((c / 3) | 0), p = (r % 3) * 3 + (c % 3);
   if (Rx[i] !== r || Cy[i] !== c || Bxy[i] !== b || BxyN[i] !== p) throw new Error(`cardinals mismatch at cell ${i}`);

@@ -1,0 +1,416 @@
+(function (global) {
+  'use strict';
+
+  const core = global.StormDoku;
+  if (!core) throw new Error('StormDoku core must load before ahs-link-core.js');
+  if (!core.setTools) throw new Error('set-tools-core.js must load before ahs-link-core.js');
+  if (!core.ahsConstructor) throw new Error('ahs-core.js must load before ahs-link-core.js');
+
+  const { combinations, intersection, sortedUnique } = core.setTools;
+  const AHS_RCC = 6;
+  const AHS_LINK_TYPE_NAMES = [
+    'BILOCAL',
+    'CELL_TO_GROUP',
+    'GROUP_TO_GROUP',
+    'ERI',
+    'ALS',
+    'ALS_RCC',
+    'AHS_RCC',
+  ];
+  let nextAhsLinkId = 0;
+
+  function commonSectors(cells) {
+    if (!cells.length) return [];
+    return core.UNITS
+      .map((unit, sector) => cells.every(cell => unit.includes(cell)) ? sector : -1)
+      .filter(sector => sector >= 0);
+  }
+
+  function endpointSectors(ahs, cells, triggerSectors = []) {
+    return sortedUnique([ahs.ahsSector, ...triggerSectors, ...commonSectors(cells)]);
+  }
+
+  function cellsSeeEachOther(left, right) {
+    return !!left.length
+      && !!right.length
+      && left.every(a => right.every(b => a === b || core.peersOf(a).includes(b)));
+  }
+
+  function outsideDigitsByCell(ahs) {
+    const out = new Map();
+    for (const rcc of ahs.rccList) {
+      const digits = sortedUnique(rcc.rccDigits).filter(digit => !ahs.ahsDigits.includes(digit));
+      if (digits.length) out.set(rcc.rccCell, digits);
+    }
+    return out;
+  }
+
+  function hiddenCellsAfterRemoving(cand, ahs, removedCells) {
+    const removed = new Set(removedCells);
+    const remaining = ahs.ahsAllCells.filter(cell => !removed.has(cell));
+    if (remaining.length !== ahs.ahsDigits.length) return null;
+
+    for (const digit of ahs.ahsDigits) {
+      if (!remaining.some(cell => (cand[cell] || []).includes(digit))) return null;
+    }
+
+    return remaining;
+  }
+
+  function buildEndpoint(
+    cand,
+    ahs,
+    triggerCells,
+    removedCells,
+    digits,
+    digitCells,
+    triggerKind,
+    triggerLinkId,
+    triggerSectors,
+    effectiveDof,
+  ) {
+    const hiddenCells = hiddenCellsAfterRemoving(cand, ahs, removedCells);
+    if (!hiddenCells) return null;
+    const endpointDigits = sortedUnique(digits);
+    if (!endpointDigits.length) return null;
+
+    const hiddenDigitCells = {};
+    for (const digit of ahs.ahsDigits) {
+      const cellsWithDigit = removedCells.filter(cell => (cand[cell] || []).includes(digit));
+      if (cellsWithDigit.length) hiddenDigitCells[digit] = cellsWithDigit;
+    }
+
+    return {
+      ahsId: ahs.uniqueID,
+      sourceDof: ahs.ahsDOF,
+      effectiveDof,
+      dofKeys: sortedUnique([effectiveDof, ahs.ahsDOF]),
+      triggerKind,
+      triggerLinkId,
+      triggerSectors: sortedUnique(triggerSectors),
+      digits: endpointDigits,
+      cells: [...triggerCells].sort((a, b) => a - b),
+      sectors: endpointSectors(ahs, triggerCells, triggerSectors),
+      potentialElim: [...triggerCells].sort((a, b) => a - b),
+      hiddenDigits: [...ahs.ahsDigits],
+      hiddenCells,
+      digitCells,
+      hiddenDigitCells,
+    };
+  }
+
+  function buildEndpoints(cand, ahs, strongLinks) {
+    if (ahs.ahsDigits.length <= 1) return [];
+    if (ahs.ahsDOF < 1 || ahs.ahsDOF > 3) return [];
+
+    const outsideByCell = outsideDigitsByCell(ahs);
+    const eligibleCells = ahs.ahsAllCells.filter(cell => (outsideByCell.get(cell) || []).length > 0);
+    const endpoints = [];
+
+    if (eligibleCells.length >= ahs.ahsDOF) {
+      for (const cells of combinations(eligibleCells, ahs.ahsDOF)) {
+        const digitCells = {};
+        for (const cell of cells) {
+          for (const digit of outsideByCell.get(cell) || []) {
+            if (!digitCells[digit]) digitCells[digit] = [];
+            digitCells[digit].push(cell);
+          }
+        }
+
+        const endpoint = buildEndpoint(
+          cand,
+          ahs,
+          cells,
+          cells,
+          Object.keys(digitCells).map(Number),
+          digitCells,
+          'CELL',
+          null,
+          [],
+          ahs.ahsDOF,
+        );
+        if (endpoint) endpoints.push(endpoint);
+      }
+    }
+
+    // A grouped single-digit link can cover every surplus cell of a larger AHS.
+    // The AHS remains its source DOF, but this endpoint is also indexed as DOF 1.
+    if (ahs.ahsDOF > 1) {
+      for (const link of strongLinks) {
+        if (link.startingDigits.length !== 1 || link.linkDigits.length !== 1) continue;
+        if (link.startingDigits[0] !== link.linkDigits[0]) continue;
+
+        for (const triggerCells of [link.activeCells, link.linkedCells]) {
+          if (triggerCells.length <= 1) continue;
+          if (triggerCells.length !== ahs.ahsDOF) continue;
+          if (!triggerCells.every(cell => ahs.ahsAllCells.includes(cell))) continue;
+
+          const digit = link.startingDigits[0];
+          if (ahs.ahsDigits.includes(digit)) continue;
+          const digitCells = { [digit]: [...triggerCells] };
+          const endpoint = buildEndpoint(
+            cand,
+            ahs,
+            triggerCells,
+            triggerCells,
+            [digit],
+            digitCells,
+            'MINI_SECTOR',
+            link.id,
+            link.originSector,
+            1,
+          );
+          if (endpoint) endpoints.push(endpoint);
+        }
+      }
+    }
+
+    const seen = new Set();
+    return endpoints.filter(endpoint => {
+      const key = endpointKey(endpoint);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function hsNode(ahs, endpoint) {
+    return {
+      uniqueID: ahs.uniqueID,
+      sector: ahs.ahsSector,
+      cells: [...endpoint.hiddenCells],
+      digits: [...ahs.ahsDigits],
+      originalCells: [...ahs.ahsAllCells],
+      size: ahs.ahsSize,
+      fox: ahs.ahsFOX,
+      dof: ahs.ahsDOF,
+      effectiveDof: endpoint.effectiveDof,
+      dofKeys: [...endpoint.dofKeys],
+      triggerKind: endpoint.triggerKind,
+      powerSet: ahs.PowerSet,
+    };
+  }
+
+  function digitSectorMap(endpoint) {
+    const out = {};
+    for (const digit of endpoint.digits) out[digit] = [...endpoint.sectors];
+    return out;
+  }
+
+  function hiddenEliminationMap(endpoint) {
+    const out = {};
+    for (const digit of endpoint.hiddenDigits) out[digit] = [...(endpoint.hiddenDigitCells[digit] || [])];
+    return out;
+  }
+
+  function endpointKey(endpoint) {
+    return [
+      endpoint.ahsId,
+      endpoint.cells.join(','),
+      endpoint.digits.join(','),
+      endpoint.triggerKind,
+      endpoint.triggerLinkId ?? '',
+    ].join('|');
+  }
+
+  function linkKey(link) {
+    return [
+      link.linkType,
+      link.HS_L.uniqueID,
+      link.HS_R.uniqueID,
+      link.C.digit,
+      link.C.leftCells.join(','),
+      link.C.rightCells.join(','),
+      link.activeCells.join(','),
+      link.startingDigits.join(','),
+      link.linkedCells.join(','),
+      link.linkDigits.join(','),
+    ].join('|');
+  }
+
+  function addUnique(bucket, seen, link, maxLinks) {
+    if (maxLinks !== undefined && seen.size >= maxLinks) return false;
+    const key = linkKey(link);
+    if (seen.has(key)) return true;
+    seen.add(key);
+    bucket.push(link);
+    return true;
+  }
+
+  function buildLink(left, right, leftNode, bridge, rightNode) {
+    return {
+      id: nextAhsLinkId++,
+      linkType: AHS_RCC,
+      linkTypeName: 'AHS_RCC',
+      originSector: [...bridge.sectors],
+      startingDigits: [...left.digits],
+      activeCells: [...left.cells],
+      linkedCells: [...right.cells],
+      linkDigits: [...right.digits],
+      startCellsSector: digitSectorMap(left),
+      linkCellsSector: digitSectorMap(right),
+      startDigitSwapAvailable: [...left.hiddenDigits],
+      endDigitSwapAvailable: [...right.hiddenDigits],
+      potentialElimStart: hiddenEliminationMap(left),
+      potentialElimEnd: hiddenEliminationMap(right),
+      rightWeakLinks: [],
+      leftWeakLinks: [],
+      RCC_Left: left,
+      HS_L: leftNode,
+      C: bridge,
+      HS_R: rightNode,
+      RCC_Right: right,
+    };
+  }
+
+  function indexedBridgeRefs(entries) {
+    const refsByKey = new Map();
+
+    for (const entry of entries) {
+      for (const endpoint of entry.endpoints) {
+        for (const digit of endpoint.digits) {
+          const cells = endpoint.digitCells[digit] || [];
+          for (const sector of commonSectors(cells)) {
+            const key = `${digit}|${sector}`;
+            const refs = refsByKey.get(key) || [];
+            refs.push({ entry, endpoint, digit, cells, sector });
+            refsByKey.set(key, refs);
+          }
+        }
+      }
+    }
+
+    return refsByKey;
+  }
+
+  function makeBridgePair(leftRef, rightRef) {
+    if (leftRef.entry.index === rightRef.entry.index) return null;
+    if (!cellsSeeEachOther(leftRef.cells, rightRef.cells)) return null;
+
+    const [left, right] = leftRef.entry.index < rightRef.entry.index
+      ? [leftRef, rightRef]
+      : [rightRef, leftRef];
+
+    return {
+      leftEntry: left.entry,
+      rightEntry: right.entry,
+      left: left.endpoint,
+      right: right.endpoint,
+      bridge: {
+        digit: left.digit,
+        leftCells: [...left.cells],
+        rightCells: [...right.cells],
+        sectors: sortedUnique([
+          left.sector,
+          ...intersection(left.endpoint.sectors, right.endpoint.sectors),
+          ...commonSectors([...left.cells, ...right.cells]),
+        ]),
+      },
+    };
+  }
+
+  function addLinksForBridgePair(bucket, seen, bridgePair, maxLinks) {
+    const leftBridgeKey = endpointKey(bridgePair.left);
+    const rightBridgeKey = endpointKey(bridgePair.right);
+    const leftNode = hsNode(bridgePair.leftEntry.ahs, bridgePair.left);
+    const rightNode = hsNode(bridgePair.rightEntry.ahs, bridgePair.right);
+
+    for (const leftEndpoint of bridgePair.leftEntry.endpoints) {
+      if (endpointKey(leftEndpoint) === leftBridgeKey) continue;
+      for (const rightEndpoint of bridgePair.rightEntry.endpoints) {
+        if (endpointKey(rightEndpoint) === rightBridgeKey) continue;
+        const link = buildLink(leftEndpoint, rightEndpoint, leftNode, bridgePair.bridge, rightNode);
+        if (!addUnique(bucket, seen, link, maxLinks)) return false;
+      }
+    }
+
+    return true;
+  }
+
+  function indexedBridgePairs(entries) {
+    const refsByKey = indexedBridgeRefs(entries);
+    const pairs = new Map();
+
+    for (const refs of refsByKey.values()) {
+      for (let leftIndex = 0; leftIndex < refs.length; leftIndex++) {
+        const leftRef = refs[leftIndex];
+        for (let rightIndex = leftIndex + 1; rightIndex < refs.length; rightIndex++) {
+          const rightRef = refs[rightIndex];
+          const bridgePair = makeBridgePair(leftRef, rightRef);
+          if (!bridgePair) continue;
+
+          const key = `${bridgePair.leftEntry.index}|${bridgePair.rightEntry.index}`;
+          const list = pairs.get(key) || [];
+          list.push(bridgePair);
+          pairs.set(key, list);
+        }
+      }
+    }
+
+    return pairs;
+  }
+
+  function buildAhsLinks(cand, options = {}) {
+    nextAhsLinkId = 0;
+    const opts = {
+      minDof: Number.isInteger(options.minDof) ? Math.max(1, options.minDof) : 1,
+      maxDof: Number.isInteger(options.maxDof) ? Math.min(3, Math.max(1, options.maxDof)) : 3,
+      strictSingleCommon: options.strictSingleCommon ?? false,
+      maxLinks: Number.isInteger(options.maxLinks) && options.maxLinks > 0 ? options.maxLinks : undefined,
+    };
+    const ahsList = options.ahsList || core.ahsConstructor(cand, { maxSize: 8, maxSizeFox: 7 });
+    const strongSet = options.strongLinkSet
+      || (core.buildStrongLinks ? core.buildStrongLinks(cand) : []);
+    const strongLinks = core.flattenStrongLinks
+      ? core.flattenStrongLinks(strongSet)
+      : (Array.isArray(strongSet) && strongSet.length && Array.isArray(strongSet[0])
+        ? strongSet.flat()
+        : strongSet);
+    const buckets = Array.from({ length: AHS_RCC + 1 }, () => []);
+    const endpointEntries = ahsList
+      .map((ahs, index) => ({
+        index,
+        ahs,
+        endpoints: buildEndpoints(cand, ahs, strongLinks)
+          .filter(endpoint => endpoint.dofKeys.some(dof => dof >= opts.minDof && dof <= opts.maxDof)),
+      }))
+      .filter(entry => entry.endpoints.length > 1);
+    const seen = new Set();
+
+    if (!opts.strictSingleCommon) {
+      for (const refs of indexedBridgeRefs(endpointEntries).values()) {
+        for (let leftIndex = 0; leftIndex < refs.length; leftIndex++) {
+          for (let rightIndex = leftIndex + 1; rightIndex < refs.length; rightIndex++) {
+            const bridgePair = makeBridgePair(refs[leftIndex], refs[rightIndex]);
+            if (!bridgePair) continue;
+            if (!addLinksForBridgePair(buckets[AHS_RCC], seen, bridgePair, opts.maxLinks)) return buckets;
+          }
+        }
+      }
+
+      return buckets;
+    }
+
+    const bridgePairs = indexedBridgePairs(endpointEntries);
+
+    for (const candidates of bridgePairs.values()) {
+      if (opts.strictSingleCommon && candidates.length !== 1) continue;
+
+      for (const bridgePair of candidates) {
+        if (!addLinksForBridgePair(buckets[AHS_RCC], seen, bridgePair, opts.maxLinks)) return buckets;
+      }
+    }
+
+    return buckets;
+  }
+
+  function flattenAhsLinks(linkset) {
+    return linkset.flat();
+  }
+
+  core.AHS_RCC = AHS_RCC;
+  core.AHS_LINK_TYPE_NAMES = AHS_LINK_TYPE_NAMES;
+  core.buildAhsLinks = buildAhsLinks;
+  core.ahsLinkConstructor = buildAhsLinks;
+  core.flattenAhsLinks = flattenAhsLinks;
+})(globalThis);
