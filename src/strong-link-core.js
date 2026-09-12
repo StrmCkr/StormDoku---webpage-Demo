@@ -189,10 +189,12 @@
     Array.from({ length: 9 }, (_, offsetIndex) => {
       const boxRowStart = Math.floor(box / 3) * 3;
       const boxColStart = (box % 3) * 3;
-      const localCol = Math.floor(offsetIndex / 3);
-      const localRow = offsetIndex % 3;
-      const row = boxRowStart + localCol;
-      const col = boxColStart + localRow;
+      // The Java table is indexed by local column first, then local row:
+      // index = columnOffset * 3 + rowOffset.
+      const columnOffset = Math.floor(offsetIndex / 3);
+      const rowOffset = offsetIndex % 3;
+      const row = boxRowStart + rowOffset;
+      const col = boxColStart + columnOffset;
       return core.UNITS[18 + box].filter(cell =>
         core.Rx[cell] !== row && core.Cy[cell] !== col
       );

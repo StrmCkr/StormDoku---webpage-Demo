@@ -230,8 +230,8 @@ function miniXorConstruction(
 
 function eriXorConstruction(box: number, row: number, col: number): StrongLinkXorConstruction {
   const boxSector = 18 + box;
-  const boxRowStart = Math.floor(box / 3) * 3;
-  const boxColStart = (box % 3) * 3;
+    const boxRowStart = Math.floor(box / 3) * 3;
+    const boxColStart = (box % 3) * 3;
   const offsetIndex = (col - boxColStart) * 3 + (row - boxRowStart);
   return {
     kind: 'eri',
@@ -248,12 +248,14 @@ function eriXorConstruction(box: number, row: number, col: number): StrongLinkXo
 // selected box-row and box-column crossing, indexed by local column/row.
 const ERI_OFFSETS: number[][][] = Array.from({ length: 9 }, (_, box) =>
   Array.from({ length: 9 }, (_, offsetIndex) => {
-    const boxRowStart = Math.floor(box / 3) * 3;
-    const boxColStart = (box % 3) * 3;
-    const localCol = Math.floor(offsetIndex / 3);
-    const localRow = offsetIndex % 3;
-    const row = boxRowStart + localCol;
-    const col = boxColStart + localRow;
+  const boxRowStart = Math.floor(box / 3) * 3;
+  const boxColStart = (box % 3) * 3;
+    // The Java table is indexed by local column first, then local row:
+    // index = columnOffset * 3 + rowOffset.
+    const columnOffset = Math.floor(offsetIndex / 3);
+    const rowOffset = offsetIndex % 3;
+    const row = boxRowStart + rowOffset;
+    const col = boxColStart + columnOffset;
     return UNITS[18 + box].filter(cell =>
       Math.floor(cell / 9) !== row && cell % 9 !== col,
     );

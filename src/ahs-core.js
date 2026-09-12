@@ -18,6 +18,17 @@
     return sectorCells.filter(cell => (cand[cell] || []).some(digit => selected.has(digit)));
   }
 
+  function containsNakedSubset(cand, cells, hiddenDigits) {
+    const allowed = new Set(hiddenDigits);
+    for (let size = 1; size < cells.length; size++) {
+      for (const subset of combinations(cells, size)) {
+        const subsetDigits = candidateDigits(cand, subset);
+        if (subsetDigits.length === size && subsetDigits.some(digit => !allowed.has(digit))) return true;
+      }
+    }
+    return false;
+  }
+
   function containsDofZeroSubset(cand, cells, digits) {
     // Keep higher-DOF AHS records from duplicating a proper hidden subset.
     for (let size = 1; size < digits.length; size++) {
@@ -89,6 +100,7 @@
           if (fox < positionSize || fox > opts.maxSizeFox + 1) continue;
         if (opts.searchLimit && dof !== 1) continue;
         if (opts.sizeLimit && dof > 0) continue;
+        if (containsNakedSubset(cand, cells, digits)) continue;
         if (dof > 0 && containsDofZeroSubset(cand, cells, digits)) continue;
         const cellPositions = cells.map(cell => sectorCells.indexOf(cell));
           const cellPowerSet = powerSetIndexes.get(cellPositions.join(','));

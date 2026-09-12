@@ -1083,6 +1083,41 @@ function computeSameCellRing(
   }
 }
 
+function computeAhsRingLockedHiddenSet(
+  cand: CandidateGrid,
+  side: ChainSide,
+  out: Map<string, ChainElimination>,
+): void {
+  if (side.conveyance !== 'CELLS' || !side.cells.length) return;
+  if (side.digits.length !== side.cells.length) return;
+  if (!side.digits.every(digit => side.cells.some(cell => (cand[cell] || []).includes(digit)))) return;
+
+  const cellSet = new Set(side.cells);
+  const hiddenDigits = new Set(side.digits);
+
+  // Cells XOR RCC_Cells is the locked hidden-set cell group.
+  for (const cell of side.cells) {
+    for (const digit of cand[cell] || []) {
+      if (!hiddenDigits.has(digit)) {
+        addElimination(out, cand, digit, [cell], 'ring-ahs-hidden');
+      }
+    }
+  }
+
+  let commonPeers = new Set(peersOf(side.cells[0]));
+  for (const cell of side.cells.slice(1)) {
+    const peers = new Set(peersOf(cell));
+    commonPeers = new Set([...commonPeers].filter(peer => peers.has(peer)));
+  }
+
+  for (const peer of commonPeers) {
+    if (cellSet.has(peer)) continue;
+    for (const digit of side.digits) {
+      addElimination(out, cand, digit, [peer], 'ring-ahs-locked');
+    }
+  }
+}
+
 function computeLockedWeak(
   cand: CandidateGrid,
   fromView: DirectedView,
@@ -1202,6 +1237,12 @@ function evaluateChain(
   }
 
   if (isRing && !(steps.length === 1 && steps[0].view.node.raw.moduleKind === 'ALS_XZ')) {
+    for (const step of steps) {
+      if (step.view.node.family !== 'AHS') continue;
+      computeAhsRingLockedHiddenSet(cand, step.view.entry, out);
+      computeAhsRingLockedHiddenSet(cand, step.view.exit, out);
+    }
+
     const evenRing = ringWeak !== null && steps.length % 2 === 0;
     for (let index = 0; index < steps.length; index++) {
       const left = steps[index].view;

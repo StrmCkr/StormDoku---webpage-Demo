@@ -1209,6 +1209,51 @@
       color: #0f172a;
     }
 
+    .chain-safety-warning {
+      display: grid;
+      gap: 7px;
+      margin-bottom: 10px;
+      border: 1px solid var(--red);
+      border-left: 4px solid var(--red);
+      border-radius: 6px;
+      padding: 10px 12px;
+      background: #fff7ed;
+    }
+
+    .chain-safety-warning h3,
+    .chain-safety-warning p {
+      margin: 0;
+    }
+
+    .chain-safety-warning h3 {
+      color: var(--red);
+      font-size: 14px;
+    }
+
+    .chain-safety-warning p,
+    .chain-safety-warning li {
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .chain-safety-warning ul {
+      display: grid;
+      gap: 7px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .chain-safety-warning .chain-result-flagged {
+      border-color: var(--red);
+      background: #fff;
+    }
+
+    .chain-result-flagged {
+      border-color: var(--red);
+      background: #fff7ed;
+    }
+
     @media (max-width: 860px) {
       .layout {
         grid-template-columns: 1fr;
@@ -1512,6 +1557,11 @@
               <button id="chainClear" class="secondary" type="button">Clear View</button>
             </div>
             <textarea id="chainOutput" class="chain-output" readonly spellcheck="false"></textarea>
+            <section id="illegalChainArea" class="chain-safety-warning" hidden>
+              <h3 id="illegalChainHeading">Flagged / Illegal Chains</h3>
+              <p>These chains conflict with the loaded solution or leave a cell or sector without a legal candidate.</p>
+              <ul id="illegalChainResults"></ul>
+            </section>
             <div id="chainResults" class="pom-results">No chain search has been run.</div>
           </div>
         </details>
@@ -1534,7 +1584,7 @@
   <script src="./src/subset-report-core.js"></script>
   <script src="./src/ahs-link-core.js"></script>
   <script src="./src/mini-sectors-core.js"></script>
-  <script src="./src/strong-link-core.js"></script>
+  <script src="./src/strong-link-core.js?v=20260912-1"></script>
   <script src="./src/chain-core.js?v=20260911-12"></script>
   <script>
     const core = window.StormDoku;
@@ -1570,6 +1620,9 @@
     const hiddenSubsetResultsEl = document.getElementById('hiddenSubsetResults');
     const chainResultsEl = document.getElementById('chainResults');
     const chainOutputEl = document.getElementById('chainOutput');
+    const illegalChainAreaEl = document.getElementById('illegalChainArea');
+    const illegalChainHeadingEl = document.getElementById('illegalChainHeading');
+    const illegalChainResultsEl = document.getElementById('illegalChainResults');
     const chainCopyEl = document.getElementById('chainCopy');
     const chainCopyVerboseEl = document.getElementById('chainCopyVerbose');
     const chainClearEl = document.getElementById('chainClear');
@@ -3764,15 +3817,109 @@
       return core.formatChain(chain);
     }
 
+    function chainSafetyFlags(chain) {
+      if (!Array.isArray(solution) || solution.length !== 81) return [];
+
+      const remaining = cand.map(values => new Set(values || []));
+      const reasons = [];
+      const seen = new Set();
+      const addReason = (key, text) => {
+        if (seen.has(key)) return;
+        seen.add(key);
+        reasons.push(text);
+      };
+
+      for (const item of chain.eliminations || []) {
+        const cell = Number(item.cell);
+        const digit = Number(item.digit);
+        if (!Number.isInteger(cell) || cell < 0 || cell >= 81) continue;
+        if (!Number.isInteger(digit) || digit < 1 || digit > 9) continue;
+
+        if (solution[cell] === digit) {
+          addReason(
+            `solution:${cell}:${digit}`,
+            `removes solution ${digit} from ${core.cellName(cell)}`,
+          );
+        }
+        remaining[cell]?.delete(digit);
+      }
+
+      for (let cell = 0; cell < 81; cell++) {
+        if ((cand[cell] || []).length > 0 && remaining[cell].size === 0) {
+          addReason(`empty-cell:${cell}`, `empties ${core.cellName(cell)}`);
+        }
+      }
+
+      for (let sector = 0; sector < core.UNITS.length; sector++) {
+        const unit = core.UNITS[sector];
+        for (let digit = 1; digit <= 9; digit++) {
+          if (unit.some(cell => puzzle[cell] === digit)) continue;
+          if (unit.some(cell => remaining[cell].has(digit))) continue;
+          const name = core.sectorGroupName([sector]);
+          addReason(`sector:${sector}:${digit}`, `leaves ${name} with no place for ${digit}`);
+        }
+      }
+
+      return reasons;
+    }
+
+    function flaggedChainEntries(verbose = false) {
+      if (!chainReport) return [];
+      return chainReport.chains
+        .map((chain, index) => ({
+          chain,
+          index,
+          reasons: chainSafetyFlags(chain),
+        }))
+        .filter(entry => entry.reasons.length > 0)
+        .map(entry => ({
+          ...entry,
+          text: chainText(entry.chain, verbose),
+        }));
+    }
+
     function chainOutput(verbose = false) {
       if (!chainReport) return '';
-      return chainReport.chains
+      const allChains = chainReport.chains
         .map((chain, index) => `${index + 1}. ${chainText(chain, verbose)}`)
         .join('\n');
+      const flagged = flaggedChainEntries(verbose);
+      if (!flagged.length) return allChains;
+
+      const flaggedText = [
+        `FLAGGED CHAINS (${flagged.length})`,
+        ...flagged.flatMap(entry => [
+          `${entry.index + 1}. ${entry.text}`,
+          ...entry.reasons.map(reason => `   ! ${reason}`),
+        ]),
+        '',
+        'ALL CHAINS',
+      ].join('\n');
+      return `${flaggedText}\n${allChains}`;
     }
 
     function renderChainOutput() {
       chainOutputEl.value = chainOutput(false);
+    }
+
+    function renderIllegalChainReport() {
+      const flagged = flaggedChainEntries();
+      illegalChainResultsEl.textContent = '';
+      illegalChainAreaEl.hidden = flagged.length === 0;
+      if (!flagged.length) return;
+
+      illegalChainHeadingEl.textContent = `Flagged / Illegal Chains (${flagged.length})`;
+      for (const entry of flagged) {
+        const item = document.createElement('li');
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'chain-result chain-result-flagged';
+        button.textContent = `${entry.index + 1}. ${entry.text} [${entry.reasons.join('; ')}]`;
+        button.title = entry.reasons.join('; ');
+        button.addEventListener('click', () => selectChain(entry.index));
+        item.appendChild(button);
+        illegalChainResultsEl.appendChild(item);
+      }
     }
 
     async function copyChainOutput(verbose = false) {
@@ -3833,6 +3980,7 @@
     function renderChainReport() {
       chainResultsEl.textContent = '';
       renderChainOutput();
+      renderIllegalChainReport();
       if (!chainReport) {
         selectedChainIndex = null;
         chainResultsEl.textContent = 'No chain search has been run.';
@@ -3841,6 +3989,7 @@
 
       const { stats, chains } = chainReport;
       if (selectedChainIndex !== null && selectedChainIndex >= chains.length) selectedChainIndex = null;
+      const flagged = flaggedChainEntries();
       const summary = document.createElement('p');
       summary.textContent = `${chains.length} chains with eliminations. `
         + `Links: strong ${stats.strongLinks}; ALS ${stats.alsLinks || 0}; AHS ${stats.ahsLinks || 0}; `
@@ -3848,7 +3997,8 @@
         + `NAND checks ${stats.transitionsChecked}, accepted ${stats.transitionsAccepted}, reports ${stats.resultAttempts || 0}`
         + `${stats.duplicatesSuppressed ? `, duplicates ${stats.duplicatesSuppressed}` : ''}`
         + `${stats.startCapsHit ? `, start caps ${stats.startCapsHit}` : ''}`
-        + `${stats.truncated ? `; stopped at ${stats.stopReason}` : ''}.`;
+        + `${stats.truncated ? `; stopped at ${stats.stopReason}` : ''}`
+        + `${flagged.length ? `; flagged ${flagged.length}` : ''}.`;
       chainResultsEl.appendChild(summary);
 
       const visible = chains.slice(0, 200);
