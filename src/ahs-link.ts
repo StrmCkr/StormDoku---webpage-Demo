@@ -1,6 +1,6 @@
 import { UNITS } from './cardinals';
 import { ahsConstructor, type Ahs } from './ahs';
-import { combinations, intersection, sortedUnique } from './set-tools';
+import { combinations, intersection, peerPotentialEliminations, sortedUnique } from './set-tools';
 import { peersOf, type CandidateGrid } from './sudoku';
 import { buildStrongLinks, flattenStrongLinks, type StrongLink, type StrongLinkSet } from './strong-link';
 
@@ -24,6 +24,9 @@ export interface AhsEndpoint {
   triggerLinkId: number | null;
   triggerSectors: number[];
   digits: number[];
+  rccDigits: number[];
+  rccCells: number[];
+  conveyanceCells: number[];
   cells: number[];
   sectors: number[];
   potentialElim: number[];
@@ -31,6 +34,7 @@ export interface AhsEndpoint {
   hiddenCells: number[];
   digitCells: Record<string, number[]>;
   hiddenDigitCells: Record<string, number[]>;
+  rccDigitsByCell: Record<string, number[]>;
 }
 
 export interface AhsSetNode {
@@ -49,7 +53,10 @@ export interface AhsSetNode {
 }
 
 export interface AhsBridge {
-  digit: number;
+  conveyance: 'CELLS';
+  digit: number | null;
+  digits: number[];
+  restrictedDigits: number[];
   leftCells: number[];
   rightCells: number[];
   sectors: number[];
@@ -60,6 +67,7 @@ export interface AhsStrongLink {
   linkType: number;
   linkTypeName: string;
   originSector: number[];
+  conveyance: 'CELLS';
   startingDigits: number[];
   activeCells: number[];
   linkedCells: number[];
@@ -70,6 +78,10 @@ export interface AhsStrongLink {
   endDigitSwapAvailable: number[];
   potentialElimStart: Record<string, number[]>;
   potentialElimEnd: Record<string, number[]>;
+  rccStartCells: number[];
+  rccLinkedCells: number[];
+  rccStartDigitsByCell: Record<string, number[]>;
+  rccLinkedDigitsByCell: Record<string, number[]>;
   rightWeakLinks: unknown[];
   leftWeakLinks: unknown[];
   RCC_Left: AhsEndpoint;
@@ -101,7 +113,6 @@ interface EndpointEntry {
 interface BridgeRef {
   entry: EndpointEntry;
   endpoint: AhsEndpoint;
-  digit: number;
   cells: number[];
   sector: number;
 }
@@ -129,6 +140,11 @@ function cellsSeeEachOther(left: readonly number[], right: readonly number[]): b
   return !!left.length
     && !!right.length
     && left.every(a => right.every(b => a === b || peersOf(a).includes(b)));
+}
+
+function disjoint(left: readonly number[], right: readonly number[]): boolean {
+  const seen = new Set(left);
+  return right.every(cell => !seen.has(cell));
 }
 
 function outsideDigitsByCell(ahs: Ahs): Map<number, number[]> {
@@ -174,9 +190,14 @@ function buildEndpoint(
   if (!endpointDigits.length) return null;
 
   const hiddenDigitCells: Record<string, number[]> = {};
+  const rccDigitsByCell: Record<string, number[]> = {};
   for (const digit of ahs.ahsDigits) {
     const cellsWithDigit = removedCells.filter(cell => (cand[cell] ?? []).includes(digit));
     if (cellsWithDigit.length) hiddenDigitCells[digit] = cellsWithDigit;
+  }
+  for (const cell of triggerCells) {
+    const outsideDigits = sortedUnique((cand[cell] ?? []).filter(digit => !ahs.ahsDigits.includes(digit)));
+    if (outsideDigits.length) rccDigitsByCell[cell] = outsideDigits;
   }
 
   return {
@@ -188,13 +209,18 @@ function buildEndpoint(
     triggerLinkId,
     triggerSectors: sortedUnique(triggerSectors),
     digits: endpointDigits,
-    cells: [...triggerCells].sort((a, b) => a - b),
-    sectors: endpointSectors(ahs, triggerCells, triggerSectors),
+    rccDigits: endpointDigits,
+    // AHS conveyance is cellular: Cells XOR RCC_Cells.
+    rccCells: [...triggerCells].sort((a, b) => a - b),
+    conveyanceCells: [...hiddenCells].sort((a, b) => a - b),
+    cells: [...hiddenCells].sort((a, b) => a - b),
+    sectors: endpointSectors(ahs, hiddenCells, triggerSectors),
     potentialElim: [...triggerCells].sort((a, b) => a - b),
     hiddenDigits: [...ahs.ahsDigits],
     hiddenCells,
     digitCells,
     hiddenDigitCells,
+    rccDigitsByCell,
   };
 }
 
@@ -287,21 +313,27 @@ function hsNode(ahs: Ahs, endpoint: AhsEndpoint): AhsSetNode {
   };
 }
 
-function digitSectorMap(endpoint: AhsEndpoint): Record<string, number[]> {
+function hiddenEliminationMapForCandidates(
+  cand: CandidateGrid,
+  endpoint: AhsEndpoint,
+): Record<string, number[]> {
   const out: Record<string, number[]> = {};
-  for (const digit of endpoint.digits) out[digit] = [...endpoint.sectors];
+  for (const digit of endpoint.hiddenDigits) {
+    out[digit] = peerPotentialEliminations(cand, digit, endpoint.hiddenCells);
+  }
   return out;
 }
 
-function hiddenEliminationMap(endpoint: AhsEndpoint): Record<string, number[]> {
+function hiddenDigitSectorMap(endpoint: AhsEndpoint): Record<string, number[]> {
   const out: Record<string, number[]> = {};
-  for (const digit of endpoint.hiddenDigits) out[digit] = [...(endpoint.hiddenDigitCells[digit] ?? [])];
+  for (const digit of endpoint.hiddenDigits) out[digit] = [...endpoint.sectors];
   return out;
 }
 
 function endpointKey(endpoint: AhsEndpoint): string {
   return [
     endpoint.ahsId,
+    endpoint.rccCells.join(','),
     endpoint.cells.join(','),
     endpoint.digits.join(','),
     endpoint.triggerKind,
@@ -314,7 +346,7 @@ function linkKey(link: AhsStrongLink): string {
     link.linkType,
     link.HS_L.uniqueID,
     link.HS_R.uniqueID,
-    link.C.digit,
+    link.C.digit ?? '',
     link.C.leftCells.join(','),
     link.C.rightCells.join(','),
     link.activeCells.join(','),
@@ -339,6 +371,7 @@ function addUnique(
 }
 
 function buildLink(
+  cand: CandidateGrid,
   left: AhsEndpoint,
   right: AhsEndpoint,
   leftNode: AhsSetNode,
@@ -350,16 +383,21 @@ function buildLink(
     linkType: AHS_RCC,
     linkTypeName: 'AHS_RCC',
     originSector: [...bridge.sectors],
-    startingDigits: [...left.digits],
-    activeCells: [...left.cells],
-    linkedCells: [...right.cells],
-    linkDigits: [...right.digits],
-    startCellsSector: digitSectorMap(left),
-    linkCellsSector: digitSectorMap(right),
-    startDigitSwapAvailable: [...left.hiddenDigits],
-    endDigitSwapAvailable: [...right.hiddenDigits],
-    potentialElimStart: hiddenEliminationMap(left),
-    potentialElimEnd: hiddenEliminationMap(right),
+    conveyance: 'CELLS',
+    startingDigits: [...left.hiddenDigits],
+    activeCells: [...left.conveyanceCells],
+    linkedCells: [...right.conveyanceCells],
+    linkDigits: [...right.hiddenDigits],
+    startCellsSector: hiddenDigitSectorMap(left),
+    linkCellsSector: hiddenDigitSectorMap(right),
+    startDigitSwapAvailable: [],
+    endDigitSwapAvailable: [],
+    potentialElimStart: hiddenEliminationMapForCandidates(cand, left),
+    potentialElimEnd: hiddenEliminationMapForCandidates(cand, right),
+    rccStartCells: [...left.rccCells],
+    rccLinkedCells: [...right.rccCells],
+    rccStartDigitsByCell: { ...left.rccDigitsByCell },
+    rccLinkedDigitsByCell: { ...right.rccDigitsByCell },
     rightWeakLinks: [],
     leftWeakLinks: [],
     RCC_Left: left,
@@ -375,14 +413,11 @@ function indexedBridgeRefs(entries: readonly EndpointEntry[]): Map<string, Bridg
 
   for (const entry of entries) {
     for (const endpoint of entry.endpoints) {
-      for (const digit of endpoint.digits) {
-        const cells = endpoint.digitCells[digit] ?? [];
-        for (const sector of commonSectors(cells)) {
-          const key = `${digit}|${sector}`;
-          const refs = refsByKey.get(key) ?? [];
-          refs.push({ entry, endpoint, digit, cells, sector });
-          refsByKey.set(key, refs);
-        }
+      for (const sector of commonSectors(endpoint.rccCells)) {
+        const key = `${sector}`;
+        const refs = refsByKey.get(key) ?? [];
+        refs.push({ entry, endpoint, cells: [...endpoint.rccCells], sector });
+        refsByKey.set(key, refs);
       }
     }
   }
@@ -392,6 +427,7 @@ function indexedBridgeRefs(entries: readonly EndpointEntry[]): Map<string, Bridg
 
 function makeBridgePair(leftRef: BridgeRef, rightRef: BridgeRef): BridgePair | null {
   if (leftRef.entry.index === rightRef.entry.index) return null;
+  if (!disjoint(leftRef.entry.ahs.ahsAllCells, rightRef.entry.ahs.ahsAllCells)) return null;
   if (!cellsSeeEachOther(leftRef.cells, rightRef.cells)) return null;
 
   const [left, right] = leftRef.entry.index < rightRef.entry.index
@@ -404,7 +440,10 @@ function makeBridgePair(leftRef: BridgeRef, rightRef: BridgeRef): BridgePair | n
     left: left.endpoint,
     right: right.endpoint,
     bridge: {
-      digit: left.digit,
+      conveyance: 'CELLS',
+      digit: null,
+      digits: [],
+      restrictedDigits: [],
       leftCells: [...left.cells],
       rightCells: [...right.cells],
       sectors: sortedUnique([
@@ -420,18 +459,18 @@ function addLinksForBridgePair(
   bucket: AhsStrongLink[],
   seen: Set<string>,
   bridgePair: BridgePair,
+  cand: CandidateGrid,
   maxLinks?: number,
 ): boolean {
   const leftBridgeKey = endpointKey(bridgePair.left);
   const rightBridgeKey = endpointKey(bridgePair.right);
-  const leftNode = hsNode(bridgePair.leftEntry.ahs, bridgePair.left);
-  const rightNode = hsNode(bridgePair.rightEntry.ahs, bridgePair.right);
-
   for (const leftEndpoint of bridgePair.leftEntry.endpoints) {
     if (endpointKey(leftEndpoint) === leftBridgeKey) continue;
     for (const rightEndpoint of bridgePair.rightEntry.endpoints) {
       if (endpointKey(rightEndpoint) === rightBridgeKey) continue;
-      const link = buildLink(leftEndpoint, rightEndpoint, leftNode, bridgePair.bridge, rightNode);
+      const leftNode = hsNode(bridgePair.leftEntry.ahs, leftEndpoint);
+      const rightNode = hsNode(bridgePair.rightEntry.ahs, rightEndpoint);
+      const link = buildLink(cand, leftEndpoint, rightEndpoint, leftNode, bridgePair.bridge, rightNode);
       if (!addUnique(bucket, seen, link, maxLinks)) return false;
     }
   }
@@ -492,7 +531,7 @@ export function buildAhsLinks(
         for (let rightIndex = leftIndex + 1; rightIndex < refs.length; rightIndex++) {
           const bridgePair = makeBridgePair(refs[leftIndex], refs[rightIndex]);
           if (!bridgePair) continue;
-          if (!addLinksForBridgePair(buckets[AHS_RCC], seen, bridgePair, opts.maxLinks)) return buckets;
+          if (!addLinksForBridgePair(buckets[AHS_RCC], seen, bridgePair, cand, opts.maxLinks)) return buckets;
         }
       }
     }
@@ -506,7 +545,7 @@ export function buildAhsLinks(
     if (opts.strictSingleCommon && candidates.length !== 1) continue;
 
     for (const bridgePair of candidates) {
-      if (!addLinksForBridgePair(buckets[AHS_RCC], seen, bridgePair, opts.maxLinks)) return buckets;
+      if (!addLinksForBridgePair(buckets[AHS_RCC], seen, bridgePair, cand, opts.maxLinks)) return buckets;
     }
   }
 

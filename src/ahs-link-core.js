@@ -36,6 +36,11 @@
       && left.every(a => right.every(b => a === b || core.peersOf(a).includes(b)));
   }
 
+  function disjoint(left, right) {
+    const seen = new Set(left);
+    return right.every(cell => !seen.has(cell));
+  }
+
   function outsideDigitsByCell(ahs) {
     const out = new Map();
     for (const rcc of ahs.rccList) {
@@ -75,9 +80,14 @@
     if (!endpointDigits.length) return null;
 
     const hiddenDigitCells = {};
+    const rccDigitsByCell = {};
     for (const digit of ahs.ahsDigits) {
       const cellsWithDigit = removedCells.filter(cell => (cand[cell] || []).includes(digit));
       if (cellsWithDigit.length) hiddenDigitCells[digit] = cellsWithDigit;
+    }
+    for (const cell of triggerCells) {
+      const outsideDigits = sortedUnique((cand[cell] || []).filter(digit => !ahs.ahsDigits.includes(digit)));
+      if (outsideDigits.length) rccDigitsByCell[cell] = outsideDigits;
     }
 
     return {
@@ -89,13 +99,19 @@
       triggerLinkId,
       triggerSectors: sortedUnique(triggerSectors),
       digits: endpointDigits,
-      cells: [...triggerCells].sort((a, b) => a - b),
-      sectors: endpointSectors(ahs, triggerCells, triggerSectors),
+      rccDigits: endpointDigits,
+      // AHS conveyance is cellular: Cells XOR RCC_Cells. The outside
+      // candidates on the RCC cells are metadata for eliminations only.
+      rccCells: [...triggerCells].sort((a, b) => a - b),
+      conveyanceCells: [...hiddenCells].sort((a, b) => a - b),
+      cells: [...hiddenCells].sort((a, b) => a - b),
+      sectors: endpointSectors(ahs, hiddenCells, triggerSectors),
       potentialElim: [...triggerCells].sort((a, b) => a - b),
       hiddenDigits: [...ahs.ahsDigits],
       hiddenCells,
       digitCells,
       hiddenDigitCells,
+      rccDigitsByCell,
     };
   }
 
@@ -191,21 +207,21 @@
     };
   }
 
-  function digitSectorMap(endpoint) {
+  function hiddenEliminationMap(cand, endpoint) {
     const out = {};
-    for (const digit of endpoint.digits) out[digit] = [...endpoint.sectors];
-    return out;
-  }
-
-  function hiddenEliminationMap(endpoint) {
-    const out = {};
-    for (const digit of endpoint.hiddenDigits) out[digit] = [...(endpoint.hiddenDigitCells[digit] || [])];
+    for (const digit of endpoint.hiddenDigits) {
+      const cells = endpoint.hiddenCells || [];
+      out[digit] = core.setTools.peerPotentialEliminations
+        ? core.setTools.peerPotentialEliminations(cand, digit, cells)
+        : [...(endpoint.hiddenDigitCells[digit] || [])];
+    }
     return out;
   }
 
   function endpointKey(endpoint) {
     return [
       endpoint.ahsId,
+      endpoint.rccCells.join(','),
       endpoint.cells.join(','),
       endpoint.digits.join(','),
       endpoint.triggerKind,
@@ -218,7 +234,7 @@
       link.linkType,
       link.HS_L.uniqueID,
       link.HS_R.uniqueID,
-      link.C.digit,
+      link.C.digit ?? '',
       link.C.leftCells.join(','),
       link.C.rightCells.join(','),
       link.activeCells.join(','),
@@ -237,22 +253,33 @@
     return true;
   }
 
-  function buildLink(left, right, leftNode, bridge, rightNode) {
+  function hiddenDigitSectorMap(endpoint) {
+    const out = {};
+    for (const digit of endpoint.hiddenDigits) out[digit] = [...endpoint.sectors];
+    return out;
+  }
+
+  function buildLink(cand, left, right, leftNode, bridge, rightNode) {
     return {
       id: nextAhsLinkId++,
       linkType: AHS_RCC,
       linkTypeName: 'AHS_RCC',
       originSector: [...bridge.sectors],
-      startingDigits: [...left.digits],
-      activeCells: [...left.cells],
-      linkedCells: [...right.cells],
-      linkDigits: [...right.digits],
-      startCellsSector: digitSectorMap(left),
-      linkCellsSector: digitSectorMap(right),
-      startDigitSwapAvailable: [...left.hiddenDigits],
-      endDigitSwapAvailable: [...right.hiddenDigits],
-      potentialElimStart: hiddenEliminationMap(left),
-      potentialElimEnd: hiddenEliminationMap(right),
+      conveyance: 'CELLS',
+      startingDigits: [...left.hiddenDigits],
+      activeCells: [...left.conveyanceCells],
+      linkedCells: [...right.conveyanceCells],
+      linkDigits: [...right.hiddenDigits],
+      startCellsSector: hiddenDigitSectorMap(left),
+      linkCellsSector: hiddenDigitSectorMap(right),
+      startDigitSwapAvailable: [],
+      endDigitSwapAvailable: [],
+      potentialElimStart: hiddenEliminationMap(cand, left),
+      potentialElimEnd: hiddenEliminationMap(cand, right),
+      rccStartCells: [...left.rccCells],
+      rccLinkedCells: [...right.rccCells],
+      rccStartDigitsByCell: { ...left.rccDigitsByCell },
+      rccLinkedDigitsByCell: { ...right.rccDigitsByCell },
       rightWeakLinks: [],
       leftWeakLinks: [],
       RCC_Left: left,
@@ -268,14 +295,11 @@
 
     for (const entry of entries) {
       for (const endpoint of entry.endpoints) {
-        for (const digit of endpoint.digits) {
-          const cells = endpoint.digitCells[digit] || [];
-          for (const sector of commonSectors(cells)) {
-            const key = `${digit}|${sector}`;
-            const refs = refsByKey.get(key) || [];
-            refs.push({ entry, endpoint, digit, cells, sector });
-            refsByKey.set(key, refs);
-          }
+        for (const sector of commonSectors(endpoint.rccCells)) {
+          const key = `${sector}`;
+          const refs = refsByKey.get(key) || [];
+          refs.push({ entry, endpoint, cells: [...endpoint.rccCells], sector });
+          refsByKey.set(key, refs);
         }
       }
     }
@@ -285,6 +309,7 @@
 
   function makeBridgePair(leftRef, rightRef) {
     if (leftRef.entry.index === rightRef.entry.index) return null;
+    if (!disjoint(leftRef.entry.ahs.ahsAllCells, rightRef.entry.ahs.ahsAllCells)) return null;
     if (!cellsSeeEachOther(leftRef.cells, rightRef.cells)) return null;
 
     const [left, right] = leftRef.entry.index < rightRef.entry.index
@@ -297,7 +322,10 @@
       left: left.endpoint,
       right: right.endpoint,
       bridge: {
-        digit: left.digit,
+        conveyance: 'CELLS',
+        digit: null,
+        digits: [],
+        restrictedDigits: [],
         leftCells: [...left.cells],
         rightCells: [...right.cells],
         sectors: sortedUnique([
@@ -309,17 +337,23 @@
     };
   }
 
-  function addLinksForBridgePair(bucket, seen, bridgePair, maxLinks) {
+  function addLinksForBridgePair(bucket, seen, bridgePair, maxLinks, cand) {
     const leftBridgeKey = endpointKey(bridgePair.left);
     const rightBridgeKey = endpointKey(bridgePair.right);
-    const leftNode = hsNode(bridgePair.leftEntry.ahs, bridgePair.left);
-    const rightNode = hsNode(bridgePair.rightEntry.ahs, bridgePair.right);
-
     for (const leftEndpoint of bridgePair.leftEntry.endpoints) {
       if (endpointKey(leftEndpoint) === leftBridgeKey) continue;
       for (const rightEndpoint of bridgePair.rightEntry.endpoints) {
         if (endpointKey(rightEndpoint) === rightBridgeKey) continue;
-        const link = buildLink(leftEndpoint, rightEndpoint, leftNode, bridgePair.bridge, rightNode);
+        const leftNode = hsNode(bridgePair.leftEntry.ahs, leftEndpoint);
+        const rightNode = hsNode(bridgePair.rightEntry.ahs, rightEndpoint);
+        const link = buildLink(
+          cand,
+          leftEndpoint,
+          rightEndpoint,
+          leftNode,
+          bridgePair.bridge,
+          rightNode,
+        );
         if (!addUnique(bucket, seen, link, maxLinks)) return false;
       }
     }
@@ -383,7 +417,7 @@
           for (let rightIndex = leftIndex + 1; rightIndex < refs.length; rightIndex++) {
             const bridgePair = makeBridgePair(refs[leftIndex], refs[rightIndex]);
             if (!bridgePair) continue;
-            if (!addLinksForBridgePair(buckets[AHS_RCC], seen, bridgePair, opts.maxLinks)) return buckets;
+            if (!addLinksForBridgePair(buckets[AHS_RCC], seen, bridgePair, opts.maxLinks, cand)) return buckets;
           }
         }
       }
@@ -397,7 +431,7 @@
       if (opts.strictSingleCommon && candidates.length !== 1) continue;
 
       for (const bridgePair of candidates) {
-        if (!addLinksForBridgePair(buckets[AHS_RCC], seen, bridgePair, opts.maxLinks)) return buckets;
+        if (!addLinksForBridgePair(buckets[AHS_RCC], seen, bridgePair, opts.maxLinks, cand)) return buckets;
       }
     }
 

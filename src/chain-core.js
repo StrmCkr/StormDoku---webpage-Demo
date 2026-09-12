@@ -56,8 +56,10 @@
 
   function sideKey(side) {
     return [
+      side.conveyance,
       side.digits.join(''),
       side.cells.join(','),
+      side.rccCells.join(','),
       mapKey(side.sectorsByDigit),
       mapKey(side.potentialElimByDigit),
       side.swapDigits.join(','),
@@ -65,6 +67,7 @@
   }
 
   function sideAtoms(side) {
+    if (side.conveyance === 'CELLS') return side.cells.map(cell => `cell:${cell}`);
     const atoms = [];
     for (const cell of side.cells) {
       for (const digit of side.digits) atoms.push(`${cell}:${digit}`);
@@ -121,9 +124,11 @@
 
     return {
       name,
+      conveyance: link.conveyance === 'CELLS' ? 'CELLS' : 'DIGITS',
       cells,
       digits,
       cellKey: cellsKey(cells),
+      rccCells: asNumbers(isLeft ? link.rccStartCells : link.rccLinkedCells),
       sectorsByDigit,
       potentialElimByDigit,
       swapDigits: asNumbers(isLeft ? link.startDigitSwapAvailable : link.endDigitSwapAvailable),
@@ -155,6 +160,9 @@
       : cells.length
         ? core.cellGroupName(cells)
         : 'none';
+    if (bridge.conveyance === 'CELLS' || (!digits && cells.length)) {
+      return `C(${core.cellGroupName(cells)}) ${location}`;
+    }
     return `C(${digits || '?'}) ${location}`;
   }
 
@@ -174,6 +182,7 @@
     const digits = asNumbers(bridge.digits || (bridge.digit == null ? [] : [bridge.digit]));
     const cells = union(asNumbers(bridge.leftCells), asNumbers(bridge.rightCells));
     return {
+      conveyance: bridge.conveyance === 'CELLS' ? 'CELLS' : 'DIGITS',
       digit: bridge.digit ?? digits[0] ?? null,
       digits,
       restrictedDigits: asNumbers(bridge.restrictedDigits || (bridge.digit == null ? [] : [bridge.digit])),
@@ -576,12 +585,14 @@
         localBucket.push(view);
         entryByCells.set(view.entry.cellKey, localBucket);
 
-        for (const digit of mapDigits(view.entry.sectorsByDigit)) {
-          for (const sector of view.entry.sectorsByDigit[digit]) {
-            const key = `${digit}|${sector}`;
-            const sectorBucket = entryByDigitSector.get(key) || [];
-            sectorBucket.push(view);
-            entryByDigitSector.set(key, sectorBucket);
+        if (view.entry.conveyance !== 'CELLS') {
+          for (const digit of mapDigits(view.entry.sectorsByDigit)) {
+            for (const sector of view.entry.sectorsByDigit[digit]) {
+              const key = `${digit}|${sector}`;
+              const sectorBucket = entryByDigitSector.get(key) || [];
+              sectorBucket.push(view);
+              entryByDigitSector.set(key, sectorBucket);
+            }
           }
         }
       }
@@ -594,6 +605,15 @@
     const exit = fromView.exit;
     const entry = toView.entry;
     if (exit.cellKey !== entry.cellKey) return null;
+    if (exit.conveyance === 'CELLS' || entry.conveyance === 'CELLS') {
+      return {
+        weakType: LOCAL_WEAK,
+        weakTypeName: WEAK_TYPE_NAMES[LOCAL_WEAK],
+        digit: null,
+        cells: [...exit.cells],
+        sectors: [],
+      };
+    }
     if (!hasIntersection(exit.digits, entry.swapDigits)) return null;
     if (!hasIntersection(entry.digits, exit.swapDigits)) return null;
 
@@ -615,6 +635,10 @@
     const bNode = toView.node;
     const aSide = fromView.exit;
     const bSide = toView.entry;
+
+    // AHS_RCC is cellular. It must never fall through to the digit-sector
+    // weak-link matcher used by ordinary strong links and ALS nodes.
+    if (aSide.conveyance === 'CELLS' || bSide.conveyance === 'CELLS') return null;
 
     if (hasIntersection(aNode.allCells, bNode.allCells)) return null;
     if (hasIntersection(aSide.cells, bSide.cells)) return null;
@@ -655,7 +679,9 @@
     const seen = new Set();
     const add = (target, weak) => {
       if (!weak || target.key === view.key) return;
-      if (sidesShareAtom(view.exit, target.exit)) return;
+      if (view.exit.conveyance !== 'CELLS'
+        && target.exit.conveyance !== 'CELLS'
+        && sidesShareAtom(view.exit, target.exit)) return;
       const key = `${target.key}|${weak.weakType}|${weak.digit ?? ''}`;
       if (seen.has(key)) return;
       seen.add(key);
@@ -668,6 +694,8 @@
       add(target, localConnection(view, target));
       if (out.length >= options.maxBranching) return out;
     }
+
+    if (view.exit.conveyance === 'CELLS') return out;
 
     for (const digit of mapDigits(view.exit.sectorsByDigit)) {
       for (const sector of view.exit.sectorsByDigit[digit]) {
@@ -895,8 +923,10 @@
   function publicSide(side) {
     return {
       side: side.name,
+      conveyance: side.conveyance,
       cells: [...side.cells],
       digits: [...side.digits],
+      rccCells: [...side.rccCells],
       sectorsByDigit: Object.fromEntries(
         Object.entries(side.sectorsByDigit).map(([digit, sectors]) => [digit, [...sectors]]),
       ),
@@ -1002,6 +1032,80 @@
     ));
   }
 
+  function locationLinkDigits(steps) {
+    const digits = [];
+    for (const step of steps) {
+      const shared = intersection(step.entry.digits, step.exit.digits);
+      if (shared.length !== 1) return null;
+      digits.push(shared[0]);
+    }
+    return digits;
+  }
+
+  function digitShape(digits) {
+    const labels = new Map();
+    let nextLabel = 0;
+    return digits.map(digit => {
+      if (!labels.has(digit)) labels.set(digit, String.fromCharCode(65 + nextLabel++));
+      return labels.get(digit);
+    }).join('');
+  }
+
+  function weakLocationPattern(steps) {
+    return steps.slice(1).map(step =>
+      step.weakIn === LOCAL_WEAK ? 'C' : step.weakIn === SECTOR_WEAK ? 'S' : '?'
+    ).join('');
+  }
+
+  function invertedWingName(steps) {
+    if (![4, 5].includes(steps.length)) return null;
+    if (chainValuePattern(steps) !== 'L'.repeat(steps.length)) return null;
+
+    const digits = locationLinkDigits(steps);
+    if (!digits) return null;
+    const weak = weakLocationPattern(steps);
+    const variants = [
+      { shape: digitShape(digits), weak },
+      { shape: digitShape([...digits].reverse()), weak: [...weak].reverse().join('') },
+    ];
+    const patterns = [
+      ['ABBA', 'CSC', 'iW-Wing'],
+      ['AABB', 'SCS', 'iS-Wing'],
+      ['ABBC', 'CCC', 'iM3-Wing'],
+      ['ABBB', 'CSS', 'iH2-Wing'],
+      ['ABBCC', 'CSSC', 'iH3-Wing'],
+    ];
+
+    for (const variant of variants) {
+      for (const [shape, weakPattern, name] of patterns) {
+        if (variant.shape === shape && variant.weak === weakPattern) return name;
+      }
+    }
+    return null;
+  }
+
+  function invertedRingName(steps, ringWeakDigit) {
+    if (![4, 5].includes(steps.length)) return null;
+    if (chainValuePattern(steps) !== 'L'.repeat(steps.length)) return null;
+
+    const digits = locationLinkDigits(steps);
+    if (!digits || new Set(digits).size !== 2 || ringWeakDigit == null) return null;
+    if (ringWeakDigit !== digits[0] && ringWeakDigit !== digits[digits.length - 1]) return null;
+
+    const weak = weakLocationPattern(steps);
+    const allowedWeak = steps.length === 4
+      ? new Set(['CSC', 'SCS'])
+      : new Set(['SSCS', 'CSCS']);
+    if (!allowedWeak.has(weak)) return null;
+
+    const shape = digitShape(digits);
+    const reverseShape = digitShape([...digits].reverse());
+    const allowedShapes = steps.length === 4
+      ? new Set(['ABBA', 'AABB'])
+      : new Set(['AAABB', 'AABBB', 'ABBAA', 'AABBA']);
+    return allowedShapes.has(shape) || allowedShapes.has(reverseShape) ? 'iW-Ring' : null;
+  }
+
   function structurePrefix(steps) {
     const hasAls = steps.some(step => step.family === 'ALS' && step.linkTypeName === 'ALS_RCC');
     const hasAhs = steps.some(step => step.family === 'AHS' && step.linkTypeName === 'AHS_RCC');
@@ -1016,12 +1120,14 @@
     return prefix ? `${prefix} - ${name}` : name;
   }
 
-  function classifyChain(steps, isRing) {
+  function classifyChain(steps, isRing, ringWeakDigit = null) {
     const digits = chainDigits(steps);
     const groupedPrefix = structurePrefix(steps);
 
     if (isRing) {
       const pattern = chainValuePattern(steps);
+      const invertedRing = invertedRingName(steps, ringWeakDigit);
+      if (invertedRing) return prefixedStructureName(invertedRing, steps);
       if (ringPatternMatches(pattern, 'VVVVL')) return prefixedStructureName('Y-Ring', steps);
       if (ringPatternMatches(pattern, 'VLVLL')) return prefixedStructureName('W-Ring', steps);
       if (ringPatternMatches(pattern, 'VVLL')) return prefixedStructureName('H2-Ring', steps);
@@ -1036,6 +1142,8 @@
     const pattern = normalisedOpenPattern(steps);
     const simpleName = classifyTwoLinkXChain(steps);
     if (simpleName) return prefixedStructureName(simpleName, steps);
+    const invertedWing = invertedWingName(steps);
+    if (invertedWing) return prefixedStructureName(invertedWing, steps);
     if (pattern === 'VVV' && digits.length === 3) return prefixedStructureName('XY-Wing', steps);
     if (pattern === 'VLV' && digits.length === 2) return prefixedStructureName('W-Wing', steps);
     if (pattern === 'LVL' && digits.length === 2) return prefixedStructureName('S-Wing', steps);
@@ -1166,7 +1274,7 @@
           rankKey,
           chain: {
             length: logicalDepth(steps),
-            structureName: classifyChain(publicSteps, isRing),
+            structureName: classifyChain(publicSteps, isRing, ringWeak?.digit ?? null),
             isRing,
             ringWeakType: ringWeak?.weakType ?? null,
             ringWeakTypeName: ringWeak ? WEAK_TYPE_NAMES[ringWeak.weakType] : null,
@@ -1187,7 +1295,7 @@
       rankKey,
       chain: {
         length: logicalDepth(steps),
-        structureName: classifyChain(publicSteps, isRing),
+        structureName: classifyChain(publicSteps, isRing, ringWeak?.digit ?? null),
         isRing,
         ringWeakType: ringWeak?.weakType ?? null,
         ringWeakTypeName: ringWeak ? WEAK_TYPE_NAMES[ringWeak.weakType] : null,
@@ -1526,6 +1634,15 @@
       || module.exitHs;
     if (!entrySubset || !exitSubset) return null;
 
+    // AHS uses Cells XOR RCC_Cells as its conveyance. Its hidden digits are
+    // descriptive/elimination data, not the value carried across the edge.
+    if (step.family === 'AHS') {
+      return [
+        { text: `(${eurekaDigitsText(entrySubset.digits)})${core.cellGroupName(entrySubset.cells)}` },
+        { text: `(${eurekaDigitsText(exitSubset.digits)})${core.cellGroupName(exitSubset.cells)}` },
+      ];
+    }
+
     if (module.moduleKind === 'ALS_XZ') {
       const bridgeRcc = module.displayRightRcc;
       if (bridgeRcc == null) return null;
@@ -1647,6 +1764,7 @@
   function formatChainEureka(chain) {
     const nodes = [];
     const connectors = [];
+    const ringMarker = chain.isRing && chain.steps.length > 0;
     const modularRing = chain.isRing && chain.steps.length === 1
       ? modularRingEurekaUnits(chain.steps[0], chain.ringClosureDigit)
       : null;
@@ -1661,21 +1779,13 @@
       }
     }
 
-    if (chain.isRing && chain.steps.length && !modularRing) {
-      if (chain.steps[0].module?.moduleKind !== 'ALS_XZ') {
-        connectors.push('-');
-        const firstModule = rccSubsetEurekaUnits(chain.steps[0]);
-        nodes.push(firstModule?.[0] || { side: chain.steps[0].entry });
-      }
-    }
-
     const units = compactEurekaUnits(nodes, connectors);
     const body = units.map((unit, index) => {
       const connector = index < units.length - 1 ? connectors[unit.endIndex] : '';
       return unit.text + eurekaConnectorText(connector);
     }).join('');
 
-    return `${chain.structureName}: ${body} => ${core.formatRemovals(chain.eliminations)}`;
+    return `${chain.structureName}: ${body}${ringMarker ? ' - ring' : ''} => ${core.formatRemovals(chain.eliminations)}`;
   }
 
   core.LOCAL_WEAK = LOCAL_WEAK;

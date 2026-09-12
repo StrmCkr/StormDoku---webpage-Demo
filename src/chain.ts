@@ -20,6 +20,7 @@ interface LinkRecord {
   linkType?: number;
   linkTypeName?: string;
   originSector?: number[];
+  conveyance?: 'CELLS' | 'DIGITS';
   startingDigits?: number[];
   activeCells?: number[];
   linkedCells?: number[];
@@ -39,6 +40,8 @@ interface LinkRecord {
   displayLeftRcc?: number;
   displayRightRcc?: number;
   intrinsicEliminations?: Array<{ cell: number; digit: number }>;
+  rccStartCells?: number[];
+  rccLinkedCells?: number[];
   secondaryTypes?: string[];
 }
 
@@ -50,6 +53,7 @@ interface SubsetNode {
 }
 
 interface BridgeRecord {
+  conveyance?: 'CELLS' | 'DIGITS';
   digit?: number;
   digits?: number[];
   restrictedDigits?: number[];
@@ -61,9 +65,11 @@ interface BridgeRecord {
 
 interface ChainSide {
   name: 'left' | 'right';
+  conveyance: 'CELLS' | 'DIGITS';
   cells: number[];
   digits: number[];
   cellKey: string;
+  rccCells: number[];
   sectorsByDigit: DigitMap;
   potentialElimByDigit: DigitMap;
   swapDigits: number[];
@@ -156,8 +162,10 @@ interface NormalisedOptions extends Required<Omit<
 
 export interface PublicChainSide {
   side: 'left' | 'right';
+  conveyance: 'CELLS' | 'DIGITS';
   cells: number[];
   digits: number[];
+  rccCells: number[];
   sectorsByDigit: DigitMap;
   potentialElimByDigit: DigitMap;
   swapDigits: number[];
@@ -172,6 +180,7 @@ export interface PublicSubsetModule {
 }
 
 export interface PublicBridgeModule {
+  conveyance: 'CELLS' | 'DIGITS';
   digit: number | null;
   digits: number[];
   restrictedDigits: number[];
@@ -329,8 +338,10 @@ function mapKey(map: DigitMap): string {
 
 function sideKey(side: ChainSide): string {
   return [
+    side.conveyance,
     side.digits.join(''),
     side.cells.join(','),
+    side.rccCells.join(','),
     mapKey(side.sectorsByDigit),
     mapKey(side.potentialElimByDigit),
     side.swapDigits.join(','),
@@ -338,6 +349,7 @@ function sideKey(side: ChainSide): string {
 }
 
 function sideAtoms(side: ChainSide): string[] {
+  if (side.conveyance === 'CELLS') return side.cells.map(cell => `cell:${cell}`);
   const atoms: string[] = [];
   for (const cell of side.cells) {
     for (const digit of side.digits) atoms.push(`${cell}:${digit}`);
@@ -391,9 +403,11 @@ function sideFromLink(link: LinkRecord, name: 'left' | 'right'): ChainSide {
 
   return {
     name,
+    conveyance: link.conveyance === 'CELLS' ? 'CELLS' : 'DIGITS',
     cells,
     digits: asNumbers(isLeft ? link.startingDigits : link.linkDigits),
     cellKey: cellsKey(cells),
+    rccCells: asNumbers(isLeft ? link.rccStartCells : link.rccLinkedCells),
     sectorsByDigit: digitMap(isLeft ? link.startCellsSector : link.linkCellsSector),
     potentialElimByDigit: digitMap(isLeft ? link.potentialElimStart : link.potentialElimEnd),
     swapDigits: asNumbers(isLeft ? link.startDigitSwapAvailable : link.endDigitSwapAvailable),
@@ -425,6 +439,9 @@ function bridgeLabel(bridge: BridgeRecord | undefined): string {
     : cells.length
       ? cellGroupName(cells)
       : 'none';
+  if (bridge.conveyance === 'CELLS' || (!digits && cells.length)) {
+    return `C(${cellGroupName(cells)}) ${location}`;
+  }
   return `C(${digits || '?'}) ${location}`;
 }
 
@@ -444,6 +461,7 @@ function publicBridge(bridge: BridgeRecord | undefined): PublicBridgeModule | nu
   const digits = asNumbers(bridge.digits || (bridge.digit == null ? [] : [bridge.digit]));
   const cells = union(asNumbers(bridge.leftCells), asNumbers(bridge.rightCells));
   return {
+    conveyance: bridge.conveyance === 'CELLS' ? 'CELLS' : 'DIGITS',
     digit: bridge.digit ?? digits[0] ?? null,
     digits,
     restrictedDigits: asNumbers(bridge.restrictedDigits || (bridge.digit == null ? [] : [bridge.digit])),
@@ -857,12 +875,14 @@ export function buildChainGraph(linkNodes: ChainNode[]) {
       localBucket.push(view);
       entryByCells.set(view.entry.cellKey, localBucket);
 
-      for (const digit of mapDigits(view.entry.sectorsByDigit)) {
-        for (const sector of view.entry.sectorsByDigit[digit]) {
-          const key = `${digit}|${sector}`;
-          const sectorBucket = entryByDigitSector.get(key) || [];
-          sectorBucket.push(view);
-          entryByDigitSector.set(key, sectorBucket);
+      if (view.entry.conveyance !== 'CELLS') {
+        for (const digit of mapDigits(view.entry.sectorsByDigit)) {
+          for (const sector of view.entry.sectorsByDigit[digit]) {
+            const key = `${digit}|${sector}`;
+            const sectorBucket = entryByDigitSector.get(key) || [];
+            sectorBucket.push(view);
+            entryByDigitSector.set(key, sectorBucket);
+          }
         }
       }
     }
@@ -875,6 +895,15 @@ function localConnection(fromView: DirectedView, toView: DirectedView): WeakConn
   const exit = fromView.exit;
   const entry = toView.entry;
   if (exit.cellKey !== entry.cellKey) return null;
+  if (exit.conveyance === 'CELLS' || entry.conveyance === 'CELLS') {
+    return {
+      weakType: LOCAL_WEAK,
+      weakTypeName: WEAK_TYPE_NAMES[LOCAL_WEAK],
+      digit: null,
+      cells: [...exit.cells],
+      sectors: [],
+    };
+  }
   if (!hasIntersection(exit.digits, entry.swapDigits)) return null;
   if (!hasIntersection(entry.digits, exit.swapDigits)) return null;
 
@@ -896,6 +925,10 @@ function sectorConnection(fromView: DirectedView, toView: DirectedView, forcedDi
   const bNode = toView.node;
   const aSide = fromView.exit;
   const bSide = toView.entry;
+
+  // AHS_RCC is cellular and must not be matched through the digit-sector
+  // weak-link path used by ordinary strong links and ALS nodes.
+  if (aSide.conveyance === 'CELLS' || bSide.conveyance === 'CELLS') return null;
 
   if (hasIntersection(aNode.allCells, bNode.allCells)) return null;
   if (hasIntersection(aSide.cells, bSide.cells)) return null;
@@ -941,7 +974,9 @@ function expandFrom(
   const seen = new Set<string>();
   const add = (target: DirectedView, weak: WeakConnection | null): void => {
     if (!weak || target.key === view.key) return;
-    if (sidesShareAtom(view.exit, target.exit)) return;
+    if (view.exit.conveyance !== 'CELLS'
+      && target.exit.conveyance !== 'CELLS'
+      && sidesShareAtom(view.exit, target.exit)) return;
     const key = `${target.key}|${weak.weakType}|${weak.digit ?? ''}`;
     if (seen.has(key)) return;
     seen.add(key);
@@ -954,6 +989,8 @@ function expandFrom(
     add(target, localConnection(view, target));
     if (out.length >= options.maxBranching) return out;
   }
+
+  if (view.exit.conveyance === 'CELLS') return out;
 
   for (const digit of mapDigits(view.exit.sectorsByDigit)) {
     for (const sector of view.exit.sectorsByDigit[digit]) {
@@ -1221,8 +1258,10 @@ function onlyNewEliminations(
 function publicSide(side: ChainSide): PublicChainSide {
   return {
     side: side.name,
+    conveyance: side.conveyance,
     cells: [...side.cells],
     digits: [...side.digits],
+    rccCells: [...side.rccCells],
     sectorsByDigit: Object.fromEntries(
       Object.entries(side.sectorsByDigit).map(([digit, sectors]) => [digit, [...sectors]]),
     ),
@@ -1328,6 +1367,78 @@ function ringPatternMatches(pattern: string, target: string): boolean {
   ));
 }
 
+function locationLinkDigits(steps: readonly PublicChainStep[]): number[] | null {
+  const digits: number[] = [];
+  for (const step of steps) {
+    const shared = intersection(step.entry.digits, step.exit.digits);
+    if (shared.length !== 1) return null;
+    digits.push(shared[0]);
+  }
+  return digits;
+}
+
+function digitShape(digits: readonly number[]): string {
+  const labels = new Map<number, string>();
+  let nextLabel = 0;
+  return digits.map(digit => {
+    if (!labels.has(digit)) labels.set(digit, String.fromCharCode(65 + nextLabel++));
+    return labels.get(digit)!;
+  }).join('');
+}
+
+function weakLocationPattern(steps: readonly PublicChainStep[]): string {
+  return steps.slice(1).map(step =>
+    step.weakIn === LOCAL_WEAK ? 'C' : step.weakIn === SECTOR_WEAK ? 'S' : '?'
+  ).join('');
+}
+
+function invertedWingName(steps: readonly PublicChainStep[]): string | null {
+  if (steps.length !== 4 && steps.length !== 5) return null;
+  if (chainValuePattern(steps) !== 'L'.repeat(steps.length)) return null;
+
+  const digits = locationLinkDigits(steps);
+  if (!digits) return null;
+  const weak = weakLocationPattern(steps);
+  const variants = [
+    { shape: digitShape(digits), weak },
+    { shape: digitShape([...digits].reverse()), weak: [...weak].reverse().join('') },
+  ];
+  const patterns: Array<[string, string, string]> = [
+    ['ABBA', 'CSC', 'iW-Wing'],
+    ['AABB', 'SCS', 'iS-Wing'],
+    ['ABBC', 'CCC', 'iM3-Wing'],
+    ['ABBB', 'CSS', 'iH2-Wing'],
+    ['ABBCC', 'CSSC', 'iH3-Wing'],
+  ];
+
+  for (const variant of variants) {
+    for (const [shape, weakPattern, name] of patterns) {
+      if (variant.shape === shape && variant.weak === weakPattern) return name;
+    }
+  }
+  return null;
+}
+
+function invertedRingName(steps: readonly PublicChainStep[], ringWeakDigit: number | null): string | null {
+  if (steps.length !== 4 && steps.length !== 5) return null;
+  if (chainValuePattern(steps) !== 'L'.repeat(steps.length)) return null;
+
+  const digits = locationLinkDigits(steps);
+  if (!digits || new Set(digits).size !== 2 || ringWeakDigit == null) return null;
+  if (ringWeakDigit !== digits[0] && ringWeakDigit !== digits[digits.length - 1]) return null;
+
+  const weak = weakLocationPattern(steps);
+  const allowedWeak = steps.length === 4 ? new Set(['CSC', 'SCS']) : new Set(['SSCS', 'CSCS']);
+  if (!allowedWeak.has(weak)) return null;
+
+  const allowedShapes = steps.length === 4
+    ? new Set(['ABBA', 'AABB'])
+    : new Set(['AAABB', 'AABBB', 'ABBAA', 'AABBA']);
+  return allowedShapes.has(digitShape(digits)) || allowedShapes.has(digitShape([...digits].reverse()))
+    ? 'iW-Ring'
+    : null;
+}
+
 function structurePrefix(steps: readonly PublicChainStep[]): string {
   const hasAls = steps.some(step => step.family === 'ALS' && step.linkTypeName === 'ALS_RCC');
   const hasAhs = steps.some(step => step.family === 'AHS' && step.linkTypeName === 'AHS_RCC');
@@ -1342,12 +1453,18 @@ function prefixedStructureName(name: string, steps: readonly PublicChainStep[]):
   return prefix ? `${prefix} - ${name}` : name;
 }
 
-function classifyChain(steps: readonly PublicChainStep[], isRing: boolean): string {
+function classifyChain(
+  steps: readonly PublicChainStep[],
+  isRing: boolean,
+  ringWeakDigit: number | null = null,
+): string {
   const digits = chainDigits(steps);
   const groupedPrefix = structurePrefix(steps);
 
   if (isRing) {
     const pattern = chainValuePattern(steps);
+    const invertedRing = invertedRingName(steps, ringWeakDigit);
+    if (invertedRing) return prefixedStructureName(invertedRing, steps);
     if (ringPatternMatches(pattern, 'VVVVL')) return prefixedStructureName('Y-Ring', steps);
     if (ringPatternMatches(pattern, 'VLVLL')) return prefixedStructureName('W-Ring', steps);
     if (ringPatternMatches(pattern, 'VVLL')) return prefixedStructureName('H2-Ring', steps);
@@ -1496,7 +1613,7 @@ function addChainResult(
   const publicSteps = steps.map(publicStep);
   const chain: ChainResult = {
     length: logicalDepth(steps),
-    structureName: classifyChain(publicSteps, isRing),
+    structureName: classifyChain(publicSteps, isRing, ringWeak?.digit ?? null),
     isRing,
     ringWeakType: ringWeak?.weakType ?? null,
     ringWeakTypeName: ringWeak ? WEAK_TYPE_NAMES[ringWeak.weakType] : null,
@@ -1845,6 +1962,15 @@ function rccSubsetEurekaUnits(step: PublicChainStep): EurekaUnit[] | null {
     || module.exitHs;
   if (!entrySubset || !exitSubset) return null;
 
+  // AHS uses Cells XOR RCC_Cells as its conveyance. Its hidden digits are
+  // descriptive/elimination data, not the value carried across the edge.
+  if (step.family === 'AHS') {
+    return [
+      { text: `(${eurekaDigitsText(entrySubset.digits)})${cellGroupName(entrySubset.cells)}` },
+      { text: `(${eurekaDigitsText(exitSubset.digits)})${cellGroupName(exitSubset.cells)}` },
+    ];
+  }
+
   if (module.moduleKind === 'ALS_XZ') {
     const bridgeRcc = module.displayRightRcc;
     if (bridgeRcc == null) return null;
@@ -1984,6 +2110,7 @@ function eurekaConnectorText(connector: string): string {
 export function formatChainEureka(chain: ChainResult): string {
   const nodes: EurekaUnit[] = [];
   const connectors: string[] = [];
+  const ringMarker = chain.isRing && chain.steps.length > 0;
   const modularRing = chain.isRing && chain.steps.length === 1
     ? modularRingEurekaUnits(chain.steps[0], chain.ringClosureDigit)
     : null;
@@ -1998,21 +2125,13 @@ export function formatChainEureka(chain: ChainResult): string {
     }
   }
 
-  if (chain.isRing && chain.steps.length && !modularRing) {
-    if (chain.steps[0].module?.moduleKind !== 'ALS_XZ') {
-      connectors.push('-');
-      const firstModule = rccSubsetEurekaUnits(chain.steps[0]);
-      nodes.push(firstModule?.[0] || { side: chain.steps[0].entry });
-    }
-  }
-
   const units = compactEurekaUnits(nodes, connectors);
   const body = units.map((unit, index) => {
     const connector = index < units.length - 1 ? connectors[unit.endIndex] : '';
     return unit.text + eurekaConnectorText(connector);
   }).join('');
 
-  return `${chain.structureName}: ${body} => ${formatRemovals(chain.eliminations)}`;
+  return `${chain.structureName}: ${body}${ringMarker ? ' - ring' : ''} => ${formatRemovals(chain.eliminations)}`;
 }
 
 export const formatChain = formatChainEureka;

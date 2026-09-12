@@ -651,6 +651,15 @@
       background: linear-gradient(var(--chain-als-bg, rgba(125, 211, 252, .34)), var(--chain-als-bg, rgba(125, 211, 252, .34))), #e9eef5;
     }
 
+    .cell.ahs-record-cell {
+      background: linear-gradient(var(--ahs-record-bg, rgba(147, 197, 253, .24)), var(--ahs-record-bg, rgba(147, 197, 253, .24))), var(--panel);
+      box-shadow: inset 0 0 0 2px var(--ahs-record-stroke, rgba(29, 78, 216, .58));
+    }
+
+    .cell.given.ahs-record-cell {
+      background: linear-gradient(var(--ahs-record-bg, rgba(147, 197, 253, .24)), var(--ahs-record-bg, rgba(147, 197, 253, .24))), #e9eef5;
+    }
+
     .mark.chain-digit {
       color: #4c1d95;
       font-weight: 900;
@@ -689,6 +698,14 @@
     .mark.chain-als-digit.chain-start-digit,
     .mark.chain-als-digit.chain-end-digit {
       color: var(--chain-als-ink, #6d28d9);
+    }
+
+    .mark.ahs-record-digit {
+      color: var(--ahs-record-ink, #1e40af);
+      background: rgba(191, 219, 254, .58);
+      box-shadow: inset 0 0 0 2px var(--ahs-record-stroke, rgba(29, 78, 216, .68));
+      border-radius: 4px;
+      font-weight: 900;
     }
 
     .mark.chain-digit.elim-digit {
@@ -1603,6 +1620,7 @@
     let selectedAlsId = null;
     const openAlsSizeGroups = new Set();
     let selectedAhsDof = null;
+    let selectedAhsId = null;
     const openAhsSizeGroups = new Set();
     let strongLinkReport = null;
     let selectedStrongLinkType = null;
@@ -1864,6 +1882,11 @@
       return alsReport.find(record => record.uniqueID === selectedAlsId) || null;
     }
 
+    function selectedAhsRecord() {
+      if (!ahsReport || selectedAhsId === null) return null;
+      return ahsReport.find(record => record.uniqueID === selectedAhsId) || null;
+    }
+
     function atomKey(cell, digit) {
       return String(cell) + ':' + String(digit);
     }
@@ -1976,6 +1999,12 @@
       { bg: 'rgba(103, 232, 249, .32)', stroke: 'rgba(14, 116, 144, .76)', ink: '#155e75' },
     ];
 
+    const AHS_RECORD_COLOR = {
+      bg: 'rgba(147, 197, 253, .24)',
+      stroke: 'rgba(29, 78, 216, .68)',
+      ink: '#1e40af',
+    };
+
     function hashString(value) {
       let hash = 0;
       for (let index = 0; index < value.length; index++) {
@@ -1995,6 +2024,13 @@
       el.style.setProperty('--chain-als-bg', color.bg);
       el.style.setProperty('--chain-als-stroke', color.stroke);
       el.style.setProperty('--chain-als-ink', color.ink);
+    }
+
+    function applyAhsColorVars(el, color) {
+      if (!color) return;
+      el.style.setProperty('--ahs-record-bg', color.bg);
+      el.style.setProperty('--ahs-record-stroke', color.stroke);
+      el.style.setProperty('--ahs-record-ink', color.ink);
     }
 
     function digitAnchor(cell, digit) {
@@ -2499,6 +2535,7 @@
       const chain = selectedChain();
       const chainView = chainHighlights(chain);
       const alsRecord = selectedAlsRecord();
+      const ahsRecord = selectedAhsRecord();
       const alsRecordCells = new Set(alsRecord?.alsAllCells || []);
       const alsRecordMarks = new Set();
       for (const cell of alsRecord?.alsAllCells || []) {
@@ -2509,6 +2546,13 @@
       const alsRecordColor = alsRecord
         ? ALS_CHAIN_COLORS[hashString(String(alsRecord.uniqueID)) % ALS_CHAIN_COLORS.length]
         : null;
+      const ahsRecordCells = new Set(ahsRecord?.ahsAllCells || []);
+      const ahsRecordMarks = new Set();
+      for (const cell of ahsRecord?.ahsAllCells || []) {
+        for (const digit of ahsRecord?.ahsDigits || []) {
+          if (cellHasCandidate(cell, digit)) ahsRecordMarks.add(atomKey(cell, digit));
+        }
+      }
       const selectedStrongLinkGroup = strongLinkDisplayGroups()[selectedStrongLinkType] || [];
       const strongLink = selectedStrongLinkType === null || selectedStrongLinkIndex === null
         ? null
@@ -2585,6 +2629,10 @@
         alsRecordCells,
         alsRecordMarks,
         alsRecordColor,
+        isAhsRecord: !!ahsRecord,
+        ahsRecordCells,
+        ahsRecordMarks,
+        ahsRecordColor: ahsRecord ? AHS_RECORD_COLOR : null,
         isStrongLink: !!strongLink,
         strongLink: strongLink && selectedStrongLinkType === 3
           && strongLink.secondaryXorConstruction?.kind === 'eri'
@@ -2735,6 +2783,10 @@
           el.classList.add('chain-als-cell');
           applyAlsColorVars(el, highlights.alsRecordColor);
         }
+        if (highlights.isAhsRecord && highlights.ahsRecordCells.has(cell)) {
+          el.classList.add('ahs-record-cell');
+          applyAhsColorVars(el, highlights.ahsRecordColor);
+        }
         if (highlights.isChain && highlights.chainAlsEntryCells.has(cell)) el.classList.add('chain-als-entry');
         if (highlights.isChain && highlights.chainAlsExitCells.has(cell)) el.classList.add('chain-als-exit');
         if (highlights.isStrongLink && highlights.strongLink.activeCells?.includes(cell)) {
@@ -2772,6 +2824,7 @@
             const isChainWeakDigit = highlights.isChain && highlights.chainWeakMarks.has(atomKey);
             const isChainAlsDigit = highlights.isChain && highlights.chainAlsMarks.has(atomKey);
             const isAlsRecordDigit = highlights.isAlsRecord && highlights.alsRecordMarks.has(atomKey);
+            const isAhsRecordDigit = highlights.isAhsRecord && highlights.ahsRecordMarks.has(atomKey);
             const isChainStartDigit = highlights.isChain && highlights.chainStartMarks.has(atomKey);
             const isChainEndDigit = highlights.isChain && highlights.chainEndMarks.has(atomKey);
             const strongLinkPartitionStartDigit = highlights.isStrongLink
@@ -2796,7 +2849,8 @@
               !isElim;
 
             mark.textContent = markFor(cell, digit)
-              || (isElim || isFishDigit || isFishEndofinDigit || isChainDigit || isStrongLinkDigit || isAlsRecordDigit ? digit : '');
+              || (isElim || isFishDigit || isFishEndofinDigit || isChainDigit || isStrongLinkDigit
+                || isAlsRecordDigit || isAhsRecordDigit ? digit : '');
             if (isSetDigit) mark.classList.add('set-digit');
             if (isHiddenGhostDigit) mark.classList.add('hidden-ghost-digit');
             if (isFishDigit) mark.classList.add('fish-digit');
@@ -2812,6 +2866,10 @@
             if (isAlsRecordDigit) {
               mark.classList.add('chain-als-digit');
               applyAlsColorVars(mark, highlights.alsRecordColor);
+            }
+            if (isAhsRecordDigit) {
+              mark.classList.add('ahs-record-digit');
+              applyAhsColorVars(mark, highlights.ahsRecordColor);
             }
             if (isChainStartDigit) mark.classList.add('chain-start-digit');
             if (isChainEndDigit) mark.classList.add('chain-end-digit');
@@ -3043,6 +3101,7 @@
     function selectAlsRecord(als) {
       selectedAlsId = als.uniqueID;
       selectedAlsDof = als.alsDOF;
+      selectedAhsId = null;
       selectedChainIndex = null;
       selectedStrongLinkType = null;
       selectedStrongLinkIndex = null;
@@ -3073,6 +3132,8 @@
       appendDofButtons(alsResultsEl, groups, selectedAlsDof, dof => {
         selectedAlsDof = dof;
         selectedAlsId = null;
+        selectedAhsId = null;
+        renderBoard();
         renderAlsReport();
       });
 
@@ -3197,6 +3258,8 @@
       selectedAhsDof = validSelectedDof(groups, selectedAhsDof);
       appendDofButtons(ahsResultsEl, groups, selectedAhsDof, dof => {
         selectedAhsDof = dof;
+        selectedAhsId = null;
+        renderBoard();
         renderAhsReport();
       });
 
@@ -3222,10 +3285,16 @@
         const visible = records.slice(0, 200);
         for (const ahs of visible) {
           const item = document.createElement('li');
-          item.textContent = `AHS: DOF(${ahs.ahsDOF}) size(${ahs.ahsSize + 1}) FOX(${ahs.ahsFOX + 1}) `
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'chain-result';
+          if (selectedAhsId === ahs.uniqueID) button.classList.add('selected');
+          button.textContent = `AHS: DOF(${ahs.ahsDOF}) size(${ahs.ahsSize + 1}) FOX(${ahs.ahsFOX + 1}) `
             + `cells:${core.cellGroupName(ahs.ahsAllCells)} `
             + `in ${core.sectorGroupName([ahs.ahsSector])} `
             + `digits {${ahs.ahsDigits.join('')}}`;
+          button.addEventListener('click', () => selectAhsRecord(ahs));
+          item.appendChild(button);
           list.appendChild(item);
         }
         if (records.length > visible.length) {
@@ -3236,6 +3305,23 @@
         sizePanel.appendChild(list);
         ahsResultsEl.appendChild(sizePanel);
       }
+    }
+
+    function selectAhsRecord(ahs) {
+      selectedAhsId = ahs.uniqueID;
+      selectedAhsDof = ahs.ahsDOF;
+      selectedAlsId = null;
+      selectedChainIndex = null;
+      selectedStrongLinkType = null;
+      selectedStrongLinkIndex = null;
+      selectedFishKey = null;
+      selectedNakedSubsetKey = null;
+      selectedHiddenSubsetKey = null;
+      activeStep = null;
+      lastRemoved = [];
+      renderBoard();
+      renderAhsReport();
+      setStatus(`AHS ${ahs.uniqueID} selected.`, 'ok');
     }
 
     function ahsEndpointText(endpoint) {
@@ -3305,6 +3391,7 @@
       if (!selectedGroup[index]) return;
       selectedStrongLinkIndex = index;
       selectedAlsId = null;
+      selectedAhsId = null;
       selectedChainIndex = null;
       selectedFishKey = null;
       selectedNakedSubsetKey = null;
@@ -3368,6 +3455,7 @@
         button.addEventListener('click', () => {
           selectedStrongLinkType = index;
           selectedAlsId = null;
+          selectedAhsId = null;
           selectedStrongLinkIndex = null;
           selectedChainIndex = null;
           selectedFishKey = null;
@@ -3543,6 +3631,7 @@
       selectedFishSize = fish.size;
       selectedFishKey = `${category}:${index}`;
       selectedAlsId = null;
+      selectedAhsId = null;
       selectedChainIndex = null;
       selectedStrongLinkType = null;
       selectedStrongLinkIndex = null;
@@ -3650,6 +3739,7 @@
       if (hidden) selectedHiddenSubsetKey = key;
       else selectedNakedSubsetKey = key;
       selectedAlsId = null;
+      selectedAhsId = null;
       selectedChainIndex = null;
       selectedStrongLinkType = null;
       selectedStrongLinkIndex = null;
@@ -3706,6 +3796,7 @@
 
     function clearChainSelection() {
       selectedAlsId = null;
+      selectedAhsId = null;
       selectedChainIndex = null;
       activeStep = null;
       lastRemoved = [];
@@ -3722,6 +3813,7 @@
 
     function selectChain(index) {
       selectedAlsId = null;
+      selectedAhsId = null;
       selectedChainIndex = index;
       selectedStrongLinkType = null;
       selectedStrongLinkIndex = null;
@@ -3846,6 +3938,7 @@
       selectedAlsId = null;
       openAlsSizeGroups.clear();
       selectedAhsDof = null;
+      selectedAhsId = null;
       openAhsSizeGroups.clear();
       strongLinkReport = null;
       selectedStrongLinkType = null;
@@ -3976,6 +4069,7 @@
           });
           selectedAlsDof = null;
           selectedAlsId = null;
+          selectedAhsId = null;
           openAlsSizeGroups.clear();
           alsLinkReport = null;
           chainReport = null;
@@ -3988,6 +4082,7 @@
           alsReport = null;
           selectedAlsDof = null;
           selectedAlsId = null;
+          selectedAhsId = null;
           openAlsSizeGroups.clear();
           alsLinkReport = null;
           chainReport = null;
@@ -4051,6 +4146,7 @@
             maxSizeFox: 7,
           });
           selectedAhsDof = null;
+          selectedAhsId = null;
           openAhsSizeGroups.clear();
           ahsLinkReport = null;
           ahsLinkReportLimit = null;
@@ -4063,6 +4159,7 @@
         } catch (error) {
           ahsReport = null;
           selectedAhsDof = null;
+          selectedAhsId = null;
           openAhsSizeGroups.clear();
           ahsLinkReport = null;
           ahsLinkReportLimit = null;
@@ -4255,6 +4352,7 @@
               maxSize: 8,
               maxSizeFox: 7,
             }) : null;
+          selectedAhsId = null;
           ahsLinkReport = includeAhsRcc ? core.buildAhsLinks(cand, {
               ahsList: ahsReport,
               strongLinkSet: strongLinkReport,
@@ -4301,7 +4399,8 @@
           setStatus(
             `Chain BFS complete. ${chains.length} chains with eliminations from ${stats.graphLinks} graph links`
               + ` (strong ${strongLinkTypes.map(type => type + 1).join(',') || 'off'}`
-              + `, ALS_RCC ${includeAlsRcc ? 'on' : 'off'}, AHS_RCC ${includeAhsRcc ? 'on' : 'off'})`
+              + `, ALS_RCC ${includeAlsRcc ? 'on' : 'off'}, AHS_RCC ${includeAhsRcc ? 'on' : 'off'}`
+              + `, AHS links ${stats.ahsLinks || 0})`
               + `${stats.truncated ? `; stopped at ${stats.stopReason}` : ''}. Grid and solving history unchanged.`,
             chains.length ? 'ok' : 'warn',
           );
