@@ -47,6 +47,10 @@ export type Elimination =
 export interface Hint {
   tech: Tech;
   desc: string;
+  name?: string;
+  category?: string;
+  size?: number;
+  k?: number;
   elim: Elimination;
   digits?: number[];
   at?: number[];

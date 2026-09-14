@@ -544,6 +544,10 @@ function fishByRows(M: number[][], d0: number, digit: number, k: FishSize): Hint
 
     return {
       tech: 'fish',
+      name: FISH_NAME[k],
+      category: 'Basic',
+      size: k,
+      k: 0,
       desc: fishReport(FISH_NAME[k], digit, baseRows, coverCols.map(col => 9 + col), eliminations),
       elim: { cells: eliminations, digits: [digit] },
       digits: [digit],
@@ -583,6 +587,10 @@ function fishByCols(M: number[][], d0: number, digit: number, k: FishSize): Hint
 
     return {
       tech: 'fish',
+      name: FISH_NAME[k],
+      category: 'Basic',
+      size: k,
+      k: 0,
       desc: fishReport(FISH_NAME[k], digit, baseCols.map(col => 9 + col), coverRows, eliminations),
       elim: { cells: eliminations, digits: [digit] },
       digits: [digit],

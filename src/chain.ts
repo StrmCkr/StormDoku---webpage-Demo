@@ -1,5 +1,3 @@
-import { ahsConstructor, type Ahs } from './ahs';
-import { buildAhsLinks, flattenAhsLinks, type AhsLinkSet } from './ahs-link';
 import { alsConstructor, type Als } from './als';
 import { buildAlsLinks, flattenAlsLinks, type AlsLinkSet } from './als-link';
 import { intersection, sortedUnique, union } from './set-tools';
@@ -13,7 +11,7 @@ export const WEAK_TYPE_NAMES = ['LOCAL', 'SECTOR'] as const;
 
 type WeakType = typeof LOCAL_WEAK | typeof SECTOR_WEAK;
 type DigitMap = Record<string, number[]>;
-type LinkSet = StrongLinkSet | AlsLinkSet | AhsLinkSet | LinkRecord[];
+type LinkSet = StrongLinkSet | AlsLinkSet | LinkRecord[];
 
 interface LinkRecord {
   id?: number | string;
@@ -33,8 +31,6 @@ interface LinkRecord {
   potentialElimEnd?: DigitMap | Map<number, number[]>;
   LS_L?: SubsetNode;
   LS_R?: SubsetNode;
-  HS_L?: SubsetNode;
-  HS_R?: SubsetNode;
   C?: BridgeRecord;
   moduleKind?: 'ALS_XZ';
   displayLeftRcc?: number;
@@ -42,6 +38,8 @@ interface LinkRecord {
   intrinsicEliminations?: Array<{ cell: number; digit: number }>;
   rccStartCells?: number[];
   rccLinkedCells?: number[];
+  RCC_Left?: RccEndpointRecord;
+  RCC_Right?: RccEndpointRecord;
   secondaryTypes?: string[];
 }
 
@@ -50,6 +48,13 @@ interface SubsetNode {
   sector?: number;
   cells?: number[];
   digits?: number[];
+}
+
+interface RccEndpointRecord {
+  digit?: number;
+  cells?: number[];
+  sectors?: number[];
+  potentialElim?: number[];
 }
 
 interface BridgeRecord {
@@ -77,7 +82,7 @@ interface ChainSide {
 
 interface ChainNode {
   raw: LinkRecord;
-  family: 'SL' | 'ALS' | 'AHS';
+  family: 'SL' | 'ALS';
   graphId: string;
   id: number | string;
   linkType: number;
@@ -124,14 +129,9 @@ interface QueueNode {
 export interface ChainBuilderOptions {
   includeStrong?: boolean;
   includeAls?: boolean;
-  includeAhs?: boolean;
   strictAlsSingleCommon?: boolean;
-  strictAhsSingleCommon?: boolean;
   strongLinkTypes?: number[];
-  minAhsDof?: number;
-  maxAhsDof?: number;
   maxAlsLinks?: number;
-  maxAhsLinks?: number;
   maxDepth?: number;
   maxChains?: number;
   maxResultAttempts?: number;
@@ -142,22 +142,18 @@ export interface ChainBuilderOptions {
   maxStartViews?: number;
   strongLinkSet?: StrongLinkSet | LinkRecord[];
   alsLinkSet?: AlsLinkSet | LinkRecord[];
-  ahsLinkSet?: AhsLinkSet | LinkRecord[];
   alsList?: Als[];
-  ahsList?: Ahs[];
 }
 
 interface NormalisedOptions extends Required<Omit<
   ChainBuilderOptions,
-  'strongLinkSet' | 'alsLinkSet' | 'ahsLinkSet' | 'alsList' | 'ahsList' | 'strongLinkTypes'
+  'strongLinkSet' | 'alsLinkSet' | 'alsList' | 'strongLinkTypes'
 >> {
   strongLinkTypes: number[];
   maxStartViews: number;
   strongLinkSet?: StrongLinkSet | LinkRecord[];
   alsLinkSet?: AlsLinkSet | LinkRecord[];
-  ahsLinkSet?: AhsLinkSet | LinkRecord[];
   alsList?: Als[];
-  ahsList?: Ahs[];
 }
 
 export interface PublicChainSide {
@@ -192,8 +188,8 @@ export interface PublicBridgeModule {
 }
 
 export interface PublicChainModule {
-  family: 'ALS' | 'AHS';
-  subsetKind: 'LS' | 'HS';
+  family: 'ALS';
+  subsetKind: 'LS';
   entryRcc: 'RCC_L' | 'RCC_R';
   entrySubset: PublicSubsetModule | null;
   exitSubset: PublicSubsetModule | null;
@@ -205,10 +201,6 @@ export interface PublicChainModule {
   exitRcc: 'RCC_L' | 'RCC_R';
   entrySideLs: PublicSubsetModule | null;
   exitSideLs: PublicSubsetModule | null;
-  entryHs: PublicSubsetModule | null;
-  exitHs: PublicSubsetModule | null;
-  entrySideHs: PublicSubsetModule | null;
-  exitSideHs: PublicSubsetModule | null;
   label: string;
   moduleKind?: 'ALS_XZ';
   displayLeftRcc?: number | null;
@@ -216,7 +208,7 @@ export interface PublicChainModule {
 }
 
 export interface PublicChainStep {
-  family: 'SL' | 'ALS' | 'AHS';
+  family: 'SL' | 'ALS';
   linkId: number | string;
   graphId: string;
   linkType: number;
@@ -247,7 +239,12 @@ interface ChainEvaluation {
 export interface ChainResult {
   length: number;
   structureName: string;
+  structureFamily: string | null;
+  structureWing: 'Wing' | 'Ring' | null;
+  structureRank: string | null;
+  structureSubclass: string | null;
   isRing: boolean;
+  isTerminal: boolean;
   ringWeakType: WeakType | null;
   ringWeakTypeName: typeof WEAK_TYPE_NAMES[number] | null;
   ringWeakDigit: number | null;
@@ -260,7 +257,6 @@ export interface ChainResult {
 export interface ChainStats {
   strongLinks: number;
   alsLinks: number;
-  ahsLinks: number;
   graphLinks: number;
   directedViews: number;
   startViews: number;
@@ -281,9 +277,7 @@ export interface ChainReport {
   linkSets: {
     strongSet: StrongLinkSet | LinkRecord[];
     alsSet: AlsLinkSet | LinkRecord[];
-    ahsSet: AhsLinkSet | LinkRecord[];
     alsList: Als[];
-    ahsList: Ahs[];
   };
 }
 
@@ -399,16 +393,18 @@ function symmetricDifference(left: readonly number[], right: readonly number[]):
 
 function sideFromLink(link: LinkRecord, name: 'left' | 'right'): ChainSide {
   const isLeft = name === 'left';
+  const conveyance = link.conveyance === 'CELLS' ? 'CELLS' : 'DIGITS';
+  const sectorsByDigit = digitMap(isLeft ? link.startCellsSector : link.linkCellsSector);
   const cells = asNumbers(isLeft ? link.activeCells : link.linkedCells);
 
   return {
     name,
-    conveyance: link.conveyance === 'CELLS' ? 'CELLS' : 'DIGITS',
+    conveyance,
     cells,
     digits: asNumbers(isLeft ? link.startingDigits : link.linkDigits),
     cellKey: cellsKey(cells),
     rccCells: asNumbers(isLeft ? link.rccStartCells : link.rccLinkedCells),
-    sectorsByDigit: digitMap(isLeft ? link.startCellsSector : link.linkCellsSector),
+    sectorsByDigit,
     potentialElimByDigit: digitMap(isLeft ? link.potentialElimStart : link.potentialElimEnd),
     swapDigits: asNumbers(isLeft ? link.startDigitSwapAvailable : link.endDigitSwapAvailable),
   };
@@ -476,18 +472,17 @@ function publicBridge(bridge: BridgeRecord | undefined): PublicBridgeModule | nu
 function orientedModule(view: DirectedView): PublicChainModule | null {
   const link = view.node.raw;
   const isAls = view.node.family === 'ALS' && view.node.linkTypeName === 'ALS_RCC' && !!link.LS_L && !!link.LS_R;
-  const isAhs = view.node.family === 'AHS' && view.node.linkTypeName === 'AHS_RCC' && !!link.HS_L && !!link.HS_R;
-  if (!isAls && !isAhs) return null;
+  if (!isAls) return null;
 
-  const subsetKind = isAhs ? 'HS' : 'LS';
-  const leftSubset = isAhs ? link.HS_L! : link.LS_L!;
-  const rightSubset = isAhs ? link.HS_R! : link.LS_R!;
+  const subsetKind = 'LS' as const;
+  const leftSubset = link.LS_L!;
+  const rightSubset = link.LS_R!;
   const entrySubset = view.forward ? rightSubset : leftSubset;
   const exitSubset = view.forward ? leftSubset : rightSubset;
   const entrySideSubset = view.forward ? leftSubset : rightSubset;
   const exitSideSubset = view.forward ? rightSubset : leftSubset;
   const module: PublicChainModule = {
-    family: isAhs ? 'AHS' : 'ALS',
+    family: 'ALS',
     subsetKind,
     entryRcc: view.forward ? 'RCC_L' : 'RCC_R',
     entrySubset: publicSubsetNode(subsetKind, entrySubset),
@@ -496,14 +491,10 @@ function orientedModule(view: DirectedView): PublicChainModule | null {
     exitRcc: view.forward ? 'RCC_R' : 'RCC_L',
     entrySideSubset: publicSubsetNode(subsetKind, entrySideSubset),
     exitSideSubset: publicSubsetNode(subsetKind, exitSideSubset),
-    entryLs: isAls ? publicSubsetNode('LS', entrySubset) : null,
-    exitLs: isAls ? publicSubsetNode('LS', exitSubset) : null,
-    entrySideLs: isAls ? publicSubsetNode('LS', entrySideSubset) : null,
-    exitSideLs: isAls ? publicSubsetNode('LS', exitSideSubset) : null,
-    entryHs: isAhs ? publicSubsetNode('HS', entrySubset) : null,
-    exitHs: isAhs ? publicSubsetNode('HS', exitSubset) : null,
-    entrySideHs: isAhs ? publicSubsetNode('HS', entrySideSubset) : null,
-    exitSideHs: isAhs ? publicSubsetNode('HS', exitSideSubset) : null,
+    entryLs: publicSubsetNode('LS', entrySubset),
+    exitLs: publicSubsetNode('LS', exitSubset),
+    entrySideLs: publicSubsetNode('LS', entrySideSubset),
+    exitSideLs: publicSubsetNode('LS', exitSideSubset),
     label: '',
     moduleKind: link.moduleKind,
     displayLeftRcc: link.displayLeftRcc ?? null,
@@ -728,10 +719,6 @@ function moduleLabel(link: LinkRecord, family: ChainNode['family']): string {
     return `${subsetNodeLabel('LS', link.LS_L)} / ${bridgeLabel(link.C)} / ${subsetNodeLabel('LS', link.LS_R)}`;
   }
 
-  if (family === 'AHS' && link.HS_L && link.HS_R) {
-    return `${subsetNodeLabel('HS', link.HS_L)} / ${bridgeLabel(link.C)} / ${subsetNodeLabel('HS', link.HS_R)}`;
-  }
-
   return '';
 }
 
@@ -828,35 +815,16 @@ function buildLinkInventory(cand: CandidateGrid, options: NormalisedOptions) {
   }
   const alsLinks = flattenLinkSet(alsSet as LinkSet, flattenAlsLinks as any);
 
-  let ahsSet: AhsLinkSet | LinkRecord[] = [];
-  let ahsList = options.ahsList || [];
-  if (options.includeAhs) {
-    ahsList = ahsList.length
-      ? ahsList
-      : ahsConstructor(cand, { maxSize: 8, maxSizeFox: 7 });
-    ahsSet = options.ahsLinkSet || buildAhsLinks(cand, {
-      ahsList,
-      strongLinkSet: options.includeStrong ? strongSet as StrongLinkSet : undefined,
-      minDof: options.minAhsDof,
-      maxDof: options.maxAhsDof,
-      strictSingleCommon: options.strictAhsSingleCommon,
-      maxLinks: options.maxAhsLinks,
-    });
-  }
-  const ahsLinks = flattenLinkSet(ahsSet as LinkSet, flattenAhsLinks as any);
-
   return {
     links: [
       ...strongLinks.map((link, index) => normaliseLink(link, 'SL', index)),
       ...alsLinks.map((link, index) => normaliseLink(link, 'ALS', index)),
-      ...ahsLinks.map((link, index) => normaliseLink(link, 'AHS', index)),
     ],
     counts: {
       strong: strongLinks.length,
       als: alsLinks.length,
-      ahs: ahsLinks.length,
     },
-    source: { strongSet, alsSet, ahsSet, alsList, ahsList },
+    source: { strongSet, alsSet, alsList },
   };
 }
 
@@ -894,16 +862,8 @@ export function buildChainGraph(linkNodes: ChainNode[]) {
 function localConnection(fromView: DirectedView, toView: DirectedView): WeakConnection | null {
   const exit = fromView.exit;
   const entry = toView.entry;
+  if (exit.cells.length !== 1 || entry.cells.length !== 1) return null;
   if (exit.cellKey !== entry.cellKey) return null;
-  if (exit.conveyance === 'CELLS' || entry.conveyance === 'CELLS') {
-    return {
-      weakType: LOCAL_WEAK,
-      weakTypeName: WEAK_TYPE_NAMES[LOCAL_WEAK],
-      digit: null,
-      cells: [...exit.cells],
-      sectors: [],
-    };
-  }
   if (!hasIntersection(exit.digits, entry.swapDigits)) return null;
   if (!hasIntersection(entry.digits, exit.swapDigits)) return null;
 
@@ -925,10 +885,6 @@ function sectorConnection(fromView: DirectedView, toView: DirectedView, forcedDi
   const bNode = toView.node;
   const aSide = fromView.exit;
   const bSide = toView.entry;
-
-  // AHS_RCC is cellular and must not be matched through the digit-sector
-  // weak-link path used by ordinary strong links and ALS nodes.
-  if (aSide.conveyance === 'CELLS' || bSide.conveyance === 'CELLS') return null;
 
   if (hasIntersection(aNode.allCells, bNode.allCells)) return null;
   if (hasIntersection(aSide.cells, bSide.cells)) return null;
@@ -1071,7 +1027,10 @@ function computeSameCellRing(
   rightSide: ChainSide,
   out: Map<string, ChainElimination>,
 ): void {
-  if (leftSide.cellKey !== rightSide.cellKey || !leftSide.cells.length) return;
+  // This is the cellular closure rule only. A multi-cell ALS endpoint that
+  // happens to have the same cell set is not a same-cell XOR closure.
+  if (leftSide.cells.length !== 1 || rightSide.cells.length !== 1) return;
+  if (leftSide.cellKey !== rightSide.cellKey) return;
   const keepDigits = new Set(intersection(leftSide.digits, rightSide.digits));
   if (keepDigits.size !== leftSide.cells.length) return;
   if (![...keepDigits].every(digit => leftSide.cells.some(cell => (cand[cell] || []).includes(digit)))) return;
@@ -1079,41 +1038,6 @@ function computeSameCellRing(
   for (const cell of leftSide.cells) {
     for (const digit of cand[cell] || []) {
       if (!keepDigits.has(digit)) addElimination(out, cand, digit, [cell], 'ring-cell');
-    }
-  }
-}
-
-function computeAhsRingLockedHiddenSet(
-  cand: CandidateGrid,
-  side: ChainSide,
-  out: Map<string, ChainElimination>,
-): void {
-  if (side.conveyance !== 'CELLS' || !side.cells.length) return;
-  if (side.digits.length !== side.cells.length) return;
-  if (!side.digits.every(digit => side.cells.some(cell => (cand[cell] || []).includes(digit)))) return;
-
-  const cellSet = new Set(side.cells);
-  const hiddenDigits = new Set(side.digits);
-
-  // Cells XOR RCC_Cells is the locked hidden-set cell group.
-  for (const cell of side.cells) {
-    for (const digit of cand[cell] || []) {
-      if (!hiddenDigits.has(digit)) {
-        addElimination(out, cand, digit, [cell], 'ring-ahs-hidden');
-      }
-    }
-  }
-
-  let commonPeers = new Set(peersOf(side.cells[0]));
-  for (const cell of side.cells.slice(1)) {
-    const peers = new Set(peersOf(cell));
-    commonPeers = new Set([...commonPeers].filter(peer => peers.has(peer)));
-  }
-
-  for (const peer of commonPeers) {
-    if (cellSet.has(peer)) continue;
-    for (const digit of side.digits) {
-      addElimination(out, cand, digit, [peer], 'ring-ahs-locked');
     }
   }
 }
@@ -1164,6 +1088,7 @@ function computeOverlapRingEliminations(
   fromView: DirectedView,
   toView: DirectedView,
 ): ChainElimination[] | null {
+  if (fromView.exit.conveyance === 'CELLS' || toView.entry.conveyance === 'CELLS') return null;
   const cells = intersection(fromView.exit.cells, toView.entry.cells);
   const digits = intersection(fromView.exit.digits, toView.entry.digits);
   if (fromView.exit.cells.length !== 1 || toView.entry.cells.length !== 1) return null;
@@ -1237,12 +1162,6 @@ function evaluateChain(
   }
 
   if (isRing && !(steps.length === 1 && steps[0].view.node.raw.moduleKind === 'ALS_XZ')) {
-    for (const step of steps) {
-      if (step.view.node.family !== 'AHS') continue;
-      computeAhsRingLockedHiddenSet(cand, step.view.entry, out);
-      computeAhsRingLockedHiddenSet(cand, step.view.exit, out);
-    }
-
     const evenRing = ringWeak !== null && steps.length % 2 === 0;
     for (let index = 0; index < steps.length; index++) {
       const left = steps[index].view;
@@ -1288,12 +1207,9 @@ function mergeEliminations(previous: ChainElimination[], additions: ChainElimina
     .sort((a, b) => a.cell - b.cell || a.digit - b.digit);
 }
 
-function onlyNewEliminations(
-  additions: ChainElimination[],
-  previous: ChainElimination[],
-): ChainElimination[] {
-  const previousKeys = new Set(previous.map(item => `${item.cell}:${item.digit}`));
-  return additions.filter(item => !previousKeys.has(`${item.cell}:${item.digit}`));
+function hasOpenTriggerEliminations(evaluation: ChainEvaluation): boolean {
+  return evaluation.eliminations.some(item =>
+    item.reasons.some(reason => reason === 'type1' || reason === 'type2'));
 }
 
 function publicSide(side: ChainSide): PublicChainSide {
@@ -1391,12 +1307,11 @@ function classifyTwoLinkXChain(steps: readonly PublicChainStep[]): string | null
   const hasCol = lineKinds.includes('C');
 
   if (names.every(name => name === 'BILOCAL')) {
-    if (hasRow && hasCol) return '2-String Kite';
     if (lineKinds.every(kind => kind === 'R' || kind === 'C')
       && new Set(lineKinds).size === 1) return 'X-Wing';
   }
   if (names.some(name => name === 'ERI')) return 'Empty Rectangle';
-  if (hasRow && hasCol) return 'Grouped 2-String Kite';
+  if (hasRow && hasCol) return '2-String Kite';
   return 'X-Chain';
 }
 
@@ -1406,6 +1321,32 @@ function ringPatternMatches(pattern: string, target: string): boolean {
   return variants.some(variant => [...variant].some((_, index) =>
     `${variant.slice(index)}${variant.slice(0, index)}` === target,
   ));
+}
+
+function isBivalveStep(step: PublicChainStep): boolean {
+  return step.family === 'SL'
+    && step.linkType === 4
+    && step.entry.cellKey === step.exit.cellKey
+    && step.entry.cells.length === 1
+    && step.exit.cells.length === 1;
+}
+
+function isAlsRccStep(step: PublicChainStep): boolean {
+  return step.family === 'ALS' && step.linkTypeName === 'ALS_RCC';
+}
+
+function hasWRingValueNodes(steps: readonly PublicChainStep[]): boolean {
+  const valueNodes = steps.filter(step => chainValueToken(step) === 'V');
+  if (valueNodes.length !== 2) return false;
+  if (!valueNodes.every(step => isBivalveStep(step) || isAlsRccStep(step))) return false;
+  if (valueNodes.some(isAlsRccStep)) return true;
+
+  const digits = (step: PublicChainStep) => sortedUnique([...step.entry.digits, ...step.exit.digits]);
+  const left = digits(valueNodes[0]);
+  const right = digits(valueNodes[1]);
+  return left.length === 2
+    && right.length === 2
+    && left.every((digit, index) => digit === right[index]);
 }
 
 function locationLinkDigits(steps: readonly PublicChainStep[]): number[] | null {
@@ -1482,11 +1423,41 @@ function invertedRingName(steps: readonly PublicChainStep[], ringWeakDigit: numb
 
 function structurePrefix(steps: readonly PublicChainStep[]): string {
   const hasAls = steps.some(step => step.family === 'ALS' && step.linkTypeName === 'ALS_RCC');
-  const hasAhs = steps.some(step => step.family === 'AHS' && step.linkTypeName === 'AHS_RCC');
-  if (hasAls && hasAhs) return 'ALC';
-  if (hasAls) return 'ALS';
-  if (hasAhs) return 'AHS';
-  return '';
+  if (!hasAls) return '';
+  const hasNonAls = steps.some(step =>
+    step.family !== 'ALS' || step.linkTypeName !== 'ALS_RCC'
+  );
+  if (hasNonAls) return 'AIC + ALS';
+  return 'ALS';
+}
+
+function alsOnlyStructureName(steps: readonly PublicChainStep[]): string | null {
+  if (!steps.length || !steps.every(step =>
+    step.family === 'ALS'
+    && step.linkTypeName === 'ALS_RCC'
+    && !!step.module
+  )) return null;
+
+  const seen = new Set<string>();
+  let nodeCount = 0;
+  for (const step of steps) {
+    for (const subset of [step.module!.entrySubset, step.module!.exitSubset]) {
+      if (!subset) return null;
+      const key = [
+        subset.id ?? '',
+        subset.cells.join(','),
+        subset.digits.join(''),
+      ].join('|');
+      if (!seen.has(key)) {
+        seen.add(key);
+        nodeCount += 1;
+      }
+    }
+  }
+
+  if (nodeCount === 2) return 'ALS - XZ';
+  if (nodeCount === 3) return 'ALS - XY';
+  return nodeCount > 3 ? 'ALS - Chain' : null;
 }
 
 function prefixedStructureName(name: string, steps: readonly PublicChainStep[]): string {
@@ -1494,11 +1465,44 @@ function prefixedStructureName(name: string, steps: readonly PublicChainStep[]):
   return prefix ? `${prefix} - ${name}` : name;
 }
 
+function isAlsSplitWing(steps: readonly PublicChainStep[]): boolean {
+  if (steps.length !== 3) return false;
+  const isStrong = (step: PublicChainStep): boolean => step.family === 'SL'
+    && step.linkType !== 4
+    && step.linkTypeName !== 'ALS';
+  return isStrong(steps[0])
+    && steps[1].family === 'ALS'
+    && steps[1].linkTypeName === 'ALS_RCC'
+    && isStrong(steps[2]);
+}
+
+function isBivalveSplitWing(steps: readonly PublicChainStep[]): boolean {
+  if (steps.length !== 3) return false;
+  const isStrong = (step: PublicChainStep): boolean => step.family === 'SL'
+    && step.linkType !== 4
+    && step.linkTypeName !== 'ALS';
+  return isStrong(steps[0])
+    && isBivalveStep(steps[1])
+    && isStrong(steps[2]);
+}
+
+function isSplitWingRing(steps: readonly PublicChainStep[]): boolean {
+  if (steps.length !== 3 || !ringPatternMatches(chainValuePattern(steps), 'LVL')) {
+    return false;
+  }
+  const valueSteps = steps.filter(step => chainValueToken(step) === 'V');
+  return valueSteps.length === 1
+    && (isBivalveStep(valueSteps[0]) || isAlsRccStep(valueSteps[0]));
+}
+
 function classifyChain(
   steps: readonly PublicChainStep[],
   isRing: boolean,
   ringWeakDigit: number | null = null,
 ): string {
+  const alsStructureName = alsOnlyStructureName(steps);
+  if (alsStructureName) return alsStructureName;
+
   const digits = chainDigits(steps);
   const groupedPrefix = structurePrefix(steps);
 
@@ -1506,13 +1510,20 @@ function classifyChain(
     const pattern = chainValuePattern(steps);
     const invertedRing = invertedRingName(steps, ringWeakDigit);
     if (invertedRing) return prefixedStructureName(invertedRing, steps);
+    if (ringPatternMatches(pattern, 'LVL') && isSplitWingRing(steps)) {
+      return prefixedStructureName('M(2)-Ring', steps);
+    }
     if (ringPatternMatches(pattern, 'VVVVL')) return prefixedStructureName('Y-Ring', steps);
     if (ringPatternMatches(pattern, 'VLVLL')) return prefixedStructureName('W-Ring', steps);
-    if (ringPatternMatches(pattern, 'VVLL')) return prefixedStructureName('H2-Ring', steps);
-    if (ringPatternMatches(pattern, 'VLLL')) return prefixedStructureName('M2-Ring', steps);
+    if (ringPatternMatches(pattern, 'VVLL')) return prefixedStructureName('H(2)-Ring', steps);
+    if (ringPatternMatches(pattern, 'VLL')) return prefixedStructureName('M(2)-Ring', steps);
+    if (ringPatternMatches(pattern, 'VLLL')) return prefixedStructureName('M(2)-Ring', steps);
+    if (ringPatternMatches(pattern, 'LVLV') && hasWRingValueNodes(steps)) {
+      return prefixedStructureName('W-Ring', steps);
+    }
     if (ringPatternMatches(pattern, 'LLLLV')) return prefixedStructureName('Strong-Ring', steps);
     if (pattern && pattern.split('').every(token => token === 'L')) {
-      return prefixedStructureName(`L${Math.max(1, digits.length)}-Ring`, steps);
+    return prefixedStructureName(`L(${Math.max(1, digits.length)})-Ring`, steps);
     }
     return groupedPrefix ? `${groupedPrefix} - Ring` : 'AIC Ring';
   }
@@ -1522,9 +1533,12 @@ function classifyChain(
   if (simpleName) return prefixedStructureName(simpleName, steps);
   if (pattern === 'VVV' && digits.length === 3) return prefixedStructureName('XY-Wing', steps);
   if (pattern === 'VLV' && digits.length === 2) return prefixedStructureName('W-Wing', steps);
-  if (pattern === 'LVL' && digits.length === 2) return prefixedStructureName('S-Wing', steps);
+  if (pattern === 'VLLVLL') return prefixedStructureName('Transport', steps);
+  if (pattern === 'LVL' && (isBivalveSplitWing(steps) || isAlsSplitWing(steps))) {
+    return prefixedStructureName('S-Wing', steps);
+  }
   if (pattern === 'VVL' && digits.length >= 2) {
-    return prefixedStructureName(`H${Math.min(3, digits.length)}-Wing`, steps);
+    return prefixedStructureName(`H(${Math.min(3, digits.length)})-Wing`, steps);
   }
   if (pattern === 'VLL') {
     const oriented = orientedOpenSteps(steps);
@@ -1532,17 +1546,17 @@ function classifyChain(
     const last = oriented[oriented.length - 1];
     const lastDigits = intersection(last.entry.digits, last.exit.digits);
     if (digits.length <= 2 && shared != null && lastDigits.includes(shared)) {
-      return prefixedStructureName('H1-Wing', steps);
+      return prefixedStructureName('H(1)-Wing', steps);
     }
-    return prefixedStructureName(`M${Math.min(3, Math.max(2, digits.length))}-Wing`, steps);
+    return prefixedStructureName(`M(${Math.min(3, Math.max(2, digits.length))})-Wing`, steps);
   }
   if (pattern === 'LLL') {
-    return prefixedStructureName(`L${Math.min(3, Math.max(1, digits.length))}-Wing`, steps);
+    return prefixedStructureName(`L(${Math.min(3, Math.max(1, digits.length))})-Wing`, steps);
   }
   if (pattern.split('').every(token => token === 'V') && steps.length >= 3) {
     return prefixedStructureName('XY-Chain', steps);
   }
-  return groupedPrefix ? `${groupedPrefix} - Chain` : 'AIC';
+  return groupedPrefix || 'AIC';
 }
 
 function openPathKey(steps: SearchStep[], reverse: boolean): string {
@@ -1639,6 +1653,35 @@ function eliminationsKey(eliminations: ChainElimination[]): string {
   return eliminations.map(item => `${item.digit}:${item.cell}`).join(';');
 }
 
+function terminalEriStructureName(
+  steps: SearchStep[],
+  ringWeak: WeakConnection | null,
+  ringOverlapElims: ChainElimination[] | null,
+): string | null {
+  if ((ringWeak === null && ringOverlapElims === null) || steps.length !== 3) return null;
+  if (!steps.every(step => step.view.node.family === 'SL')) return null;
+
+  const isEriStep = (step: SearchStep): boolean => step.view.node.linkType === 3
+    || step.view.node.linkTypeName === 'ERI'
+    || step.view.node.linkTypeNames.includes('ERI');
+  const eriCount = steps.filter(isEriStep).length;
+  if (eriCount !== 1) return null;
+
+  const outside = steps.filter(step => !isEriStep(step));
+  if (outside.length !== 2) return null;
+  const bilocalCount = outside.filter(step => step.view.node.linkType === 0).length;
+  const cellToGroupCount = outside.filter(step => step.view.node.linkType === 1).length;
+
+  // Type 0 is a bilocal: type 0 - ERI - type 0 is the Dual Empty
+  // Rectangle. A type 1 link on either outside edge makes the ERI
+  // subclass a Rec'T Kite instead.
+  if (bilocalCount === 2) return 'Dual Empty Rectangle';
+  if (cellToGroupCount > 0 && bilocalCount + cellToGroupCount === 2) {
+    return "Rec'T Kite";
+  }
+  return null;
+}
+
 function addChainResult(
   chainsByKey: Map<string, ChainResultEntry>,
   steps: SearchStep[],
@@ -1647,19 +1690,35 @@ function addChainResult(
   ringWeak: WeakConnection | null,
   ringClosureName: ChainResult['ringClosureName'] = null,
   ringClosureDigit: number | null = null,
+  isTerminal = false,
+  terminalStructureName: string | null = null,
 ): 'added' | 'duplicate' | 'empty' | 'replaced' {
   if (!eliminations.length) return 'empty';
   const key = `${canonicalReportKey(steps, isRing, ringWeak)}|${eliminationsKey(eliminations)}`;
   const rankKey = `${String(logicalDepth(steps)).padStart(3, '0')}|${canonicalPathKey(steps, isRing, ringWeak)}`;
   const publicSteps = steps.map(publicStep);
+  const publicIsRing = isRing && !isTerminal;
+  const structureName = terminalStructureName
+    || classifyChain(publicSteps, publicIsRing, ringWeak?.digit ?? null);
+  const terminalFamily = terminalStructureName ? 'Local - Wing | Ring' : null;
+  const terminalWing = terminalStructureName ? (isRing ? 'Ring' : 'Wing') : null;
+  const terminalRank = terminalStructureName ? 'L(1)' : null;
+  const publicClosureName = isTerminal
+    ? null
+    : ringClosureName || (ringWeak ? WEAK_TYPE_NAMES[ringWeak.weakType] : null);
   const chain: ChainResult = {
     length: logicalDepth(steps),
-    structureName: classifyChain(publicSteps, isRing, ringWeak?.digit ?? null),
-    isRing,
+    structureName,
+    structureFamily: terminalFamily,
+    structureWing: terminalWing,
+    structureRank: terminalRank,
+    structureSubclass: terminalStructureName,
+    isRing: publicIsRing,
+    isTerminal,
     ringWeakType: ringWeak?.weakType ?? null,
     ringWeakTypeName: ringWeak ? WEAK_TYPE_NAMES[ringWeak.weakType] : null,
     ringWeakDigit: ringWeak?.digit ?? null,
-    ringClosureName: ringClosureName || (ringWeak ? WEAK_TYPE_NAMES[ringWeak.weakType] : null),
+    ringClosureName: publicClosureName,
     ringClosureDigit,
     eliminations,
     steps: publicSteps,
@@ -1683,17 +1742,12 @@ function normaliseOptions(options: ChainBuilderOptions): NormalisedOptions {
   return {
     includeStrong: options.includeStrong ?? true,
     includeAls: options.includeAls ?? true,
-    includeAhs: options.includeAhs ?? false,
     strictAlsSingleCommon: options.strictAlsSingleCommon ?? true,
-    strictAhsSingleCommon: options.strictAhsSingleCommon ?? false,
     strongLinkTypes: sortedUnique(
       (options.strongLinkTypes ?? [0, 1, 2, 3, 4])
         .filter(type => Number.isInteger(type) && type >= 0 && type <= 4),
     ),
-    minAhsDof: Number.isInteger(options.minAhsDof) ? options.minAhsDof! : 1,
-    maxAhsDof: Number.isInteger(options.maxAhsDof) ? options.maxAhsDof! : 3,
     maxAlsLinks: Number.isInteger(options.maxAlsLinks) ? options.maxAlsLinks! : 5000,
-    maxAhsLinks: Number.isInteger(options.maxAhsLinks) ? options.maxAhsLinks! : 5000,
     maxDepth: Number.isInteger(options.maxDepth) ? Math.max(1, options.maxDepth!) : 6,
     maxChains: Number.isInteger(options.maxChains) ? Math.max(1, options.maxChains!) : 200,
     maxResultAttempts: Number.isInteger(options.maxResultAttempts)
@@ -1710,9 +1764,7 @@ function normaliseOptions(options: ChainBuilderOptions): NormalisedOptions {
     maxStartViews: Number.isInteger(options.maxStartViews) ? Math.max(1, options.maxStartViews!) : Infinity,
     strongLinkSet: options.strongLinkSet,
     alsLinkSet: options.alsLinkSet,
-    ahsLinkSet: options.ahsLinkSet,
     alsList: options.alsList,
-    ahsList: options.ahsList,
   };
 }
 
@@ -1724,7 +1776,6 @@ export function findAicChains(cand: CandidateGrid, options: ChainBuilderOptions 
   const stats: ChainStats = {
     strongLinks: inventory.counts.strong,
     alsLinks: inventory.counts.als,
-    ahsLinks: inventory.counts.ahs,
     graphLinks: inventory.links.length,
     directedViews: graph.views.length,
     startViews: 0,
@@ -1791,6 +1842,7 @@ export function findAicChains(cand: CandidateGrid, options: ChainBuilderOptions 
       usedAtoms: withViewAtoms(new Set(), start),
       eliminations: [],
     };
+    const startAtoms = new Set(viewAtoms(start));
 
     const queue: QueueNode[] = [root];
 
@@ -1799,7 +1851,9 @@ export function findAicChains(cand: CandidateGrid, options: ChainBuilderOptions 
     const rootRingWeak = rootClosureDigit == null
       ? rootBridgeWeak
       : modularRingClosureWeak(root.view, rootClosureDigit);
-    if (logicalDepth(root.steps) === opts.maxDepth
+    // maxDepth is inclusive: keep a valid root result when a deeper search
+    // is requested, including the logical-depth-2 ALS-XZ root.
+    if (logicalDepth(root.steps) <= opts.maxDepth
       && root.view.node.raw.intrinsicEliminations?.length) {
       const rootIsRing = rootBridgeWeak !== null && rootClosureDigit !== null;
       const rootEvaluation = evaluateChain(cand, root.steps, rootIsRing, rootRingWeak);
@@ -1833,7 +1887,20 @@ export function findAicChains(cand: CandidateGrid, options: ChainBuilderOptions 
 
       for (const edge of expandFrom(current.view, graph, stats, opts)) {
         if (current.visited.has(edge.target.node.graphId)) continue;
-        if (viewUsesKnownAtom(current.usedAtoms, edge.target)) continue;
+
+        const ringWeak = directConnection(edge.target, start);
+        const ringOverlapElims = !ringWeak && current.steps.length + 1 > 2
+          ? computeOverlapRingEliminations(cand, edge.target, start)
+          : null;
+        const sameCellClosure = ringWeak?.weakType === LOCAL_WEAK
+          && edge.target.exit.cells.length === 1
+          && start.entry.cells.length === 1
+          && edge.target.exit.cellKey === start.entry.cellKey;
+        const sharedKnownAtoms = viewAtoms(edge.target)
+          .filter(atom => current.usedAtoms.has(atom));
+        const reusesNonStartAtom = sharedKnownAtoms.some(atom => !startAtoms.has(atom));
+        const closesToStart = ringWeak || ringOverlapElims !== null;
+        if (reusesNonStartAtom || (sharedKnownAtoms.length && !closesToStart)) continue;
 
         stats.transitionsAccepted += 1;
         const nextSteps = [
@@ -1844,7 +1911,17 @@ export function findAicChains(cand: CandidateGrid, options: ChainBuilderOptions 
         if (nextDepth > opts.maxDepth) continue;
         const openEvaluation = evaluateChain(cand, nextSteps, false);
         const openElims = mergeEliminations(current.eliminations, openEvaluation.eliminations);
-        if (openEvaluation.boundaryEliminations.length) {
+        const terminalClosure = sameCellClosure || ringOverlapElims !== null;
+        const terminalStructureName = ringWeak || terminalClosure
+          ? terminalEriStructureName(nextSteps, ringWeak, ringOverlapElims)
+          : null;
+        // A recognized terminal ERI path owns the report. Do not also emit
+        // its open-chain prefix under the generic L1-Wing name.
+        const preferTerminal = terminalStructureName !== null;
+        // An open chain is reportable when this evaluation produced a real
+        // T1/T2 trigger anywhere along the path. The trigger may be internal
+        // and may already be present in the cumulative elimination set.
+        if (!preferTerminal && hasOpenTriggerEliminations(openEvaluation)) {
           stats.resultAttempts += 1;
           startResultAttempts += 1;
           if (noteStartResult(addChainResult(chainsByKey, nextSteps, openElims, false, null))) break;
@@ -1852,17 +1929,19 @@ export function findAicChains(cand: CandidateGrid, options: ChainBuilderOptions 
 
         // Two link modules are enough for a closed ring: the final module
         // connects back to the starting module's entry side.
-        const ringWeak = nextSteps.length >= 2 ? directConnection(edge.target, start) : null;
-        const ringOverlapElims = !ringWeak && nextSteps.length > 2
-          ? computeOverlapRingEliminations(cand, edge.target, start)
-          : null;
         if (ringWeak || ringOverlapElims !== null) {
-          const ringElims = mergeEliminations(
-            evaluateChain(cand, nextSteps, true, ringWeak).eliminations,
-            ringOverlapElims || [],
-          );
-          const newRingElims = onlyNewEliminations(ringElims, current.eliminations);
-          if (newRingElims.length) {
+          // A same-cell terminal closure is not a full ring. Preserve the
+          // open chain's cumulative triggers and add only the closure-cell
+          // overlap effects; full ring propagation belongs to true rings.
+          const ringElims = terminalClosure
+            ? mergeEliminations(openElims, ringOverlapElims || [])
+            : mergeEliminations(
+              evaluateChain(cand, nextSteps, true, ringWeak).eliminations,
+              ringOverlapElims || [],
+            );
+          // Ring reporting is structural: a ring must have eliminations, but
+          // they do not all need to be new relative to the open accumulator.
+          if (ringElims.length) {
             stats.resultAttempts += 1;
             startResultAttempts += 1;
             const closureName = ringWeak ? null : 'OVERLAP';
@@ -1873,9 +1952,16 @@ export function findAicChains(cand: CandidateGrid, options: ChainBuilderOptions 
               true,
               ringWeak,
               closureName,
+              null,
+              terminalClosure,
+              terminalStructureName,
             ))) break;
           }
         }
+
+        // A same-cell closure is terminal. Do not continue walking after
+        // reusing an atom from the starting link.
+        if (sharedKnownAtoms.length && closesToStart) continue;
 
         if (nextDepth < opts.maxDepth) {
           if (queue.length >= opts.maxQueue) {
@@ -1922,7 +2008,7 @@ function sideLabel(side: PublicChainSide): string {
 }
 
 function endpointSideName(step: PublicChainStep, side: PublicChainSide): string {
-  if ((step.family === 'ALS' || step.family === 'AHS') && step.linkTypeName.endsWith('_RCC')) {
+  if (step.family === 'ALS' && step.linkTypeName.endsWith('_RCC')) {
     return side.side === 'left' ? 'RCC_L' : 'RCC_R';
   }
   return side.side;
@@ -1987,30 +2073,17 @@ function sameEurekaLocation(left: PublicChainSide, right: PublicChainSide): bool
 
 function rccSubsetEurekaUnits(step: PublicChainStep): EurekaUnit[] | null {
   const module = step.module;
-  if ((step.family !== 'ALS' && step.family !== 'AHS') || !step.linkTypeName.endsWith('_RCC') || !module?.common) return null;
+  if (step.family !== 'ALS' || !step.linkTypeName.endsWith('_RCC') || !module?.common) return null;
 
   const entrySubset = module.entrySideSubset
     || module.entrySideLs
-    || module.entrySideHs
     || module.entrySubset
-    || module.entryLs
-    || module.entryHs;
+    || module.entryLs;
   const exitSubset = module.exitSideSubset
     || module.exitSideLs
-    || module.exitSideHs
     || module.exitSubset
-    || module.exitLs
-    || module.exitHs;
+    || module.exitLs;
   if (!entrySubset || !exitSubset) return null;
-
-  // AHS uses Cells XOR RCC_Cells as its conveyance. Its hidden digits are
-  // descriptive/elimination data, not the value carried across the edge.
-  if (step.family === 'AHS') {
-    return [
-      { text: `(${eurekaDigitsText(entrySubset.digits)})${cellGroupName(entrySubset.cells)}` },
-      { text: `(${eurekaDigitsText(exitSubset.digits)})${cellGroupName(exitSubset.cells)}` },
-    ];
-  }
 
   if (module.moduleKind === 'ALS_XZ') {
     const bridgeRcc = module.displayRightRcc;
@@ -2172,7 +2245,8 @@ export function formatChainEureka(chain: ChainResult): string {
     return unit.text + eurekaConnectorText(connector);
   }).join('');
 
-  return `${chain.structureName}: ${body}${ringMarker ? ' - ring' : ''} => ${formatRemovals(chain.eliminations)}`;
+  const closureMarker = ringMarker ? ' - ring' : '';
+  return `${chain.structureName}: ${body}${closureMarker} => ${formatRemovals(chain.eliminations)}`;
 }
 
 export const formatChain = formatChainEureka;

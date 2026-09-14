@@ -4,7 +4,12 @@
  * StormDoku core ("cardinals for Int {cell}"), shared 2025-09-09 in
  * review, used with permission and attribution.
  * Conventions: houses map rows 0-8, cols 9-17, boxes 18-26; digits 0-indexed.
- * StormDoku GUI is not public software and is not used in this project.
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * This file is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option)
+ * any later version.
  */
 export const Rx: number[] = [
   0,0,0,0,0,0,0,0,0, 1,1,1,1,1,1,1,1,1, 2,2,2,2,2,2,2,2,2,

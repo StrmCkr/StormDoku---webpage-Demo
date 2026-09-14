@@ -953,6 +953,10 @@
     const items = report.cells.map(cell => ({ cell, digit: report.digit }));
     return {
       tech: 'fish',
+      name: report.name,
+      category: report.category,
+      size: report.size,
+      k: report.k,
       desc: formatPomOmissionFish(report),
       elim: { items },
       digits: [report.digit],

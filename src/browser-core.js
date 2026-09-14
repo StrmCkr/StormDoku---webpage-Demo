@@ -912,6 +912,10 @@
 
       return {
         tech: 'fish',
+        name: FISH_NAME[k],
+        category: 'Basic',
+        size: k,
+        k: 0,
         desc: fishReport(FISH_NAME[k], digit, baseRows, coverCols.map(col => 9 + col), eliminations),
         elim: { cells: eliminations, digits: [digit] },
         digits: [digit],
@@ -951,6 +955,10 @@
 
       return {
         tech: 'fish',
+        name: FISH_NAME[k],
+        category: 'Basic',
+        size: k,
+        k: 0,
         desc: fishReport(FISH_NAME[k], digit, baseCols.map(col => 9 + col), coverRows, eliminations),
         elim: { cells: eliminations, digits: [digit] },
         digits: [digit],

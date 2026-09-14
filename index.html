@@ -57,6 +57,16 @@
       font-size: 14px;
     }
 
+    .app-meta {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .app-meta a {
+      color: var(--blue);
+    }
+
     .toolbar {
       display: flex;
       flex-wrap: wrap;
@@ -684,20 +694,34 @@
     }
 
     .mark.chain-start-digit {
-      color: #1e3a8a;
-      background: #bfdbfe;
-      border-color: #2563eb;
+      color: #1d4ed8;
+      background: rgba(191, 219, 254, .55);
+      border: 1px solid rgba(37, 99, 235, .72);
+      box-shadow: inset 0 0 0 1px rgba(37, 99, 235, .48);
+      border-radius: 4px;
+      font-weight: 900;
     }
 
     .mark.chain-end-digit {
-      color: #14532d;
-      background: #bbf7d0;
-      border-color: #16a34a;
+      color: #047857;
+      background: rgba(167, 243, 208, .55);
+      border: 1px solid rgba(5, 150, 105, .72);
+      box-shadow: inset 0 0 0 1px rgba(5, 150, 105, .48);
+      border-radius: 4px;
+      font-weight: 900;
     }
 
     .mark.chain-als-digit.chain-start-digit,
     .mark.chain-als-digit.chain-end-digit {
       color: var(--chain-als-ink, #6d28d9);
+    }
+
+    .mark.chain-als-digit.chain-start-digit {
+      color: #1d4ed8;
+    }
+
+    .mark.chain-als-digit.chain-end-digit {
+      color: #047857;
     }
 
     .mark.ahs-record-digit {
@@ -900,6 +924,38 @@
       color: var(--blue);
     }
 
+    .rating-tag {
+      display: block;
+      margin-bottom: 3px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+
+    .report-subsection-body {
+      display: grid;
+      gap: 9px;
+      margin-top: 9px;
+    }
+
+    .example-item {
+      display: grid;
+      gap: 5px;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+    }
+
+    .example-puzzle {
+      color: var(--muted);
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 11px;
+      overflow-wrap: anywhere;
+    }
+
     .solution-steps {
       margin: 0;
     }
@@ -1085,6 +1141,34 @@
       color: #f8fafc;
     }
 
+    .rating-summary {
+      border-top: 1px solid rgba(248, 250, 252, .28);
+      display: grid;
+      gap: 3px;
+      margin-top: 8px;
+      padding-top: 8px;
+    }
+
+    .rating-summary-label {
+      color: #bae6fd;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .rating-summary-category {
+      color: #f8fafc;
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .rating-summary-detail {
+      color: #cbd5e1;
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+
     .dof-button.current {
       border-color: var(--blue);
       background: var(--blue);
@@ -1191,6 +1275,54 @@
       padding: 8px !important;
     }
 
+    .chain-subcategories {
+      display: grid;
+      gap: 6px;
+      padding: 8px;
+    }
+
+    .chain-subcategory {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: var(--panel);
+    }
+
+    .chain-subcategory summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 7px 9px;
+      color: var(--ink);
+      cursor: pointer;
+      list-style: none;
+      user-select: none;
+    }
+
+    .chain-subcategory summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .chain-subcategory summary::before {
+      width: 14px;
+      color: var(--blue);
+      content: "+";
+      font-weight: 900;
+    }
+
+    .chain-subcategory[open] summary {
+      border-bottom: 1px solid var(--line);
+    }
+
+    .chain-subcategory[open] summary::before {
+      content: "-";
+    }
+
+    .chain-subcategory .chain-list {
+      padding: 7px !important;
+    }
+
     .chain-result {
       width: 100%;
       border-color: var(--line);
@@ -1284,6 +1416,7 @@
   <header>
     <h1>StormDoku: online solver</h1>
     <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo.</p>
+    <p class="app-meta">Alpha v0.1.0 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
   </header>
 
   <main>
@@ -1297,6 +1430,17 @@
       <label>
         Givens
         <input id="givens" type="number" min="17" max="81" value="30">
+      </label>
+      <label>
+        Generator Difficulty
+        <select id="generationDifficulty">
+          <option value="any" selected>Any</option>
+          <option value="Extremely Easy">Extremely Easy</option>
+          <option value="Very Easy">Very Easy</option>
+          <option value="Modestly Easy">Modestly Easy</option>
+          <option value="Easy">Easy</option>
+          <option value="Unknown">Unknown</option>
+        </select>
       </label>
       <button id="generate">Generate</button>
     </section>
@@ -1357,10 +1501,6 @@
           <label class="check" title="Include ALS RCC links in the chain walk">
             <input id="chainAlsRcc" type="checkbox" checked>
             ALS
-          </label>
-          <label class="check" title="Include AHS RCC links in the chain walk">
-            <input id="chainAhsRcc" type="checkbox" checked>
-            AHS
           </label>
         </div>
       </fieldset>
@@ -1478,6 +1618,11 @@
               <summary>Solution</summary>
               <div class="solution-inline-value" id="solutionString"></div>
             </details>
+            <div id="ratingSummary" class="rating-summary" hidden aria-live="polite">
+              <span class="rating-summary-label">Rating Category</span>
+              <strong id="ratingCategory" class="rating-summary-category"></strong>
+              <span id="ratingDetail" class="rating-summary-detail"></span>
+            </div>
           </div>
           <details class="pom-panel" id="alsPanel">
             <summary><h2>LS / ALS Builder</h2></summary>
@@ -1502,18 +1647,30 @@
               <div id="ahsResults" class="pom-results">No HS / AHS build has been run.</div>
             </div>
           </details>
-          <details class="pom-panel" id="ahsLinkPanel">
-            <summary><h2>AHS Links</h2></summary>
-            <div class="pom-body">
-              <button id="ahsLinkBuild" class="secondary storage-action" type="button">Build AHS Links</button>
-              <div id="ahsLinkResults" class="pom-results">No AHS link build has been run.</div>
-            </div>
-          </details>
           <details class="pom-panel" id="strongLinkPanel">
             <summary><h2>Strong Links</h2></summary>
             <div class="pom-body">
               <button id="strongLinkBuild" class="secondary storage-action" type="button">Build Strong Links</button>
               <div id="strongLinkResults" class="pom-results"></div>
+            </div>
+          </details>
+          <details class="pom-panel" id="examplesPanel">
+            <summary><h2>Examples</h2></summary>
+            <div class="pom-body">
+              <div class="report-subsection-body">
+                <div class="example-item">
+                  <button class="secondary example-load" type="button" data-example-puzzle="46..83....5.21.436.134..8....164859...4.7.1...951327....6...38.53.8.4......39...5">XY - example</button>
+                  <code class="example-puzzle">46..83....5.21.436.134..8....164859...4.7.1...951327....6...38.53.8.4......39...5</code>
+                </div>
+                <div class="example-item">
+                  <button class="secondary example-load" type="button" data-example-puzzle=".46...92..9.......8.13...4..8..4.61.2...6.5......2..94..37.9.....8.....6.......7.">3x3+2 fish</button>
+                  <code class="example-puzzle">.46...92..9.......8.13...4..8..4.61.2...6.5......2..94..37.9.....8.....6.......7.</code>
+                </div>
+                <div class="example-item">
+                  <button class="secondary example-load" type="button" data-example-puzzle="4..8.1..28....3....2596..3..3...825....5..9...8....6..9...4...834...5.......9.7..">4x4+2 fish</button>
+                  <code class="example-puzzle">4..8.1..28....3....2596..3..3...825....5..9...8....6..9...4...834...5.......9.7..</code>
+                </div>
+              </div>
             </div>
           </details>
         </div>
@@ -1580,12 +1737,11 @@
   <script src="./src/pom-core.js"></script>
   <script src="./src/als-core.js"></script>
   <script src="./src/als-link-core.js"></script>
-  <script src="./src/ahs-core.js"></script>
+  <script src="./src/ahs-core.js?v=20260912-5"></script>
   <script src="./src/subset-report-core.js"></script>
-  <script src="./src/ahs-link-core.js"></script>
   <script src="./src/mini-sectors-core.js"></script>
   <script src="./src/strong-link-core.js?v=20260912-1"></script>
-  <script src="./src/chain-core.js?v=20260911-12"></script>
+  <script src="./src/chain-core.js?v=20260913-29"></script>
   <script>
     const core = window.StormDoku;
     const boardEl = document.getElementById('board');
@@ -1600,12 +1756,16 @@
       Bn: document.getElementById('gridViewBn'),
     };
     const givensEl = document.getElementById('givens');
+    const generationDifficultyEl = document.getElementById('generationDifficulty');
     const inputEl = document.getElementById('input');
     const loadEl = document.getElementById('load');
     const statusEl = document.getElementById('status');
     const puzzleStringEl = document.getElementById('puzzleString');
     const solutionStringEl = document.getElementById('solutionString');
     const solutionPanelEl = document.getElementById('solutionPanel');
+    const ratingSummaryEl = document.getElementById('ratingSummary');
+    const ratingCategoryEl = document.getElementById('ratingCategory');
+    const ratingDetailEl = document.getElementById('ratingDetail');
     const solutionStepsPanelEl = document.getElementById('solutionStepsPanel');
     const solutionStepsPreviewEl = document.getElementById('solutionStepsPreview');
     const logEl = document.getElementById('log');
@@ -1613,7 +1773,6 @@
     const alsResultsEl = document.getElementById('alsResults');
     const alsLinkResultsEl = document.getElementById('alsLinkResults');
     const ahsResultsEl = document.getElementById('ahsResults');
-    const ahsLinkResultsEl = document.getElementById('ahsLinkResults');
     const strongLinkResultsEl = document.getElementById('strongLinkResults');
     const fishResultsEl = document.getElementById('fishResults');
     const nakedSubsetResultsEl = document.getElementById('nakedSubsetResults');
@@ -1631,7 +1790,6 @@
     const alsBuildEl = document.getElementById('alsBuild');
     const alsLinkBuildEl = document.getElementById('alsLinkBuild');
     const ahsBuildEl = document.getElementById('ahsBuild');
-    const ahsLinkBuildEl = document.getElementById('ahsLinkBuild');
     const strongLinkBuildEl = document.getElementById('strongLinkBuild');
     const chainBuildEl = document.getElementById('chainBuild');
     const fishBuildEl = document.getElementById('fishBuild');
@@ -1639,7 +1797,6 @@
     const hiddenSubsetBuildEl = document.getElementById('hiddenSubsetBuild');
     const chainDepthEl = document.getElementById('chainDepth');
     const chainAlsRccEl = document.getElementById('chainAlsRcc');
-    const chainAhsRccEl = document.getElementById('chainAhsRcc');
     const chainStrongTypeEls = Array.from({ length: 5 }, (_, index) =>
       document.getElementById(`chainStrongType${index}`));
     const fishMinSizeEl = document.getElementById('fishMinSize');
@@ -1667,8 +1824,6 @@
     let alsReport = null;
     let alsLinkReport = null;
     let ahsReport = null;
-    let ahsLinkReport = null;
-    let ahsLinkReportLimit = null;
     let selectedAlsDof = null;
     let selectedAlsId = null;
     const openAlsSizeGroups = new Set();
@@ -1690,6 +1845,7 @@
     let selectedHiddenSubsetKey = null;
     let chainReport = null;
     let selectedChainIndex = null;
+    let ratingReport = null;
     let gridView = 'RC';
     let busy = false;
     let generationToken = 0;
@@ -1968,8 +2124,8 @@
     }
 
     function addChainSideMarks(side, marks, cells, orderByCell, order) {
-      for (const atom of chainSideAtoms(side)) marks.add(atom);
-      for (const cell of side.cells || []) {
+      for (const atom of chainSideAtoms(side, null, true)) marks.add(atom);
+      for (const cell of [...(side.cells || []), ...(side.rccCells || [])]) {
         cells.add(cell);
         const orders = orderByCell.get(cell) || [];
         if (!orders.includes(order)) orders.push(order);
@@ -1982,7 +2138,6 @@
       const typeName = String(step.linkTypeName || '').toUpperCase();
       const linkType = Number(step.linkType);
       return family === 'ALS'
-        || family === 'AHS'
         || typeName === 'ALS'
         || typeName.startsWith('ALS_')
         || !!step.module
@@ -1996,17 +2151,13 @@
       return {
         entry: module.entrySideSubset
           || module.entrySideLs
-          || module.entrySideHs
           || module.entrySubset
           || module.entryLs
-          || module.entryHs
           || step.entry,
         exit: module.exitSideSubset
           || module.exitSideLs
-          || module.exitSideHs
           || module.exitSubset
           || module.exitLs
-          || module.exitHs
           || step.exit,
       };
     }
@@ -2024,10 +2175,10 @@
     }
 
     function alsVisualSideKey(step, side, role) {
-      if (side?.id != null) return String(step.family || 'ALS') + ':node:' + String(side.id);
       const cells = (side?.cells || []).join(',');
       const digits = (side?.digits || []).join('');
-      return alsVisualKey(step) + ':' + role + ':' + digits + ':' + cells;
+      if (cells || digits) return 'ALS:' + digits + ':' + cells;
+      return alsVisualKey(step) + ':' + role;
     }
 
     function alsColorMapForChain(chain) {
@@ -2037,20 +2188,39 @@
         const moduleSides = moduleVisualSides(step);
         for (const [role, side] of [['entry', moduleSides.entry], ['exit', moduleSides.exit]]) {
           const key = alsVisualSideKey(step, side, role);
-          if (!colors.has(key)) colors.set(key, ALS_CHAIN_COLORS[colors.size % ALS_CHAIN_COLORS.length]);
+          if (!colors.has(key)) colors.set(key, alsColorAt(colors.size));
         }
       }
       return colors;
     }
 
     const ALS_CHAIN_COLORS = [
-      { bg: 'rgba(125, 211, 252, .34)', stroke: 'rgba(3, 105, 161, .76)', ink: '#075985' },
-      { bg: 'rgba(94, 234, 212, .32)', stroke: 'rgba(15, 118, 110, .76)', ink: '#115e59' },
-      { bg: 'rgba(147, 197, 253, .34)', stroke: 'rgba(29, 78, 216, .78)', ink: '#1e40af' },
-      { bg: 'rgba(165, 180, 252, .32)', stroke: 'rgba(67, 56, 202, .76)', ink: '#3730a3' },
-      { bg: 'rgba(196, 181, 253, .30)', stroke: 'rgba(109, 40, 217, .74)', ink: '#5b21b6' },
-      { bg: 'rgba(103, 232, 249, .32)', stroke: 'rgba(14, 116, 144, .76)', ink: '#155e75' },
+      { bg: 'rgba(0, 158, 115, .34)', stroke: 'rgba(0, 103, 75, .88)', ink: '#065f46' },
+      { bg: 'rgba(0, 74, 130, .42)', stroke: 'rgba(0, 49, 95, .92)', ink: '#073b78' },
+      { bg: 'rgba(104, 120, 62, .32)', stroke: 'rgba(65, 80, 28, .90)', ink: '#3f6212' },
+      { bg: 'rgba(0, 170, 170, .34)', stroke: 'rgba(0, 105, 105, .88)', ink: '#0f4c5c' },
+      { bg: 'rgba(112, 82, 190, .32)', stroke: 'rgba(74, 46, 145, .88)', ink: '#4c1d95' },
+      { bg: 'rgba(90, 160, 80, .34)', stroke: 'rgba(45, 105, 40, .88)', ink: '#166534' },
+      { bg: 'rgba(72, 149, 113, .34)', stroke: 'rgba(35, 103, 76, .90)', ink: '#14532d' },
+      { bg: 'rgba(17, 82, 147, .40)', stroke: 'rgba(9, 51, 102, .92)', ink: '#062e68' },
+      { bg: 'rgba(145, 75, 175, .32)', stroke: 'rgba(95, 35, 125, .88)', ink: '#6b21a8' },
+      { bg: 'rgba(20, 175, 150, .34)', stroke: 'rgba(0, 115, 95, .88)', ink: '#115e59' },
+      { bg: 'rgba(29, 78, 160, .40)', stroke: 'rgba(18, 52, 112, .92)', ink: '#172554' },
+      { bg: 'rgba(159, 132, 54, .30)', stroke: 'rgba(100, 82, 24, .90)', ink: '#713f12' },
     ];
+
+    function alsColorAt(index) {
+      if (ALS_CHAIN_COLORS[index]) return ALS_CHAIN_COLORS[index];
+
+      // Keep colors unique even when a long chain has more ALS nodes than
+      // the fixed, color-blind-friendly palette.
+      const hue = 180 + ((index * 47) % 151);
+      return {
+        bg: `hsla(${hue}, 72%, 46%, .28)`,
+        stroke: `hsla(${hue}, 78%, 30%, .88)`,
+        ink: `hsl(${hue}, 72%, 24%)`,
+      };
+    }
 
     const AHS_RECORD_COLOR = {
       bg: 'rgba(147, 197, 253, .24)',
@@ -2134,13 +2304,12 @@
         }
       }
 
-      if (!anchors.length && existingOnly) return sideAnchors(side, forcedDigit, false);
       return anchors;
     }
 
-    function closestAnchorPair(fromSide, toSide, forcedDigit = null) {
+    function closestAnchorPair(fromSide, toSide, forcedDigit = null, toDigit = forcedDigit) {
       const fromAnchors = sideAnchors(fromSide, forcedDigit);
-      const toAnchors = sideAnchors(toSide, forcedDigit);
+      const toAnchors = sideAnchors(toSide, toDigit);
       let best = null;
 
       for (const from of fromAnchors) {
@@ -2152,7 +2321,7 @@
         }
       }
 
-      if (!best && forcedDigit != null) return closestAnchorPair(fromSide, toSide, null);
+      if (!best && (forcedDigit != null || toDigit != null)) return closestAnchorPair(fromSide, toSide);
       return best;
     }
 
@@ -2323,12 +2492,12 @@
       return { ...fallback, x: center.x + dx * scale, y: center.y + dy * scale };
     }
 
-    function groupedAnchorPair(fromSide, toSide, forcedDigit = null) {
-      const pair = closestAnchorPair(fromSide, toSide, forcedDigit);
-      if (!pair || forcedDigit == null) return pair;
+    function groupedAnchorPair(fromSide, toSide, forcedDigit = null, toDigit = forcedDigit) {
+      const pair = closestAnchorPair(fromSide, toSide, forcedDigit, toDigit);
+      if (!pair || (forcedDigit == null && toDigit == null)) return pair;
 
       const fromBox = digitBoundsFromAnchors(sideAnchors(fromSide, forcedDigit, true));
-      const toBox = digitBoundsFromAnchors(sideAnchors(toSide, forcedDigit, true));
+      const toBox = digitBoundsFromAnchors(sideAnchors(toSide, toDigit, true));
       let from = pair.from;
       let to = pair.to;
       if (fromBox) from = boxEdgeAnchor(fromBox, to, from);
@@ -2343,8 +2512,8 @@
       drawArc(svg, pair.from, pair.to, 'chain-strong-line', 5, 0.38);
     }
 
-    function drawWeakConnection(svg, fromSide, toSide, weakDigit = null) {
-      const pair = groupedAnchorPair(fromSide, toSide, weakDigit);
+    function drawWeakConnection(svg, fromSide, toSide, weakFromDigit = null, weakToDigit = weakFromDigit) {
+      const pair = groupedAnchorPair(fromSide, toSide, weakFromDigit, weakToDigit);
       if (!pair) return;
       drawArc(svg, pair.from, pair.to, 'chain-weak-line', -4.5, 0);
     }
@@ -2381,9 +2550,11 @@
         if (index > 0) {
           const fromSide = visibleChainExitSide(chain.steps[index - 1]);
           const toSide = visibleChainEntrySide(step);
-          drawSideDigitBoxes(svg, fromSide, 'chain-side-box chain-side-entry-box', null, [step.weakDigit]);
-          drawSideDigitBoxes(svg, toSide, 'chain-side-box chain-side-exit-box', null, [step.weakDigit]);
-          drawWeakConnection(svg, fromSide, toSide, step.weakDigit);
+          const weakFromDigit = step.weakFromDigit ?? step.weakDigit;
+          const weakToDigit = step.weakToDigit ?? step.weakDigit;
+          drawSideDigitBoxes(svg, fromSide, 'chain-side-box chain-side-entry-box', null, [weakFromDigit]);
+          drawSideDigitBoxes(svg, toSide, 'chain-side-box chain-side-exit-box', null, [weakToDigit]);
+          drawWeakConnection(svg, fromSide, toSide, weakFromDigit, weakToDigit);
         }
         if (isAlsVisualStep(step) && step.module?.common) {
           const moduleSides = moduleVisualSides(step);
@@ -2405,7 +2576,8 @@
           svg,
           visibleChainExitSide(chain.steps[chain.steps.length - 1]),
           visibleChainEntrySide(chain.steps[0]),
-          chain.ringWeakDigit,
+          chain.ringWeakFromDigit ?? chain.ringWeakDigit,
+          chain.ringWeakToDigit ?? chain.ringWeakDigit,
         );
       }
 
@@ -2487,15 +2659,19 @@
 
         if (index > 0) {
           const fromSide = visibleChainExitSide(chain.steps[index - 1]);
-          addWeakDigitMarks(weakMarks, fromSide, step.weakDigit);
-          addWeakDigitMarks(weakMarks, visibleChainEntrySide(step), step.weakDigit);
+          const toSide = visibleChainEntrySide(step);
+          const weakFromDigit = step.weakFromDigit ?? step.weakDigit;
+          const weakToDigit = step.weakToDigit ?? step.weakDigit;
+          addWeakDigitMarks(weakMarks, fromSide, weakFromDigit);
+          addWeakDigitMarks(weakMarks, toSide, weakToDigit);
           const pair = groupedAnchorPair(
             fromSide,
-            visibleChainEntrySide(step),
-            step.weakDigit,
+            toSide,
+            weakFromDigit,
+            weakToDigit,
           );
           if (pair) {
-            if (step.weakDigit == null) {
+            if (weakFromDigit == null && weakToDigit == null) {
               weakMarks.add(atomKey(pair.from.cell, pair.from.digit));
               weakMarks.add(atomKey(pair.to.cell, pair.to.digit));
             }
@@ -2538,26 +2714,29 @@
         }
       }
 
-      const firstEntry = chain.steps[0]?.entry || {};
-      for (const atom of chainSideAtoms(firstEntry)) startMarks.add(atom);
+      const firstEntry = visibleChainEntrySide(chain.steps[0]) || {};
+      for (const atom of chainSideAtoms(firstEntry, null, true)) startMarks.add(atom);
       for (const cell of firstEntry.cells || []) startCells.add(cell);
 
-      const terminal = chain.steps[chain.steps.length - 1]?.exit || {};
-      for (const atom of chainSideAtoms(terminal)) endMarks.add(atom);
+      const terminal = visibleChainExitSide(chain.steps[chain.steps.length - 1]) || {};
+      for (const atom of chainSideAtoms(terminal, null, true)) endMarks.add(atom);
       for (const cell of terminal.cells || []) endCells.add(cell);
 
       if (chain.isRing && chain.steps.length) {
         const ringFrom = visibleChainExitSide(chain.steps[chain.steps.length - 1]);
         const ringTo = visibleChainEntrySide(chain.steps[0]);
-        addWeakDigitMarks(weakMarks, ringFrom, chain.ringWeakDigit);
-        addWeakDigitMarks(weakMarks, ringTo, chain.ringWeakDigit);
+        const ringFromDigit = chain.ringWeakFromDigit ?? chain.ringWeakDigit;
+        const ringToDigit = chain.ringWeakToDigit ?? chain.ringWeakDigit;
+        addWeakDigitMarks(weakMarks, ringFrom, ringFromDigit);
+        addWeakDigitMarks(weakMarks, ringTo, ringToDigit);
         const pair = groupedAnchorPair(
           ringFrom,
           ringTo,
-          chain.ringWeakDigit,
+          ringFromDigit,
+          ringToDigit,
         );
         if (pair) {
-          if (chain.ringWeakDigit == null) {
+          if (ringFromDigit == null && ringToDigit == null) {
             weakMarks.add(atomKey(pair.from.cell, pair.from.digit));
             weakMarks.add(atomKey(pair.to.cell, pair.to.digit));
           }
@@ -2621,10 +2800,14 @@
         const visualActiveCells = visualConstruction?.activeCells || strongLink.activeCells || [];
         const visualLinkedCells = visualConstruction?.linkedCells || strongLink.linkedCells || [];
         for (const cell of visualActiveCells) {
-          for (const digit of strongLink.startingDigits || []) strongLinkStartMarks.add(`${cell}:${digit}`);
+          for (const digit of strongLink.startingDigits || []) {
+            if (cellHasCandidate(cell, digit)) strongLinkStartMarks.add(`${cell}:${digit}`);
+          }
         }
         for (const cell of visualLinkedCells) {
-          for (const digit of strongLink.linkDigits || []) strongLinkEndMarks.add(`${cell}:${digit}`);
+          for (const digit of strongLink.linkDigits || []) {
+            if (cellHasCandidate(cell, digit)) strongLinkEndMarks.add(`${cell}:${digit}`);
+          }
         }
         const construction = selectedStrongLinkType === 3
           && strongLink.secondaryXorConstruction?.kind === 'eri'
@@ -2893,6 +3076,7 @@
             const isStrongLinkEndDigit = highlights.isStrongLink
               && (highlights.strongLinkEndMarks.has(atomKey) || strongLinkPartitionEndDigit);
             const isStrongLinkDigit = isStrongLinkStartDigit || isStrongLinkEndDigit;
+            const hasCandidate = cellHasCandidate(cell, digit);
             const isHiddenGhostDigit =
               highlights.isHiddenSubset &&
               highlights.baseCells.has(cell) &&
@@ -2902,8 +3086,8 @@
               !isElim;
 
             mark.textContent = markFor(cell, digit)
-              || (isElim || isFishDigit || isFishEndofinDigit || isChainDigit || isStrongLinkDigit
-                || isAlsRecordDigit || isAhsRecordDigit ? digit : '');
+              || (isElim || (hasCandidate && (isFishDigit || isFishEndofinDigit || isChainDigit || isStrongLinkDigit
+                || isAlsRecordDigit || isAhsRecordDigit)) ? digit : '');
             if (isSetDigit) mark.classList.add('set-digit');
             if (isHiddenGhostDigit) mark.classList.add('hidden-ghost-digit');
             if (isFishDigit) mark.classList.add('fish-digit');
@@ -2958,6 +3142,13 @@
       }
     }
 
+    function focusMap() {
+      const map = boardEl?.closest?.('.grid-frame') || boardEl;
+      requestAnimationFrame(() => {
+        map?.scrollIntoView?.({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      });
+    }
+
     function hideSolution() {
       if (solutionPanelEl) solutionPanelEl.open = false;
     }
@@ -2969,12 +3160,12 @@
     function render() {
       renderBoard();
       renderStrings();
+      renderRatingReport();
       renderLog();
       renderPomReport();
       renderAlsReport();
       renderAlsLinkReport();
       renderAhsReport();
-      renderAhsLinkReport();
       renderStrongLinkReport();
       renderFishReport();
       renderNakedSubsetReport();
@@ -2988,8 +3179,200 @@
       return tech.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
     }
 
+    const RATING_TAGS = Object.freeze([
+      { rank: 1, value: 1, tag: 'Hidden Single', tech: 'hidden-single' },
+      { rank: 2, value: 1, tag: 'Naked Single', tech: 'naked-single' },
+      { rank: 3, value: 1.5, tag: 'Box - Line Reduction', tech: 'box-line' },
+      { rank: 4, value: 2, tag: 'Hidden Pair', tech: 'hidden-pair' },
+      { rank: 5, value: 2, tag: 'Naked Pair', tech: 'naked-pair' },
+      { rank: 6, value: 2, tag: 'X-Wing', tech: 'x-wing' },
+      { rank: 7, value: 2.5, tag: '2x2+K Fish', tech: '2x2+k-fish' },
+      { rank: 8, value: 3, tag: 'Hidden Triple', tech: 'hidden-triple' },
+      { rank: 9, value: 3, tag: 'Naked Triple', tech: 'naked-triple' },
+      { rank: 10, value: 3, tag: 'SwordFish', tech: 'swordfish' },
+      { rank: 11, value: 3.5, tag: '3x3+K Fish', tech: '3x3+k-fish' },
+      { rank: 12, value: 4, tag: 'Hidden Quad', tech: 'hidden-quad' },
+      { rank: 13, value: 4, tag: 'Naked Quad', tech: 'naked-quad' },
+      { rank: 14, value: 4, tag: 'JellyFish', tech: 'jellyfish' },
+      { rank: 15, value: 4.5, tag: '4x4+K Fish', tech: '4x4+k-fish' },
+    ]);
+
+    function ratingCategoryForValue(value) {
+      if (!Number.isFinite(value)) return 'Unknown';
+      if (value <= 1.5) return 'Extremely Easy';
+      if (value <= 2.75) return 'Very Easy';
+      if (value <= 3.75) return 'Modestly Easy';
+      if (value <= 4.75) return 'Easy';
+      return 'Unknown';
+    }
+
+    function unknownRating(move = '') {
+      return {
+        rank: 0,
+        value: null,
+        tag: 'Unknown',
+        category: 'Unknown',
+        hardestMove: move,
+        cycles: 0,
+        score: 0,
+        scoredMoves: 0,
+        source: 'run',
+      };
+    }
+
+    function ratingForStep(step) {
+      const tech = String(step?.tech || '');
+      const direct = RATING_TAGS.find(definition => definition.tech === tech);
+      if (direct) {
+        return {
+          rank: direct.rank,
+          value: direct.value,
+          tag: direct.tag,
+          hardestMove: step.desc || '',
+        };
+      }
+
+      if (tech === 'pointing' || tech === 'claiming') {
+        return {
+          rank: 3,
+          value: 1.5,
+          tag: 'Box - Line Reduction',
+          hardestMove: step.desc || '',
+        };
+      }
+
+      if (tech === 'fish') {
+        const size = Number(step?.size);
+        const k = Number(step?.k || 0);
+        const basic = {
+          2: { rank: 6, value: 2, tag: 'X-Wing' },
+          3: { rank: 10, value: 3, tag: 'SwordFish' },
+          4: { rank: 14, value: 4, tag: 'JellyFish' },
+        }[size];
+        const extended = {
+          2: { rank: 7, tag: '2x2+K Fish' },
+          3: { rank: 11, tag: '3x3+K Fish' },
+          4: { rank: 15, tag: '4x4+K Fish' },
+        }[size];
+        const fishRating = k > 0 ? extended : basic;
+        const value = k === 0
+          ? basic?.value
+          : k === 1
+            ? size + 0.5
+            : k === 2
+              ? size + 0.75
+              : null;
+        if (fishRating && value !== null && Number.isFinite(value)) {
+          return { ...fishRating, value, hardestMove: step.desc || '' };
+        }
+      }
+
+      return unknownRating(step?.desc || '');
+    }
+
+    function ratingFromSteps(steps, source = 'run') {
+      let hardest = null;
+      let score = 0;
+      let scoredMoves = 0;
+      for (const step of steps || []) {
+        const rating = step.rating || ratingForStep(step);
+        if (!hardest || rating.rank > hardest.rank) hardest = rating;
+        if (Number.isFinite(rating.value)) {
+          score += rating.value;
+          scoredMoves += 1;
+        }
+      }
+
+      return {
+        ...(hardest || unknownRating()),
+        category: ratingCategoryForValue(hardest?.value),
+        cycles: (steps || []).length,
+        score: Number(score.toFixed(2)),
+        scoredMoves,
+        source,
+      };
+    }
+
+    function ratingWithSolvedState(rating, solved) {
+      if (solved !== false) return { ...rating, solved };
+      return {
+        ...rating,
+        value: null,
+        tag: 'Unknown',
+        category: 'Unknown',
+        stalledAfter: rating.tag,
+        stalledMove: rating.hardestMove,
+        partialScore: rating.score,
+        partialMoves: rating.scoredMoves,
+        hardestMove: '',
+        solved: false,
+      };
+    }
+
+    function candidateGridIsSolved(candidateGrid, grid, expectedSolution = solution) {
+      if (!Array.isArray(expectedSolution) || expectedSolution.length !== 81) return false;
+      return candidateGrid.every((values, cell) => {
+        if (grid[cell]) return grid[cell] === expectedSolution[cell];
+        return values.length === 1 && values[0] === expectedSolution[cell];
+      });
+    }
+
+    function ratingFromLog(entries, solved = null) {
+      return ratingWithSolvedState(
+        ratingFromSteps(entries || [], 'run'),
+        solved,
+      );
+    }
+
+    function formatRatingValue(value) {
+      if (!Number.isFinite(value)) return '';
+      return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/0$/, '');
+    }
+
+    function rateGeneratedPuzzle(grid, expectedSolution) {
+      try {
+        const simulation = core.reduceCandidates(
+          core.allCandidates(grid),
+          100,
+          { ...currentSolverFishOptions(), grid },
+        );
+        const rating = ratingFromSteps(simulation.steps, 'generated');
+        return ratingWithSolvedState(
+          rating,
+          candidateGridIsSolved(simulation.cand, grid, expectedSolution),
+        );
+      } catch (error) {
+        return {
+          ...unknownRating('Rating check failed.'),
+          source: 'generated',
+          solved: false,
+        };
+      }
+    }
+
+    function renderRatingReport() {
+      if (!ratingReport) {
+        ratingSummaryEl.hidden = true;
+        return;
+      }
+
+      ratingSummaryEl.hidden = false;
+      ratingCategoryEl.textContent = ratingReport.category || ratingCategoryForValue(ratingReport.value);
+      if (ratingReport.solved === false) {
+        const partialScore = formatRatingValue(ratingReport.partialScore ?? ratingReport.score);
+        ratingDetailEl.textContent = `Cumulative score: (${partialScore || '0'}). Hardest Move: Unknown.`;
+        return;
+      }
+
+      const hardestTag = ratingReport.hardestMove
+        ? `${ratingReport.tag} (${formatRatingValue(ratingReport.value)})`
+        : 'Unknown';
+      ratingDetailEl.textContent = `Cumulative score: (${formatRatingValue(ratingReport.score) || '0'}). Hardest Move: ${hardestTag}.`;
+    }
+
     function appendStep(step) {
-      logEntries.push({ cycle, desc: step.desc });
+      const rating = ratingForStep(step);
+      logEntries.push({ cycle, tech: step.tech, desc: step.desc, ratingTag: rating.tag, rating });
     }
 
     function renderLog() {
@@ -3002,10 +3385,15 @@
 
       for (const entry of [...logEntries].reverse()) {
         const li = document.createElement('li');
+        const tag = document.createElement('span');
         const title = document.createElement('strong');
 
+        tag.className = 'rating-tag';
+        const value = formatRatingValue(entry.rating?.value);
+        tag.textContent = value ? `Rating: (${value})` : 'Rating: (Unknown)';
         title.textContent = `${entry.cycle}. ${entry.desc}`;
 
+        li.appendChild(tag);
         li.appendChild(title);
         logEl.appendChild(li);
       }
@@ -3166,6 +3554,7 @@
       renderBoard();
       renderAlsReport();
       setStatus(`ALS ${als.uniqueID} selected.`, 'ok');
+      focusMap();
     }
 
     function renderAlsReport() {
@@ -3271,7 +3660,7 @@
       const alsRccCount = alsLinkReport[core.ALS_RCC]?.length || 0;
       const summary = document.createElement('p');
       summary.textContent = `${links.length} ALS graph links: ALS_RCC ${alsRccCount}. `
-        + `Size-1 bivalue ALS nodes are listed under Strong Links as ALS.`;
+        + `Size-1 bivalve ALS nodes are listed under Strong Links as ALS.`;
       alsLinkResultsEl.appendChild(summary);
 
       const list = document.createElement('ul');
@@ -3375,68 +3764,7 @@
       renderBoard();
       renderAhsReport();
       setStatus(`AHS ${ahs.uniqueID} selected.`, 'ok');
-    }
-
-    function ahsEndpointText(endpoint) {
-      const keys = endpoint.dofKeys && endpoint.dofKeys.length
-        ? ` keys {${endpoint.dofKeys.join(',')}}`
-        : '';
-      const trigger = endpoint.triggerKind === 'MINI_SECTOR'
-        ? ` mini-sector trigger D${endpoint.effectiveDof}->D${endpoint.sourceDof}`
-        : '';
-      return `(${endpoint.digits.join('')}) ${core.cellGroupName(endpoint.cells)}`
-        + ` in ${core.sectorGroupName(endpoint.sectors)}${trigger}${keys}`;
-    }
-
-    function ahsNodeText(node) {
-      return `HS#${node.uniqueID} ${core.cellGroupName(node.cells)} `
-        + `in ${core.sectorGroupName([node.sector])} digits {${node.digits.join('')}}`;
-    }
-
-    function ahsEndpointElims(endpoint) {
-      const removals = [];
-      for (const [digit, cells] of Object.entries(endpoint.hiddenDigitCells || {})) {
-        for (const cell of cells) removals.push({ cell, digit: Number(digit) });
-      }
-      return core.formatRemovals(removals) || 'none';
-    }
-
-    function renderAhsLinkReport() {
-      ahsLinkResultsEl.textContent = '';
-      if (!ahsLinkReport) {
-        ahsLinkResultsEl.textContent = 'No AHS link build has been run.';
-        return;
-      }
-
-      const links = core.flattenAhsLinks(ahsLinkReport);
-      const ahsRccCount = ahsLinkReport[core.AHS_RCC]?.length || 0;
-      const capped = ahsLinkReportLimit !== null && links.length >= ahsLinkReportLimit;
-      const linkCount = capped ? `at least ${links.length}` : `${links.length}`;
-      const summary = document.createElement('p');
-      summary.textContent = `${linkCount} AHS graph links shown: AHS_RCC ${ahsRccCount}. `
-        + `${capped ? `Search capped at ${ahsLinkReportLimit}; raise the cap for more. ` : ''}`
-        + `One-digit AHS formations are skipped because Strong Links already owns those.`;
-      ahsLinkResultsEl.appendChild(summary);
-
-      const list = document.createElement('ul');
-      const visible = links.slice(0, 200);
-      for (const link of visible) {
-        const item = document.createElement('li');
-        const bridge = bridgeText(link.C);
-        item.textContent = `${link.linkTypeName}: RCC_L ${ahsEndpointText(link.RCC_Left)} / `
-          + `${ahsNodeText(link.HS_L)} / ${bridge} / ${ahsNodeText(link.HS_R)} / `
-          + `RCC_R ${ahsEndpointText(link.RCC_Right)}; `
-          + `L-elims ${ahsEndpointElims(link.RCC_Left)}; R-elims ${ahsEndpointElims(link.RCC_Right)}`;
-        list.appendChild(item);
-      }
-
-      if (links.length > visible.length) {
-        const more = document.createElement('li');
-        more.textContent = `Showing ${visible.length} of ${links.length} records.`;
-        list.appendChild(more);
-      }
-
-      ahsLinkResultsEl.appendChild(list);
+      focusMap();
     }
 
     function selectStrongLink(index) {
@@ -3454,6 +3782,7 @@
       renderBoard();
       renderStrongLinkReport();
       setStatus(`Strong Link ${index + 1} selected.`, 'ok');
+      focusMap();
     }
 
     function strongLinkDisplayGroups() {
@@ -3493,8 +3822,7 @@
         'BIVALVE (Size-1 ALS)',
       ];
       const summary = document.createElement('p');
-      summary.textContent = `${links.length} unique strong links: `
-        + `${typeNames.map((name, index) => `${name} ${counts[index]}`).join(', ')}.`;
+      summary.textContent = `${links.length} unique strong links.`;
       strongLinkResultsEl.appendChild(summary);
 
       const buttonRow = document.createElement('div');
@@ -3662,6 +3990,10 @@
       const removals = fish.cells.map(cell => ({ cell, digit: fish.digit }));
       return {
         tech: 'fish',
+        name: fish.name,
+        category: fish.category,
+        size: fish.size,
+        k: fish.k,
         desc: `${fish.name}: (${fish.digit}) ${core.sectorGroupName(fish.baseSectors)} / `
           + `${core.sectorGroupName(fish.coverSectors)} => ${core.formatRemovals(removals)}`,
         elim: { items: removals },
@@ -3693,6 +4025,7 @@
       renderBoard();
       renderFishReport();
       setStatus(`Fish ${index + 1} selected.`, 'ok');
+      focusMap();
     }
 
     function subsetSizeName(size) {
@@ -3801,6 +4134,7 @@
       renderBoard();
       renderGenericSubsetReport(kind);
       setStatus(`${kind === 'hidden' ? 'Hidden' : 'Naked'} subset ${index + 1} selected.`, 'ok');
+      focusMap();
     }
 
     function renderNakedSubsetReport() {
@@ -3812,9 +4146,555 @@
     }
 
     function chainText(chain, verbose = false) {
-      if (verbose && core.formatChainVerbose) return core.formatChainVerbose(chain);
-      if (core.formatChainEureka) return core.formatChainEureka(chain);
-      return core.formatChain(chain);
+      const text = verbose && core.formatChainVerbose
+        ? core.formatChainVerbose(chain)
+        : core.formatChainEureka
+          ? core.formatChainEureka(chain)
+          : core.formatChain(chain);
+      const structureName = String(chain.structureName || '');
+      const prefix = 'AIC + ALS - ';
+      if (!structureName.startsWith(prefix)) return text;
+
+      const namedStructure = structureName.slice(prefix.length);
+      if (!namedStructure || /^(?:Ring|Chain)$/i.test(namedStructure)) return text;
+      const displayStructure = `ALS - ${namedStructure}`;
+      return text.startsWith(`${structureName}:`)
+        ? `${displayStructure}:${text.slice(structureName.length + 1)}`
+        : text.replace(structureName, displayStructure);
+    }
+
+    function folderChainText(chain, folder) {
+      const text = chainText(chain);
+      if (folder.family !== 'B.A.R.N.S') return text;
+
+      const separator = text.indexOf(':');
+      const body = separator >= 0 ? text.slice(separator + 1).trim() : text;
+      if (folder.wing === 'Transport') return `${folder.rank}: ${body}`;
+      return `${folder.rank} ${folder.wing}: ${body}`;
+    }
+
+    function chainFolderInfo(chain) {
+      if (chain.structureFamily && chain.structureWing && chain.structureRank) {
+        return {
+          family: chain.structureFamily,
+          wing: chain.structureWing,
+          rank: chain.structureRank,
+          subclass: chain.structureSubclass || chain.structureName || null,
+        };
+      }
+
+      const name = String(chain.structureName || (chain.isRing ? 'Ring' : 'AIC'));
+      const aicAlsMatch = name.match(/^AIC\s*\+\s*ALS\s*-\s*(.+)$/i);
+      if (aicAlsMatch) {
+        return {
+          family: 'AIC + ALS',
+          wing: aicAlsMatch[1].trim(),
+          rank: null,
+          subclass: null,
+        };
+      }
+      const match = name.match(/^(.*?)(L|M|H)\((\d+)\)\s*-\s*(.+)$/i);
+      if (!match) return { family: name, wing: null, rank: null, subclass: null };
+
+      const prefix = match[1].trim().replace(/\s*-\s*$/, '');
+      const rankType = match[2].toUpperCase();
+      const rank = match[3];
+      const label = match[4].trim();
+      const kind = /ring/i.test(label) || chain.isRing ? 'Ring' : 'Wing';
+      const designator = prefix ? `${prefix} ${rankType}` : null;
+      const structuralSubclass = label.toLowerCase() === kind.toLowerCase() ? null : label;
+      const subclass = designator
+        ? structuralSubclass ? `${designator} - ${structuralSubclass}` : designator
+        : structuralSubclass;
+      return {
+        family: rankType === 'M'
+          ? 'M - Wings | Rings'
+          : rankType === 'H'
+            ? 'Hybrid - Wing | Ring'
+            : 'Local - Wing | Ring',
+        wing: kind,
+        rank: `${rankType}(${rank})`,
+        subclass,
+      };
+    }
+
+    function chainEriCount(chain) {
+      const steps = chain.steps || [];
+      if (!steps.length) return 0;
+
+      const allDigits = new Set();
+      let count = 0;
+
+      for (const step of steps) {
+        const names = Array.isArray(step.linkTypeNames)
+          ? step.linkTypeNames
+          : [step.linkTypeName];
+        const nodeDigits = new Set([
+          ...(step.entry?.digits || []),
+          ...(step.exit?.digits || []),
+        ]);
+        for (const digit of [
+          ...nodeDigits,
+          step.weakDigit,
+          step.weakFromDigit,
+          step.weakToDigit,
+        ]) {
+          if (Number.isInteger(digit)) allDigits.add(digit);
+        }
+        const isSingleDigitEri = nodeDigits.size === 1
+          && names.some(name => String(name || '').toUpperCase() === 'ERI');
+        if (!isSingleDigitEri) return 0;
+        count += 1;
+      }
+
+      return allDigits.size === 1 ? count : 0;
+    }
+
+    function xChainType(chain, eriCount) {
+      const name = String(chain.structureName || '').replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS|ALC)\s*-\s*/i, '');
+      if (eriCount > 0) {
+        return 'Empty Rectangle';
+      }
+      if (/^(?:Finned|Sashimi) X-Wing$/i.test(name)) return 'Finned | Sashimi X-Wing';
+      if (/^(?:2-String Kite|Skyscraper|X-Wing)$/i.test(name)) return name;
+      return null;
+    }
+
+    function wChainType(chain) {
+      const name = String(chain.structureName || '')
+        .replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS|ALC)\s*-\s*/i, '');
+      if (/^W-Wing$/i.test(name)) return 'Wing';
+      if (/^W-Ring$/i.test(name)) return 'Ring';
+      if (/^Transport$/i.test(name)) return 'Transport';
+      return null;
+    }
+
+    function splitChainType(chain) {
+      const steps = chain.steps || [];
+      if (steps.length !== 3) return null;
+      const isStrong = step => step.family === 'SL'
+        && step.linkType !== 4
+        && String(step.linkTypeName || '').toUpperCase() !== 'ALS';
+      return isStrong(steps[0])
+        && steps[1].family === 'ALS'
+        && String(steps[1].linkTypeName || '').toUpperCase() === 'ALS_RCC'
+        && isStrong(steps[2])
+        ? 'Wing'
+        : null;
+    }
+
+    function strongChainType(chain) {
+      const name = String(chain.structureName || '')
+        .replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS|ALC)\s*-\s*/i, '');
+      const match = name.match(/^Strong[- ](Wing|Ring)$/i);
+      return match ? match[1][0].toUpperCase() + match[1].slice(1).toLowerCase() : null;
+    }
+
+    function inversionChainType(chain) {
+      const name = String(chain.structureName || '')
+        .replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS|ALC)\s*-\s*/i, '');
+      return /^i[SWMLH](?:\d+)?-(?:Wing|Ring)$/i.test(name) ? name : null;
+    }
+
+    function alsChainNodes(chain) {
+      const steps = chain.steps || [];
+      if (!steps.length || !steps.every(step =>
+        step.family === 'ALS' && String(step.linkTypeName || '').toUpperCase() === 'ALS_RCC'
+      )) return null;
+
+      // One ALS_RCC record joins two ALS modules. Count the unique modules,
+      // rather than the graph records, so XZ/XY classifications use the
+      // actual ALS node count.
+      const nodes = [];
+      const seen = new Set();
+      for (const step of steps) {
+        const module = step.module;
+        for (const subset of [module?.entrySubset, module?.exitSubset]) {
+          if (!subset) return null;
+          const key = [
+            subset.id ?? '',
+            subset.cells.join(','),
+            subset.digits.join(''),
+          ].join('|');
+          if (!seen.has(key)) {
+            seen.add(key);
+            nodes.push(subset);
+          }
+        }
+      }
+      return nodes.length ? nodes : null;
+    }
+
+    function alsOnlyChainInfo(chain) {
+      const nodes = alsChainNodes(chain);
+      if (!nodes || nodes.length < 2) return null;
+
+      const nodeCount = nodes.length;
+      if (nodeCount === 2) {
+        return {
+          category: 'ALS - XZ rule',
+          subcategory: chain.isRing
+            ? '(2) RCC Rule - Double Linked Rule'
+            : '(1) RCC Rule',
+          subclass: chain.isRing ? 'Ring' : null,
+        };
+      }
+      if (nodeCount === 3) {
+        return {
+          category: 'ALS - XY rule',
+          subcategory: chain.isRing
+            ? '(3) RCC Rule - Triple Link Rule'
+            : '(2) RCC Rule',
+          subclass: chain.isRing ? 'Ring' : 'XY-Wing',
+        };
+      }
+
+      return {
+        category: 'ALS - Chain',
+        subcategory: chain.isRing
+          ? 'N ALS / N RCC Rule'
+          : 'N ALS / N - 1 RCC Rule',
+        subclass: chain.isRing ? 'Ring' : null,
+      };
+    }
+
+    function alsNamedChainInfo(chain) {
+      const match = String(chain.structureName || '').match(/^ALS\s*-\s*(XZ|XY|Chain)$/i);
+      if (!match) return null;
+
+      const name = match[1].toUpperCase();
+      if (name === 'XZ') {
+        return {
+          category: 'ALS - XZ rule',
+          subcategory: chain.isRing
+            ? '(2) RCC Rule - Double Linked Rule'
+            : '(1) RCC Rule',
+          subclass: chain.isRing ? 'Ring' : null,
+        };
+      }
+      if (name === 'XY') {
+        return {
+          category: 'ALS - XY rule',
+          subcategory: chain.isRing
+            ? '(3) RCC Rule - Triple Link Rule'
+            : '(2) RCC Rule',
+          subclass: chain.isRing ? 'Ring' : 'XY-Wing',
+        };
+      }
+      return {
+        category: 'ALS - Chain',
+        subcategory: chain.isRing
+          ? 'N ALS / N RCC Rule'
+          : 'N ALS / N - 1 RCC Rule',
+        subclass: chain.isRing ? 'Ring' : null,
+      };
+    }
+
+    function barnsSizeName(size) {
+      if (!Number.isInteger(size) || size < 1 || size > 26) return null;
+      return 'abcdefghijklmnopqrstuvwxyz'.slice(-size);
+    }
+
+    function barnsChainInfo(chain) {
+      const nodes = alsChainNodes(chain);
+      if (!nodes || nodes.length !== 2) return null;
+
+      const cells = new Set(nodes.flatMap(node => node.cells));
+      const digits = new Set(nodes.flatMap(node => node.digits));
+      if (cells.size !== digits.size) return null;
+
+      const sizeName = barnsSizeName(cells.size);
+      if (!sizeName) return null;
+
+      return {
+        form: chain.isRing ? 'Ring' : 'Wing',
+        sizeName,
+      };
+    }
+
+    function barnsTransportChainInfo(chain) {
+      const steps = chain.steps || [];
+      if (steps.length !== 2) return null;
+
+      const alsSteps = steps.filter(step =>
+        step.family === 'ALS'
+        && String(step.linkTypeName || '').toUpperCase() === 'ALS_RCC'
+      );
+      const strongSteps = steps.filter(step =>
+        step.family === 'SL'
+        && String(step.linkTypeName || '').toUpperCase() !== 'ALS'
+      );
+      if (alsSteps.length !== 1 || strongSteps.length !== 1) return null;
+
+      const module = alsSteps[0].module;
+      const subsets = [module?.entrySubset, module?.exitSubset];
+      if (!subsets.every(subset => subset?.cells?.length && subset?.digits?.length)) {
+        return null;
+      }
+
+      const cells = new Set(subsets.flatMap(subset => subset.cells));
+      const digits = new Set(subsets.flatMap(subset => subset.digits));
+      if (cells.size !== digits.size) return null;
+
+      const sizeName = barnsSizeName(cells.size);
+      if (!sizeName) return null;
+
+      return {
+        form: chain.isRing ? 'Ring' : 'Wing',
+        sizeName,
+      };
+    }
+
+    function alsSizeOneChainInfo(chain) {
+      const nodes = alsChainNodes(chain);
+      if (!nodes || nodes.some(node => node.cells.length !== 1)) return null;
+
+      const nodeDigits = nodes.map(node => [...node.digits].sort((a, b) => a - b));
+      const remotePair = nodeDigits.every(digits =>
+        digits.length === 2
+        && digits.join(',') === nodeDigits[0].join(',')
+      );
+      const breakdown = remotePair
+        ? 'Remote Pair'
+        : nodes.length === 3
+          ? 'XY-Wing'
+          : 'XY-Chain';
+
+      return {
+        breakdown,
+        remotePair,
+        subclass: chain.isRing ? 'Ring' : null,
+      };
+    }
+
+    function hiddenXyChainInfo(chain) {
+      const steps = chain.steps || [];
+      if (steps.length < 2 || !steps.every(step =>
+        step.family === 'SL' && step.linkType === core.BILOCAL
+      )) return null;
+
+      const linkDigits = steps.map(step => {
+        const digits = new Set([
+          ...(step.entry?.digits || []),
+          ...(step.exit?.digits || []),
+        ]);
+        return digits.size === 1 ? [...digits][0] : null;
+      });
+      if (linkDigits.some(digit => !Number.isInteger(digit))) return null;
+
+      const uniqueDigits = new Set(linkDigits);
+      const alternates = uniqueDigits.size === 2
+        && linkDigits.every((digit, index) => index === 0 || digit !== linkDigits[index - 1])
+        && (!chain.isRing || linkDigits[0] !== linkDigits[linkDigits.length - 1]);
+
+      return {
+        remotePair: alternates,
+        form: chain.isRing ? 'Ring' : 'Wing',
+      };
+    }
+
+    function chainFolderInfos(chain) {
+      const eriCount = chainEriCount(chain);
+      const primary = chainFolderInfo(chain);
+      const locations = [];
+      const barnsInfo = barnsChainInfo(chain);
+      const barnsTransportInfo = barnsTransportChainInfo(chain);
+      const hiddenXyInfo = hiddenXyChainInfo(chain);
+
+      // Keep the existing structural folder. ERI chains can also belong to
+      // Local/M/Hybrid folders, so the same chain may have more than one UI location.
+      if ((primary.family === 'AIC + ALS' && primary.wing) || (primary.wing && primary.rank)) {
+        locations.push(primary);
+      }
+
+      const alsInfo = alsOnlyChainInfo(chain) || alsNamedChainInfo(chain);
+      if (alsInfo) {
+        locations.push({
+          family: 'Almost Locked Sets',
+          wing: alsInfo.category,
+          rank: alsInfo.subcategory,
+          subclass: alsInfo.subclass,
+        });
+      }
+
+      if (barnsInfo) {
+        locations.push({
+          family: 'B.A.R.N.S',
+          wing: barnsInfo.form,
+          rank: barnsInfo.sizeName,
+          subclass: null,
+        });
+      }
+
+      if (barnsTransportInfo) {
+        locations.push({
+          family: 'B.A.R.N.S',
+          wing: 'Transport',
+          rank: `T - ${barnsTransportInfo.sizeName} ${barnsTransportInfo.form}`,
+          subclass: null,
+        });
+      }
+
+      if (hiddenXyInfo) {
+        locations.push({
+          family: 'Hidden - XY chain',
+          wing: hiddenXyInfo.remotePair ? 'Hidden Remote Pair' : 'Chain',
+          rank: hiddenXyInfo.form,
+          subclass: null,
+        });
+      }
+
+      const xyChainInfo = alsSizeOneChainInfo(chain);
+      if (xyChainInfo) {
+        if (!xyChainInfo.remotePair) {
+          locations.push({
+            family: 'Almost Locked Sets',
+            wing: 'XY - Chain',
+            rank: xyChainInfo.breakdown,
+            subclass: xyChainInfo.subclass,
+          });
+        } else {
+          locations.push({
+            family: 'Remote Pair',
+            wing: chain.isRing ? 'Ring' : 'Wing',
+            rank: null,
+            subclass: null,
+          });
+        }
+      }
+
+      if (eriCount > 0) {
+        locations.push({
+          family: 'ERI - Chain',
+          wing: chain.isRing ? 'Ring' : 'Wing',
+          rank: `ERI(${eriCount})`,
+          subclass: null,
+        });
+      }
+
+      const xType = xChainType(chain, eriCount);
+      if (xType) {
+        const isEriFamily = xType === 'Empty Rectangle';
+        const name = String(chain.structureName || '')
+          .replace(/^\s*(?:ALS|AHS|ALC)\s*-\s*/i, '');
+        const finnedSashimi = name.match(/^(Finned|Sashimi) X-Wing$/i);
+        const eriSubclass = /^(?:Dual Empty Rectangle|Rec'T Kite)$/i.test(name)
+          ? name
+          : null;
+        locations.push({
+          family: 'X - Chains',
+          wing: xType,
+          rank: finnedSashimi
+            ? `${finnedSashimi[1][0].toUpperCase()}${finnedSashimi[1].slice(1).toLowerCase()} X-Wing`
+            : isEriFamily && eriSubclass
+              ? eriSubclass
+              : isEriFamily && eriCount > 0 ? `ERI(${eriCount})` : null,
+          subclass: null,
+        });
+      }
+
+      const wType = wChainType(chain);
+      if (wType) {
+        locations.push({
+          family: 'W - Wing | Ring',
+          wing: wType,
+          rank: null,
+          subclass: null,
+        });
+      }
+
+      const splitType = splitChainType(chain);
+      if (splitType) {
+        locations.push({
+          family: 'Split - Wing',
+          wing: splitType,
+          rank: null,
+          subclass: null,
+        });
+      }
+
+      const strongType = strongChainType(chain);
+      if (strongType) {
+        locations.push({
+          family: 'Strong Wing | Ring',
+          wing: strongType,
+          rank: null,
+          subclass: null,
+        });
+      }
+
+      const inversionType = inversionChainType(chain);
+      if (inversionType) {
+        locations.push({
+          family: 'Inversion',
+          wing: inversionType,
+          rank: null,
+          subclass: null,
+        });
+      }
+
+      if (!locations.length) locations.push(primary);
+
+      const seen = new Set();
+      return locations.filter(location => {
+        const key = [location.family, location.wing, location.rank, location.subclass].join('|');
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
+    function appendChainList(container, entries) {
+      const list = document.createElement('ul');
+      list.className = 'chain-list';
+      for (const entry of entries) {
+        const { chain, index } = entry;
+        const item = document.createElement('li');
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'chain-result';
+        if (index === selectedChainIndex) button.classList.add('selected');
+        button.textContent = `${index + 1}. ${entry.displayName || chainText(chain)}`;
+        if (core.formatChainVerbose) button.title = chainText(chain, true);
+        button.addEventListener('click', () => selectChain(index));
+        item.appendChild(button);
+        list.appendChild(item);
+      }
+      container.appendChild(list);
+    }
+
+    function appendChainSubclasses(container, entries) {
+      const subclassGroups = new Map();
+      for (const entry of entries) {
+        const subclass = entry.subclass || '';
+        const subclassEntries = subclassGroups.get(subclass) || [];
+        subclassEntries.push(entry);
+        subclassGroups.set(subclass, subclassEntries);
+      }
+
+      if (subclassGroups.size === 1 && subclassGroups.has('')) {
+        appendChainList(container, entries);
+        return;
+      }
+
+      const subclasses = document.createElement('div');
+      subclasses.className = 'chain-subcategories';
+      for (const [subclass, subclassEntries] of subclassGroups) {
+        const subcategory = document.createElement('details');
+        subcategory.className = 'chain-subcategory';
+        subcategory.open = subclassEntries.some(({ index }) => index === selectedChainIndex);
+        const subSummary = document.createElement('summary');
+        const subName = document.createElement('strong');
+        subName.textContent = subclass || 'General';
+        const subCount = document.createElement('span');
+        subCount.className = 'chain-category-count';
+        subCount.textContent = `${subclassEntries.length} ${subclassEntries.length === 1 ? 'chain' : 'chains'}`;
+        subSummary.append(subName, subCount);
+        subcategory.appendChild(subSummary);
+        appendChainList(subcategory, subclassEntries);
+        subclasses.appendChild(subcategory);
+      }
+      container.appendChild(subclasses);
     }
 
     function chainSafetyFlags(chain) {
@@ -3975,6 +4855,7 @@
       renderHiddenSubsetReport();
       renderChainReport();
       setStatus(`Chain ${index + 1} selected.`, 'ok');
+      focusMap();
     }
 
     function renderChainReport() {
@@ -3992,7 +4873,7 @@
       const flagged = flaggedChainEntries();
       const summary = document.createElement('p');
       summary.textContent = `${chains.length} chains with eliminations. `
-        + `Links: strong ${stats.strongLinks}; ALS ${stats.alsLinks || 0}; AHS ${stats.ahsLinks || 0}; `
+        + `Links: strong ${stats.strongLinks}; ALS ${stats.alsLinks || 0}; `
         + `views ${stats.directedViews}, walked ${stats.statesVisited}, `
         + `NAND checks ${stats.transitionsChecked}, accepted ${stats.transitionsAccepted}, reports ${stats.resultAttempts || 0}`
         + `${stats.duplicatesSuppressed ? `, duplicates ${stats.duplicatesSuppressed}` : ''}`
@@ -4003,12 +4884,44 @@
 
       const visible = chains.slice(0, 200);
       const groups = new Map();
+      const folderMemberships = new Map();
       for (let index = 0; index < visible.length; index++) {
         const chain = visible[index];
-        const name = chain.structureName || (chain.isRing ? 'Ring' : 'AIC');
-        const group = groups.get(name) || [];
-        group.push({ chain, index });
-        groups.set(name, group);
+        for (const folder of chainFolderInfos(chain)) {
+          const folderKey = [folder.family, folder.wing, folder.rank, folder.subclass]
+            .map(value => value ?? '')
+            .join('|');
+          const folderLabel = [folder.family, folder.wing, folder.rank, folder.subclass]
+            .filter(Boolean)
+            .join(' / ');
+          const memberships = folderMemberships.get(index) || [];
+          if (!memberships.some(location => location.key === folderKey)) {
+            memberships.push({ key: folderKey, label: folderLabel });
+            folderMemberships.set(index, memberships);
+          }
+          const group = groups.get(folder.family) || [];
+          group.push({
+            chain,
+            index,
+            folderKey,
+            wing: folder.wing,
+            rank: folder.rank,
+            subclass: folder.subclass,
+            displayName: folderChainText(chain, folder),
+          });
+          groups.set(folder.family, group);
+        }
+      }
+
+      const selectedFolderKeys = new Set(
+        (folderMemberships.get(selectedChainIndex) || []).map(location => location.key),
+      );
+      const selectedLocations = folderMemberships.get(selectedChainIndex) || [];
+      if (selectedLocations.length) {
+        const locations = document.createElement('p');
+        locations.className = 'chain-memberships';
+        locations.textContent = `Selected chain folders: ${selectedLocations.map(location => location.label).join(' | ')}`;
+        chainResultsEl.appendChild(locations);
       }
 
       const categories = document.createElement('div');
@@ -4016,7 +4929,8 @@
       for (const [name, entries] of groups) {
         const category = document.createElement('details');
         category.className = 'chain-category';
-        category.open = true;
+        // A chain can have several folder locations; open every selected path.
+        category.open = entries.some(({ folderKey }) => selectedFolderKeys.has(folderKey));
 
         const categorySummary = document.createElement('summary');
         const categoryName = document.createElement('strong');
@@ -4028,21 +4942,69 @@
         categorySummary.append(categoryName, categoryCount);
         category.appendChild(categorySummary);
 
-        const list = document.createElement('ul');
-        list.className = 'chain-list';
-        for (const { chain, index } of entries) {
-          const item = document.createElement('li');
-          const button = document.createElement('button');
-          button.type = 'button';
-          button.className = 'chain-result';
-          if (index === selectedChainIndex) button.classList.add('selected');
-          button.textContent = `${index + 1}. ${chainText(chain)}`;
-          if (core.formatChainVerbose) button.title = core.formatChainVerbose(chain);
-          button.addEventListener('click', () => selectChain(index));
-          item.appendChild(button);
-          list.appendChild(item);
+        const wingGroups = new Map();
+        for (const entry of entries) {
+          const wingEntries = wingGroups.get(entry.wing || '') || [];
+          wingEntries.push(entry);
+          wingGroups.set(entry.wing || '', wingEntries);
         }
-        category.appendChild(list);
+
+        if (wingGroups.size === 1 && wingGroups.has('')) {
+          appendChainList(category, entries);
+        } else {
+          const wings = document.createElement('div');
+          wings.className = 'chain-subcategories';
+          for (const [wing, wingEntries] of wingGroups) {
+            if (!wing) {
+              appendChainList(wings, wingEntries);
+              continue;
+            }
+
+            const wingPanel = document.createElement('details');
+            wingPanel.className = 'chain-subcategory';
+            wingPanel.open = wingEntries.some(({ folderKey }) => selectedFolderKeys.has(folderKey));
+            const wingSummary = document.createElement('summary');
+            const wingName = document.createElement('strong');
+            wingName.textContent = wing;
+            const wingCount = document.createElement('span');
+            wingCount.className = 'chain-category-count';
+            wingCount.textContent = `${wingEntries.length} ${wingEntries.length === 1 ? 'chain' : 'chains'}`;
+            wingSummary.append(wingName, wingCount);
+            wingPanel.appendChild(wingSummary);
+
+            const rankGroups = new Map();
+            for (const entry of wingEntries) {
+              const rankEntries = rankGroups.get(entry.rank || '') || [];
+              rankEntries.push(entry);
+              rankGroups.set(entry.rank || '', rankEntries);
+            }
+            const ranks = document.createElement('div');
+            ranks.className = 'chain-subcategories';
+            for (const [rank, rankEntries] of rankGroups) {
+              if (!rank) {
+                appendChainList(ranks, rankEntries);
+                continue;
+              }
+
+              const rankPanel = document.createElement('details');
+              rankPanel.className = 'chain-subcategory';
+              rankPanel.open = rankEntries.some(({ folderKey }) => selectedFolderKeys.has(folderKey));
+              const rankSummary = document.createElement('summary');
+              const rankName = document.createElement('strong');
+              rankName.textContent = rank;
+              const rankCount = document.createElement('span');
+              rankCount.className = 'chain-category-count';
+              rankCount.textContent = `${rankEntries.length} ${rankEntries.length === 1 ? 'chain' : 'chains'}`;
+              rankSummary.append(rankName, rankCount);
+              rankPanel.appendChild(rankSummary);
+              appendChainSubclasses(rankPanel, rankEntries);
+              ranks.appendChild(rankPanel);
+            }
+            wingPanel.appendChild(ranks);
+            wings.appendChild(wingPanel);
+          }
+          category.appendChild(wings);
+        }
         categories.appendChild(category);
       }
 
@@ -4061,6 +5023,7 @@
         activeStep,
         lastRemoved: lastRemoved.map(item => ({ ...item })),
         logEntries: logEntries.map(entry => ({ ...entry })),
+        ratingReport: ratingReport ? { ...ratingReport } : null,
       };
     }
 
@@ -4070,20 +5033,20 @@
       activeStep = state.activeStep;
       lastRemoved = state.lastRemoved.map(item => ({ ...item }));
       logEntries = state.logEntries.map(entry => ({ ...entry }));
+      ratingReport = state.ratingReport ? { ...state.ratingReport } : null;
     }
 
-    function resetCandidates(message = 'Candidates reset from the current puzzle.', startingCandidates = null) {
+    function resetCandidates(message = 'Candidates reset from the current puzzle.', startingCandidates = null, nextRating = null) {
       cand = startingCandidates ? core.cloneCandidates(startingCandidates) : core.allCandidates(puzzle);
       cycle = 0;
       activeStep = null;
       lastRemoved = [];
       logEntries = [];
+      ratingReport = nextRating;
       pomReport = null;
       alsReport = null;
       alsLinkReport = null;
       ahsReport = null;
-      ahsLinkReport = null;
-      ahsLinkReportLimit = null;
       selectedAlsDof = null;
       selectedAlsId = null;
       openAlsSizeGroups.clear();
@@ -4143,6 +5106,9 @@
 
     function nextCycle() {
       const changed = applyNextCycle();
+      if (changed && ratingReport?.source !== 'generated') {
+        ratingReport = ratingFromLog(logEntries, candidateGridIsSolved(cand, puzzle));
+      }
       render();
       return changed;
     }
@@ -4178,6 +5144,12 @@
     function runAll() {
       let ran = 0;
       while (ran < 100 && applyNextCycle()) ran += 1;
+      if (ratingReport?.source !== 'generated') {
+        ratingReport = ratingFromLog(logEntries, candidateGridIsSolved(cand, puzzle));
+      }
+      if (solution && !candidateGridIsSolved(cand, puzzle)) {
+        setStatus('Run All stopped: retained logic stalled before the puzzle was solved.', 'warn');
+      }
       if (ran === 100) setStatus('Stopped at 100 cycles.', 'warn');
       render();
     }
@@ -4270,7 +5242,7 @@
           renderChainReport();
           const count = core.flattenAlsLinks(alsLinkReport).length;
           setStatus(
-            `ALS link build complete. ${count} paired ALS modules. Size-1 bivalue ALS nodes are in Strong Links as ALS. Grid and solving history unchanged.`,
+            `ALS link build complete. ${count} paired ALS modules. Size-1 bivalve ALS nodes are in Strong Links as ALS. Grid and solving history unchanged.`,
             'ok',
           );
         } catch (error) {
@@ -4298,12 +5270,9 @@
           selectedAhsDof = null;
           selectedAhsId = null;
           openAhsSizeGroups.clear();
-          ahsLinkReport = null;
-          ahsLinkReportLimit = null;
           chainReport = null;
           renderAhsReport();
           openReportPanel(ahsResultsEl);
-          renderAhsLinkReport();
           renderChainReport();
           setStatus(`HS / AHS build complete. ${ahsReport.length} records. Grid and solving history unchanged.`, 'ok');
         } catch (error) {
@@ -4311,57 +5280,10 @@
           selectedAhsDof = null;
           selectedAhsId = null;
           openAhsSizeGroups.clear();
-          ahsLinkReport = null;
-          ahsLinkReportLimit = null;
           chainReport = null;
           renderAhsReport();
-          renderAhsLinkReport();
           renderChainReport();
           setStatus('Could not build HS / AHS records.', 'warn');
-        } finally {
-          setBusy(false);
-        }
-      }, 20);
-    }
-
-    function runAhsLinkBuild() {
-      setBusy(true);
-      setStatus('Building AHS graph links...');
-
-      setTimeout(() => {
-        try {
-          const sourceAhs = ahsReport || core.ahsConstructor(cand, {
-            maxSize: 8,
-            maxSizeFox: 7,
-          });
-          if (!ahsReport) {
-            ahsReport = sourceAhs;
-            renderAhsReport();
-          }
-          ahsLinkReport = core.buildAhsLinks(cand, {
-            ahsList: sourceAhs,
-            minDof: 1,
-            maxDof: 3,
-            strictSingleCommon: false,
-            maxLinks: 25000,
-          });
-          ahsLinkReportLimit = 25000;
-          chainReport = null;
-          renderAhsLinkReport();
-          openReportPanel(ahsLinkResultsEl);
-          renderChainReport();
-          const count = core.flattenAhsLinks(ahsLinkReport).length;
-          setStatus(
-            `AHS link build complete. ${count} paired AHS modules shown from the capped inspection run. One-digit AHS formations stay in Strong Links. Grid and solving history unchanged.`,
-            'ok',
-          );
-        } catch (error) {
-          ahsLinkReport = null;
-          ahsLinkReportLimit = null;
-          chainReport = null;
-          renderAhsLinkReport();
-          renderChainReport();
-          setStatus('Could not build AHS graph links.', 'warn');
         } finally {
           setBusy(false);
         }
@@ -4484,7 +5406,6 @@
       setTimeout(() => {
         try {
           const includeAlsRcc = chainAlsRccEl.checked;
-          const includeAhsRcc = chainAhsRccEl.checked;
           const strongLinkTypes = chainStrongTypeEls
             .map((element, index) => element.checked ? index : null)
             .filter(index => index !== null);
@@ -4498,33 +5419,15 @@
               strictSingleCommon: true,
               maxLinks: 5000,
             }) : null;
-          ahsReport = includeAhsRcc ? core.ahsConstructor(cand, {
-              maxSize: 8,
-              maxSizeFox: 7,
-            }) : null;
           selectedAhsId = null;
-          ahsLinkReport = includeAhsRcc ? core.buildAhsLinks(cand, {
-              ahsList: ahsReport,
-              strongLinkSet: strongLinkReport,
-              minDof: 1,
-              maxDof: 3,
-              strictSingleCommon: false,
-            maxLinks: 5000,
-          }) : null;
-          ahsLinkReportLimit = includeAhsRcc ? 5000 : null;
           renderAlsReport();
           renderAlsLinkReport();
-          renderAhsReport();
-          renderAhsLinkReport();
 
           chainReport = core.findAicChains(cand, {
             strongLinkSet: strongLinkReport,
             alsList: alsReport,
             alsLinkSet: alsLinkReport,
-            ahsList: ahsReport,
-            ahsLinkSet: ahsLinkReport,
             includeAls: includeAlsRcc,
-            includeAhs: includeAhsRcc,
             strongLinkTypes,
             maxDepth: Number(chainDepthEl.value) || 6,
             maxChains: 5000,
@@ -4534,7 +5437,6 @@
             maxQueue: 300000,
             maxBranching: 500,
             maxAlsLinks: 5000,
-            maxAhsLinks: 5000,
           });
 
           selectedChainIndex = chainReport.chains.length ? 0 : null;
@@ -4549,14 +5451,12 @@
           setStatus(
             `Chain BFS complete. ${chains.length} chains with eliminations from ${stats.graphLinks} graph links`
               + ` (strong ${strongLinkTypes.map(type => type + 1).join(',') || 'off'}`
-              + `, ALS_RCC ${includeAlsRcc ? 'on' : 'off'}, AHS_RCC ${includeAhsRcc ? 'on' : 'off'}`
-              + `, AHS links ${stats.ahsLinks || 0})`
+              + `, ALS_RCC ${includeAlsRcc ? 'on' : 'off'})`
               + `${stats.truncated ? `; stopped at ${stats.stopReason}` : ''}. Grid and solving history unchanged.`,
             chains.length ? 'ok' : 'warn',
           );
         } catch (error) {
           chainReport = null;
-          ahsLinkReportLimit = null;
           renderChainReport();
           setStatus('Could not walk chains.', 'warn');
         } finally {
@@ -4567,18 +5467,59 @@
 
     function generatePuzzle() {
       const givens = Number(givensEl.value) || 30;
+      const targetCategory = generationDifficultyEl.value;
       const requestToken = ++generationToken;
       setBusy(true);
-      setStatus('Generating...');
+      setStatus(targetCategory === 'any'
+        ? 'Generating...'
+        : `Generating a ${targetCategory} puzzle...`);
 
       setTimeout(() => {
         if (requestToken !== generationToken) return;
-        const result = core.generate(givens);
-        puzzle = result.puzzle;
-        solution = result.solution;
-        hideSolution();
-        resetCandidates('Generated a unique puzzle and rebuilt candidates.');
-        setBusy(false);
+        const quickGeneration = targetCategory === 'any';
+        const maxRatingAttempts = quickGeneration ? 1 : 1000;
+        let result = null;
+        let rating = null;
+        let attempts = 0;
+
+        const tryGeneration = () => {
+          if (requestToken !== generationToken) return;
+
+          attempts += 1;
+          result = core.generate(givens);
+          rating = rateGeneratedPuzzle(result.puzzle, result.solution);
+          const matches = quickGeneration || rating.category === targetCategory;
+
+          if (!matches) {
+            if (attempts >= maxRatingAttempts) {
+              setBusy(false);
+              setStatus(
+                `Could not generate a ${targetCategory} puzzle after ${attempts} attempts. Current puzzle unchanged.`,
+                'warn',
+              );
+              return;
+            }
+            setStatus(`Generating a ${targetCategory} puzzle... attempt ${attempts}`);
+            setTimeout(tryGeneration, 0);
+            return;
+          }
+
+          puzzle = result.puzzle;
+          solution = result.solution;
+          hideSolution();
+          resetCandidates('Generated a unique puzzle and rebuilt candidates.', null, rating);
+          if (targetCategory !== 'any') {
+            setStatus(`Generated a ${targetCategory} puzzle after ${attempts} attempt${attempts === 1 ? '' : 's'}.`, 'ok');
+          } else if (!rating.solved) {
+            setStatus(
+              `Generated a unique puzzle, but the retained logic stalled after ${rating.stalledAfter || 'no basic move'}.`,
+              'warn',
+            );
+          }
+          setBusy(false);
+        };
+
+        tryGeneration();
       }, 20);
     }
 
@@ -4653,7 +5594,6 @@
     alsBuildEl.addEventListener('click', runAlsBuild);
     alsLinkBuildEl.addEventListener('click', runAlsLinkBuild);
     ahsBuildEl.addEventListener('click', runAhsBuild);
-    ahsLinkBuildEl.addEventListener('click', runAhsLinkBuild);
     strongLinkBuildEl.addEventListener('click', runStrongLinkBuild);
     for (const [view, button] of Object.entries(gridViewButtons)) {
       button.addEventListener('click', () => setGridView(view));
@@ -4680,6 +5620,12 @@
       });
     }
     loadEl.addEventListener('click', loadPuzzle);
+    for (const button of document.querySelectorAll('[data-example-puzzle]')) {
+      button.addEventListener('click', () => {
+        inputEl.value = button.dataset.examplePuzzle;
+        loadPuzzle();
+      });
+    }
 
     initFishSettings();
     renderGridViewHeaders();
