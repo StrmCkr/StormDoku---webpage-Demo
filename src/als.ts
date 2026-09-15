@@ -1,4 +1,4 @@
-import { Bset, Cset, Rset } from './cardinals';
+import { UNITS } from './cardinals';
 import {
   candidateDigits,
   combinations,
@@ -34,7 +34,6 @@ export interface AlsBuilderOptions {
   sizeLimit?: boolean;
 }
 
-const UNITS: number[][] = [...Rset, ...Cset, ...Bset];
 const DUPLICATES_A = new Set([9, 10, 17, 30, 31, 35, 42, 43, 44]);
 const DUPLICATES_B = new Set([45, 109, 128]);
 const DUPLICATES_C = new Set([0, 1, 2, 3, 4, 5, 6, 7, 8]);

@@ -860,18 +860,36 @@
     return null;
   }
 
+  function moveTypeEnabled(enabledTypes, type) {
+    if (!enabledTypes) return true;
+    if (typeof enabledTypes.has === 'function') return enabledTypes.has(type);
+    return Array.isArray(enabledTypes) && enabledTypes.includes(type);
+  }
+
+  function fishMoveType(step) {
+    const size = Number(step?.size);
+    const k = Number(step?.k || 0);
+    if (k > 0) return `${size}x${size}+k-fish`;
+    return ({ 2: 'x-wing', 3: 'swordfish', 4: 'jellyfish' })[size] || null;
+  }
+
+  function fishStepAllowed(step, enabledTypes) {
+    return !!step && moveTypeEnabled(enabledTypes, fishMoveType(step));
+  }
+
   function fishStepM(cand, sizes = [2, 3, 4], options = {}) {
     const { M } = buildSpaces(cand);
     const omissionFishSearch = options.omissionFishSearch || global.StormDoku.omissionFishStep;
+    const enabledTypes = options.enabledTechniques;
 
     for (const k of sizes) {
       for (let digit = 1; digit <= 9; digit++) {
         const d0 = digit - 1;
         const rowFish = fishByRows(M, d0, digit, k);
-        if (rowFish) return rowFish;
+        if (fishStepAllowed(rowFish, enabledTypes)) return rowFish;
 
         const colFish = fishByCols(M, d0, digit, k);
-        if (colFish) return colFish;
+        if (fishStepAllowed(colFish, enabledTypes)) return colFish;
       }
 
       const omissionFish = omissionFishSearch?.(cand, [k], {
@@ -879,7 +897,7 @@
         minSize: k,
         maxSize: k,
       });
-      if (omissionFish) return omissionFish;
+      if (fishStepAllowed(omissionFish, enabledTypes)) return omissionFish;
     }
 
     return null;
@@ -979,43 +997,52 @@
     return withActualEliminations(boxLineStepM(cand), cand);
   }
 
-  function subsetStepForSizes(cand, sizes) {
+  function subsetStepForSizes(cand, sizes, enabledTypes = null) {
     for (const k of sizes) {
-      const genericHidden = global.StormDoku.genericSubsetStep?.(cand, {
-        kind: 'hidden',
-        size: k,
-      });
-      if (genericHidden) return genericHidden;
+      const hiddenType = HIDDEN_TECH[k];
+      if (moveTypeEnabled(enabledTypes, hiddenType)) {
+        const genericHidden = global.StormDoku.genericSubsetStep?.(cand, {
+          kind: 'hidden',
+          size: k,
+        });
+        if (genericHidden) return genericHidden;
 
-      const hidden = hiddenSubsetStep(cand, k);
-      if (hidden) return hidden;
+        const hidden = hiddenSubsetStep(cand, k);
+        if (hidden) return hidden;
+      }
 
-      const genericNaked = global.StormDoku.genericSubsetStep?.(cand, {
-        kind: 'naked',
-        size: k,
-      });
-      if (genericNaked) return genericNaked;
+      const nakedType = NAKED_TECH[k];
+      if (moveTypeEnabled(enabledTypes, nakedType)) {
+        const genericNaked = global.StormDoku.genericSubsetStep?.(cand, {
+          kind: 'naked',
+          size: k,
+        });
+        if (genericNaked) return genericNaked;
 
-      const naked = withActualEliminations(nakedSubsetStep(cand, k), cand);
-      if (naked) return naked;
+        const naked = withActualEliminations(nakedSubsetStep(cand, k), cand);
+        if (naked) return naked;
+      }
     }
 
     return null;
   }
 
-  function subsetStep(cand) {
-    return subsetStepForSizes(cand, [1, 2, 3, 4]);
+  function subsetStep(cand, options = {}) {
+    return subsetStepForSizes(cand, [1, 2, 3, 4], options.enabledTechniques);
   }
 
   function subsetOrFishStep(cand, fishOptions = {}) {
-    const singles = subsetStepForSizes(cand, [1]);
+    const enabledTypes = fishOptions.enabledTechniques;
+    const singles = subsetStepForSizes(cand, [1], enabledTypes);
     if (singles) return singles;
 
-    const boxLine = boxLineStep(cand);
-    if (boxLine) return boxLine;
+    if (moveTypeEnabled(enabledTypes, 'box-line')) {
+      const boxLine = boxLineStep(cand);
+      if (boxLine) return boxLine;
+    }
 
     for (const size of [2, 3, 4]) {
-      const subset = subsetStepForSizes(cand, [size]);
+      const subset = subsetStepForSizes(cand, [size], enabledTypes);
       if (subset) return subset;
 
       const fish = fishStep(cand, [size], fishOptions);

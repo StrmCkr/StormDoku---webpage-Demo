@@ -947,7 +947,16 @@
       maxSize: sizes[sizes.length - 1],
     });
 
-    const report = reports[0];
+    const enabledTypes = options.enabledTechniques;
+    const fishTypeForReport = report => {
+      const size = Number(report?.size);
+      const k = Number(report?.k || 0);
+      if (k > 0) return `${size}x${size}+k-fish`;
+      return ({ 2: 'x-wing', 3: 'swordfish', 4: 'jellyfish' })[size] || null;
+    };
+    const isEnabled = type => !enabledTypes
+      || (typeof enabledTypes.has === 'function' ? enabledTypes.has(type) : enabledTypes.includes(type));
+    const report = reports.find(item => isEnabled(fishTypeForReport(item)));
     if (!report) return null;
 
     const items = report.cells.map(cell => ({ cell, digit: report.digit }));

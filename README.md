@@ -52,7 +52,8 @@ the candidate grid itself may be useful while testing.
 
 - `Load` parses the input and checks the puzzle when possible.
 - `Generate` creates a unique puzzle. The difficulty selector can request
-  `Extremely Easy`, `Very Easy`, `Modestly Easy`, `Easy`, `Unknown`, or `Any`.
+  any rating category from `Lulz` through `Nightmare`, plus `Unknown` or
+  `Any`.
 - `Reset` rebuilds candidates from the current puzzle or loaded candidate data.
 - `Undo` and `Redo` move through candidate-grid cycles.
 - `Next Cycle` applies the next retained basic elimination.
@@ -194,28 +195,39 @@ selecting a structure does not apply its eliminations.
 
 ## Rating and Generation
 
-The retained rating system scores the hardest move required by the basic
-solver cycle. The cumulative score is also shown in the UI. Current move
-values are:
+The rating system adds each applied move's value to the cumulative score. The
+displayed category is determined by the hardest move, using the following
+ordered ladder:
 
-| Move | Value |
-| --- | ---: |
-| Hidden Single, Naked Single | 1 |
-| Box - Line Reduction | 1.5 |
-| Hidden Pair, Naked Pair, X-Wing | 2 |
-| 2x2+K Fish with K=1 / K=2 | 2.5 / 2.75 |
-| Hidden Triple, Naked Triple, SwordFish | 3 |
-| 3x3+K Fish with K=1 / K=2 | 3.5 / 3.75 |
-| Hidden Quad, Naked Quad, JellyFish | 4 |
-| 4x4+K Fish with K=1 / K=2 | 4.5 / 4.75 |
+1. `Lulz` (`0`): Last Man Standing only.
+2. `Extremely Easy` (`1`-`1.5`): Hidden Single, Naked Single, and Box-Line
+   Reduction.
+3. `Very Easy` (`2`): Hidden Pair, Naked Pair, X-Wing, and AIC X-Wing.
+4. `Modestly Easy` (`2.5`-`2.75`): 2x2+K Fish, 2-String Kite, Empty
+   Rectangle, Skyscraper, and Finned/Sashimi X-Wing.
+5. `Easy` (`3`): Hidden Triple, Naked Triple, and Swordfish.
+6. `Moderate` (`3.25`-`3.75`): 3x3+K Fish, L(1), 3x ERI, Dual Empty
+   Rectangle, Rec't Kite, Bridged Empty Rectangle, B.A.R.N.S. XYZ, and
+   XY-Wing.
+7. `Tough` (`4`): Hidden Quad, Naked Quad, and Jellyfish.
+8. `Challenging` (`4.25`-`4.75`): 4x4+K Fish, 4x ERI, length-4 X-Chains,
+   B.A.R.N.S. XYZ Transport, and B.A.R.N.S. WXYZ.
+9. `Irritating` (`5`-`5.5`): Remote Pair, Hidden Remote Pair, XY-Chain,
+   ERI chains above four nodes, and X-Chains above four nodes. Ring forms
+   receive `+0.5` while remaining in this category.
+10. `Frustrating` (`5`-`5.5`): L(2), L(3), S, M, H, and W Wings/Rings,
+    W Transport, and B.A.R.N.S. WXYZ Transport.
+11. `Hard` (`6`): ALS-XZ; a Ring is `6.5`.
+12. `Demanding` (`7`): ALS-XY; a Ring is `7.5`.
+13. `Expert` (`8`-`8.5`): ALS versions of named Wings and Rings.
+14. `Brutal` (`9`-`9.5`): ALS Chains.
+15. `Nightmare` (`10`-`10.5`): AIC + ALS Chains.
+16. `Unknown`: unsolved or unclassified.
 
-The displayed rating category is based on the hardest scored move:
-
-- `1` through `1.5`: Extremely Easy
-- `2` through `2.75`: Very Easy
-- `3` through `3.75`: Modestly Easy
-- `4` through `4.75`: Easy
-- unsolved or unclassified: Unknown
+Ring forms receive the stated `+0.5` bonus without creating a separate rating
+category. Fish K-values use `2.5`, `2.75`, `3.25`, `3.5`, `4.25`, and `4.5`
+for K1 and K2 at sizes 2, 3, and 4 respectively. A selected generation
+category is checked against the resulting rating and solved-state result.
 
 When a requested category is selected for generation, StormDoku tests up to
 1,000 generated puzzles and keeps the current puzzle unchanged if no match is

@@ -42,7 +42,43 @@
     }
 
     header {
+      position: relative;
       padding: 24px 0 12px;
+    }
+
+    .settings-dock {
+      position: absolute;
+      top: 18px;
+      right: 0;
+      display: grid;
+      gap: 8px;
+      width: 236px;
+      margin: 0;
+      padding: 8px 10px 10px;
+      background: var(--bg);
+    }
+
+    .settings-dock legend {
+      padding: 0 4px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .settings-dock-actions {
+      display: grid;
+      gap: 8px;
+    }
+
+    .settings-dock button {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .settings-popover-holder {
+      height: 0;
+      overflow: visible;
     }
 
     h1 {
@@ -100,6 +136,56 @@
 
     .chain-settings-row {
       align-items: start;
+    }
+
+    .chain-settings {
+      display: grid;
+      gap: 12px;
+      padding: 0 0 18px;
+    }
+
+    .chain-settings-control {
+      display: flex;
+      padding: 0 0 18px;
+    }
+
+    .chain-settings-button {
+      min-width: 168px;
+    }
+
+    .chain-settings-popover {
+      width: min(760px, calc(100vw - 32px));
+      max-height: min(82vh, 760px);
+      overflow: auto;
+      margin: 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 14px;
+      background: var(--panel);
+      color: var(--ink);
+      box-shadow: 0 8px 24px rgba(22, 22, 22, .18);
+    }
+
+    .chain-settings-popover::backdrop {
+      background: rgba(22, 22, 22, .08);
+    }
+
+    .chain-settings summary {
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    .chain-settings-grid {
+      display: grid;
+      gap: 12px;
+      padding-top: 10px;
+    }
+
+    .chain-settings-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: start;
+      gap: 10px;
     }
 
     .storage-action {
@@ -298,6 +384,81 @@
 
     .chain-type-options .check {
       white-space: nowrap;
+    }
+
+    .move-type-control {
+      display: flex;
+      align-items: start;
+      padding-top: 2px;
+    }
+
+    .move-type-menu-button {
+      min-width: 168px;
+    }
+
+    .move-type-popover {
+      width: min(520px, calc(100vw - 32px));
+      max-height: min(72vh, 620px);
+      overflow: auto;
+      margin: 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 10px;
+      background: var(--panel);
+      color: var(--ink);
+      box-shadow: 0 8px 24px rgba(22, 22, 22, .18);
+    }
+
+    .move-type-popover::backdrop {
+      background: rgba(22, 22, 22, .08);
+    }
+
+    .fish-settings-control {
+      display: flex;
+      padding: 0 0 18px;
+    }
+
+    .fish-settings-button {
+      min-width: 250px;
+    }
+
+    .fish-settings-popover {
+      width: min(820px, calc(100vw - 32px));
+      max-height: min(78vh, 720px);
+      overflow: auto;
+      margin: 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 12px;
+      background: var(--panel);
+      color: var(--ink);
+      box-shadow: 0 8px 24px rgba(22, 22, 22, .18);
+    }
+
+    .fish-settings-popover::backdrop {
+      background: rgba(22, 22, 22, .08);
+    }
+
+    .move-type-group {
+      border-bottom: 1px solid var(--line);
+      padding: 2px 0;
+    }
+
+    .move-type-group:last-child {
+      border-bottom: 0;
+    }
+
+    .move-type-group summary {
+      cursor: pointer;
+      padding: 8px 4px;
+      font-weight: 800;
+    }
+
+    .move-type-group-options {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 6px 12px;
+      padding: 2px 4px 10px;
     }
 
     .toggle-grid {
@@ -500,6 +661,8 @@
       background: #e9eef5;
       color: #111827;
     }
+
+
 
     .vantage-cell {
       flex-direction: column;
@@ -1387,6 +1550,12 @@
     }
 
     @media (max-width: 860px) {
+      .settings-dock {
+        position: static;
+        width: 100%;
+        margin: 0 0 10px;
+      }
+
       .layout {
         grid-template-columns: 1fr;
       }
@@ -1417,6 +1586,19 @@
     <h1>StormDoku: online solver</h1>
     <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo.</p>
     <p class="app-meta">Alpha v0.1.0 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+    <fieldset class="settings-dock">
+      <legend>Settings</legend>
+      <div class="settings-dock-actions">
+        <button id="chainSettingsButton" class="secondary" type="button"
+          popovertarget="chainSettingsPopover" popovertargetaction="toggle">
+          Chain Settings
+        </button>
+        <button id="fishSettingsButton" class="secondary" type="button"
+          popovertarget="fishSettingsPopover" popovertargetaction="toggle">
+          N x (N + K) Fish Finder Settings
+        </button>
+      </div>
+    </fieldset>
   </header>
 
   <main>
@@ -1439,6 +1621,17 @@
           <option value="Very Easy">Very Easy</option>
           <option value="Modestly Easy">Modestly Easy</option>
           <option value="Easy">Easy</option>
+          <option value="Moderate">Moderate</option>
+          <option value="Tough">Tough</option>
+          <option value="Challenging">Challenging</option>
+          <option value="Irritating">Irritating</option>
+          <option value="Frustrating">Frustrating</option>
+          <option value="Hard">Hard</option>
+          <option value="Demanding">Demanding</option>
+          <option value="Expert">Expert</option>
+          <option value="Brutal">Brutal</option>
+          <option value="Nightmare">Nightmare</option>
+          <option value="Lulz">Lulz</option>
           <option value="Unknown">Unknown</option>
         </select>
       </label>
@@ -1461,53 +1654,164 @@
       <button id="chainBuild" class="secondary">Find Chains</button>
     </section>
 
-    <section class="toolbar control-row chain-settings-row">
-      <label>
-        Chain Depth
-        <select id="chainDepth">
-          <option value="1">1</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="4">4</option>
-          <option value="5">5</option>
-          <option value="6" selected>6</option>
-          <option value="7">7</option>
-          <option value="8">8</option>
-        </select>
-      </label>
-      <fieldset class="chain-type-filter">
-        <legend>Usable Link Types</legend>
-        <div class="chain-type-options">
-          <label class="check" title="Type 1: bilocal strong links">
-            <input id="chainStrongType0" type="checkbox" checked>
-            Bi-Local
+    <div class="settings-popover-holder">
+      <div id="chainSettingsPopover" class="chain-settings-popover" popover>
+        <div class="chain-settings-grid">
+        <div class="chain-settings-row">
+          <label>
+            Chain Depth
+            <select id="chainDepth">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+              <option value="8" selected>8</option>
+            </select>
           </label>
-          <label class="check" title="Type 2: cell-to-group strong links">
-            <input id="chainStrongType1" type="checkbox" checked>
-            Cell &lt;=&gt; Group
-          </label>
-          <label class="check" title="Type 3: group-to-group strong links">
-            <input id="chainStrongType2" type="checkbox" checked>
-            Group &lt;=&gt; Group
-          </label>
-          <label class="check" title="Type 4: empty-rectangle intersections">
-            <input id="chainStrongType3" type="checkbox" checked>
-            ERI
-          </label>
-          <label class="check" title="Type 5: Bivalve size-1 ALS strong links">
-            <input id="chainStrongType4" type="checkbox" checked>
-            BIVALVE (Size-1 ALS)
-          </label>
-          <label class="check" title="Include ALS RCC links in the chain walk">
-            <input id="chainAlsRcc" type="checkbox" checked>
-            ALS
-          </label>
+          <fieldset class="chain-type-filter">
+            <legend>Usable Link Types</legend>
+            <div class="chain-type-options">
+              <label class="check" title="Type 1: bilocal strong links">
+                <input id="chainStrongType0" type="checkbox" checked>
+                Bi-Local
+              </label>
+              <label class="check" title="Type 2: cell-to-group strong links">
+                <input id="chainStrongType1" type="checkbox" checked>
+                Cell &lt;=&gt; Group
+              </label>
+              <label class="check" title="Type 3: group-to-group strong links">
+                <input id="chainStrongType2" type="checkbox" checked>
+                Group &lt;=&gt; Group
+              </label>
+              <label class="check" title="Type 4: empty-rectangle intersections">
+                <input id="chainStrongType3" type="checkbox" checked>
+                ERI
+              </label>
+              <label class="check" title="Type 5: Bivalve size-1 ALS strong links">
+                <input id="chainStrongType4" type="checkbox" checked>
+                BIVALVE (Size-1 ALS)
+              </label>
+              <label class="check" title="Include ALS RCC links in the chain walk">
+                <input id="chainAlsRcc" type="checkbox" checked>
+                ALS
+              </label>
+            </div>
+          </fieldset>
         </div>
-      </fieldset>
-    </section>
 
-    <details class="fish-settings">
-      <summary>N x (N + K) Fish Finder Settings</summary>
+          <div class="move-type-control">
+          <button id="moveTypeMenuButton" class="secondary move-type-menu-button" type="button"
+            popovertarget="moveTypesPopover" popovertargetaction="toggle">
+            Usable Move Types
+          </button>
+          <div id="moveTypesPopover" class="move-type-popover" popover>
+            <details class="move-type-group">
+              <summary>Singles</summary>
+              <div class="move-type-group-options">
+                <label class="check"><input id="moveLastManStanding" type="checkbox"> Last Man Standing</label>
+                <label class="check"><input id="moveHiddenSingle" type="checkbox" checked> Hidden Single</label>
+                <label class="check"><input id="moveNakedSingle" type="checkbox" checked> Naked Single</label>
+              </div>
+            </details>
+            <details class="move-type-group">
+              <summary>Locked Candidates</summary>
+              <div class="move-type-group-options">
+                <label class="check"><input id="moveBoxLine" type="checkbox" checked> Box - Line Reduction</label>
+              </div>
+            </details>
+            <details class="move-type-group">
+              <summary>Subsets</summary>
+              <div class="move-type-group-options">
+                <label class="check"><input id="moveHiddenPair" type="checkbox" checked> Hidden Pair</label>
+                <label class="check"><input id="moveNakedPair" type="checkbox" checked> Naked Pair</label>
+                <label class="check"><input id="moveHiddenTriple" type="checkbox" checked> Hidden Triple</label>
+                <label class="check"><input id="moveNakedTriple" type="checkbox" checked> Naked Triple</label>
+                <label class="check"><input id="moveHiddenQuad" type="checkbox" checked> Hidden Quad</label>
+                <label class="check"><input id="moveNakedQuad" type="checkbox" checked> Naked Quad</label>
+              </div>
+            </details>
+            <details class="move-type-group">
+              <summary>Fish</summary>
+              <div class="move-type-group-options">
+                <label class="check"><input id="moveXWing" type="checkbox" checked> X-Wing</label>
+                <label class="check"><input id="moveExtendedFish2" type="checkbox" checked> 2x2+K Fish</label>
+                <label class="check"><input id="moveSwordfish" type="checkbox" checked> SwordFish</label>
+                <label class="check"><input id="moveExtendedFish3" type="checkbox" checked> 3x3+K Fish</label>
+                <label class="check"><input id="moveJellyfish" type="checkbox" checked> JellyFish</label>
+                <label class="check"><input id="moveExtendedFish4" type="checkbox" checked> 4x4+K Fish</label>
+              </div>
+            </details>
+            <details class="move-type-group" open>
+              <summary>Chain Search</summary>
+              <div class="move-type-group-options">
+                <label class="check"><input id="moveChains" type="checkbox" checked> Chains</label>
+              </div>
+            </details>
+            <details class="move-type-group">
+              <summary>X-Chains</summary>
+              <div class="move-type-group-options">
+                <label class="check"><input id="moveXChain" type="checkbox" checked> X-Chain</label>
+                <label class="check"><input id="moveEmptyRectangle" type="checkbox" checked> Empty Rectangle</label>
+                <label class="check"><input id="moveDualEmptyRectangle" type="checkbox" checked> Dual Empty Rectangle</label>
+                <label class="check"><input id="moveRectKite" type="checkbox" checked> Rec'T Kite</label>
+                <label class="check"><input id="moveEriChain" type="checkbox" checked> ERI(n)</label>
+                <label class="check"><input id="moveBridgedEri" type="checkbox" checked> Bridged ERI</label>
+                <label class="check"><input id="move2StringKite" type="checkbox" checked> 2-String Kite</label>
+                <label class="check"><input id="moveSkyscraper" type="checkbox" checked> Skyscraper</label>
+                <label class="check"><input id="moveChainXWing" type="checkbox" checked> X-Wing</label>
+                <label class="check"><input id="moveFinnedXWing" type="checkbox" checked> Finned X-Wing</label>
+                <label class="check"><input id="moveSashimiXWing" type="checkbox" checked> Sashimi X-Wing</label>
+              </div>
+            </details>
+            <details class="move-type-group">
+              <summary>XY-Chains</summary>
+              <div class="move-type-group-options">
+                <label class="check"><input id="moveXyChain" type="checkbox" checked> XY-Chain</label>
+                <label class="check"><input id="moveXyWing" type="checkbox" checked> XY-Wing</label>
+                <label class="check"><input id="moveRemotePair" type="checkbox" checked> Remote Pair</label>
+                <label class="check"><input id="moveHiddenXyChain" type="checkbox" checked> Hidden XY-Chain</label>
+                <label class="check"><input id="moveHiddenRemotePair" type="checkbox" checked> Hidden Remote Pair</label>
+              </div>
+            </details>
+            <details class="move-type-group">
+              <summary>Named Chains</summary>
+              <div class="move-type-group-options">
+                <label class="check"><input id="moveWWing" type="checkbox" checked> W-Wing</label>
+                <label class="check"><input id="moveSWing" type="checkbox" checked> S-Wing</label>
+                <label class="check"><input id="moveM2Wing" type="checkbox" checked> M(2)-Wing</label>
+                <label class="check"><input id="moveM3Wing" type="checkbox" checked> M(3)-Wing</label>
+                <label class="check"><input id="moveL1Wing" type="checkbox" checked> L(1)-Wing</label>
+                <label class="check"><input id="moveL2Wing" type="checkbox" checked> L(2)-Wing</label>
+                <label class="check"><input id="moveL3Wing" type="checkbox" checked> L(3)-Wing</label>
+                <label class="check"><input id="moveH1Wing" type="checkbox" checked> H(1)-Wing</label>
+                <label class="check"><input id="moveH2Wing" type="checkbox" checked> H(2)-Wing</label>
+                <label class="check"><input id="moveH3Wing" type="checkbox" checked> H(3)-Wing</label>
+                <label class="check"><input id="moveStrongWing" type="checkbox" checked> Strong Wing</label>
+                <label class="check"><input id="moveInversion" type="checkbox" checked> Inversion</label>
+              </div>
+            </details>
+            <details class="move-type-group">
+              <summary>ALS / Mixed Chains</summary>
+              <div class="move-type-group-options">
+                <label class="check"><input id="moveBarns" type="checkbox" checked> B.A.R.N.S.</label>
+                <label class="check"><input id="moveBarnsTransport" type="checkbox" checked> B.A.R.N.S. Transport</label>
+                <label class="check"><input id="moveAlsXz" type="checkbox" checked> ALS - XZ</label>
+                <label class="check"><input id="moveAlsXy" type="checkbox" checked> ALS - XY</label>
+                <label class="check"><input id="moveAlsChain" type="checkbox" checked> ALS - Chain</label>
+                <label class="check"><input id="moveAicAls" type="checkbox" checked> AIC + ALS</label>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+
+    <div class="settings-popover-holder">
+      <div id="fishSettingsPopover" class="fish-settings-popover" popover>
       <div class="fish-settings-grid">
         <fieldset>
           <legend>N Base x (N + K) Cover</legend>
@@ -1588,7 +1892,8 @@
           </div>
         </fieldset>
       </div>
-    </details>
+      </div>
+    </div>
 
     <section class="layout">
       <div class="board-column">
@@ -1736,12 +2041,12 @@
   <script src="./src/set-tools-core.js"></script>
   <script src="./src/pom-core.js"></script>
   <script src="./src/als-core.js"></script>
-  <script src="./src/als-link-core.js"></script>
+  <script src="./src/als-link-core.js?v=20260915-5"></script>
   <script src="./src/ahs-core.js?v=20260912-5"></script>
   <script src="./src/subset-report-core.js"></script>
   <script src="./src/mini-sectors-core.js"></script>
   <script src="./src/strong-link-core.js?v=20260912-1"></script>
-  <script src="./src/chain-core.js?v=20260913-29"></script>
+    <script src="./src/chain-core.js?v=20260915-6"></script>
   <script>
     const core = window.StormDoku;
     const boardEl = document.getElementById('board');
@@ -1799,6 +2104,59 @@
     const chainAlsRccEl = document.getElementById('chainAlsRcc');
     const chainStrongTypeEls = Array.from({ length: 5 }, (_, index) =>
       document.getElementById(`chainStrongType${index}`));
+    const solverMoveTypeEls = new Map([
+      ['last-man-standing', document.getElementById('moveLastManStanding')],
+      ['hidden-single', document.getElementById('moveHiddenSingle')],
+      ['naked-single', document.getElementById('moveNakedSingle')],
+      ['box-line', document.getElementById('moveBoxLine')],
+      ['hidden-pair', document.getElementById('moveHiddenPair')],
+      ['naked-pair', document.getElementById('moveNakedPair')],
+      ['x-wing', document.getElementById('moveXWing')],
+      ['2x2+k-fish', document.getElementById('moveExtendedFish2')],
+      ['hidden-triple', document.getElementById('moveHiddenTriple')],
+      ['naked-triple', document.getElementById('moveNakedTriple')],
+      ['swordfish', document.getElementById('moveSwordfish')],
+      ['3x3+k-fish', document.getElementById('moveExtendedFish3')],
+      ['hidden-quad', document.getElementById('moveHiddenQuad')],
+      ['naked-quad', document.getElementById('moveNakedQuad')],
+      ['jellyfish', document.getElementById('moveJellyfish')],
+      ['4x4+k-fish', document.getElementById('moveExtendedFish4')],
+      ['chains', document.getElementById('moveChains')],
+      ['x-chain', document.getElementById('moveXChain')],
+      ['empty-rectangle', document.getElementById('moveEmptyRectangle')],
+      ['dual-empty-rectangle', document.getElementById('moveDualEmptyRectangle')],
+      ['rect-kite', document.getElementById('moveRectKite')],
+      ['eri-chain', document.getElementById('moveEriChain')],
+      ['bridged-eri', document.getElementById('moveBridgedEri')],
+      ['2-string-kite', document.getElementById('move2StringKite')],
+      ['skyscraper', document.getElementById('moveSkyscraper')],
+      ['chain-x-wing', document.getElementById('moveChainXWing')],
+      ['finned-x-wing', document.getElementById('moveFinnedXWing')],
+      ['sashimi-x-wing', document.getElementById('moveSashimiXWing')],
+      ['xy-chain', document.getElementById('moveXyChain')],
+      ['xy-wing', document.getElementById('moveXyWing')],
+      ['remote-pair', document.getElementById('moveRemotePair')],
+      ['hidden-xy-chain', document.getElementById('moveHiddenXyChain')],
+      ['hidden-remote-pair', document.getElementById('moveHiddenRemotePair')],
+      ['w-wing', document.getElementById('moveWWing')],
+      ['s-wing', document.getElementById('moveSWing')],
+      ['m2-wing', document.getElementById('moveM2Wing')],
+      ['m3-wing', document.getElementById('moveM3Wing')],
+      ['l1-wing', document.getElementById('moveL1Wing')],
+      ['l2-wing', document.getElementById('moveL2Wing')],
+      ['l3-wing', document.getElementById('moveL3Wing')],
+      ['h1-wing', document.getElementById('moveH1Wing')],
+      ['h2-wing', document.getElementById('moveH2Wing')],
+      ['h3-wing', document.getElementById('moveH3Wing')],
+      ['strong-wing', document.getElementById('moveStrongWing')],
+      ['inversion', document.getElementById('moveInversion')],
+      ['barns', document.getElementById('moveBarns')],
+      ['barns-transport', document.getElementById('moveBarnsTransport')],
+      ['als-xz', document.getElementById('moveAlsXz')],
+      ['als-xy', document.getElementById('moveAlsXy')],
+      ['als-chain', document.getElementById('moveAlsChain')],
+      ['aic-als', document.getElementById('moveAicAls')],
+    ]);
     const fishMinSizeEl = document.getElementById('fishMinSize');
     const fishMaxSizeEl = document.getElementById('fishMaxSize');
     const fishMinKEl = document.getElementById('fishMinK');
@@ -2011,13 +2369,28 @@
       };
     }
 
+    function currentSolverMoveTypes() {
+      return new Set([...solverMoveTypeEls.entries()]
+        .filter(([, element]) => element?.checked)
+        .map(([type]) => type));
+    }
+
     function currentSolverFishOptions() {
       return {
         ...currentPomFishOptions(),
-        grid: puzzle,
+        grid: currentFixedGrid(),
         omissionFishSearch: core.omissionFishStep,
+        enabledTechniques: currentSolverMoveTypes(),
       };
     }
+
+   function currentFixedGrid() {
+      return [...puzzle];
+   }
+
+   function fixedValue(cell) {
+      return puzzle[cell] || 0;
+   }
 
     function markFor(cell, digit) {
       return (cand[cell] || []).includes(digit) ? digit : '';
@@ -2942,7 +3315,7 @@
         for (let position = 0; position < unit.length; position++) {
           const cell = unit[position];
           const digit = digitIndex + 1;
-          if (puzzle[cell] === digit || (cand[cell] || []).includes(digit)) {
+          if (fixedValue(cell) === digit || (cand[cell] || []).includes(digit)) {
             positions.add(position);
           }
         }
@@ -2996,12 +3369,12 @@
         return;
       }
 
-      const highlights = currentHighlights();
+     const highlights = currentHighlights();
 
-      for (let cell = 0; cell < 81; cell++) {
-        const el = document.createElement('div');
-        el.className = 'cell';
-        if (puzzle[cell]) el.classList.add('given');
+     for (let cell = 0; cell < 81; cell++) {
+       const el = document.createElement('div');
+       el.className = 'cell';
+       if (puzzle[cell]) el.classList.add('given');
         if (highlights.isFish && highlights.baseCells.has(cell)) el.classList.add('fish-base');
         if (highlights.isFish && highlights.coverCells.has(cell)) el.classList.add('fish-cover');
         if (highlights.isFish && highlights.fins.has(cell) && !highlights.vertices.has(cell)) {
@@ -3036,9 +3409,9 @@
         if (strongLinkPartition === 'linked') el.classList.add('strong-link-partition-linked');
         if (strongLinkPartition === 'empty') el.classList.add('strong-link-partition-empty');
 
-        if (puzzle[cell]) {
-          el.textContent = String(puzzle[cell]);
-        } else {
+       if (puzzle[cell]) {
+         el.textContent = String(puzzle[cell]);
+       } else {
           const marks = document.createElement('div');
           marks.className = 'marks';
 
@@ -3076,8 +3449,8 @@
             const isStrongLinkEndDigit = highlights.isStrongLink
               && (highlights.strongLinkEndMarks.has(atomKey) || strongLinkPartitionEndDigit);
             const isStrongLinkDigit = isStrongLinkStartDigit || isStrongLinkEndDigit;
-            const hasCandidate = cellHasCandidate(cell, digit);
-            const isHiddenGhostDigit =
+           const hasCandidate = cellHasCandidate(cell, digit);
+           const isHiddenGhostDigit =
               highlights.isHiddenSubset &&
               highlights.baseCells.has(cell) &&
               highlights.patternDigits.has(digit) &&
@@ -3088,8 +3461,8 @@
             mark.textContent = markFor(cell, digit)
               || (isElim || (hasCandidate && (isFishDigit || isFishEndofinDigit || isChainDigit || isStrongLinkDigit
                 || isAlsRecordDigit || isAhsRecordDigit)) ? digit : '');
-            if (isSetDigit) mark.classList.add('set-digit');
-            if (isHiddenGhostDigit) mark.classList.add('hidden-ghost-digit');
+           if (isSetDigit) mark.classList.add('set-digit');
+           if (isHiddenGhostDigit) mark.classList.add('hidden-ghost-digit');
             if (isFishDigit) mark.classList.add('fish-digit');
             if (isFishEndofinDigit) mark.classList.add('fish-endofin-digit');
             if (isChainDigit) mark.classList.add('chain-digit');
@@ -3179,31 +3552,54 @@
       return tech.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
     }
 
+    const RATING_CATEGORY_RANKS = Object.freeze({
+      Lulz: 0,
+      'Extremely Easy': 10,
+      'Very Easy': 20,
+      'Modestly Easy': 30,
+      Easy: 40,
+      Moderate: 50,
+      Tough: 60,
+      Challenging: 70,
+      Irritating: 80,
+      Frustrating: 90,
+      Hard: 100,
+      Demanding: 110,
+      Expert: 120,
+      Brutal: 130,
+      Nightmare: 140,
+      Unknown: -1,
+    });
+
+    function ratingDefinition(category, value, tag, tech = null, rank = null) {
+      return {
+        category,
+        rank: rank ?? RATING_CATEGORY_RANKS[category] ?? RATING_CATEGORY_RANKS.Unknown,
+        value,
+        tag,
+        ...(tech ? { tech } : {}),
+      };
+    }
+
     const RATING_TAGS = Object.freeze([
-      { rank: 1, value: 1, tag: 'Hidden Single', tech: 'hidden-single' },
-      { rank: 2, value: 1, tag: 'Naked Single', tech: 'naked-single' },
-      { rank: 3, value: 1.5, tag: 'Box - Line Reduction', tech: 'box-line' },
-      { rank: 4, value: 2, tag: 'Hidden Pair', tech: 'hidden-pair' },
-      { rank: 5, value: 2, tag: 'Naked Pair', tech: 'naked-pair' },
-      { rank: 6, value: 2, tag: 'X-Wing', tech: 'x-wing' },
-      { rank: 7, value: 2.5, tag: '2x2+K Fish', tech: '2x2+k-fish' },
-      { rank: 8, value: 3, tag: 'Hidden Triple', tech: 'hidden-triple' },
-      { rank: 9, value: 3, tag: 'Naked Triple', tech: 'naked-triple' },
-      { rank: 10, value: 3, tag: 'SwordFish', tech: 'swordfish' },
-      { rank: 11, value: 3.5, tag: '3x3+K Fish', tech: '3x3+k-fish' },
-      { rank: 12, value: 4, tag: 'Hidden Quad', tech: 'hidden-quad' },
-      { rank: 13, value: 4, tag: 'Naked Quad', tech: 'naked-quad' },
-      { rank: 14, value: 4, tag: 'JellyFish', tech: 'jellyfish' },
-      { rank: 15, value: 4.5, tag: '4x4+K Fish', tech: '4x4+k-fish' },
+      ratingDefinition('Lulz', 0, 'Last Man Standing', 'last-man-standing'),
+      ratingDefinition('Extremely Easy', 1, 'Hidden Single', 'hidden-single'),
+      ratingDefinition('Extremely Easy', 1, 'Naked Single', 'naked-single'),
+      ratingDefinition('Extremely Easy', 1.5, 'Box - Line Reduction', 'box-line'),
+      ratingDefinition('Very Easy', 2, 'Hidden Pair', 'hidden-pair'),
+      ratingDefinition('Very Easy', 2, 'Naked Pair', 'naked-pair'),
+      ratingDefinition('Very Easy', 2, 'X-Wing', 'x-wing'),
+      ratingDefinition('Modestly Easy', 2.5, '2x2+K Fish', '2x2+k-fish'),
+      ratingDefinition('Easy', 3, 'Hidden Triple', 'hidden-triple'),
+      ratingDefinition('Easy', 3, 'Naked Triple', 'naked-triple'),
+      ratingDefinition('Easy', 3, 'SwordFish', 'swordfish'),
+      ratingDefinition('Tough', 4, 'Hidden Quad', 'hidden-quad'),
+      ratingDefinition('Tough', 4, 'Naked Quad', 'naked-quad'),
+      ratingDefinition('Tough', 4, 'JellyFish', 'jellyfish'),
     ]);
 
-    function ratingCategoryForValue(value) {
-      if (!Number.isFinite(value)) return 'Unknown';
-      if (value <= 1.5) return 'Extremely Easy';
-      if (value <= 2.75) return 'Very Easy';
-      if (value <= 3.75) return 'Modestly Easy';
-      if (value <= 4.75) return 'Easy';
-      return 'Unknown';
+    function ratingCategoryForValue(value, fallback = 'Unknown') {
+      return Number.isFinite(value) && Number(value) === 0 ? 'Lulz' : fallback;
     }
 
     function unknownRating(move = '') {
@@ -3220,23 +3616,125 @@
       };
     }
 
+    function ratingForChain(chain, step = chain) {
+      if (!chain) return unknownRating(step?.desc || '');
+
+      const fullName = String(chain.structureName || 'AIC');
+      const isAicAls = /^AIC\s*\+\s*ALS\s*-/i.test(fullName);
+      const name = fullName
+        .replace(/^\s*(?:AIC\s*\+\s*ALS|ALS|AHS|ALC)\s*-\s*/i, '')
+        .trim();
+      const ringBonus = chain.isRing ? 0.5 : 0;
+      const ringSuffix = chain.isRing ? ' Ring' : '';
+      const define = (category, value, tag = name) => ({
+        ...ratingDefinition(category, value, tag),
+        hardestMove: step?.desc || '',
+      });
+
+      const barns = barnsChainInfo(chain);
+      const barnsTransport = barnsTransportChainInfo(chain);
+      if (barnsTransport) {
+        const size = barnsTransport.sizeName.length;
+        const value = size <= 3 ? 4.75 : 5;
+        return define(value >= 5 ? 'Frustrating' : 'Challenging', value + ringBonus,
+          `${barnsTransport.sizeName.toUpperCase()} Transport${ringSuffix}`);
+      }
+      if (barns) {
+        const size = barns.sizeName.length;
+        if (size === 3) return define('Moderate', 3.75 + ringBonus, `XYZ${ringSuffix}`);
+        if (size === 4) return define('Challenging', 4.75 + ringBonus, `WXYZ${ringSuffix}`);
+      }
+
+      if (/^AIC\s*\+\s*ALS\s*-\s*Chain$/i.test(fullName)) {
+        return define('Nightmare', 10 + ringBonus, `AIC + ALS Chain${ringSuffix}`);
+      }
+
+      if (/^ALS\s*-\s*Chain$/i.test(fullName)) {
+        return define('Brutal', 9 + ringBonus, `ALS Chain${ringSuffix}`);
+      }
+      if (/^ALS\s*-\s*XY$/i.test(fullName)) {
+        return define('Demanding', 7 + ringBonus, `ALS - XY${ringSuffix}`);
+      }
+      if (/^ALS\s*-\s*XZ$/i.test(fullName)) {
+        return define('Hard', 6 + ringBonus, `ALS - XZ${ringSuffix}`);
+      }
+
+      const alsNamed = (isAicAls || /^ALS\s*-/i.test(fullName))
+        && /(?:Wing|Ring)$/i.test(name);
+      if (alsNamed && !/^ALS\s*-\s*(?:XZ|XY|Chain)$/i.test(fullName)) {
+        return define('Expert', 8 + ringBonus, `ALS - ${name}${ringSuffix}`);
+      }
+
+      const eriCount = chainEriCount(chain);
+      if (eriCount > 0) {
+        if (eriCount === 3) return define('Moderate', 3.25 + ringBonus, `3x ERI${ringSuffix}`);
+        if (eriCount === 4) return define('Challenging', 4.25 + ringBonus, `4x ERI${ringSuffix}`);
+        return define('Irritating', 5 + ringBonus, `ERI Chain${ringSuffix}`);
+      }
+
+      const alsSizeOne = alsSizeOneChainInfo(chain);
+      if (alsSizeOne) {
+        if (alsSizeOne.remotePair) {
+          return define('Irritating', 5 + ringBonus, `Remote Pair${ringSuffix}`);
+        }
+        if (alsSizeOne.breakdown === 'XY-Wing') {
+          return define('Moderate', 3.75 + ringBonus, `XY-Wing${ringSuffix}`);
+        }
+        return define('Irritating', 5 + ringBonus, `XY-Chain${ringSuffix}`);
+      }
+
+      const hiddenXy = hiddenXyChainInfo(chain);
+      if (hiddenXy?.remotePair) {
+        return define('Irritating', 5 + ringBonus, `Hidden Remote Pair${ringSuffix}`);
+      }
+
+      if (/^XY-Wing$/i.test(name)) return define('Moderate', 3.75 + ringBonus, `XY-Wing${ringSuffix}`);
+      if (/^(?:2-String Kite|Empty Rectangle|Skyscraper|Finned X-Wing|Sashimi X-Wing)$/i.test(name)) {
+        return define('Modestly Easy', 2.5 + ringBonus, `${name}${ringSuffix}`);
+      }
+      if (/^(?:Dual Empty Rectangle|Rec'T Kite|Bridged Empty Rectangle|3x ERI|L\(1\)-Wing|L1-Wing)$/i.test(name)) {
+        return define('Moderate', 3.25 + ringBonus, `${name}${ringSuffix}`);
+      }
+      if (/^X-Wing$/i.test(name)) return define('Very Easy', 2, 'AIC - X-Wing');
+
+      if (/^(?:L\([23]\)|L[23]|S|M(?:\(\d+\))?|H(?:\(\d+\))?|W)-?(?:Wing|Ring)$/i.test(name)
+        || /^i[SWMLH]/i.test(name)) {
+        return define('Frustrating', 5 + ringBonus, `${name}${ringSuffix}`);
+      }
+
+      const length = Number(chain.length || chain.steps?.length || 0);
+      if (length >= 2) {
+        const value = length + ringBonus;
+        const category = length <= 2
+          ? 'Very Easy'
+          : length === 3
+            ? 'Easy'
+          : length === 4
+              ? 'Challenging'
+              : 'Irritating';
+        return define(category, value, `X-Chain (Depth ${length})${ringSuffix}`);
+      }
+
+      return unknownRating(step?.desc || '');
+    }
+
     function ratingForStep(step) {
       const tech = String(step?.tech || '');
+      if (tech === 'chain') return ratingForChain(step.chain || step, step);
       const direct = RATING_TAGS.find(definition => definition.tech === tech);
       if (direct) {
         return {
           rank: direct.rank,
           value: direct.value,
           tag: direct.tag,
+          category: direct.category,
           hardestMove: step.desc || '',
         };
       }
 
       if (tech === 'pointing' || tech === 'claiming') {
         return {
-          rank: 3,
-          value: 1.5,
-          tag: 'Box - Line Reduction',
+          ...ratingDefinition('Extremely Easy', 1.5, 'Box - Line Reduction'),
           hardestMove: step.desc || '',
         };
       }
@@ -3245,25 +3743,28 @@
         const size = Number(step?.size);
         const k = Number(step?.k || 0);
         const basic = {
-          2: { rank: 6, value: 2, tag: 'X-Wing' },
-          3: { rank: 10, value: 3, tag: 'SwordFish' },
-          4: { rank: 14, value: 4, tag: 'JellyFish' },
+          2: ratingDefinition('Very Easy', 2, 'X-Wing'),
+          3: ratingDefinition('Easy', 3, 'SwordFish'),
+          4: ratingDefinition('Tough', 4, 'JellyFish'),
         }[size];
         const extended = {
-          2: { rank: 7, tag: '2x2+K Fish' },
-          3: { rank: 11, tag: '3x3+K Fish' },
-          4: { rank: 15, tag: '4x4+K Fish' },
+          2: { category: 'Modestly Easy', tag: '2x2+K Fish' },
+          3: { category: 'Moderate', tag: '3x3+K Fish' },
+          4: { category: 'Challenging', tag: '4x4+K Fish' },
         }[size];
         const fishRating = k > 0 ? extended : basic;
         const value = k === 0
           ? basic?.value
           : k === 1
-            ? size + 0.5
+            ? size === 2 ? 2.5 : size === 3 ? 3.25 : size === 4 ? 4.25 : null
             : k === 2
-              ? size + 0.75
+              ? size === 2 ? 2.75 : size === 3 ? 3.5 : size === 4 ? 4.5 : null
               : null;
         if (fishRating && value !== null && Number.isFinite(value)) {
-          return { ...fishRating, value, hardestMove: step.desc || '' };
+          return {
+            ...ratingDefinition(fishRating.category, value, fishRating.tag),
+            hardestMove: step.desc || '',
+          };
         }
       }
 
@@ -3276,7 +3777,11 @@
       let scoredMoves = 0;
       for (const step of steps || []) {
         const rating = step.rating || ratingForStep(step);
-        if (!hardest || rating.rank > hardest.rank) hardest = rating;
+        if (!hardest
+          || rating.rank > hardest.rank
+          || (rating.rank === hardest.rank && Number(rating.value || -Infinity) > Number(hardest.value || -Infinity))) {
+          hardest = rating;
+        }
         if (Number.isFinite(rating.value)) {
           score += rating.value;
           scoredMoves += 1;
@@ -3285,7 +3790,7 @@
 
       return {
         ...(hardest || unknownRating()),
-        category: ratingCategoryForValue(hardest?.value),
+        category: hardest?.category || ratingCategoryForValue(hardest?.value),
         cycles: (steps || []).length,
         score: Number(score.toFixed(2)),
         scoredMoves,
@@ -3324,6 +3829,38 @@
       );
     }
 
+    function simulateSolver(grid, expectedSolution) {
+      const simulationCand = core.allCandidates(grid);
+      const steps = [];
+      const maxCycles = 100;
+
+      for (let count = 0; count < maxCycles; count++) {
+        const choice = chooseSolverStep(
+          simulationCand,
+          grid,
+          'generator',
+          expectedSolution,
+        );
+        if (!choice?.step) break;
+
+        const items = core.eliminationItems(choice.step.elim, simulationCand);
+        if (!items.length) break;
+        const removed = core.applyEliminations(simulationCand, { items });
+        if (!removed.length) break;
+
+        steps.push({
+          ...choice.step,
+          elim: { items: removed },
+        });
+      }
+
+      return {
+        cand: simulationCand,
+        steps,
+        cycles: steps.length,
+      };
+    }
+
     function formatRatingValue(value) {
       if (!Number.isFinite(value)) return '';
       return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/0$/, '');
@@ -3331,11 +3868,7 @@
 
     function rateGeneratedPuzzle(grid, expectedSolution) {
       try {
-        const simulation = core.reduceCandidates(
-          core.allCandidates(grid),
-          100,
-          { ...currentSolverFishOptions(), grid },
-        );
+        const simulation = simulateSolver(grid, expectedSolution);
         const rating = ratingFromSteps(simulation.steps, 'generated');
         return ratingWithSolvedState(
           rating,
@@ -3372,7 +3905,14 @@
 
     function appendStep(step) {
       const rating = ratingForStep(step);
-      logEntries.push({ cycle, tech: step.tech, desc: step.desc, ratingTag: rating.tag, rating });
+      logEntries.push({
+        cycle,
+        tech: step.tech,
+        desc: step.desc,
+        ratingTag: rating.tag,
+        rating,
+        ...(step.chain ? { chain: step.chain } : {}),
+      });
     }
 
     function renderLog() {
@@ -3381,7 +3921,8 @@
       const latest = logEntries[logEntries.length - 1];
       solutionStepsPreviewEl.textContent = latest
         ? `${latest.cycle}. ${latest.desc}`
-        : 'No applied steps yet.';
+     : 'No applied steps yet.';
+
 
       for (const entry of [...logEntries].reverse()) {
         const li = document.createElement('li');
@@ -3911,79 +4452,79 @@
         + ` ${categories.map((category, index) => `${category} ${groups[index].length}`).join(', ')}.`;
       fishResultsEl.appendChild(summary);
 
-      const buttonRow = document.createElement('div');
-      buttonRow.className = 'dof-buttons';
-      categories.forEach((category, index) => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'dof-button';
-        if (selectedFishCategory === category) button.classList.add('current');
-        button.textContent = `${category} (${groups[index].length})`;
-        button.addEventListener('click', () => {
-          selectedFishCategory = category;
-          selectedFishSize = null;
-          selectedFishKey = null;
-          renderFishReport();
-        });
-        buttonRow.appendChild(button);
+      const categoriesEl = document.createElement('div');
+      categoriesEl.className = 'chain-categories';
+      categories.forEach((category, categoryIndex) => {
+        const records = groups[categoryIndex];
+        const categoryPanel = document.createElement('details');
+        categoryPanel.className = 'chain-category';
+        categoryPanel.open = selectedFishCategory === category;
+
+        const categorySummary = document.createElement('summary');
+        const categoryName = document.createElement('strong');
+        categoryName.className = 'chain-category-name';
+        categoryName.textContent = category;
+        const categoryCount = document.createElement('span');
+        categoryCount.className = 'chain-category-count';
+        categoryCount.textContent = `${records.length} ${records.length === 1 ? 'fish' : 'fish'}`;
+        categorySummary.append(categoryName, categoryCount);
+        categoryPanel.appendChild(categorySummary);
+
+        if (!records.length) {
+          categoriesEl.appendChild(categoryPanel);
+          return;
+        }
+
+        const sizes = [...new Set(records.map(fish => fish.size))].sort((a, b) => a - b);
+        const sizePanels = document.createElement('div');
+        sizePanels.className = 'chain-subcategories';
+        for (const size of sizes) {
+          const sizeRecords = records.filter(fish => fish.size === size);
+          const sizePanel = document.createElement('details');
+          sizePanel.className = 'chain-subcategory';
+          sizePanel.open = selectedFishCategory === category && selectedFishSize === size;
+
+          const sizeSummary = document.createElement('summary');
+          const sizeName = document.createElement('strong');
+          sizeName.textContent = `Size ${size}`;
+          const sizeCount = document.createElement('span');
+          sizeCount.className = 'chain-category-count';
+          sizeCount.textContent = `${sizeRecords.length} ${sizeRecords.length === 1 ? 'fish' : 'fish'}`;
+          sizeSummary.append(sizeName, sizeCount);
+          sizePanel.appendChild(sizeSummary);
+
+          const list = document.createElement('ul');
+          list.className = 'chain-list';
+          const visible = sizeRecords.slice(0, 200);
+          for (const fish of visible) {
+            const index = records.indexOf(fish);
+            const item = document.createElement('li');
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'chain-result';
+            const key = `${category}:${index}`;
+            if (selectedFishKey === key) button.classList.add('selected');
+            const removals = fish.cells.map(cell => ({ cell, digit: fish.digit }));
+            button.textContent = `${fish.name}: (${fish.digit}) `
+              + `${core.sectorGroupName(fish.baseSectors)} / `
+              + `${core.sectorGroupName(fish.coverSectors)} => `
+              + `${core.formatRemovals(removals)}`;
+            button.addEventListener('click', () => selectFishReport(category, index));
+            item.appendChild(button);
+            list.appendChild(item);
+          }
+          if (sizeRecords.length > visible.length) {
+            const more = document.createElement('li');
+            more.textContent = `Showing ${visible.length} of ${sizeRecords.length} ${category} records.`;
+            list.appendChild(more);
+          }
+          sizePanel.appendChild(list);
+          sizePanels.appendChild(sizePanel);
+        }
+        categoryPanel.appendChild(sizePanels);
+        categoriesEl.appendChild(categoryPanel);
       });
-      fishResultsEl.appendChild(buttonRow);
-
-      if (selectedFishCategory === null) return;
-      const selected = fishReport.filter(fish => fish.category === selectedFishCategory);
-      if (!selected.length) {
-        const empty = document.createElement('p');
-        empty.textContent = `No ${selectedFishCategory} fish reports.`;
-        fishResultsEl.appendChild(empty);
-        return;
-      }
-
-      const sizes = [...new Set(selected.map(fish => fish.size))].sort((a, b) => a - b);
-      const sizeRow = document.createElement('div');
-      sizeRow.className = 'dof-buttons';
-      for (const size of sizes) {
-        const count = selected.filter(fish => fish.size === size).length;
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'dof-button';
-        if (selectedFishSize === size) button.classList.add('current');
-        button.textContent = `Size ${size} (${count})`;
-        button.addEventListener('click', () => {
-          selectedFishSize = size;
-          selectedFishKey = null;
-          renderFishReport();
-        });
-        sizeRow.appendChild(button);
-      }
-      fishResultsEl.appendChild(sizeRow);
-
-      const list = document.createElement('ul');
-      const filtered = selectedFishSize === null ? selected : selected.filter(fish => fish.size === selectedFishSize);
-      const visible = filtered.slice(0, 200);
-      for (const fish of visible) {
-        const index = selected.indexOf(fish);
-        const item = document.createElement('li');
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'chain-result';
-        const key = `${selectedFishCategory}:${index}`;
-        if (selectedFishKey === key) button.classList.add('selected');
-        const removals = fish.cells.map(cell => ({ cell, digit: fish.digit }));
-        button.textContent = `${fish.name}: (${fish.digit}) `
-          + `${core.sectorGroupName(fish.baseSectors)} / `
-          + `${core.sectorGroupName(fish.coverSectors)} => `
-          + `${core.formatRemovals(removals)}`;
-        button.addEventListener('click', () => selectFishReport(selectedFishCategory, index));
-        item.appendChild(button);
-        list.appendChild(item);
-      }
-
-      if (filtered.length > visible.length) {
-        const more = document.createElement('li');
-        more.textContent = `Showing ${visible.length} of ${filtered.length} ${selectedFishCategory} records.`;
-        list.appendChild(more);
-      }
-      fishResultsEl.appendChild(list);
+      fishResultsEl.appendChild(categoriesEl);
     }
 
     function fishStepFromReport(fish) {
@@ -4051,50 +4592,53 @@
         groups.set(item.size, bucket);
       }
       const selected = hidden ? selectedHiddenSubsetSize : selectedNakedSubsetSize;
-      const buttonRow = document.createElement('div');
-      buttonRow.className = 'dof-buttons';
-      for (const [size, items] of [...groups.entries()].sort((a, b) => a[0] - b[0])) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'dof-button';
-        if (selected === size) button.classList.add('current');
-        button.textContent = `Size ${size} (${items.length})`;
-        button.addEventListener('click', () => {
-          if (hidden) selectedHiddenSubsetSize = size;
-          else selectedNakedSubsetSize = size;
-          renderGenericSubsetReport(kind);
-        });
-        buttonRow.appendChild(button);
-      }
-      resultsEl.appendChild(buttonRow);
 
-      if (selected === null || selected === undefined) return;
-      const selectedRecords = groups.get(selected) || [];
-      const list = document.createElement('ul');
-      const visible = selectedRecords.slice(0, 200);
-      for (const item of visible) {
-        const label = `${item.locked ? 'Locked ' : ''}${hidden ? 'Hidden' : 'Naked'} ${subsetSizeName(item.size)}`;
-        const entry = document.createElement('li');
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'chain-result';
-        const index = selectedRecords.indexOf(item);
-        const key = `${selected}:${index}`;
-        const selectedKey = hidden ? selectedHiddenSubsetKey : selectedNakedSubsetKey;
-        if (selectedKey === key) button.classList.add('selected');
-        button.textContent = `${label}: (${item.digits.join('')}) `
-          + `${core.cellGroupName(item.cells)} in ${core.sectorGroupName([item.sector])} => `
-          + `${core.formatRemovals(item.removals)}`;
-        button.addEventListener('click', () => selectSubsetReport(kind, index));
-        entry.appendChild(button);
-        list.appendChild(entry);
+      const sizeGroups = document.createElement('div');
+      sizeGroups.className = 'chain-categories';
+      for (const [size, records] of [...groups.entries()].sort((a, b) => a[0] - b[0])) {
+        const sizePanel = document.createElement('details');
+        sizePanel.className = 'chain-category';
+        sizePanel.open = selected === size;
+
+        const sizeSummary = document.createElement('summary');
+        const sizeName = document.createElement('strong');
+        sizeName.className = 'chain-category-name';
+        sizeName.textContent = `Size ${size} - ${subsetSizeName(size)}`;
+        const sizeCount = document.createElement('span');
+        sizeCount.className = 'chain-category-count';
+        sizeCount.textContent = `${records.length} ${records.length === 1 ? 'subset' : 'subsets'}`;
+        sizeSummary.append(sizeName, sizeCount);
+        sizePanel.appendChild(sizeSummary);
+
+        const list = document.createElement('ul');
+        list.className = 'chain-list';
+        const visible = records.slice(0, 200);
+        for (const item of visible) {
+          const label = `${item.locked ? 'Locked ' : ''}${hidden ? 'Hidden' : 'Naked'} ${subsetSizeName(item.size)}`;
+          const entry = document.createElement('li');
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'chain-result';
+          const index = records.indexOf(item);
+          const key = `${size}:${index}`;
+          const selectedKey = hidden ? selectedHiddenSubsetKey : selectedNakedSubsetKey;
+          if (selectedKey === key) button.classList.add('selected');
+          button.textContent = `${label}: (${item.digits.join('')}) `
+            + `${core.cellGroupName(item.cells)} in ${core.sectorGroupName([item.sector])} => `
+            + `${core.formatRemovals(item.removals)}`;
+          button.addEventListener('click', () => selectSubsetReport(kind, index, size));
+          entry.appendChild(button);
+          list.appendChild(entry);
+        }
+        if (records.length > visible.length) {
+          const more = document.createElement('li');
+          more.textContent = `Showing ${visible.length} of ${records.length} ${subsetSizeName(size)} records.`;
+          list.appendChild(more);
+        }
+        sizePanel.appendChild(list);
+        sizeGroups.appendChild(sizePanel);
       }
-      if (selectedRecords.length > visible.length) {
-        const more = document.createElement('li');
-        more.textContent = `Showing ${visible.length} of ${selectedRecords.length} ${subsetSizeName(selected)} records.`;
-        list.appendChild(more);
-      }
-      resultsEl.appendChild(list);
+      resultsEl.appendChild(sizeGroups);
     }
 
     function subsetStepFromReport(kind, item) {
@@ -4115,12 +4659,14 @@
       };
     }
 
-    function selectSubsetReport(kind, index) {
+    function selectSubsetReport(kind, index, sizeOverride = null) {
       const hidden = kind === 'hidden';
       const report = hidden ? hiddenSubsetReport : nakedSubsetReport;
-      const size = hidden ? selectedHiddenSubsetSize : selectedNakedSubsetSize;
+      const size = sizeOverride ?? (hidden ? selectedHiddenSubsetSize : selectedNakedSubsetSize);
       const item = report?.filter(record => record.size === size)?.[index];
       if (!item) return;
+      if (hidden) selectedHiddenSubsetSize = size;
+      else selectedNakedSubsetSize = size;
       const key = `${size}:${index}`;
       if (hidden) selectedHiddenSubsetKey = key;
       else selectedNakedSubsetKey = key;
@@ -4252,6 +4798,11 @@
 
     function xChainType(chain, eriCount) {
       const name = String(chain.structureName || '').replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS|ALC)\s*-\s*/i, '');
+      // X-Wing is filed under the structural Ring folder, but it is not an X-Ring.
+      if (/^X-Wing$/i.test(name)) return 'X-Wing';
+      if (/^(?:Dual Empty Rectangle|Rec'T Kite|Bridged ERI|Bridged Empty Rectangle|3x ERI)$/i.test(name)) {
+        return 'Empty Rectangle';
+      }
       if (eriCount > 0) {
         return 'Empty Rectangle';
       }
@@ -4336,7 +4887,7 @@
           subcategory: chain.isRing
             ? '(2) RCC Rule - Double Linked Rule'
             : '(1) RCC Rule',
-          subclass: chain.isRing ? 'Ring' : null,
+          subclass: null,
         };
       }
       if (nodeCount === 3) {
@@ -4345,7 +4896,7 @@
           subcategory: chain.isRing
             ? '(3) RCC Rule - Triple Link Rule'
             : '(2) RCC Rule',
-          subclass: chain.isRing ? 'Ring' : 'XY-Wing',
+          subclass: null,
         };
       }
 
@@ -4369,7 +4920,7 @@
           subcategory: chain.isRing
             ? '(2) RCC Rule - Double Linked Rule'
             : '(1) RCC Rule',
-          subclass: chain.isRing ? 'Ring' : null,
+          subclass: null,
         };
       }
       if (name === 'XY') {
@@ -4378,7 +4929,7 @@
           subcategory: chain.isRing
             ? '(3) RCC Rule - Triple Link Rule'
             : '(2) RCC Rule',
-          subclass: chain.isRing ? 'Ring' : 'XY-Wing',
+          subclass: null,
         };
       }
       return {
@@ -4578,18 +5129,29 @@
         const name = String(chain.structureName || '')
           .replace(/^\s*(?:ALS|AHS|ALC)\s*-\s*/i, '');
         const finnedSashimi = name.match(/^(Finned|Sashimi) X-Wing$/i);
-        const eriSubclass = /^(?:Dual Empty Rectangle|Rec'T Kite)$/i.test(name)
-          ? name
+        const eriSubclass = /^(?:Dual Empty Rectangle|Rec'T Kite|Bridged ERI|Bridged Empty Rectangle|3x ERI)$/i.test(name)
+          ? name.replace(/^Bridged Empty Rectangle$/i, 'Bridged ERI')
           : null;
         locations.push({
           family: 'X - Chains',
           wing: xType,
           rank: finnedSashimi
             ? `${finnedSashimi[1][0].toUpperCase()}${finnedSashimi[1].slice(1).toLowerCase()} X-Wing`
+            : xType === 'X-Wing' ? 'Ring'
             : isEriFamily && eriSubclass
               ? eriSubclass
               : isEriFamily && eriCount > 0 ? `ERI(${eriCount})` : null,
           subclass: null,
+          path: [
+            'Single Digit Named Chains',
+            xType,
+            finnedSashimi
+              ? `${finnedSashimi[1][0].toUpperCase()}${finnedSashimi[1].slice(1).toLowerCase()} X-Wing`
+              : xType === 'X-Wing' ? 'Ring'
+                : isEriFamily && eriSubclass
+                  ? eriSubclass
+                  : isEriFamily && eriCount > 0 ? `ERI(${eriCount})` : null,
+          ].filter(Boolean),
         });
       }
 
@@ -4697,10 +5259,56 @@
       container.appendChild(subclasses);
     }
 
-    function chainSafetyFlags(chain) {
-      if (!Array.isArray(solution) || solution.length !== 81) return [];
+    function chainFolderPath(folder) {
+      if (Array.isArray(folder.path)) return folder.path.filter(Boolean);
+      return [folder.wing, folder.rank, folder.subclass].filter(Boolean);
+    }
 
-      const remaining = cand.map(values => new Set(values || []));
+    function appendChainFolderTree(container, entries, depth, selectedFolderKeys) {
+      const pathGroups = new Map();
+      for (const entry of entries) {
+        const label = entry.path[depth] || '';
+        const branch = pathGroups.get(label) || [];
+        branch.push(entry);
+        pathGroups.set(label, branch);
+      }
+
+      for (const [label, branchEntries] of pathGroups) {
+        if (!label) {
+          appendChainList(container, branchEntries);
+          continue;
+        }
+
+        const panel = document.createElement('details');
+        panel.className = 'chain-subcategory';
+        panel.open = branchEntries.some(({ folderKey }) => selectedFolderKeys.has(folderKey));
+        const summary = document.createElement('summary');
+        const name = document.createElement('strong');
+        name.textContent = label;
+        const count = document.createElement('span');
+        count.className = 'chain-category-count';
+        count.textContent = `${branchEntries.length} ${branchEntries.length === 1 ? 'chain' : 'chains'}`;
+        summary.append(name, count);
+        panel.appendChild(summary);
+
+        const terminal = branchEntries.filter(entry => entry.path.length <= depth + 1);
+        if (terminal.length) appendChainList(panel, terminal);
+
+        const deeper = branchEntries.filter(entry => entry.path.length > depth + 1);
+        if (deeper.length) {
+          const children = document.createElement('div');
+          children.className = 'chain-subcategories';
+          appendChainFolderTree(children, deeper, depth + 1, selectedFolderKeys);
+          panel.appendChild(children);
+        }
+        container.appendChild(panel);
+      }
+    }
+
+    function chainSafetyFlags(chain, candidateGrid = cand, expectedSolution = solution, fixedGrid = puzzle) {
+      if (!Array.isArray(expectedSolution) || expectedSolution.length !== 81) return [];
+
+      const remaining = candidateGrid.map(values => new Set(values || []));
       const reasons = [];
       const seen = new Set();
       const addReason = (key, text) => {
@@ -4715,7 +5323,7 @@
         if (!Number.isInteger(cell) || cell < 0 || cell >= 81) continue;
         if (!Number.isInteger(digit) || digit < 1 || digit > 9) continue;
 
-        if (solution[cell] === digit) {
+        if (expectedSolution[cell] === digit) {
           addReason(
             `solution:${cell}:${digit}`,
             `removes solution ${digit} from ${core.cellName(cell)}`,
@@ -4725,7 +5333,7 @@
       }
 
       for (let cell = 0; cell < 81; cell++) {
-        if ((cand[cell] || []).length > 0 && remaining[cell].size === 0) {
+        if ((candidateGrid[cell] || []).length > 0 && remaining[cell].size === 0) {
           addReason(`empty-cell:${cell}`, `empties ${core.cellName(cell)}`);
         }
       }
@@ -4733,7 +5341,7 @@
       for (let sector = 0; sector < core.UNITS.length; sector++) {
         const unit = core.UNITS[sector];
         for (let digit = 1; digit <= 9; digit++) {
-          if (unit.some(cell => puzzle[cell] === digit)) continue;
+          if (unit.some(cell => fixedGrid[cell] === digit)) continue;
           if (unit.some(cell => remaining[cell].has(digit))) continue;
           const name = core.sectorGroupName([sector]);
           addReason(`sector:${sector}:${digit}`, `leaves ${name} with no place for ${digit}`);
@@ -4741,6 +5349,250 @@
       }
 
       return reasons;
+    }
+
+    function chainSearchOptions(candidateGrid, maxDepth, budget = 'interactive') {
+      const includeAlsRcc = chainAlsRccEl.checked;
+      const generator = budget === 'generator';
+      const strongLinkTypes = chainStrongTypeEls
+        .map((element, index) => element.checked ? index : null)
+        .filter(index => index !== null);
+      const limits = budget === 'generator'
+        ? {
+            maxChains: 75,
+            maxResultAttempts: 750,
+            maxResultAttemptsPerStart: 50,
+            maxStates: 8000,
+            maxQueue: 8000,
+            maxBranching: 100,
+            maxStartViews: 250,
+            maxAlsLinks: 750,
+          }
+        : {
+            maxChains: 5000,
+            maxResultAttempts: 100000,
+            maxResultAttemptsPerStart: 5000,
+            maxStates: 300000,
+            maxQueue: 300000,
+            maxBranching: 500,
+            maxStartViews: Infinity,
+            maxAlsLinks: 5000,
+          };
+
+      const strongSet = core.buildStrongLinks(candidateGrid);
+      const alsList = includeAlsRcc ? core.alsConstructor(candidateGrid, {
+        maxSizeDOF: generator ? 4 : 8,
+        maxSizeFox: generator ? 5 : 7,
+        ...(generator ? { searchLimit: true } : {}),
+      }) : null;
+      const alsLinkSet = includeAlsRcc ? core.buildAlsLinks(candidateGrid, {
+        alsList,
+        strictSingleCommon: true,
+        maxLinks: limits.maxAlsLinks,
+      }) : null;
+
+      return {
+        strongSet,
+        alsList,
+        alsLinkSet,
+        includeAlsRcc,
+        strongLinkTypes,
+        maxDepth,
+        ...limits,
+      };
+    }
+
+    function chainStepFromResult(chain, report, index, candidateGrid = cand) {
+      const items = core.eliminationItems({ items: chain.eliminations || [] }, candidateGrid);
+      return {
+        tech: 'chain',
+        name: chain.structureName,
+        structureName: chain.structureName,
+        chainLength: chain.length,
+        chain,
+        chainReport: report,
+        chainIndex: index,
+        desc: core.formatChainEureka(chain),
+        elim: { items },
+        digits: [...new Set(items.map(item => item.digit))],
+        at: [...new Set((chain.steps || []).flatMap(step => [
+          ...(step.entry?.cells || []),
+          ...(step.exit?.cells || []),
+        ]))],
+        vertices: [...new Set((chain.steps || []).flatMap(step => [
+          ...(step.entry?.cells || []),
+          ...(step.exit?.cells || []),
+        ]))],
+      };
+    }
+
+    function chainMoveKeys(chain) {
+      const fullName = String(chain?.structureName || '');
+      const name = fullName
+        .replace(/^\s*(?:AIC\s*\+\s*ALS|ALS|AHS|ALC)\s*-\s*/i, '')
+        .trim();
+      const keys = new Set();
+
+      if (/^(?:X-Chain|AIC)$/i.test(name)) keys.add('x-chain');
+      if (/^Empty Rectangle$/i.test(name)) keys.add('empty-rectangle');
+      if (/^Dual Empty Rectangle$/i.test(name)) keys.add('dual-empty-rectangle');
+      if (/^Rec'T Kite$/i.test(name)) keys.add('rect-kite');
+      if (/^(?:Bridged ERI|Bridged Empty Rectangle)$/i.test(name)) keys.add('bridged-eri');
+      if (/^3x ERI$/i.test(name)) keys.add('eri-chain');
+      if (/^2-String Kite$/i.test(name)) keys.add('2-string-kite');
+      if (/^Skyscraper$/i.test(name)) keys.add('skyscraper');
+      if (/^X-Wing$/i.test(name)) keys.add('chain-x-wing');
+      if (/^Finned X-Wing$/i.test(name)) keys.add('finned-x-wing');
+      if (/^Sashimi X-Wing$/i.test(name)) keys.add('sashimi-x-wing');
+
+      if (/^XY-Chain$/i.test(name)) keys.add('xy-chain');
+      if (/^XY-Wing$/i.test(name)) keys.add('xy-wing');
+      if (/^Remote Pair$/i.test(name)) keys.add('remote-pair');
+      if (/^Hidden XY-Chain$/i.test(name)) keys.add('hidden-xy-chain');
+      if (/^Hidden Remote Pair$/i.test(name)) keys.add('hidden-remote-pair');
+
+      if (/^W-Wing$/i.test(name)) keys.add('w-wing');
+      if (/^S-Wing$/i.test(name)) keys.add('s-wing');
+      if (/^M(?:\(2\)|2)-Wing$/i.test(name)) keys.add('m2-wing');
+      if (/^M(?:\(3\)|3)-Wing$/i.test(name)) keys.add('m3-wing');
+      if (/^L(?:\(1\)|1)-Wing$/i.test(name)) keys.add('l1-wing');
+      if (/^L(?:\(2\)|2)-Wing$/i.test(name)) keys.add('l2-wing');
+      if (/^L(?:\(3\)|3)-Wing$/i.test(name)) keys.add('l3-wing');
+      if (/^H(?:\(1\)|1)-Wing$/i.test(name)) keys.add('h1-wing');
+      if (/^H(?:\(2\)|2)-Wing$/i.test(name)) keys.add('h2-wing');
+      if (/^H(?:\(3\)|3)-Wing$/i.test(name)) keys.add('h3-wing');
+      if (/^Strong[- ]Wing/i.test(name)) keys.add('strong-wing');
+      if (/^i[SWMLH]/i.test(name)) keys.add('inversion');
+
+      if (/^ALS\s*-\s*XZ$/i.test(fullName)) keys.add('als-xz');
+      if (/^ALS\s*-\s*XY$/i.test(fullName)) keys.add('als-xy');
+      if (/^ALS\s*-\s*Chain$/i.test(fullName)) keys.add('als-chain');
+      if (/AIC\s*\+\s*ALS/i.test(fullName)) keys.add('aic-als');
+
+      const eriCount = chainEriCount(chain);
+      if (eriCount > 0 && !keys.has('bridged-eri')) keys.add('eri-chain');
+
+      const barns = barnsChainInfo(chain);
+      const barnsTransport = barnsTransportChainInfo(chain);
+      if (barns) keys.add('barns');
+      if (barnsTransport) keys.add('barns-transport');
+
+      const alsOne = alsSizeOneChainInfo(chain);
+      if (alsOne) {
+        if (alsOne.remotePair) keys.add('remote-pair');
+        else if (alsOne.breakdown === 'XY-Wing') keys.add('xy-wing');
+        else keys.add('xy-chain');
+      }
+
+      const hidden = hiddenXyChainInfo(chain);
+      if (hidden) {
+        keys.add('hidden-xy-chain');
+        if (hidden.remotePair) keys.add('hidden-remote-pair');
+      }
+
+      return keys;
+    }
+
+    function chainMoveEnabled(chain, enabledTypes) {
+      if (!enabledTypes.has('chains')) return false;
+      const classKeys = [...chainMoveKeys(chain)]
+        .filter(key => solverMoveTypeEls.has(key));
+      return !classKeys.length || classKeys.some(key => enabledTypes.has(key));
+    }
+
+    function solverMovePriority(chain, step, searchDepth, reportIndex) {
+      const rating = step.rating || ratingForStep(step);
+      const rank = rating.category === 'Unknown'
+        ? Number.POSITIVE_INFINITY
+        : Number(rating.rank ?? Number.POSITIVE_INFINITY);
+      const value = Number.isFinite(Number(rating.value))
+        ? Number(rating.value)
+        : Number.POSITIVE_INFINITY;
+      const length = Number(chain.length || chain.steps?.length || searchDepth || Infinity);
+      return [rank, value, length, searchDepth, reportIndex];
+    }
+
+    function isHigherPriorityMove(candidate, current) {
+      if (!current) return true;
+      const nextPriority = candidate.priority;
+      const currentPriority = current.priority;
+      for (let index = 0; index < nextPriority.length; index++) {
+        if (nextPriority[index] !== currentPriority[index]) {
+          return nextPriority[index] < currentPriority[index];
+        }
+      }
+      return false;
+    }
+
+    function findSolverChainMove(candidateGrid = cand, fixedGrid = puzzle, budget = 'interactive', expectedSolution = solution) {
+      const enabledTypes = currentSolverMoveTypes();
+      if (!enabledTypes.has('chains')) return null;
+
+      const maxDepth = Math.min(8, Math.max(2, Number(chainDepthEl.value) || 8));
+      const search = chainSearchOptions(candidateGrid, maxDepth, budget);
+      let best = null;
+      for (let depth = 2; depth <= maxDepth; depth++) {
+        const report = core.findAicChains(candidateGrid, {
+          strongLinkSet: search.strongSet,
+          alsList: search.alsList,
+          alsLinkSet: search.alsLinkSet,
+          includeAls: search.includeAlsRcc,
+          strongLinkTypes: search.strongLinkTypes,
+          maxDepth: depth,
+          maxChains: search.maxChains,
+          maxResultAttempts: search.maxResultAttempts,
+          maxResultAttemptsPerStart: search.maxResultAttemptsPerStart,
+          maxStates: search.maxStates,
+          maxQueue: search.maxQueue,
+          maxBranching: search.maxBranching,
+          maxStartViews: search.maxStartViews,
+          maxAlsLinks: search.maxAlsLinks,
+        });
+        for (let index = 0; index < report.chains.length; index++) {
+          const chain = report.chains[index];
+          if (!chainMoveEnabled(chain, enabledTypes)) continue;
+
+          const items = core.eliminationItems({ items: chain.eliminations || [] }, candidateGrid);
+          if (!items.length) continue;
+          if (chainSafetyFlags(chain, candidateGrid, expectedSolution, fixedGrid).length > 0) continue;
+
+          const step = {
+            ...chainStepFromResult(chain, report, index, candidateGrid),
+            elim: { items },
+            desc: core.formatChainEureka({ ...chain, eliminations: items }),
+          };
+          step.rating = ratingForStep(step);
+          const candidate = {
+            report,
+            index,
+            chain,
+            step,
+            priority: solverMovePriority(chain, step, depth, index),
+          };
+          if (isHigherPriorityMove(candidate, best)) best = candidate;
+        }
+      }
+      if (!best) return null;
+      const { priority, ...result } = best;
+      return result;
+    }
+
+    function solverFishOptions(candidateGrid, fixedGrid) {
+      return {
+        ...currentPomFishOptions(),
+        grid: [...fixedGrid],
+        omissionFishSearch: core.omissionFishStep,
+        enabledTechniques: currentSolverMoveTypes(),
+      };
+    }
+
+    function chooseSolverStep(candidateGrid = cand, fixedGrid = puzzle, budget = 'interactive', expectedSolution = solution) {
+      const simple = core.subsetOrFishStep(candidateGrid, solverFishOptions(candidateGrid, fixedGrid));
+      if (simple) return { step: simple, chain: null };
+
+      const chainResult = findSolverChainMove(candidateGrid, fixedGrid, budget, expectedSolution);
+      if (!chainResult) return null;
+      return chainResult;
     }
 
     function flaggedChainEntries(verbose = false) {
@@ -4888,10 +5740,11 @@
       for (let index = 0; index < visible.length; index++) {
         const chain = visible[index];
         for (const folder of chainFolderInfos(chain)) {
-          const folderKey = [folder.family, folder.wing, folder.rank, folder.subclass]
+          const path = chainFolderPath(folder);
+          const folderKey = [folder.family, ...path]
             .map(value => value ?? '')
             .join('|');
-          const folderLabel = [folder.family, folder.wing, folder.rank, folder.subclass]
+          const folderLabel = [folder.family, ...path]
             .filter(Boolean)
             .join(' / ');
           const memberships = folderMemberships.get(index) || [];
@@ -4904,9 +5757,7 @@
             chain,
             index,
             folderKey,
-            wing: folder.wing,
-            rank: folder.rank,
-            subclass: folder.subclass,
+            path,
             displayName: folderChainText(chain, folder),
           });
           groups.set(folder.family, group);
@@ -4942,69 +5793,10 @@
         categorySummary.append(categoryName, categoryCount);
         category.appendChild(categorySummary);
 
-        const wingGroups = new Map();
-        for (const entry of entries) {
-          const wingEntries = wingGroups.get(entry.wing || '') || [];
-          wingEntries.push(entry);
-          wingGroups.set(entry.wing || '', wingEntries);
-        }
-
-        if (wingGroups.size === 1 && wingGroups.has('')) {
-          appendChainList(category, entries);
-        } else {
-          const wings = document.createElement('div');
-          wings.className = 'chain-subcategories';
-          for (const [wing, wingEntries] of wingGroups) {
-            if (!wing) {
-              appendChainList(wings, wingEntries);
-              continue;
-            }
-
-            const wingPanel = document.createElement('details');
-            wingPanel.className = 'chain-subcategory';
-            wingPanel.open = wingEntries.some(({ folderKey }) => selectedFolderKeys.has(folderKey));
-            const wingSummary = document.createElement('summary');
-            const wingName = document.createElement('strong');
-            wingName.textContent = wing;
-            const wingCount = document.createElement('span');
-            wingCount.className = 'chain-category-count';
-            wingCount.textContent = `${wingEntries.length} ${wingEntries.length === 1 ? 'chain' : 'chains'}`;
-            wingSummary.append(wingName, wingCount);
-            wingPanel.appendChild(wingSummary);
-
-            const rankGroups = new Map();
-            for (const entry of wingEntries) {
-              const rankEntries = rankGroups.get(entry.rank || '') || [];
-              rankEntries.push(entry);
-              rankGroups.set(entry.rank || '', rankEntries);
-            }
-            const ranks = document.createElement('div');
-            ranks.className = 'chain-subcategories';
-            for (const [rank, rankEntries] of rankGroups) {
-              if (!rank) {
-                appendChainList(ranks, rankEntries);
-                continue;
-              }
-
-              const rankPanel = document.createElement('details');
-              rankPanel.className = 'chain-subcategory';
-              rankPanel.open = rankEntries.some(({ folderKey }) => selectedFolderKeys.has(folderKey));
-              const rankSummary = document.createElement('summary');
-              const rankName = document.createElement('strong');
-              rankName.textContent = rank;
-              const rankCount = document.createElement('span');
-              rankCount.className = 'chain-category-count';
-              rankCount.textContent = `${rankEntries.length} ${rankEntries.length === 1 ? 'chain' : 'chains'}`;
-              rankSummary.append(rankName, rankCount);
-              rankPanel.appendChild(rankSummary);
-              appendChainSubclasses(rankPanel, rankEntries);
-              ranks.appendChild(rankPanel);
-            }
-            wingPanel.appendChild(ranks);
-            wings.appendChild(wingPanel);
-          }
-          category.appendChild(wings);
-        }
+        const folderTree = document.createElement('div');
+        folderTree.className = 'chain-subcategories';
+        appendChainFolderTree(folderTree, entries, 0, selectedFolderKeys);
+        category.appendChild(folderTree);
         categories.appendChild(category);
       }
 
@@ -5075,13 +5867,15 @@
     }
 
     function applyNextCycle() {
-      const step = core.subsetOrFishStep(cand, currentSolverFishOptions());
-      if (!step) {
+      const choice = chooseSolverStep(cand, puzzle, 'interactive');
+      if (!choice?.step) {
         activeStep = null;
         lastRemoved = [];
-        setStatus('No subset or fish elimination found. Candidate grid is current.', 'warn');
+        setStatus('No enabled move found. Candidate grid is current.', 'warn');
         return false;
       }
+
+      const step = choice.step;
 
       const before = snapshotState();
       const removed = core.applyEliminations(cand, step.elim);
@@ -5095,7 +5889,8 @@
       cycle += 1;
       activeStep = step;
       lastRemoved = removed;
-      chainReport = null;
+      chainReport = choice.report || null;
+      selectedChainIndex = choice.report ? choice.index : null;
       undoStack.push(before);
       redoStack = [];
 
@@ -5104,10 +5899,36 @@
       return true;
     }
 
+
+    function collectLastManStandingPromotions(queue, queued) {
+      const enqueue = (cell, digit) => {
+        if (fixedValue(cell) || !(cand[cell] || []).includes(digit)) return;
+        const key = `${cell}:${digit}`;
+        if (queued.has(key)) return;
+        queued.add(key);
+        queue.push({ cell, digit, tech: 'last-man-standing' });
+      };
+
+      for (let cell = 0; cell < 81; cell++) {
+        const values = cand[cell] || [];
+        if (fixedValue(cell) || values.length !== 1) continue;
+
+        const digit = values[0];
+        const peers = core.peersOf(cell);
+        if (peers.some(peer => fixedValue(peer) === digit)) continue;
+        if (peers.some(peer => (cand[peer] || []).includes(digit))) continue;
+        enqueue(cell, digit);
+      }
+    }
+
+    function advanceCycle() {
+      return applyNextCycle();
+    }
+
     function nextCycle() {
-      const changed = applyNextCycle();
+      const changed = advanceCycle();
       if (changed && ratingReport?.source !== 'generated') {
-        ratingReport = ratingFromLog(logEntries, candidateGridIsSolved(cand, puzzle));
+        ratingReport = ratingFromLog(logEntries, candidateGridIsSolved(cand, currentFixedGrid()));
       }
       render();
       return changed;
@@ -5143,11 +5964,11 @@
 
     function runAll() {
       let ran = 0;
-      while (ran < 100 && applyNextCycle()) ran += 1;
+      while (ran < 100 && advanceCycle()) ran += 1;
       if (ratingReport?.source !== 'generated') {
-        ratingReport = ratingFromLog(logEntries, candidateGridIsSolved(cand, puzzle));
+        ratingReport = ratingFromLog(logEntries, candidateGridIsSolved(cand, currentFixedGrid()));
       }
-      if (solution && !candidateGridIsSolved(cand, puzzle)) {
+      if (solution && !candidateGridIsSolved(cand, currentFixedGrid())) {
         setStatus('Run All stopped: retained logic stalled before the puzzle was solved.', 'warn');
       }
       if (ran === 100) setStatus('Stopped at 100 cycles.', 'warn');
@@ -5159,7 +5980,7 @@
       setStatus('Running POM check...');
 
       setTimeout(() => {
-        pomReport = core.pomCheck(cand, puzzle);
+        pomReport = core.pomCheck(cand, currentFixedGrid());
         renderPomReport();
         openReportPanel(pomResultsEl);
         const omissionCount = pomReport.omissions.reduce((total, item) => total + item.cells.length, 0);
@@ -5328,7 +6149,7 @@
         try {
           fishReport = core.findOmissionFishReports(cand, {
             ...currentPomFishOptions(),
-            grid: puzzle,
+            grid: currentFixedGrid(),
           });
           selectedFishCategory = null;
           selectedFishSize = null;
@@ -5470,9 +6291,10 @@
       const targetCategory = generationDifficultyEl.value;
       const requestToken = ++generationToken;
       setBusy(true);
+      const article = /^[AEIOU]/i.test(targetCategory) ? 'an' : 'a';
       setStatus(targetCategory === 'any'
         ? 'Generating...'
-        : `Generating a ${targetCategory} puzzle...`);
+        : `Generating ${article} ${targetCategory} puzzle...`);
 
       setTimeout(() => {
         if (requestToken !== generationToken) return;
@@ -5499,7 +6321,7 @@
               );
               return;
             }
-            setStatus(`Generating a ${targetCategory} puzzle... attempt ${attempts}`);
+            setStatus(`Generating ${article} ${targetCategory} puzzle... attempt ${attempts}`);
             setTimeout(tryGeneration, 0);
             return;
           }

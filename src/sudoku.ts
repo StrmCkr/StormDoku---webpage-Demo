@@ -715,20 +715,34 @@ export function boxLineStep(cand: CandidateGrid): Hint | null {
   return withActualEliminations(boxLineStepM(cand), cand);
 }
 
-function subsetStepForSizes(cand: CandidateGrid, sizes: readonly SubsetSize[]): Hint | null {
-  for (const k of sizes) {
-    const hidden = hiddenSubsetStep(cand, k);
-    if (hidden) return hidden;
+function moveTypeEnabled(enabledTypes: Iterable<string> | undefined, type: string): boolean {
+  return !enabledTypes || new Set(enabledTypes).has(type);
+}
 
-    const naked = withActualEliminations(nakedSubsetStep(cand, k), cand);
-    if (naked) return naked;
+function subsetStepForSizes(
+  cand: CandidateGrid,
+  sizes: readonly SubsetSize[],
+  enabledTypes?: Iterable<string>,
+): Hint | null {
+  for (const k of sizes) {
+    const hiddenType = HIDDEN_TECH[k];
+    if (moveTypeEnabled(enabledTypes, hiddenType)) {
+      const hidden = hiddenSubsetStep(cand, k);
+      if (hidden) return hidden;
+    }
+
+    const nakedType = NAKED_TECH[k];
+    if (moveTypeEnabled(enabledTypes, nakedType)) {
+      const naked = withActualEliminations(nakedSubsetStep(cand, k), cand);
+      if (naked) return naked;
+    }
   }
 
   return null;
 }
 
-export function subsetStep(cand: CandidateGrid): Hint | null {
-  return subsetStepForSizes(cand, [1, 2, 3, 4]);
+export function subsetStep(cand: CandidateGrid, options: FishSearchOptions = {}): Hint | null {
+  return subsetStepForSizes(cand, [1, 2, 3, 4], options.enabledTechniques);
 }
 
 export function fishStep(
@@ -740,14 +754,17 @@ export function fishStep(
 }
 
 export function subsetOrFishStep(cand: CandidateGrid, fishOptions: FishSearchOptions = {}): Hint | null {
-  const singles = subsetStepForSizes(cand, [1]);
+  const enabledTypes = fishOptions.enabledTechniques;
+  const singles = subsetStepForSizes(cand, [1], enabledTypes);
   if (singles) return singles;
 
-  const boxLine = boxLineStep(cand);
-  if (boxLine) return boxLine;
+  if (moveTypeEnabled(enabledTypes, 'box-line')) {
+    const boxLine = boxLineStep(cand);
+    if (boxLine) return boxLine;
+  }
 
   for (const size of [2, 3, 4] as const) {
-    const subset = subsetStepForSizes(cand, [size]);
+    const subset = subsetStepForSizes(cand, [size], enabledTypes);
     if (subset) return subset;
 
     const fish = fishStep(cand, [size], fishOptions);

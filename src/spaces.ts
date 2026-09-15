@@ -25,6 +25,7 @@ export interface FishSearchOptions {
   frankenEnabled?: boolean;
   mutantEnabled?: boolean;
   grid?: number[];
+  enabledTechniques?: Iterable<string>;
   omissionFishSearch?: (
     cand: CandidateGrid,
     sizes: readonly FishSize[],
@@ -489,6 +490,22 @@ export function boxLineStepM(cand: CandidateGrid): Hint | null {
   return null;
 }
 
+function moveTypeEnabled(enabledTypes: Iterable<string> | undefined, type: string | null): boolean {
+  return !enabledTypes || (type !== null && new Set(enabledTypes).has(type));
+}
+
+function fishMoveType(step: Hint | null): string | null {
+  if (!step) return null;
+  const size = Number(step.size);
+  const k = Number(step.k ?? 0);
+  if (k > 0) return `${size}x${size}+k-fish`;
+  return ({ 2: 'x-wing', 3: 'swordfish', 4: 'jellyfish' } as Record<number, string>)[size] ?? null;
+}
+
+function fishStepAllowed(step: Hint | null, enabledTypes: Iterable<string> | undefined): step is Hint {
+  return !!step && moveTypeEnabled(enabledTypes, fishMoveType(step));
+}
+
 export function fishStepM(
   cand: CandidateGrid,
   sizes: readonly FishSize[] = [2, 3, 4],
@@ -500,10 +517,10 @@ export function fishStepM(
     for (let digit = 1; digit <= 9; digit++) {
       const d0 = digit - 1;
       const rowFish = fishByRows(M, d0, digit, k);
-      if (rowFish) return rowFish;
+      if (fishStepAllowed(rowFish, options.enabledTechniques)) return rowFish;
 
       const colFish = fishByCols(M, d0, digit, k);
-      if (colFish) return colFish;
+      if (fishStepAllowed(colFish, options.enabledTechniques)) return colFish;
     }
 
     const omissionFish = options.omissionFishSearch?.(cand, [k], {
@@ -511,7 +528,7 @@ export function fishStepM(
       minSize: k,
       maxSize: k,
     });
-    if (omissionFish) return omissionFish;
+    if (fishStepAllowed(omissionFish, options.enabledTechniques)) return omissionFish;
   }
 
   return null;

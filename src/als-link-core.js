@@ -53,6 +53,12 @@
       fox: als.alsFOX,
       dof: als.alsDOF,
       powerSet: als.PowerSet,
+      rccList: (als.rccList || []).map(rcc => ({
+        digit: rcc.rccDigit,
+        cells: [...rcc.rccCells],
+        sectors: [...rcc.rccSectors],
+        potentialElim: [...rcc.rccPotentialElim],
+      })),
     };
   }
 
@@ -183,6 +189,47 @@
     return true;
   }
 
+  function buildAlsTraversalLinks(cand, alsList, out, seen, maxLinks) {
+    const pairable = alsList.filter(als => als.alsDOF === 1 && als.alsAllCells.length > 1);
+
+    for (let leftIndex = 0; leftIndex < pairable.length; leftIndex++) {
+      const leftAls = pairable[leftIndex];
+      for (let rightIndex = leftIndex + 1; rightIndex < pairable.length; rightIndex++) {
+        const rightAls = pairable[rightIndex];
+        if (!disjoint(leftAls.alsAllCells, rightAls.alsAllCells)) continue;
+
+        // A restricted common is enough to join two ALS modules for a chain
+        // walk. The next edge chooses the exposed non-RCC digit; no matching
+        // remainder set or pre-existing XZ elimination is required here.
+        const bridges = restrictedCommons(leftAls, rightAls);
+        if (!bridges.length) continue;
+
+        const leftNode = alsNode(leftAls);
+        const rightNode = alsNode(rightAls);
+        for (const bridge of bridges) {
+          const leftEndpoints = leftAls.rccList.filter(rcc => rcc.rccDigit !== bridge.digit);
+          const rightEndpoints = rightAls.rccList.filter(rcc => rcc.rccDigit !== bridge.digit);
+          for (const leftRcc of leftEndpoints) {
+            const left = endpointFromRcc(cand, leftAls, leftRcc);
+            for (const rightRcc of rightEndpoints) {
+              const right = endpointFromRcc(cand, rightAls, rightRcc);
+              const link = buildLink(
+                ALS_RCC,
+                left,
+                right,
+                leftNode,
+                bridgeGroup(leftAls, rightAls, [bridge], [bridge.digit]),
+                rightNode,
+                { moduleKind: 'ALS_TRAVERSAL' },
+              );
+              if (!addUnique(out, seen, link, maxLinks)) return;
+            }
+          }
+        }
+      }
+    }
+  }
+
   function buildPairedAlsLinks(cand, alsList, out, seen, maxLinks) {
     const pairable = alsList.filter(als => als.alsDOF === 1 && als.alsAllCells.length > 1);
 
@@ -278,14 +325,30 @@
       includePairedAls: options.includePairedAls ?? true,
       strictSingleCommon: options.strictSingleCommon ?? true,
       maxLinks: Number.isInteger(options.maxLinks) && options.maxLinks > 0 ? options.maxLinks : undefined,
+      maxTraversalLinks: Number.isInteger(options.maxTraversalLinks) && options.maxTraversalLinks > 0
+        ? options.maxTraversalLinks
+        : undefined,
     };
     const alsList = options.alsList || core.alsConstructor(cand, { maxSizeDOF: 8, maxSizeFox: 7 });
     const buckets = Array.from({ length: ALS_RCC + 1 }, () => []);
 
     if (opts.includePairedAls) {
-      const seen = new Set();
-      buildPairedAlsLinks(cand, alsList, buckets[ALS_RCC], seen, opts.maxLinks);
-      buildAlsXzLinks(cand, alsList, buckets[ALS_RCC], seen, opts.maxLinks);
+      const traversalSeen = new Set();
+      const traversalLinks = [];
+      buildAlsTraversalLinks(
+        cand,
+        alsList,
+        traversalLinks,
+        traversalSeen,
+        opts.maxTraversalLinks ?? opts.maxLinks ?? 5000,
+      );
+
+      const regularSeen = new Set();
+      const regularLinks = [];
+      buildPairedAlsLinks(cand, alsList, regularLinks, regularSeen, opts.maxLinks);
+      buildAlsXzLinks(cand, alsList, regularLinks, regularSeen, opts.maxLinks);
+
+      buckets[ALS_RCC].push(...regularLinks, ...traversalLinks);
     }
 
     return buckets;

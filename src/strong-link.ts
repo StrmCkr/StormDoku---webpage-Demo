@@ -1,4 +1,4 @@
-import { Bset, Cset, Rset } from './cardinals';
+import { UNITS } from './cardinals';
 import { buildMiniSectors } from './mini-sectors';
 import { intersection, peerPotentialEliminations, union } from './set-tools';
 import { peersOf, type CandidateGrid } from './sudoku';
@@ -52,7 +52,6 @@ export interface StrongLinkXorConstruction {
 
 export type StrongLinkSet = [StrongLink[], StrongLink[], StrongLink[], StrongLink[], StrongLink[]];
 
-const UNITS: number[][] = [...Rset, ...Cset, ...Bset];
 let nextStrongLinkId = 0;
 
 function commonSectors(cells: readonly number[]): number[] {

@@ -313,7 +313,14 @@
   }
 
   function logicalDepth(steps) {
-    return steps.reduce((depth, step) => depth + (isExpandedRcc(step.view) ? 2 : 1), 0);
+    return steps.reduce((depth, step, index) => {
+      if (!isExpandedRcc(step.view)) return depth + 1;
+      // A shared middle ALS belongs to both adjacent modules but counts once.
+      if (index > 0 && alsModuleConnection(steps[index - 1].view, step.view)) {
+        return depth + 1;
+      }
+      return depth + 2;
+    }, 0);
   }
 
   function modularRingWeak(view) {
@@ -545,6 +552,7 @@
     const viewsByKey = new Map();
     const entryByCells = new Map();
     const entryByDigitSector = new Map();
+    const entryByAlsCell = new Map();
 
     for (const node of linkNodes) {
       for (const view of [directedView(node, true), directedView(node, false)]) {
@@ -554,6 +562,15 @@
         const localBucket = entryByCells.get(view.entry.cellKey) || [];
         localBucket.push(view);
         entryByCells.set(view.entry.cellKey, localBucket);
+
+        const entrySubset = alsSubsetForSide(view, 'entry');
+        if (entrySubset) {
+          for (const cell of asNumbers(entrySubset.cells)) {
+            const moduleBucket = entryByAlsCell.get(cell) || [];
+            moduleBucket.push(view);
+            entryByAlsCell.set(cell, moduleBucket);
+          }
+        }
 
         if (view.entry.conveyance !== 'CELLS') {
           for (const digit of mapDigits(view.entry.sectorsByDigit)) {
@@ -568,7 +585,7 @@
       }
     }
 
-    return { nodes: linkNodes, views, viewsByKey, entryByCells, entryByDigitSector };
+    return { nodes: linkNodes, views, viewsByKey, entryByCells, entryByDigitSector, entryByAlsCell };
   }
 
   function localConnection(fromView, toView) {
@@ -601,6 +618,7 @@
     const aSide = fromView.exit;
     const bSide = toView.entry;
 
+    if (alsModulesOverlap(fromView, toView)) return null;
     if (hasIntersection(aNode.allCells, bNode.allCells)) return null;
     if (hasIntersection(aSide.cells, bSide.cells)) return null;
 
@@ -634,7 +652,376 @@
   }
 
   function directConnection(fromView, toView) {
-    return localConnection(fromView, toView) || sectorConnection(fromView, toView);
+    const modular = alsModuleConnection(fromView, toView);
+    if (modular) return modular;
+    if (alsModulesOverlap(fromView, toView)) return null;
+    return localConnection(fromView, toView)
+      || sectorConnection(fromView, toView);
+  }
+
+  function alsSubsetForSide(view, side) {
+    const raw = view.node.raw;
+    const isLeft = side === 'entry' ? view.forward : !view.forward;
+    return isLeft ? raw.LS_L : raw.LS_R;
+  }
+
+  function alsSubsetKey(subset) {
+    if (!subset) return null;
+    if (subset.uniqueID != null) return `id:${subset.uniqueID}`;
+    return `cells:${cellsKey(subset.cells || [])}|digits:${asNumbers(subset.digits).join(',')}`;
+  }
+
+  function alsModuleCompatible(left, right) {
+    if (!left || !right) return false;
+    // A modular handoff is through the same ALS module, not through a
+    // coordinate- or digit-contained subset that merely resembles it.
+    return alsSubsetKey(left) === alsSubsetKey(right);
+  }
+
+  function alsModulesOverlap(fromView, toView) {
+    if (fromView.node.family !== 'ALS' || toView.node.family !== 'ALS') return false;
+    if (fromView.node.linkTypeName !== 'ALS_RCC' || toView.node.linkTypeName !== 'ALS_RCC') return false;
+
+    const fromRaw = fromView.node.raw;
+    const toRaw = toView.node.raw;
+    const fromCells = union(fromRaw.LS_L?.cells || [], fromRaw.LS_R?.cells || []);
+    const toCells = union(toRaw.LS_L?.cells || [], toRaw.LS_R?.cells || []);
+    return hasIntersection(fromCells, toCells);
+  }
+
+  function alsModuleConnection(fromView, toView) {
+    if (fromView.node.family !== 'ALS' || toView.node.family !== 'ALS') return null;
+    if (fromView.node.linkTypeName !== 'ALS_RCC' || toView.node.linkTypeName !== 'ALS_RCC') return null;
+
+    const fromSubset = alsSubsetForSide(fromView, 'exit');
+    const toSubset = alsSubsetForSide(toView, 'entry');
+    if (!alsModuleCompatible(fromSubset, toSubset)) return null;
+
+    const fromDigit = fromView.exit.digits.length === 1 ? fromView.exit.digits[0] : null;
+    const toDigit = toView.entry.digits.length === 1 ? toView.entry.digits[0] : null;
+    if (fromDigit == null || toDigit == null || fromDigit === toDigit) return null;
+
+    // A modular handoff is still a NAND weak inference. The shared ALS module
+    // may contain either edge, but the two edge cell sets may not use the same
+    // physical cell for their respective RCC digits.
+    const sharedCells = intersection(
+      fromSubset?.cells || [],
+      toSubset?.cells || [],
+    );
+    const fromEdgeCells = fromView.exit.cells.filter(cell => fromView.exit.digits.includes(fromDigit));
+    const toEdgeCells = toView.entry.cells.filter(cell => toView.entry.digits.includes(toDigit));
+    const sharedEdgeCells = intersection(fromEdgeCells, toEdgeCells);
+    if (intersection(sharedCells, fromEdgeCells).length
+      || intersection(sharedCells, toEdgeCells).length
+      || sharedEdgeCells.length) {
+      return null;
+    }
+
+    return {
+      // A modular handoff is a weak inference through the shared ALS. It
+      // uses the existing sector weak channel but has no single weak digit.
+      weakType: SECTOR_WEAK,
+      weakTypeName: WEAK_TYPE_NAMES[SECTOR_WEAK],
+      digit: null,
+      cells: union(fromView.exit.cells, toView.entry.cells),
+      sectors: [],
+      modular: true,
+    };
+  }
+
+  function alsBoundaryDigits(view, side) {
+    const subset = alsSubsetForSide(view, side);
+    const bridgeDigits = sortedUnique([
+      ...(view.node.raw.C?.digits || []),
+      ...(view.node.raw.C?.restrictedDigits || []),
+    ]);
+    return sortedUnique((subset?.digits || []).filter(digit => !bridgeDigits.includes(digit)));
+  }
+
+  function alsBoundaryCells(view, side, digit) {
+    if (!alsBoundaryDigits(view, side).includes(digit)) return [];
+    const subset = alsSubsetForSide(view, side);
+    return subsetRccCells(subset, digit);
+  }
+
+  function subsetPotentialEliminations(subset, digit) {
+    return subset?.rccList?.find(rcc => rcc.digit === digit)?.potentialElim || [];
+  }
+
+  function subsetRccCells(subset, digit) {
+    return subset?.rccList?.find(rcc => rcc.digit === digit)?.cells || [];
+  }
+
+  function subsetRccSectors(subset, digit) {
+    return subset?.rccList?.find(rcc => rcc.digit === digit)?.sectors || [];
+  }
+
+  function alsTargetCells(leftSubset, rightSubset, digit) {
+    const leftTargets = subsetPotentialEliminations(leftSubset, digit);
+    const rightTargets = subsetPotentialEliminations(rightSubset, digit);
+    return leftTargets.length && rightTargets.length
+      ? intersection(leftTargets, rightTargets)
+      : [];
+  }
+
+  function alsModuleExposedDigits(view, side) {
+    const subset = alsSubsetForSide(view, side);
+    const restricted = sortedUnique([
+      ...(view.node.raw.C?.digits || []),
+      ...(view.node.raw.C?.restrictedDigits || []),
+    ]);
+    return sortedUnique((subset?.digits || []).filter(digit => !restricted.includes(digit)));
+  }
+
+  function alsModuleBoundaryCells(view, side, digit) {
+    const subset = alsSubsetForSide(view, side);
+    return subsetRccCells(subset, digit);
+  }
+
+  function computeAlsModuleTriggers(cand, steps, out) {
+    for (const step of steps) {
+      const view = step.view;
+      if (view.node.family !== 'ALS' || view.node.linkTypeName !== 'ALS_RCC' || !view.node.raw.C) continue;
+      if (view.node.raw.moduleKind === 'ALS_TRAVERSAL') continue;
+
+      const leftSubset = alsSubsetForSide(view, 'entry');
+      const rightSubset = alsSubsetForSide(view, 'exit');
+      const leftDigits = alsModuleExposedDigits(view, 'entry');
+      const rightDigits = alsModuleExposedDigits(view, 'exit');
+
+      for (const digit of intersection(leftDigits, rightDigits)) {
+        const leftCells = alsModuleBoundaryCells(view, 'entry', digit);
+        const rightCells = alsModuleBoundaryCells(view, 'exit', digit);
+        if (!leftCells.length || !rightCells.length) continue;
+
+        addElimination(
+          out,
+          cand,
+          digit,
+          alsTargetCells(leftSubset, rightSubset, digit),
+          'type1',
+        );
+      }
+    }
+  }
+
+  function alsRccTargets(subset, digit) {
+    return subsetPotentialEliminations(subset, digit);
+  }
+
+  function alsRestrictedCommons(left, right) {
+    return intersection(left.digits || [], right.digits || []).filter(digit => {
+      return intersection(
+        subsetRccSectors(left, digit),
+        subsetRccSectors(right, digit),
+      ).length > 0;
+    });
+  }
+
+  function orderedAlsModules(steps) {
+    const modules = [];
+
+    for (const step of steps) {
+      if (step.view.node.family !== 'ALS' || step.view.node.linkTypeName !== 'ALS_RCC') {
+        return [];
+      }
+
+      for (const subset of [
+        alsSubsetForSide(step.view, 'entry'),
+        alsSubsetForSide(step.view, 'exit'),
+      ]) {
+        if (!subset || subset.dof !== 1) return [];
+
+        const previous = modules[modules.length - 1];
+        if (previous && alsModuleCompatible(previous, subset)) {
+          modules[modules.length - 1] = compatibleAlsSuperset(previous, subset) || previous;
+        } else {
+          modules.push(subset);
+        }
+      }
+    }
+
+    return modules;
+  }
+
+  function computeAlsXyWingTriggers(cand, steps, out) {
+    const modules = orderedAlsModules(steps);
+    if (modules.length < 3) return;
+
+    for (let start = 0; start + 2 < modules.length; start++) {
+      const a = modules[start];
+      const b = modules[start + 1];
+      const c = modules[start + 2];
+      if (hasIntersection(asNumbers(a.cells), asNumbers(b.cells))
+        || hasIntersection(asNumbers(a.cells), asNumbers(c.cells))
+        || hasIntersection(asNumbers(b.cells), asNumbers(c.cells))) continue;
+
+      const ab = intersection(asNumbers(a.digits), asNumbers(b.digits));
+      if (!ab.length) continue;
+
+      const abRestricted = alsRestrictedCommons(a, b);
+      const ac = alsRestrictedCommons(a, c);
+      const bc = alsRestrictedCommons(b, c);
+      if (!ac.length || !bc.length) continue;
+
+      for (const z of ab) {
+        if (abRestricted.includes(z)) continue;
+        const aTargets = alsRccTargets(a, z);
+        const bTargets = alsRccTargets(b, z);
+        const targetCells = aTargets.length && bTargets.length
+          ? intersection(aTargets, bTargets)
+          : [];
+        if (!targetCells.length) continue;
+
+        const aBridge = ac.find(digit => digit !== z);
+        const bBridge = bc.find(digit => digit !== z && digit !== aBridge);
+        if (aBridge == null || bBridge == null) continue;
+        if (!alsRccTargets(a, aBridge).length || !alsRccTargets(c, aBridge).length) continue;
+        if (!alsRccTargets(b, bBridge).length || !alsRccTargets(c, bBridge).length) continue;
+
+        addElimination(out, cand, z, targetCells, 'type1');
+      }
+    }
+  }
+
+  function computeAlsBoundary(cand, leftView, rightView, out) {
+    const leftDigits = endpointBoundaryDigits(leftView, 'entry');
+    const rightDigits = endpointBoundaryDigits(rightView, 'exit');
+
+    // An open ALS chain terminates on the exposed LS_L / LS_R remainders. The
+    // endpoint RCC and bridge C belong to the link gates, not this boundary.
+    for (const digit of intersection(leftDigits, rightDigits)) {
+      const leftCells = endpointBoundaryCells(leftView, 'entry', digit);
+      const rightCells = endpointBoundaryCells(rightView, 'exit', digit);
+      if (!leftCells.length || !rightCells.length) continue;
+
+      addElimination(
+        out,
+        cand,
+        digit,
+        intersection(
+          endpointBoundaryPotential(leftView, 'entry', digit),
+          endpointBoundaryPotential(rightView, 'exit', digit),
+        ),
+        'type1',
+      );
+    }
+
+    // Preserve the single-cell boundary trigger for unequal edge digits, but
+    // never reduce a multi-cell ALS edge to one RCC cell.
+    for (const digit of symmetricDifference(leftDigits, rightDigits)) {
+      const leftCells = endpointBoundaryCells(leftView, 'entry', digit);
+      const rightCells = endpointBoundaryCells(rightView, 'exit', digit);
+      if (leftCells.length === 1
+        && rightCells.length > 0
+        && rightCells.every(rightCell => core.peersOf(leftCells[0]).includes(rightCell))) {
+        addElimination(out, cand, digit, leftCells, 'type2');
+      }
+      if (rightCells.length === 1
+        && leftCells.length > 0
+        && leftCells.every(leftCell => core.peersOf(rightCells[0]).includes(leftCell))) {
+        addElimination(out, cand, digit, rightCells, 'type2');
+      }
+    }
+  }
+
+  function endpointBoundaryDigits(view, side) {
+    return view.node.family === 'ALS' && view.node.linkTypeName === 'ALS_RCC'
+      ? alsBoundaryDigits(view, side)
+      : [...(side === 'entry' ? view.entry : view.exit).digits];
+  }
+
+  function endpointBoundaryPotential(view, side, digit) {
+    if (view.node.family === 'ALS' && view.node.linkTypeName === 'ALS_RCC') {
+      if (!alsBoundaryDigits(view, side).includes(digit)) return [];
+      return subsetPotentialEliminations(alsSubsetForSide(view, side), digit);
+    }
+    const source = side === 'entry' ? view.entry : view.exit;
+    return source.potentialElimByDigit[digit] || [];
+  }
+
+  function endpointBoundaryCells(view, side, digit) {
+    if (view.node.family === 'ALS' && view.node.linkTypeName === 'ALS_RCC') {
+      return alsBoundaryCells(view, side, digit);
+    }
+    const source = side === 'entry' ? view.entry : view.exit;
+    return source.digits.includes(digit) ? [...source.cells] : [];
+  }
+
+  function computeChainBoundary(cand, leftView, rightView, out) {
+    const leftIsAls = leftView.node.family === 'ALS' && leftView.node.linkTypeName === 'ALS_RCC';
+    const rightIsAls = rightView.node.family === 'ALS' && rightView.node.linkTypeName === 'ALS_RCC';
+
+    if (leftIsAls || rightIsAls) {
+      computeAlsBoundary(cand, leftView, rightView, out);
+      return;
+    }
+
+    computeType1(cand, leftView, rightView, out);
+    computeType2(cand, leftView, rightView, out);
+  }
+
+  function compatibleAlsSuperset(left, right) {
+    if (!left || !right || !alsModuleCompatible(left, right)) return undefined;
+    if (alsSubsetKey(left) === alsSubsetKey(right)) return left;
+
+    const leftCells = asNumbers(left.cells);
+    const rightCells = asNumbers(right.cells);
+    const leftDigits = asNumbers(left.digits);
+    const rightDigits = asNumbers(right.digits);
+    const rightCellSet = new Set(rightCells);
+    const rightDigitSet = new Set(rightDigits);
+
+    return leftCells.every(cell => rightCellSet.has(cell))
+      && leftDigits.every(digit => rightDigitSet.has(digit))
+      ? right
+      : left;
+  }
+
+  function alsBridgeDigits(raw) {
+    const bridge = raw.C;
+    if (!bridge) return [];
+    return sortedUnique(bridge.digits?.length
+      ? bridge.digits
+      : bridge.digit == null ? [] : [bridge.digit]);
+  }
+
+  function computeAlsModularTriggers(cand, leftView, rightView, out, includeC = false) {
+    const modular = alsModuleConnection(leftView, rightView);
+    if (!modular) return;
+
+    const first = alsSubsetForSide(leftView, 'entry');
+    const middleLeft = alsSubsetForSide(leftView, 'exit');
+    const middleRight = alsSubsetForSide(rightView, 'entry');
+    const last = alsSubsetForSide(rightView, 'exit');
+    const middle = compatibleAlsSuperset(middleLeft, middleRight);
+    if (!first || !middle || !last) return;
+
+    // The modular handoff is a phantom middle module. Its outer LS edges remain
+    // available during an open walk; its C-side OR cases are ring-only below.
+    const firstDigits = alsBoundaryDigits(leftView, 'entry');
+    const lastDigits = alsBoundaryDigits(rightView, 'exit');
+    for (const digit of intersection(firstDigits, lastDigits)) {
+      addElimination(out, cand, digit, alsTargetCells(first, last, digit), 'type1');
+    }
+
+    if (includeC) {
+      const rccDigits = new Set([
+        ...(leftView.node.raw.RCC_Left ? [leftView.node.raw.RCC_Left.digit] : []),
+        ...(leftView.node.raw.RCC_Right ? [leftView.node.raw.RCC_Right.digit] : []),
+        ...(rightView.node.raw.RCC_Left ? [rightView.node.raw.RCC_Left.digit] : []),
+        ...(rightView.node.raw.RCC_Right ? [rightView.node.raw.RCC_Right.digit] : []),
+      ]);
+      const leftC = alsBridgeDigits(leftView.node.raw).filter(digit => !rccDigits.has(digit));
+      const rightC = alsBridgeDigits(rightView.node.raw).filter(digit => !rccDigits.has(digit));
+
+      for (const digit of intersection(intersection(first.digits || [], middle.digits || []), leftC)) {
+        addElimination(out, cand, digit, alsTargetCells(first, middle, digit), 'type1');
+      }
+      for (const digit of intersection(intersection(middle.digits || [], last.digits || []), rightC)) {
+        addElimination(out, cand, digit, alsTargetCells(middle, last, digit), 'type1');
+      }
+    }
   }
 
   function expandFrom(view, graph, stats, options) {
@@ -660,11 +1047,27 @@
 
     if (view.exit.conveyance === 'CELLS') return out;
 
+    const exitSubset = alsSubsetForSide(view, 'exit');
+    if (exitSubset) {
+      const moduleTargets = new Set();
+      for (const cell of asNumbers(exitSubset.cells)) {
+        for (const target of graph.entryByAlsCell.get(cell) || []) moduleTargets.add(target);
+      }
+      for (const target of moduleTargets) {
+        if (target.node.graphId === view.node.graphId) continue;
+        if (!alsModuleCompatible(exitSubset, alsSubsetForSide(target, 'entry'))) continue;
+        stats.transitionsChecked += 1;
+        add(target, alsModuleConnection(view, target));
+        if (out.length >= options.maxBranching) return out;
+      }
+    }
+
     for (const digit of mapDigits(view.exit.sectorsByDigit)) {
       for (const sector of view.exit.sectorsByDigit[digit]) {
         const candidates = graph.entryByDigitSector.get(`${digit}|${sector}`) || [];
         for (const target of candidates) {
           if (target.node.graphId === view.node.graphId) continue;
+          if (alsModuleConnection(view, target)) continue;
           stats.transitionsChecked += 1;
           add(target, sectorConnection(view, target, digit));
           if (out.length >= options.maxBranching) return out;
@@ -706,16 +1109,67 @@
     const left = leftView.entry;
     const right = rightView.exit;
 
-    for (const digit of symmetricDifference(left.digits, right.digits)) {
-      const leftSeenByRight = intersection(left.cells, right.potentialElimByDigit[digit] || []);
-      const rightSeenByLeft = intersection(right.cells, left.potentialElimByDigit[digit] || []);
+    computeType2Sides(cand, left, right, out);
+  }
 
-      if (left.cells.length === 1 && leftSeenByRight.length === left.cells.length) {
-        addElimination(out, cand, digit, left.cells, 'type2');
+  function boundarySide(view, side) {
+    const digits = endpointBoundaryDigits(view, side);
+    const cellsByDigit = Object.fromEntries(digits.map(digit => [
+      digit,
+      endpointBoundaryCells(view, side, digit),
+    ]));
+    const potentialElimByDigit = Object.fromEntries(digits.map(digit => [
+      digit,
+      endpointBoundaryPotential(view, side, digit),
+    ]));
+    const cells = sortedUnique(digits.flatMap(digit => cellsByDigit[digit]));
+
+    return { digits, cells, cellsByDigit, potentialElimByDigit };
+  }
+
+  function computeType1Sides(cand, left, right, out) {
+    for (const digit of intersection(left.digits, right.digits)) {
+      const cells = intersection(
+        left.potentialElimByDigit[digit] || [],
+        right.potentialElimByDigit[digit] || [],
+      );
+      addElimination(out, cand, digit, cells, 'type1');
+    }
+  }
+
+  function computeType2Sides(cand, left, right, out) {
+    for (const digit of symmetricDifference(left.digits, right.digits)) {
+      const leftCells = left.cellsByDigit?.[digit] || left.cells;
+      const rightCells = right.cellsByDigit?.[digit] || right.cells;
+      const leftSeenByRight = intersection(leftCells, right.potentialElimByDigit[digit] || []);
+      const rightSeenByLeft = intersection(rightCells, left.potentialElimByDigit[digit] || []);
+
+      if (leftCells.length === 1 && leftSeenByRight.length === leftCells.length) {
+        addElimination(out, cand, digit, leftCells, 'type2');
       }
-      if (right.cells.length === 1 && rightSeenByLeft.length === right.cells.length) {
-        addElimination(out, cand, digit, right.cells, 'type2');
+      if (rightCells.length === 1 && rightSeenByLeft.length === rightCells.length) {
+        addElimination(out, cand, digit, rightCells, 'type2');
       }
+    }
+  }
+
+  function computeNonConnectedEdge(cand, leftView, rightView, out) {
+    const left = boundarySide(leftView, 'entry');
+    const right = boundarySide(rightView, 'exit');
+    computeType1Sides(cand, left, right, out);
+    computeType2Sides(cand, left, right, out);
+  }
+
+  function computeJunctionEliminations(cand, steps, isRing, ringWeak, out) {
+    const junctionCount = isRing ? steps.length : steps.length - 1;
+    for (let index = 0; index < junctionCount; index++) {
+      const left = steps[index].view;
+      const right = steps[(index + 1) % steps.length].view;
+      const weak = index + 1 < steps.length
+        ? directConnection(left, right)
+        : ringWeak;
+      if (weak?.modular) continue;
+      computeNonConnectedEdge(cand, left, right, out);
     }
   }
 
@@ -797,11 +1251,51 @@
       .sort((a, b) => a.cell - b.cell || a.digit - b.digit);
   }
 
+  function evaluateOpenExtension(cand, steps, weak) {
+    const out = new Map();
+    const boundary = new Map();
+    const first = steps[0].view;
+    const previous = steps[steps.length - 2].view;
+    const terminal = steps[steps.length - 1].view;
+    const allAls = steps.length > 1 && steps.every(step =>
+      step.view.node.family === 'ALS' && step.view.node.linkTypeName === 'ALS_RCC');
+
+    // The new edge is evaluated once. A modular ALS handoff is only a path
+    // placeholder, so it must not contribute ordinary Type 1/2 eliminations.
+    if (!weak.modular) {
+      computeNonConnectedEdge(cand, previous, terminal, out);
+    }
+
+    if (allAls) {
+      // Module and XY triggers belong to the newly reached ALS node, while the
+      // XY test receives the path because it needs all three ALS modules.
+      computeAlsModularTriggers(cand, previous, terminal, out);
+      computeAlsModuleTriggers(cand, [steps[steps.length - 1]], out);
+      computeAlsXyWingTriggers(cand, steps, out);
+      computeAlsBoundary(cand, first, terminal, boundary);
+    } else {
+      computeChainBoundary(cand, first, terminal, boundary);
+    }
+
+    for (const item of boundary.values()) {
+      for (const reason of item.reasons) {
+        addElimination(out, cand, item.digit, [item.cell], reason);
+      }
+    }
+
+    return {
+      eliminations: [...out.values()],
+      boundaryEliminations: [...boundary.values()],
+    };
+  }
+
   function evaluateChain(cand, steps, isRing, ringWeak = null) {
     const out = new Map();
     const boundary = new Map();
     const first = steps[0].view;
     const terminal = steps[steps.length - 1].view;
+    const allAls = steps.length > 1 && steps.every(step =>
+      step.view.node.family === 'ALS' && step.view.node.linkTypeName === 'ALS_RCC');
 
     if (steps.length === 1) {
       if (isRing && steps[0].view.node.raw.moduleKind === 'ALS_XZ') {
@@ -813,20 +1307,39 @@
       }
     }
 
-    // Every weak junction exposes a smaller chain between the two
-    // non-connected edges. Keep those eliminations as the path grows instead
-    // of waiting until only the outermost pair is evaluated.
-    const junctionCount = isRing ? steps.length : steps.length - 1;
-    for (let index = 0; index < junctionCount; index++) {
-      const left = steps[index].view;
-      const right = steps[(index + 1) % steps.length].view;
-      computeType1(cand, left, right, out);
-      computeType2(cand, left, right, out);
+    if (allAls && !isRing) {
+      computeAlsModuleTriggers(cand, steps, out);
+      for (let index = 0; index + 1 < steps.length; index++) {
+        computeAlsModularTriggers(cand, steps[index].view, steps[index + 1].view, out);
+      }
+      computeAlsXyWingTriggers(cand, steps, out);
+      computeAlsBoundary(cand, first, terminal, boundary);
+      computeJunctionEliminations(cand, steps, false, null, out);
+    } else if (allAls && isRing) {
+      for (const step of steps) computeAlsModuleTriggers(cand, [step], out);
+      for (let index = 0; index < steps.length; index++) {
+        computeAlsModularTriggers(
+          cand,
+          steps[index].view,
+          steps[(index + 1) % steps.length].view,
+          out,
+          true,
+        );
+      }
+      computeAlsXyWingTriggers(cand, steps, out);
+      computeJunctionEliminations(cand, steps, true, ringWeak, out);
+    } else {
+      // Every weak junction exposes a smaller chain between the two
+      // non-connected edges. Keep those eliminations as the path grows instead
+      // of waiting until only the outermost pair is evaluated.
+      computeJunctionEliminations(cand, steps, isRing, ringWeak, out);
+    }
+
+    if (!isRing && !allAls) {
+      computeChainBoundary(cand, first, terminal, boundary);
     }
 
     if (!isRing) {
-      computeType1(cand, first, terminal, boundary);
-      computeType2(cand, first, terminal, boundary);
       for (const item of boundary.values()) {
         for (const reason of item.reasons) {
           addElimination(out, cand, item.digit, [item.cell], reason);
@@ -973,23 +1486,92 @@
     return kinds;
   }
 
+  function sharedOriginKind(steps) {
+    const kinds = steps.map(originKinds);
+    if (kinds.length !== 2) return null;
+    if (kinds.every((value) => value.has('R'))) return 'R';
+    if (kinds.every((value) => value.has('C'))) return 'C';
+    if (kinds.every((value) => value.has('B'))) return 'B';
+    return null;
+  }
+
+  function isXWingRing(steps) {
+    if (steps.length !== 2 || steps.some((step) => step.family !== 'SL')) return false;
+    if (steps.some((step) => step.linkType < 0 || step.linkType > 3)) return false;
+    if (chainDigits(steps).length !== 1) return false;
+    return sharedOriginKind(steps) !== null;
+  }
+
+  function linePosition(cell, kind) {
+    return kind === 'R' ? cell % 9 : Math.floor(cell / 9);
+  }
+
+  function classifyFinnedXWing(steps) {
+    if (steps.length !== 2 || steps.some((step) => step.family !== 'SL')) return null;
+    if (chainDigits(steps).length !== 1) return null;
+    if (!steps.some((step) => step.linkType === 0) || !steps.some((step) => step.linkType === 1)) return null;
+
+    const kind = sharedOriginKind(steps);
+    if (kind === null || kind === 'B') return null;
+
+    const bilocal = steps.find((step) => step.linkType === 0);
+    const grouped = steps.find((step) => step.linkType === 1);
+    const basePositions = sortedUnique([
+      ...bilocal.entry.cells.map((cell) => linePosition(cell, kind)),
+      ...bilocal.exit.cells.map((cell) => linePosition(cell, kind)),
+    ]);
+    const groupedPositions = sortedUnique([
+      ...grouped.entry.cells.map((cell) => linePosition(cell, kind)),
+      ...grouped.exit.cells.map((cell) => linePosition(cell, kind)),
+    ]);
+    if (basePositions.length !== 2) return null;
+
+    const aligned = intersection(basePositions, groupedPositions);
+    if (aligned.length === 1) return 'Sashimi X-Wing';
+    if (aligned.length === 2 && groupedPositions.length > 2) return 'Finned X-Wing';
+    return null;
+  }
+
   function classifyTwoLinkXChain(steps) {
     if (steps.length !== 2 || steps.some(step => chainValueToken(step) !== 'L')) return null;
     if (chainDigits(steps).length !== 1) return null;
 
-    const names = steps.flatMap(step => step.linkTypeNames || [step.linkTypeName]);
     const kinds = steps.map(originKinds);
     const lineKinds = kinds.map(value => value.has('R') ? 'R' : value.has('C') ? 'C' : 'B');
     const hasRow = lineKinds.includes('R');
     const hasCol = lineKinds.includes('C');
-
-    if (names.every(name => name === 'BILOCAL')) {
-      if (lineKinds.every(kind => kind === 'R' || kind === 'C')
-        && new Set(lineKinds).size === 1) return 'X-Wing';
+    // An open pair of type-0 links on the same Row or Column is a Skyscraper.
+    // X-Wing is reserved for the closed form and is classified in classifyChain.
+    if (steps.every((step) => step.linkType === 0)
+      && sharedOriginKind(steps) !== null
+      && sharedOriginKind(steps) !== 'B') {
+      return 'Skyscraper';
     }
-    if (names.some(name => name === 'ERI')) return 'Empty Rectangle';
-    if (hasRow && hasCol) return '2-String Kite';
+    const hasEri = steps.some(step =>
+      step.linkType === core.ERI
+      || (step.linkTypeNames || []).some(name => String(name || '').toUpperCase() === 'ERI')
+    );
+    if (hasEri) return 'Empty Rectangle';
+    if (steps.every((step) => step.linkType === 0 || step.linkType === 1)
+      && hasRow && hasCol) return '2-String Kite';
     return 'X-Chain';
+  }
+
+  function classifyThreeLinkEri(steps, isRing) {
+    if (steps.length !== 3 || steps.some((step) => step.family !== 'SL')) return null;
+    if (steps.some((step) => step.linkType < 0 || step.linkType > 3)) return null;
+
+    const pattern = steps.map((step) => String(step.linkType)).join('');
+    const variants = isRing ? [pattern] : [pattern, [...pattern].reverse().join('')];
+    const matches = (target) => variants.some((value) =>
+      isRing ? ringPatternMatches(value, target) : value === target,
+    );
+
+    if (matches('333')) return '3x ERI';
+    if (matches('303')) return 'Bridged Empty Rectangle';
+    if (matches('030')) return 'Dual Empty Rectangle';
+    if (['030', '130', '031', '131'].some(matches)) return "Rec'T Kite";
+    return null;
   }
 
   function ringPatternMatches(pattern, target) {
@@ -1010,6 +1592,10 @@
 
   function isAlsRccStep(step) {
     return step.family === 'ALS' && step.linkTypeName === 'ALS_RCC';
+  }
+
+  function isAlsNodeStep(step) {
+    return isBivalveStep(step) || isAlsRccStep(step);
   }
 
   function hasWRingValueNodes(steps) {
@@ -1101,25 +1687,32 @@
   }
 
   function structurePrefix(steps) {
-    const hasAls = steps.some(step => step.family === 'ALS' && step.linkTypeName === 'ALS_RCC');
+    const hasAls = steps.some(step => isAlsRccStep(step));
     if (!hasAls) return '';
-    const hasNonAls = steps.some(step =>
-      step.family !== 'ALS' || step.linkTypeName !== 'ALS_RCC'
-    );
+    const hasNonAls = steps.some(step => !isAlsNodeStep(step));
     if (hasNonAls) return 'AIC + ALS';
     return 'ALS';
   }
 
   function alsOnlyStructureName(steps) {
-    if (!steps.length || !steps.every(step =>
-      step.family === 'ALS'
-      && step.linkTypeName === 'ALS_RCC'
-      && step.module
-    )) return null;
+    if (!steps.length
+      || !steps.some(step => isAlsRccStep(step))
+      || !steps.every(step => isAlsNodeStep(step)
+        && (isBivalveStep(step) || step.module))) return null;
 
     const seen = new Set();
     let nodeCount = 0;
     for (const step of steps) {
+      if (isBivalveStep(step)) {
+        const digits = sortedUnique([...step.entry.digits, ...step.exit.digits]);
+        const key = `BIVALVE|${step.entry.cellKey}|${digits.join('')}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          nodeCount += 1;
+        }
+        continue;
+      }
+
       for (const subset of [step.module.entrySubset, step.module.exitSubset]) {
         if (!subset) return null;
         const key = [
@@ -1183,6 +1776,11 @@
 
     if (isRing) {
       const pattern = chainValuePattern(steps);
+      const finnedXWing = classifyFinnedXWing(steps);
+      if (finnedXWing) return prefixedStructureName(finnedXWing, steps);
+      if (isXWingRing(steps)) return prefixedStructureName('X-Wing', steps);
+      const threeLinkEri = classifyThreeLinkEri(steps, true);
+      if (threeLinkEri) return prefixedStructureName(threeLinkEri, steps);
       const invertedRing = invertedRingName(steps, ringWeakDigit);
       if (invertedRing) return prefixedStructureName(invertedRing, steps);
       if (ringPatternMatches(pattern, 'LVL') && isSplitWingRing(steps)) {
@@ -1198,7 +1796,13 @@
       }
       if (ringPatternMatches(pattern, 'LLLLV')) return prefixedStructureName('Strong-Ring', steps);
       if (pattern && pattern.split('').every(token => token === 'L')) {
-      return prefixedStructureName(`L(${Math.max(1, digits.length)})-Ring`, steps);
+        return prefixedStructureName(`L(${Math.max(1, digits.length)})-Ring`, steps);
+      }
+      // A pure bivalve cycle is still an XY structure.  The ring state is
+      // carried separately, so keep the XY-Chain name and let the formatter
+      // append the ring marker and the folder classifier place it in Ring.
+      if (pattern && pattern.split('').every(token => token === 'V') && steps.length >= 3) {
+        return prefixedStructureName(steps.length === 3 ? 'XY-Wing' : 'XY-Chain', steps);
       }
       return groupedPrefix ? `${groupedPrefix} - Ring` : 'AIC Ring';
     }
@@ -1206,6 +1810,8 @@
     const pattern = normalisedOpenPattern(steps);
     const simpleName = classifyTwoLinkXChain(steps);
     if (simpleName) return prefixedStructureName(simpleName, steps);
+    const threeLinkEri = classifyThreeLinkEri(steps, false);
+    if (threeLinkEri) return prefixedStructureName(threeLinkEri, steps);
     const invertedWing = invertedWingName(steps);
     if (invertedWing) return prefixedStructureName(invertedWing, steps);
     if (pattern === 'VVV' && digits.length === 3) return prefixedStructureName('XY-Wing', steps);
@@ -1366,7 +1972,6 @@
     terminalStructureName = null,
   ) {
     if (!eliminations.length) return 'empty';
-    const key = `${canonicalReportKey(steps, isRing, ringWeak)}|${eliminationsKey(eliminations)}`;
     const rankKey = `${String(logicalDepth(steps)).padStart(3, '0')}|${canonicalPathKey(steps, isRing, ringWeak)}`;
     const publicSteps = steps.map(publicStep);
     const publicIsRing = isRing && !isTerminal;
@@ -1378,6 +1983,11 @@
     const publicClosureName = isTerminal
       ? null
       : ringClosureName || (ringWeak ? WEAK_TYPE_NAMES[ringWeak.weakType] : null);
+    // Use the canonical graph path for identity.  Formatting the path as
+    // text includes its starting node, which made every rotation of a ring
+    // appear as a separate result even though the proof and eliminations
+    // were identical.
+    const key = `${canonicalReportKey(steps, publicIsRing, ringWeak)}|${eliminationsKey(eliminations)}`;
     const existing = chainsByKey.get(key);
 
     if (existing) {
@@ -1554,6 +2164,7 @@
         && root.view.node.raw.intrinsicEliminations?.length) {
         const rootIsRing = rootBridgeWeak !== null && rootClosureDigit !== null;
         const rootEvaluation = evaluateChain(cand, root.steps, rootIsRing, rootRingWeak);
+        root.eliminations = mergeEliminations(root.eliminations, rootEvaluation.eliminations);
         if (rootEvaluation.eliminations.length) {
           stats.resultAttempts += 1;
           startResultAttempts += 1;
@@ -1612,7 +2223,7 @@
           ];
           const nextDepth = logicalDepth(nextSteps);
           if (nextDepth > opts.maxDepth) continue;
-          const openEvaluation = evaluateChain(cand, nextSteps, false);
+          const openEvaluation = evaluateOpenExtension(cand, nextSteps, edge);
           const openElims = mergeEliminations(current.eliminations, openEvaluation.eliminations);
           const terminalClosure = sameCellClosure || ringOverlapElims !== null;
           const terminalStructureName = ringWeak || terminalClosure
@@ -1621,10 +2232,17 @@
           // A recognized terminal ERI path owns the report. Do not also emit
           // its open-chain prefix under the generic L1-Wing name.
           const preferTerminal = terminalStructureName !== null;
+          const trueRingClosure = ringWeak !== null && !sameCellClosure;
+
+          // A closed ring owns the result.  Its open endpoint proof is the
+          // same cycle viewed before the final weak inference and should not
+          // compete with the ring or appear once for every rotation.
+          // An explicit same-cell terminal closure remains open/terminal and
+          // is intentionally excluded from this rule.
           // An open chain is reportable when this evaluation produced a real
           // T1/T2 trigger anywhere along the path. The trigger may be internal
           // and may already be present in the cumulative elimination set.
-          if (!preferTerminal && hasOpenTriggerEliminations(openEvaluation)) {
+          if (!preferTerminal && !trueRingClosure && hasOpenTriggerEliminations(openEvaluation)) {
             stats.resultAttempts += 1;
             startResultAttempts += 1;
             if (noteStartResult(addChainResult(chainsByKey, nextSteps, openElims, false, null))) break;
@@ -1802,17 +2420,18 @@
       ];
     }
 
-    const commonDigits = asNumbers(module.common.digits);
     const restrictedDigits = module.common.restrictedDigits?.length
       ? asNumbers(module.common.restrictedDigits)
-      : commonDigits;
+      : asNumbers(module.common.digits);
     const restrictedSet = new Set(restrictedDigits);
+    const entryDigits = asNumbers(entrySubset.digits);
     const exitDigits = asNumbers(exitSubset.digits);
+    const entryRemainder = sortedUnique(entryDigits.filter(digit => !restrictedSet.has(digit)));
     const exitRemainder = sortedUnique(exitDigits.filter(digit => !restrictedSet.has(digit)));
 
     return [
       {
-        text: `(${eurekaDigitsText(commonDigits)}=${eurekaDigitsText(step.entry.digits)})${core.cellGroupName(entrySubset.cells)}`,
+        text: `(${eurekaDigitsText(entryRemainder)}=${eurekaDigitsText(restrictedDigits)})${core.cellGroupName(entrySubset.cells)}`,
       },
       {
         text: `(${eurekaDigitsText(restrictedDigits)}=${eurekaDigitsText(exitRemainder)})${core.cellGroupName(exitSubset.cells)}`,
