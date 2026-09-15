@@ -5531,7 +5531,12 @@
       const maxDepth = Math.min(8, Math.max(2, Number(chainDepthEl.value) || 8));
       const search = chainSearchOptions(candidateGrid, maxDepth, budget);
       let best = null;
-      for (let depth = 2; depth <= maxDepth; depth++) {
+      // The generator only needs one inclusive report. Rebuilding the same
+      // graph once per depth made rating generation disproportionately slow.
+      const depths = budget === 'generator'
+        ? [maxDepth]
+        : Array.from({ length: maxDepth - 1 }, (_, index) => index + 2);
+      for (const depth of depths) {
         const report = core.findAicChains(candidateGrid, {
           strongLinkSet: search.strongSet,
           alsList: search.alsList,
@@ -5927,7 +5932,7 @@
 
     function nextCycle() {
       const changed = advanceCycle();
-      if (changed && ratingReport?.source !== 'generated') {
+      if (changed) {
         ratingReport = ratingFromLog(logEntries, candidateGridIsSolved(cand, currentFixedGrid()));
       }
       render();
@@ -5965,7 +5970,7 @@
     function runAll() {
       let ran = 0;
       while (ran < 100 && advanceCycle()) ran += 1;
-      if (ratingReport?.source !== 'generated') {
+      if (ran > 0) {
         ratingReport = ratingFromLog(logEntries, candidateGridIsSolved(cand, currentFixedGrid()));
       }
       if (solution && !candidateGridIsSolved(cand, currentFixedGrid())) {
