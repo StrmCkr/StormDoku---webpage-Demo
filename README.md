@@ -1,6 +1,6 @@
 # StormDoku
 
-StormDoku is a browser-first Sudoku solver and analysis workbench. It can
+StormDoku is an online and offline, browser-first Sudoku solver and analysis workbench. It can
 load standard puzzles or candidate-space data, generate uniquely solvable
 puzzles, apply the retained basic solving cycle, and inspect candidate
 structures such as subsets, fish, links, ALS, AHS, and chains.
