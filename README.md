@@ -62,6 +62,12 @@ the candidate grid itself may be useful while testing.
 - `P.O.M.` runs a read-only template inspection. It does not alter candidates
   or solving history.
 
+The heavier N x (N + K) fish searches and generator rating passes use a Web
+Worker when the browser permits workers. The board, reports, naming, safety
+checks, and rating display remain on the page thread. When the app is opened
+directly from a local file and the browser blocks workers, the same searches
+fall back to the existing synchronous implementation.
+
 The `Solution` display is collapsed by default. `Solution Steps:` is also a
 collapsible report and shows the most recent applied step in its summary.
 
@@ -203,35 +209,44 @@ ordered ladder:
 2. `Extremely Easy` (`1`-`1.5`): Hidden Single, Naked Single, and Box-Line
    Reduction.
 3. `Very Easy` (`2`): Hidden Pair, Naked Pair, X-Wing, and AIC X-Wing.
-4. `Modestly Easy` (`2.5`-`2.75`): 2x2+K Fish, 2-String Kite, Empty
-   Rectangle, Skyscraper, and Finned/Sashimi X-Wing.
+4. `Modestly Easy` (`2.5`-`2.75`): 2x2+K Fish K1, Skyscraper, 2-String Kite,
+   Finned X-Wing, Sashimi X-Wing, Empty Rectangle, and 2x2+K Fish K2.
 5. `Easy` (`3`): Hidden Triple, Naked Triple, and Swordfish.
-6. `Moderate` (`3.25`-`3.75`): 3x3+K Fish, L(1), 3x ERI, Dual Empty
-   Rectangle, Rec't Kite, Bridged Empty Rectangle, B.A.R.N.S. XYZ, and
+6. `Moderate` (`3.25`-`3.75`): L(1)-Wing, 3x ERI, Dual Empty Rectangle,
+   Rec't Kite, Bridged Empty Rectangle, 3x3+K Fish, B.A.R.N.S. XYZ, and
    XY-Wing.
 7. `Tough` (`4`): Hidden Quad, Naked Quad, and Jellyfish.
-8. `Challenging` (`4.25`-`4.75`): 4x4+K Fish, 4x ERI, length-4 X-Chains,
-   B.A.R.N.S. XYZ Transport, and B.A.R.N.S. WXYZ.
-9. `Irritating` (`5`-`5.5`): Remote Pair, Hidden Remote Pair, XY-Chain,
-   ERI chains above four nodes, and X-Chains above four nodes. Ring forms
-   receive `+0.5` while remaining in this category.
-10. `Frustrating` (`5`-`5.5`): L(2), L(3), S, M, H, and W Wings/Rings,
-    W Transport, and B.A.R.N.S. WXYZ Transport.
-11. `Hard` (`6`): ALS-XZ; a Ring is `6.5`.
-12. `Demanding` (`7`): ALS-XY; a Ring is `7.5`.
-13. `Expert` (`8`-`8.5`): ALS versions of named Wings and Rings.
-14. `Brutal` (`9`-`9.5`): ALS Chains.
-15. `Nightmare` (`10`-`10.5`): AIC + ALS Chains.
+8. `Challenging` (`4.25`-`4.75`): 4x4+K Fish K1, 4x ERI, length-4 X-Chain,
+   4x4+K Fish K2, B.A.R.N.S. XYZ Transport, and B.A.R.N.S. WXYZ.
+9. `Irritating` (`5`-`5.5`): X-Chains above four nodes, ERI Chains above four
+   nodes, Remote Pair, XY-Chain, Hidden Remote Pair, Hidden XY-Chain, and
+   Hidden XY-Chain Ring. Ring forms receive `+0.5`.
+10. `Frustrating` (`6`-`6.5`): L(2)-Wing/Ring, L(3)-Wing/Ring, W-Wing/Ring,
+    W Transport, S-Wing/Ring, M(2,3)-Wing/Ring, H(1,2,3)-Wing/Ring, and
+    B.A.R.N.S. WXYZ Transport. Ring forms receive `+0.5`.
+11. `Hard` (`7`-`7.5`): ALS-XZ. Ring forms receive `+0.5`.
+12. `Demanding` (`8`-`8.5`): ALS-XY. Ring forms receive `+0.5`.
+13. `Expert` (`9`-`9.5`): ALS versions of named Wings and Rings. Ring forms
+    receive `+0.5`.
+14. `Brutal` (`10`-`10.5`): ALS Chains. Ring forms receive `+0.5`.
+15. `Nightmare` (`11`-`11.5`): AIC + ALS Chains. Ring forms receive `+0.5`.
 16. `Unknown`: unsolved or unclassified.
 
-Ring forms receive the stated `+0.5` bonus without creating a separate rating
-category. Fish K-values use `2.5`, `2.75`, `3.25`, `3.5`, `4.25`, and `4.5`
+The solver chooses the lowest numeric score first. When scores tie, it uses the
+order above, including the named structure order within each category. Ring
+forms receive the stated `+0.5` bonus without creating a separate rating
+category. The advanced ladder increases by `+1` at each tier after
+`Irritating`: `Frustrating 6`, `Hard 7`, `Demanding 8`, `Expert 9`,
+`Brutal 10`, and `Nightmare 11`. Fish K-values use `2.5`, `2.75`, `3.25`, `3.5`, `4.25`, and `4.5`
 for K1 and K2 at sizes 2, 3, and 4 respectively. A selected generation
 category is checked against the resulting rating and solved-state result.
 
 When a requested category is selected for generation, StormDoku tests up to
 1,000 generated puzzles and keeps the current puzzle unchanged if no match is
-found. `Any` uses one generation attempt.
+found. The selected category also limits the generation solver profile to
+techniques at or below that tier, so higher-cost chain and ALS searches are
+not built unnecessarily. `Any` uses one generation attempt and the normal
+configured search profile.
 
 Generation rating uses the retained basic logic and a solved-state check. A
 puzzle that stalls before its calculated solution is complete is reported as

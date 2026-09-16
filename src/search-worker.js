@@ -1,0 +1,119 @@
+/* StormDoku search worker.
+ *
+ * This file has no DOM responsibilities. It loads the same solver cores as
+ * the page and returns structured-cloneable search results to the UI thread.
+ */
+importScripts(
+  './browser-core.js',
+  './set-tools-core.js',
+  './pom-core.js',
+  './als-core.js',
+  './als-link-core.js',
+  './ahs-core.js',
+  './subset-report-core.js',
+  './mini-sectors-core.js',
+  './strong-link-core.js',
+  './chain-core.js',
+);
+
+const core = globalThis.StormDoku;
+const cancelled = new Set();
+
+function reportError(id, error) {
+  self.postMessage({
+    id,
+    error: error instanceof Error ? error.message : String(error),
+  });
+}
+
+function runSimple(payload) {
+  const fishOptions = {
+    ...(payload.fishOptions || {}),
+    grid: [...(payload.fixedGrid || [])],
+    omissionFishSearch: core.omissionFishStep,
+    enabledTechniques: new Set(payload.moveTypes || []),
+  };
+  return core.subsetOrFishStep(payload.candidateGrid, fishOptions);
+}
+
+function runFish(payload) {
+  return core.findOmissionFishReports(payload.candidateGrid, {
+    ...(payload.options || {}),
+    grid: [...(payload.fixedGrid || [])],
+  });
+}
+
+function runChains(payload) {
+  const candidateGrid = payload.candidateGrid;
+  const strongLinkTypes = payload.strongLinkTypes || [];
+  const includeAls = Boolean(payload.includeAls);
+  const limits = payload.limits || {};
+  const strongSet = core.buildStrongLinks(candidateGrid);
+  const alsList = includeAls
+    ? core.alsConstructor(candidateGrid, {
+        maxSizeDOF: payload.alsMaxSizeDOF || 4,
+        maxSizeFox: payload.alsMaxSizeFox || 5,
+        searchLimit: true,
+      })
+    : null;
+  const alsLinkSet = includeAls
+    ? core.buildAlsLinks(candidateGrid, {
+        alsList,
+        strictSingleCommon: true,
+        maxLinks: limits.maxAlsLinks || 750,
+      })
+    : null;
+
+  const report = core.findAicChains(candidateGrid, {
+    strongLinkSet: strongSet,
+    alsList,
+    alsLinkSet,
+    includeAls,
+    strongLinkTypes,
+    maxDepth: payload.maxDepth,
+    maxChains: limits.maxChains,
+    maxResultAttempts: limits.maxResultAttempts,
+    maxResultAttemptsPerStart: limits.maxResultAttemptsPerStart,
+    maxStates: limits.maxStates,
+    maxQueue: limits.maxQueue,
+    maxBranching: limits.maxBranching,
+    maxStartViews: limits.maxStartViews,
+    maxAlsLinks: limits.maxAlsLinks,
+  });
+
+  // The UI only needs chain data and statistics for generator ranking. Keeping
+  // the large graph/link indexes in the worker avoids a needless clone.
+  return {
+    chains: report.chains || [],
+    stats: report.stats || {},
+  };
+}
+
+self.onmessage = event => {
+  const { id, type, payload } = event.data || {};
+  if (type === 'cancel') {
+    cancelled.add(id);
+    return;
+  }
+
+  try {
+    if (cancelled.has(id)) {
+      cancelled.delete(id);
+      return;
+    }
+
+    let result;
+    if (type === 'simple') result = runSimple(payload || {});
+    else if (type === 'fish') result = runFish(payload || {});
+    else if (type === 'chains') result = runChains(payload || {});
+    else throw new Error(`Unknown search worker operation: ${type}`);
+
+    if (cancelled.has(id)) {
+      cancelled.delete(id);
+      return;
+    }
+    self.postMessage({ id, result });
+  } catch (error) {
+    reportError(id, error);
+  }
+};

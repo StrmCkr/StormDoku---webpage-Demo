@@ -1041,7 +1041,10 @@
       if (boxLine) return boxLine;
     }
 
-    for (const size of [2, 3, 4]) {
+    const fishSizes = Array.isArray(fishOptions.fishSizes)
+      ? fishOptions.fishSizes
+      : [2, 3, 4];
+    for (const size of fishSizes) {
       const subset = subsetStepForSizes(cand, [size], enabledTypes);
       if (subset) return subset;
 

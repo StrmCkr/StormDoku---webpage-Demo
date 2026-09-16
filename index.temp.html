@@ -439,92 +439,6 @@
       background: rgba(22, 22, 22, .08);
     }
 
-    .difficulty-settings-popover {
-      width: min(760px, calc(100vw - 32px));
-      max-height: min(82vh, 760px);
-      overflow: auto;
-      margin: 8px;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      padding: 14px;
-      background: var(--panel);
-      color: var(--ink);
-      box-shadow: 0 8px 24px rgba(22, 22, 22, .18);
-    }
-
-    .difficulty-settings-popover::backdrop {
-      background: rgba(22, 22, 22, .08);
-    }
-
-    .difficulty-table {
-      display: grid;
-      gap: 2px;
-      min-width: 560px;
-    }
-
-    .difficulty-table-header,
-    .difficulty-category summary,
-    .difficulty-item {
-      display: grid;
-      grid-template-columns: minmax(180px, 1.25fr) minmax(90px, .55fr) minmax(260px, 1.8fr);
-      gap: 12px;
-      align-items: center;
-    }
-
-    .difficulty-table-header {
-      padding: 6px 10px;
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 800;
-      text-transform: uppercase;
-    }
-
-    .difficulty-category {
-      border: 1px solid var(--line);
-      border-radius: 4px;
-      background: var(--bg);
-    }
-
-    .difficulty-category summary {
-      cursor: pointer;
-      padding: 9px 10px;
-      font-weight: 800;
-      list-style-position: inside;
-    }
-
-    .difficulty-category summary::marker {
-      color: var(--blue);
-    }
-
-    .difficulty-items {
-      display: grid;
-      gap: 1px;
-      padding: 0 10px 8px 28px;
-    }
-
-    .difficulty-item {
-      min-height: 28px;
-      border-top: 1px solid var(--line);
-      color: var(--heavy);
-      font-size: 13px;
-    }
-
-    .difficulty-item-index {
-      color: var(--muted);
-      font-variant-numeric: tabular-nums;
-    }
-
-    .difficulty-item-score {
-      color: var(--blue);
-      font-variant-numeric: tabular-nums;
-      font-weight: 800;
-    }
-
-    .difficulty-item-note {
-      color: var(--muted);
-      font-size: 12px;
-    }
-
     .move-type-group {
       border-bottom: 1px solid var(--line);
       padding: 2px 0;
@@ -1683,10 +1597,6 @@
           popovertarget="fishSettingsPopover" popovertargetaction="toggle">
           N x (N + K) Fish Finder Settings
         </button>
-        <button id="difficultySettingsButton" class="secondary" type="button"
-          popovertarget="difficultySettingsPopover" popovertargetaction="toggle">
-          Difficulty
-        </button>
       </div>
     </fieldset>
   </header>
@@ -1743,12 +1653,6 @@
       <button id="fishBuild" class="secondary">Find NxN+K Fish</button>
       <button id="chainBuild" class="secondary">Find Chains</button>
     </section>
-
-    <div class="settings-popover-holder">
-      <div id="difficultySettingsPopover" class="difficulty-settings-popover" popover>
-        <div id="difficultyTable" class="difficulty-table" role="table" aria-label="Difficulty rating table"></div>
-      </div>
-    </div>
 
     <div class="settings-popover-holder">
       <div id="chainSettingsPopover" class="chain-settings-popover" popover>
@@ -2167,7 +2071,6 @@
     const ratingSummaryEl = document.getElementById('ratingSummary');
     const ratingCategoryEl = document.getElementById('ratingCategory');
     const ratingDetailEl = document.getElementById('ratingDetail');
-    const difficultyTableEl = document.getElementById('difficultyTable');
     const solutionStepsPanelEl = document.getElementById('solutionStepsPanel');
     const solutionStepsPreviewEl = document.getElementById('solutionStepsPreview');
     const logEl = document.getElementById('log');
@@ -2309,64 +2212,6 @@
       baseSectors: new Set(Array.from({ length: 27 }, (_, index) => index)),
       coverSectors: new Set(Array.from({ length: 27 }, (_, index) => index)),
     };
-    let searchWorker = null;
-    let searchWorkerJobId = 0;
-    let searchWorkerJobs = new Map();
-    let searchWorkerDisabled = false;
-
-    function disableSearchWorker(error = null) {
-      searchWorkerDisabled = true;
-      if (searchWorker) searchWorker.terminate();
-      searchWorker = null;
-      for (const job of searchWorkerJobs.values()) {
-        job.reject(error || new Error('Search worker unavailable.'));
-      }
-      searchWorkerJobs.clear();
-    }
-
-    function ensureSearchWorker() {
-      if (searchWorkerDisabled) return null;
-      if (searchWorker) return searchWorker;
-      if (typeof Worker === 'undefined') {
-        disableSearchWorker(new Error('Web Workers are not supported.'));
-        return null;
-      }
-
-      try {
-        searchWorker = new Worker(new URL('./src/search-worker.js', document.baseURI));
-        searchWorker.onmessage = event => {
-          const { id, result, error } = event.data || {};
-          const job = searchWorkerJobs.get(id);
-          if (!job) return;
-          searchWorkerJobs.delete(id);
-          if (error) job.reject(new Error(error));
-          else job.resolve(result);
-        };
-        searchWorker.onerror = event => {
-          disableSearchWorker(new Error(event.message || 'Search worker failed.'));
-        };
-        return searchWorker;
-      } catch (error) {
-        disableSearchWorker(error);
-        return null;
-      }
-    }
-
-    function runSearchWorker(type, payload) {
-      const worker = ensureSearchWorker();
-      if (!worker) return Promise.reject(new Error('Search worker unavailable.'));
-
-      const id = ++searchWorkerJobId;
-      return new Promise((resolve, reject) => {
-        searchWorkerJobs.set(id, { resolve, reject });
-        try {
-          worker.postMessage({ id, type, payload });
-        } catch (error) {
-          searchWorkerJobs.delete(id);
-          reject(error);
-        }
-      });
-    }
 
     function setBusy(nextBusy) {
       busy = nextBusy;
@@ -2524,8 +2369,7 @@
       };
     }
 
-    function currentSolverMoveTypes(override = null) {
-      if (override) return new Set(override);
+    function currentSolverMoveTypes() {
       return new Set([...solverMoveTypeEls.entries()]
         .filter(([, element]) => element?.checked)
         .map(([type]) => type));
@@ -3727,53 +3571,6 @@
       Unknown: -1,
     });
 
-    function generationTechniqueProfile(category) {
-      if (category === 'any' || category === 'Unknown') return null;
-
-      const maxRank = RATING_CATEGORY_RANKS[category];
-      if (!Number.isFinite(maxRank)) return null;
-
-      const moveTypes = new Set();
-      const addAt = (rank, ...types) => {
-        if (maxRank < rank) return;
-        for (const type of types) moveTypes.add(type);
-      };
-
-      addAt(0, 'last-man-standing');
-      addAt(10, 'hidden-single', 'naked-single', 'box-line');
-      addAt(20, 'hidden-pair', 'naked-pair', 'x-wing', 'chains', 'x-chain', 'chain-x-wing');
-      addAt(30, '2x2+k-fish', 'empty-rectangle', '2-string-kite', 'skyscraper',
-        'finned-x-wing', 'sashimi-x-wing');
-      addAt(40, 'hidden-triple', 'naked-triple', 'swordfish');
-      addAt(50, '3x3+k-fish', 'dual-empty-rectangle', 'rect-kite', 'bridged-eri',
-        'eri-chain', 'l1-wing', 'xy-wing', 'barns');
-      addAt(60, 'hidden-quad', 'naked-quad', 'jellyfish');
-      addAt(70, '4x4+k-fish');
-      addAt(80, 'xy-chain', 'remote-pair', 'hidden-xy-chain', 'hidden-remote-pair');
-      addAt(90, 'l2-wing', 'l3-wing', 's-wing', 'm2-wing', 'm3-wing',
-        'h1-wing', 'h2-wing', 'h3-wing', 'w-wing', 'strong-wing', 'inversion',
-        'barns-transport');
-      addAt(100, 'als-xz');
-      addAt(110, 'als-xy');
-      addAt(120, 'aic-als');
-      addAt(130, 'als-chain');
-
-      const strongLinkTypes = maxRank >= 50
-        ? [0, 1, 2, 3, 4]
-        : maxRank >= 30
-          ? [0, 1, 2, 3]
-          : maxRank >= 20
-            ? [0]
-            : [];
-
-      return {
-        moveTypes,
-        maxRank,
-        strongLinkTypes,
-        includeAlsRcc: maxRank >= 100,
-      };
-    }
-
     function ratingDefinition(category, value, tag, tech = null, rank = null) {
       return {
         category,
@@ -3800,198 +3597,6 @@
       ratingDefinition('Tough', 4, 'Naked Quad', 'naked-quad'),
       ratingDefinition('Tough', 4, 'JellyFish', 'jellyfish'),
     ]);
-
-    const DIFFICULTY_TABLE_GROUPS = Object.freeze([
-      {
-        category: 'LULZ', score: '0', items: [
-          ['Last Man Standing', '0'],
-        ],
-      },
-      {
-        category: 'EXTREMELY EASY', score: '1 to 1.5', items: [
-          ['Hidden Single', '1'],
-          ['Naked Single', '1'],
-          ['Box-Line Reduction', '1.5'],
-        ],
-      },
-      {
-        category: 'VERY EASY', score: '2', items: [
-          ['Hidden Pair', '2'],
-          ['Naked Pair', '2'],
-          ['X-Wing', '2'],
-          ['AIC X-Wing', '2'],
-        ],
-      },
-      {
-        category: 'MODESTLY EASY', score: '2.5 to 2.75', items: [
-          ['2x2+K Fish K1', '2.5'],
-          ['Skyscraper', '2.5'],
-          ['2-String Kite', '2.5'],
-          ['Finned X-Wing', '2.5'],
-          ['Sashimi X-Wing', '2.5'],
-          ['Empty Rectangle', '2.5'],
-          ['2x2+K Fish K2', '2.75'],
-        ],
-      },
-      {
-        category: 'EASY', score: '3', items: [
-          ['Hidden Triple', '3'],
-          ['Naked Triple', '3'],
-          ['Swordfish', '3'],
-        ],
-      },
-      {
-        category: 'MODERATE', score: '3.25 to 3.75', items: [
-          ['L(1)-Wing', '3.25'],
-          ['3x ERI', '3.25'],
-          ['Dual Empty Rectangle', '3.25'],
-          ["Rec't Kite", '3.25'],
-          ['Bridged Empty Rectangle', '3.25'],
-          ['3x3+K Fish K1', '3.25'],
-          ['3x3+K Fish K2', '3.5'],
-          ['B.A.R.N.S. XYZ', '3.75'],
-          ['XY-Wing', '3.75'],
-        ],
-      },
-      {
-        category: 'TOUGH', score: '4', items: [
-          ['Hidden Quad', '4'],
-          ['Naked Quad', '4'],
-          ['Jellyfish', '4'],
-        ],
-      },
-      {
-        category: 'CHALLENGING', score: '4.25 to 4.75', items: [
-          ['4x4+K Fish K1', '4.25'],
-          ['4x ERI', '4.25'],
-          ['X-Chain length 4', '4.25', '+0.5 for ring'],
-          ['4x4+K Fish K2', '4.5'],
-          ['B.A.R.N.S. XYZ Transport', '4.75'],
-          ['B.A.R.N.S. WXYZ', '4.75'],
-        ],
-      },
-      {
-        category: 'IRRITATING', score: '5 to 5.5', items: [
-          ['X-Chains above four nodes', '5'],
-          ['ERI Chains above four nodes', '5'],
-          ['Remote Pair', '5'],
-          ['XY-Chain', '5'],
-          ['Hidden Remote Pair', '5'],
-          ['Hidden XY-Chain', '5'],
-          ['Hidden XY-Chain Ring', '5.5'],
-          ['Ring forms', '+0.5'],
-        ],
-      },
-      {
-        category: 'FRUSTRATING', score: '6 to 6.5', items: [
-          ['L(2)-Wing/Ring', '6'],
-          ['L(3)-Wing/Ring', '6'],
-          ['W-Wing/Ring', '6'],
-          ['W Transport', '6.5'],
-          ['S-Wing/Ring', '6'],
-          ['M(2,3)-Wing/Ring', '6'],
-          ['H(1,2,3)-Wing/Ring', '6'],
-          ['B.A.R.N.S. WXYZ Transport', '6'],
-          ['Ring forms', '+0.5'],
-        ],
-      },
-      {
-        category: 'HARD', score: '7 to 7.5', items: [
-          ['ALS-XZ', '7'],
-          ['Ring forms', '+0.5'],
-        ],
-      },
-      {
-        category: 'DEMANDING', score: '8 to 8.5', items: [
-          ['ALS-XY', '8'],
-          ['Ring forms', '+0.5'],
-        ],
-      },
-      {
-        category: 'EXPERT', score: '9 to 9.5', items: [
-          ['ALS versions of named Wings/Rings', '9'],
-          ['Ring forms', '+0.5'],
-        ],
-      },
-      {
-        category: 'BRUTAL', score: '10 to 10.5', items: [
-          ['ALS Chains', '10'],
-          ['Ring forms', '+0.5'],
-        ],
-      },
-      {
-        category: 'NIGHTMARE', score: '11 to 11.5', items: [
-          ['AIC + ALS Chains', '11'],
-          ['Ring forms', '+0.5'],
-        ],
-      },
-      {
-        category: 'UNKNOWN', score: '—', items: [
-          ['Unsolved', '—'],
-          ['Unclassified', '—'],
-        ],
-      },
-    ]);
-
-    function renderDifficultyTable() {
-      if (!difficultyTableEl) return;
-      difficultyTableEl.textContent = '';
-
-      const header = document.createElement('div');
-      header.className = 'difficulty-table-header';
-      header.setAttribute('role', 'row');
-      for (const label of ['Difficulty', 'Score', 'Move']) {
-        const cell = document.createElement('span');
-        cell.textContent = label;
-        cell.setAttribute('role', 'columnheader');
-        header.appendChild(cell);
-      }
-      difficultyTableEl.appendChild(header);
-
-      for (const group of DIFFICULTY_TABLE_GROUPS) {
-        const details = document.createElement('details');
-        details.className = 'difficulty-category';
-
-        const summary = document.createElement('summary');
-        summary.setAttribute('role', 'row');
-        const category = document.createElement('span');
-        category.textContent = group.category;
-        const score = document.createElement('span');
-        score.textContent = group.score;
-        const count = document.createElement('span');
-        count.textContent = `${group.items.length} ${group.items.length === 1 ? 'item' : 'items'}`;
-        summary.append(category, score, count);
-        details.appendChild(summary);
-
-        const items = document.createElement('div');
-        items.className = 'difficulty-items';
-        items.setAttribute('role', 'rowgroup');
-        group.items.forEach(([name, itemScore, note], index) => {
-          const item = document.createElement('div');
-          item.className = 'difficulty-item';
-          item.setAttribute('role', 'row');
-
-          const itemIndex = document.createElement('span');
-          itemIndex.className = 'difficulty-item-index';
-          itemIndex.textContent = `${index + 1}.`;
-          const itemName = document.createElement('span');
-          itemName.textContent = name;
-          const itemScoreEl = document.createElement('span');
-          itemScoreEl.className = 'difficulty-item-score';
-          itemScoreEl.textContent = itemScore;
-          if (note) {
-            const noteEl = document.createElement('small');
-            noteEl.className = 'difficulty-item-note';
-            noteEl.textContent = ` ${note}`;
-            itemScoreEl.appendChild(noteEl);
-          }
-          item.append(itemIndex, itemName, itemScoreEl);
-          items.appendChild(item);
-        });
-        details.appendChild(items);
-        difficultyTableEl.appendChild(details);
-      }
-    }
 
     function ratingCategoryForValue(value, fallback = 'Unknown') {
       return Number.isFinite(value) && Number(value) === 0 ? 'Lulz' : fallback;
@@ -4061,10 +3666,7 @@
       }
 
       const eriCount = chainEriCount(chain);
-      // Named ERI structures must be classified by their structural name
-      // before the generic ERI-node count fallback below.
-      const namedEriStructure = /(?:^|-)\s*(?:Empty Rectangle|Dual Empty Rectangle|Rec'T Kite|Bridged Empty Rectangle|Bridged ERI|3x ERI|4x ERI|L\(1\)-Wing|L1-Wing)$/i.test(name);
-      if (eriCount > 0 && !namedEriStructure) {
+      if (eriCount > 0) {
         if (eriCount === 3) return define('Moderate', 3.25 + ringBonus, `3x ERI${ringSuffix}`);
         if (eriCount === 4) return define('Challenging', 4.25 + ringBonus, `4x ERI${ringSuffix}`);
         return define('Irritating', 5 + ringBonus, `ERI Chain${ringSuffix}`);
@@ -4085,24 +3687,15 @@
       if (hiddenXy?.remotePair) {
         return define('Irritating', 5 + ringBonus, `Hidden Remote Pair${ringSuffix}`);
       }
-      if (hiddenXy) {
-        return define('Irritating', 5 + ringBonus, `Hidden XY-Chain${ringSuffix}`);
-      }
 
       if (/^XY-Wing$/i.test(name)) return define('Moderate', 3.75 + ringBonus, `XY-Wing${ringSuffix}`);
-      if (/^W\s*-?\s*Transport$/i.test(name) || /W\s*-?\s*Transport/i.test(fullName)) {
-        return define('Frustrating', 6.5 + ringBonus, `W Transport${ringSuffix}`);
-      }
       if (/^(?:2-String Kite|Empty Rectangle|Skyscraper|Finned X-Wing|Sashimi X-Wing)$/i.test(name)) {
         return define('Modestly Easy', 2.5 + ringBonus, `${name}${ringSuffix}`);
       }
-      if (/(?:^|-)\s*(?:Dual Empty Rectangle|Rec'T Kite|Bridged Empty Rectangle|Bridged ERI|3x ERI|L\(1\)-Wing|L1-Wing)$/i.test(name)) {
+      if (/^(?:Dual Empty Rectangle|Rec'T Kite|Bridged Empty Rectangle|3x ERI|L\(1\)-Wing|L1-Wing)$/i.test(name)) {
         return define('Moderate', 3.25 + ringBonus, `${name}${ringSuffix}`);
       }
-      if (/(?:^|-)\s*4x ERI$/i.test(name)) {
-        return define('Challenging', 4.25 + ringBonus, `${name}${ringSuffix}`);
-      }
-      if (/^X-Wing$/i.test(name)) return define('Very Easy', 2, 'AIC X-Wing');
+      if (/^X-Wing$/i.test(name)) return define('Very Easy', 2, 'AIC - X-Wing');
 
       if (/^(?:L\([23]\)|L[23]|S|M(?:\(\d+\))?|H(?:\(\d+\))?|W)-?(?:Wing|Ring)$/i.test(name)
         || /^i[SWMLH]/i.test(name)) {
@@ -4236,7 +3829,7 @@
       );
     }
 
-    function simulateSolver(grid, expectedSolution, profile = null) {
+    function simulateSolver(grid, expectedSolution) {
       const simulationCand = core.allCandidates(grid);
       const steps = [];
       const maxCycles = 100;
@@ -4247,65 +3840,7 @@
           grid,
           'generator',
           expectedSolution,
-          profile,
         );
-        if (!choice?.step) break;
-
-        const items = core.eliminationItems(choice.step.elim, simulationCand);
-        if (!items.length) break;
-        const removed = core.applyEliminations(simulationCand, { items });
-        if (!removed.length) break;
-
-        steps.push({
-          ...choice.step,
-          elim: { items: removed },
-        });
-      }
-
-      return {
-        cand: simulationCand,
-        steps,
-        cycles: steps.length,
-      };
-    }
-
-    async function simulateSolverInWorker(grid, expectedSolution, profile = null) {
-      const simulationCand = core.allCandidates(grid);
-      const steps = [];
-      const maxCycles = 100;
-      let useWorker = !searchWorkerDisabled;
-
-      for (let count = 0; count < maxCycles; count++) {
-        let choice;
-        if (useWorker) {
-          try {
-            choice = await chooseSolverStepInWorker(
-              simulationCand,
-              grid,
-              expectedSolution,
-              profile,
-            );
-          } catch (error) {
-            // A file:// page or an older browser may reject workers. Keep the
-            // existing synchronous solver as a transparent fallback.
-            useWorker = false;
-            choice = chooseSolverStep(
-              simulationCand,
-              grid,
-              'generator',
-              expectedSolution,
-              profile,
-            );
-          }
-        } else {
-          choice = chooseSolverStep(
-            simulationCand,
-            grid,
-            'generator',
-            expectedSolution,
-            profile,
-          );
-        }
         if (!choice?.step) break;
 
         const items = core.eliminationItems(choice.step.elim, simulationCand);
@@ -4331,35 +3866,9 @@
       return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/0$/, '');
     }
 
-    function rateGeneratedPuzzle(grid, expectedSolution, targetCategory = 'any') {
+    function rateGeneratedPuzzle(grid, expectedSolution) {
       try {
-        const profile = generationTechniqueProfile(targetCategory);
-        const simulation = simulateSolver(grid, expectedSolution, profile);
-        const rating = ratingFromSteps(simulation.steps, 'generated');
-        return ratingWithSolvedState(
-          rating,
-          candidateGridIsSolved(simulation.cand, grid, expectedSolution),
-        );
-      } catch (error) {
-        return {
-          ...unknownRating('Rating check failed.'),
-          source: 'generated',
-          solved: false,
-        };
-      }
-    }
-
-    async function rateGeneratedPuzzleInWorker(
-      grid,
-      expectedSolution,
-      targetCategory = 'any',
-      profileOverride = undefined,
-    ) {
-      try {
-        const profile = profileOverride === undefined
-          ? generationTechniqueProfile(targetCategory)
-          : profileOverride;
-        const simulation = await simulateSolverInWorker(grid, expectedSolution, profile);
+        const simulation = simulateSolver(grid, expectedSolution);
         const rating = ratingFromSteps(simulation.steps, 'generated');
         return ratingWithSolvedState(
           rating,
@@ -5842,19 +5351,12 @@
       return reasons;
     }
 
-    function chainSearchOptions(
-      candidateGrid,
-      maxDepth,
-      budget = 'interactive',
-      profile = null,
-      buildSets = true,
-    ) {
-      const includeAlsRcc = profile?.includeAlsRcc ?? chainAlsRccEl.checked;
+    function chainSearchOptions(candidateGrid, maxDepth, budget = 'interactive') {
+      const includeAlsRcc = chainAlsRccEl.checked;
       const generator = budget === 'generator';
-      const strongLinkTypes = profile?.strongLinkTypes
-        || chainStrongTypeEls
-          .map((element, index) => element.checked ? index : null)
-          .filter(index => index !== null);
+      const strongLinkTypes = chainStrongTypeEls
+        .map((element, index) => element.checked ? index : null)
+        .filter(index => index !== null);
       const limits = budget === 'generator'
         ? {
             maxChains: 75,
@@ -5877,13 +5379,13 @@
             maxAlsLinks: 5000,
           };
 
-      const strongSet = buildSets ? core.buildStrongLinks(candidateGrid) : null;
-      const alsList = buildSets && includeAlsRcc ? core.alsConstructor(candidateGrid, {
+      const strongSet = core.buildStrongLinks(candidateGrid);
+      const alsList = includeAlsRcc ? core.alsConstructor(candidateGrid, {
         maxSizeDOF: generator ? 4 : 8,
         maxSizeFox: generator ? 5 : 7,
         ...(generator ? { searchLimit: true } : {}),
       }) : null;
-      const alsLinkSet = buildSets && includeAlsRcc ? core.buildAlsLinks(candidateGrid, {
+      const alsLinkSet = includeAlsRcc ? core.buildAlsLinks(candidateGrid, {
         alsList,
         strictSingleCommon: true,
         maxLinks: limits.maxAlsLinks,
@@ -5998,160 +5500,16 @@
       return !classKeys.length || classKeys.some(key => enabledTypes.has(key));
     }
 
-    const SOLVER_TIE_ORDER = Object.freeze({
-      'last-man-standing': 0,
-      'hidden-single': 1,
-      'naked-single': 2,
-      'box-line': 3,
-      'hidden-pair': 4,
-      'naked-pair': 5,
-      'x-wing': 6,
-      'aic-x-wing': 7,
-      '2x2+k-fish-k1': 8,
-      skyscraper: 9,
-      '2-string-kite': 10,
-      'finned-x-wing': 11,
-      'sashimi-x-wing': 12,
-      'empty-rectangle': 13,
-      '2x2+k-fish-k2': 14,
-      'hidden-triple': 15,
-      'naked-triple': 16,
-      swordfish: 17,
-      'l1-wing': 18,
-      '3x-eri': 19,
-      'dual-empty-rectangle': 20,
-      'rect-kite': 21,
-      'bridged-eri': 22,
-      '3x3+k-fish-k1': 23,
-      '3x3+k-fish-k2': 24,
-      barns: 25,
-      'xy-wing': 26,
-      'hidden-quad': 27,
-      'naked-quad': 28,
-      jellyfish: 29,
-      '4x4+k-fish-k1': 30,
-      '4x-eri': 31,
-      'x-chain-4': 32,
-      '4x4+k-fish-k2': 33,
-      'barns-xyz-transport': 34,
-      'barns-wxyz': 35,
-      'x-chain-long': 36,
-      'eri-chain-long': 37,
-      'remote-pair': 38,
-      'xy-chain': 39,
-      'hidden-remote-pair': 40,
-      'hidden-xy-chain': 41,
-      'hidden-xy-ring': 42,
-      'l2-wing': 43,
-      'l3-wing': 44,
-      'w-wing': 45,
-      'w-transport': 46,
-      's-wing': 47,
-      'm-wing': 48,
-      'h-wing': 49,
-      'barns-wxyz-transport': 50,
-      'als-xz': 51,
-      'als-xy': 52,
-      'als-named': 53,
-      'als-chain': 54,
-      'aic-als': 55,
-    });
-
-    function directMoveTieKey(step) {
-      const tech = String(step?.tech || '');
-      if (tech === 'pointing' || tech === 'claiming') return 'box-line';
-      if (tech === 'fish') {
-        const size = Number(step?.size);
-        const k = Number(step?.k || 0);
-        if (size === 2 && k === 0) return 'x-wing';
-        if (size === 2 && k === 1) return '2x2+k-fish-k1';
-        if (size === 2 && k === 2) return '2x2+k-fish-k2';
-        if (size === 3 && k === 0) return 'swordfish';
-        if (size === 3 && k === 1) return '3x3+k-fish-k1';
-        if (size === 3 && k === 2) return '3x3+k-fish-k2';
-        if (size === 4 && k === 0) return 'jellyfish';
-        if (size === 4 && k === 1) return '4x4+k-fish-k1';
-        if (size === 4 && k === 2) return '4x4+k-fish-k2';
-      }
-      return tech;
-    }
-
-    function chainMoveTieKey(chain) {
-      const fullName = String(chain?.structureName || '');
-      const name = fullName
-        .replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS|ALC)\s*-\s*/i, '')
-        .trim();
-      const barnsTransport = barnsTransportChainInfo(chain);
-      const barns = barnsChainInfo(chain);
-      if (barnsTransport) {
-        return barnsTransport.sizeName.length <= 3
-          ? 'barns-xyz-transport'
-          : 'barns-wxyz-transport';
-      }
-      if (barns) return barns.sizeName.length === 3 ? 'barns' : 'barns-wxyz';
-
-      const eriCount = chainEriCount(chain);
-      if (eriCount === 3) return '3x-eri';
-      if (eriCount === 4) return '4x-eri';
-      if (eriCount > 4) return 'eri-chain-long';
-
-      const aicAlsNamed = /^AIC\s*\+\s*ALS\s*-\s*.+(?:Wing|Ring)$/i.test(fullName);
-      if (aicAlsNamed) return 'als-named';
-      if (/^AIC\s*\+\s*ALS(?:\s*-\s*Chain)?$/i.test(fullName)) return 'aic-als';
-      if (/^ALS\s*-\s*XZ$/i.test(fullName)) return 'als-xz';
-      if (/^ALS\s*-\s*XY$/i.test(fullName)) return 'als-xy';
-      if (/^ALS\s*-\s*Chain$/i.test(fullName)) return 'als-chain';
-      if (/^ALS\s*-/i.test(fullName) && /(?:Wing|Ring)$/i.test(name)) return 'als-named';
-
-      const alsSizeOne = alsSizeOneChainInfo(chain);
-      if (alsSizeOne?.remotePair) return 'remote-pair';
-      if (alsSizeOne?.breakdown === 'XY-Wing') return 'xy-wing';
-      if (alsSizeOne) return 'xy-chain';
-
-      const hiddenXy = hiddenXyChainInfo(chain);
-      if (hiddenXy?.remotePair) return 'hidden-remote-pair';
-      if (hiddenXy && chain.isRing) return 'hidden-xy-ring';
-      if (hiddenXy) return 'hidden-xy-chain';
-
-      if (/^X-Wing$/i.test(name)) return 'aic-x-wing';
-      if (/^Skyscraper$/i.test(name)) return 'skyscraper';
-      if (/^2-String Kite$/i.test(name)) return '2-string-kite';
-      if (/^Finned X-Wing$/i.test(name)) return 'finned-x-wing';
-      if (/^Sashimi X-Wing$/i.test(name)) return 'sashimi-x-wing';
-      if (/(?:^|-\s*)Empty Rectangle$/i.test(name)) return 'empty-rectangle';
-      if (/(?:^|-\s*)Dual Empty Rectangle$/i.test(name)) return 'dual-empty-rectangle';
-      if (/(?:^|-\s*)Rec'T Kite$/i.test(name)) return 'rect-kite';
-      if (/(?:^|-\s*)Bridged (?:ERI|Empty Rectangle)$/i.test(name)) return 'bridged-eri';
-      if (/^XY-Wing$/i.test(name)) return 'xy-wing';
-      if (/^L\(1\)-Wing$|^L1-Wing$/i.test(name)) return 'l1-wing';
-      if (/^L\(2\)-Wing$|^L2-Wing$/i.test(name)) return 'l2-wing';
-      if (/^L\(3\)-Wing$|^L3-Wing$/i.test(name)) return 'l3-wing';
-      if (/^W-Wing|^W-Ring/i.test(name)) return 'w-wing';
-      if (/Transport/i.test(name)) return 'w-transport';
-      if (/^S-Wing|^S-Ring/i.test(name)) return 's-wing';
-      if (/^M(?:\(\d+\))?-Wing|^M(?:\(\d+\))?-Ring/i.test(name)) return 'm-wing';
-      if (/^H(?:\(\d+\))?-Wing|^H(?:\(\d+\))?-Ring/i.test(name)) return 'h-wing';
-
-      const length = Number(chain?.length || chain?.steps?.length || 0);
-      if (length === 4) return 'x-chain-4';
-      if (length > 4) return 'x-chain-long';
-      return 'x-chain-long';
-    }
-
-    function moveTieOrder(chain, step) {
-      const key = chain ? chainMoveTieKey(chain) : directMoveTieKey(step);
-      return SOLVER_TIE_ORDER[key] ?? Number.POSITIVE_INFINITY;
-    }
-
     function solverMovePriority(chain, step, searchDepth, reportIndex) {
       const rating = step.rating || ratingForStep(step);
-      const value = rating.category === 'Unknown'
+      const rank = rating.category === 'Unknown'
         ? Number.POSITIVE_INFINITY
-        : Number.isFinite(Number(rating.value))
+        : Number(rating.rank ?? Number.POSITIVE_INFINITY);
+      const value = Number.isFinite(Number(rating.value))
         ? Number(rating.value)
         : Number.POSITIVE_INFINITY;
       const length = Number(chain.length || chain.steps?.length || searchDepth || Infinity);
-      return [value, moveTieOrder(chain, step), length, searchDepth, reportIndex];
+      return [rank, value, length, searchDepth, reportIndex];
     }
 
     function isHigherPriorityMove(candidate, current) {
@@ -6166,53 +5524,12 @@
       return false;
     }
 
-    function directMovePriority(step) {
-      const rating = step?.rating || ratingForStep(step);
-      const value = Number.isFinite(Number(rating.value))
-        ? Number(rating.value)
-        : Number.POSITIVE_INFINITY;
-      return [
-        rating.category === 'Unknown' ? Number.POSITIVE_INFINITY : value,
-        moveTieOrder(null, step),
-        0,
-        0,
-        0,
-      ];
-    }
-
-    function chooseLowerScoringMove(simple, chainResult) {
-      if (!simple) return chainResult;
-      if (!chainResult) return { step: simple, chain: null };
-
-      const direct = { step: simple, priority: directMovePriority(simple) };
-      const chain = {
-        ...chainResult,
-        priority: solverMovePriority(
-          chainResult.chain,
-          chainResult.step,
-          chainResult.step?.chainLength,
-          chainResult.index,
-        ),
-      };
-      if (isHigherPriorityMove(direct, chain)) {
-        return { step: simple, chain: null };
-      }
-      const { priority, ...result } = chain;
-      return result;
-    }
-
-    function findSolverChainMove(
-      candidateGrid = cand,
-      fixedGrid = puzzle,
-      budget = 'interactive',
-      expectedSolution = solution,
-      profile = null,
-    ) {
-      const enabledTypes = currentSolverMoveTypes(profile?.moveTypes);
+    function findSolverChainMove(candidateGrid = cand, fixedGrid = puzzle, budget = 'interactive', expectedSolution = solution) {
+      const enabledTypes = currentSolverMoveTypes();
       if (!enabledTypes.has('chains')) return null;
 
       const maxDepth = Math.min(8, Math.max(2, Number(chainDepthEl.value) || 8));
-      const search = chainSearchOptions(candidateGrid, maxDepth, budget, profile);
+      const search = chainSearchOptions(candidateGrid, maxDepth, budget);
       let best = null;
       // The generator only needs one inclusive report. Rebuilding the same
       // graph once per depth made rating generation disproportionately slow.
@@ -6250,7 +5567,6 @@
             desc: core.formatChainEureka({ ...chain, eliminations: items }),
           };
           step.rating = ratingForStep(step);
-          if (profile?.maxRank !== undefined && step.rating.rank > profile.maxRank) continue;
           const candidate = {
             report,
             index,
@@ -6266,150 +5582,22 @@
       return result;
     }
 
-    function solverFishSizes(moveTypes = null) {
-      const enabledTypes = currentSolverMoveTypes(moveTypes);
-      return [2, 3, 4].filter(size => {
-        if (size === 2) return enabledTypes.has('x-wing') || enabledTypes.has('2x2+k-fish');
-        if (size === 3) return enabledTypes.has('swordfish') || enabledTypes.has('3x3+k-fish');
-        return enabledTypes.has('jellyfish') || enabledTypes.has('4x4+k-fish');
-      });
-    }
-
-    function solverFishOptions(candidateGrid, fixedGrid, moveTypes = null) {
-      const enabledTechniques = currentSolverMoveTypes(moveTypes);
+    function solverFishOptions(candidateGrid, fixedGrid) {
       return {
         ...currentPomFishOptions(),
         grid: [...fixedGrid],
         omissionFishSearch: core.omissionFishStep,
-        enabledTechniques,
-        fishSizes: solverFishSizes(enabledTechniques),
+        enabledTechniques: currentSolverMoveTypes(),
       };
     }
 
-    function generatorWorkerConfig(candidateGrid, fixedGrid, profile) {
-      const maxDepth = Math.min(8, Math.max(2, Number(chainDepthEl.value) || 8));
-      const search = chainSearchOptions(candidateGrid, maxDepth, 'generator', profile, false);
-      return {
-        candidateGrid,
-        fixedGrid: [...fixedGrid],
-        moveTypes: [...currentSolverMoveTypes(profile?.moveTypes)],
-        fishOptions: {
-          ...currentPomFishOptions(),
-          fishSizes: solverFishSizes(profile?.moveTypes),
-        },
-        chain: {
-          maxDepth,
-          includeAls: search.includeAlsRcc,
-          strongLinkTypes: search.strongLinkTypes,
-          alsMaxSizeDOF: 4,
-          alsMaxSizeFox: 5,
-          limits: {
-            maxChains: search.maxChains,
-            maxResultAttempts: search.maxResultAttempts,
-            maxResultAttemptsPerStart: search.maxResultAttemptsPerStart,
-            maxStates: search.maxStates,
-            maxQueue: search.maxQueue,
-            maxBranching: search.maxBranching,
-            maxStartViews: search.maxStartViews,
-            maxAlsLinks: search.maxAlsLinks,
-          },
-        },
-      };
-    }
+    function chooseSolverStep(candidateGrid = cand, fixedGrid = puzzle, budget = 'interactive', expectedSolution = solution) {
+      const simple = core.subsetOrFishStep(candidateGrid, solverFishOptions(candidateGrid, fixedGrid));
+      if (simple) return { step: simple, chain: null };
 
-    async function findSolverChainMoveInWorker(
-      candidateGrid = cand,
-      fixedGrid = puzzle,
-      expectedSolution = solution,
-      profile = null,
-    ) {
-      const enabledTypes = currentSolverMoveTypes(profile?.moveTypes);
-      if (!enabledTypes.has('chains')) return null;
-
-      const config = generatorWorkerConfig(candidateGrid, fixedGrid, profile);
-      const result = await runSearchWorker('chains', {
-        candidateGrid: config.candidateGrid,
-        ...config.chain,
-      });
-      const report = {
-        chains: result?.chains || [],
-        stats: result?.stats || {},
-      };
-      let best = null;
-      for (let index = 0; index < report.chains.length; index++) {
-        const chain = report.chains[index];
-        if (!chainMoveEnabled(chain, enabledTypes)) continue;
-
-        const items = core.eliminationItems({ items: chain.eliminations || [] }, candidateGrid);
-        if (!items.length) continue;
-        if (chainSafetyFlags(chain, candidateGrid, expectedSolution, fixedGrid).length > 0) continue;
-
-        const step = {
-          ...chainStepFromResult(chain, report, index, candidateGrid),
-          elim: { items },
-          desc: core.formatChainEureka({ ...chain, eliminations: items }),
-        };
-        step.rating = ratingForStep(step);
-        if (profile?.maxRank !== undefined && step.rating.rank > profile.maxRank) continue;
-        const candidate = {
-          report,
-          index,
-          chain,
-          step,
-          priority: solverMovePriority(chain, step, config.chain.maxDepth, index),
-        };
-        if (isHigherPriorityMove(candidate, best)) best = candidate;
-      }
-      if (!best) return null;
-      const { priority, ...resultMove } = best;
-      return resultMove;
-    }
-
-    async function chooseSolverStepInWorker(
-      candidateGrid = cand,
-      fixedGrid = puzzle,
-      expectedSolution = solution,
-      profile = null,
-    ) {
-      const config = generatorWorkerConfig(candidateGrid, fixedGrid, profile);
-      const simple = await runSearchWorker('simple', {
-        candidateGrid: config.candidateGrid,
-        fixedGrid: config.fixedGrid,
-        moveTypes: config.moveTypes,
-        fishOptions: config.fishOptions,
-      });
-      const simpleRating = simple ? ratingForStep(simple) : null;
-      const simpleCannotBeBeaten = simpleRating
-        && Number.isFinite(Number(simpleRating.value))
-        && Number(simpleRating.value) <= 2;
-      if (simpleCannotBeBeaten) return { step: simple, chain: null };
-
-      const chainResult = await findSolverChainMoveInWorker(
-        candidateGrid,
-        fixedGrid,
-        expectedSolution,
-        profile,
-      );
-      return chooseLowerScoringMove(simple, chainResult);
-    }
-
-    function chooseSolverStep(
-      candidateGrid = cand,
-      fixedGrid = puzzle,
-      budget = 'interactive',
-      expectedSolution = solution,
-      profile = null,
-    ) {
-      const moveTypes = profile?.moveTypes || currentSolverMoveTypes();
-      const simple = core.subsetOrFishStep(candidateGrid, solverFishOptions(candidateGrid, fixedGrid, moveTypes));
-      const simpleRating = simple ? ratingForStep(simple) : null;
-      const simpleCannotBeBeaten = simpleRating
-        && Number.isFinite(Number(simpleRating.value))
-        && Number(simpleRating.value) <= 2;
-      if (simpleCannotBeBeaten) return { step: simple, chain: null };
-
-      const chainResult = findSolverChainMove(candidateGrid, fixedGrid, budget, expectedSolution, profile);
-      return chooseLowerScoringMove(simple, chainResult);
+      const chainResult = findSolverChainMove(candidateGrid, fixedGrid, budget, expectedSolution);
+      if (!chainResult) return null;
+      return chainResult;
     }
 
     function flaggedChainEntries(verbose = false) {
@@ -6962,20 +6150,12 @@
       setBusy(true);
       setStatus('Searching N x (N + K) fish...');
 
-      setTimeout(async () => {
+      setTimeout(() => {
         try {
-          try {
-            fishReport = await runSearchWorker('fish', {
-              candidateGrid: cand,
-              fixedGrid: currentFixedGrid(),
-              options: currentPomFishOptions(),
-            });
-          } catch (error) {
-            fishReport = core.findOmissionFishReports(cand, {
-              ...currentPomFishOptions(),
-              grid: currentFixedGrid(),
-            });
-          }
+          fishReport = core.findOmissionFishReports(cand, {
+            ...currentPomFishOptions(),
+            grid: currentFixedGrid(),
+          });
           selectedFishCategory = null;
           selectedFishSize = null;
           selectedFishKey = null;
@@ -7129,24 +6309,12 @@
         let rating = null;
         let attempts = 0;
 
-        const tryGeneration = async () => {
+        const tryGeneration = () => {
           if (requestToken !== generationToken) return;
 
           attempts += 1;
           result = core.generate(givens);
-          const limitedRating = await rateGeneratedPuzzleInWorker(
-            result.puzzle,
-            result.solution,
-            targetCategory,
-          );
-          rating = quickGeneration
-            ? limitedRating
-            : await rateGeneratedPuzzleInWorker(
-                result.puzzle,
-                result.solution,
-                targetCategory,
-                generationTechniqueProfile('Nightmare'),
-              );
+          rating = rateGeneratedPuzzle(result.puzzle, result.solution);
           const matches = quickGeneration || rating.category === targetCategory;
 
           if (!matches) {
@@ -7159,7 +6327,7 @@
               return;
             }
             setStatus(`Generating ${article} ${targetCategory} puzzle... attempt ${attempts}`);
-            setTimeout(() => { void tryGeneration(); }, 0);
+            setTimeout(tryGeneration, 0);
             return;
           }
 
@@ -7178,7 +6346,7 @@
           setBusy(false);
         };
 
-        void tryGeneration();
+        tryGeneration();
       }, 20);
     }
 
@@ -7287,7 +6455,6 @@
     }
 
     initFishSettings();
-    renderDifficultyTable();
     renderGridViewHeaders();
     generatePuzzle();
   </script>
