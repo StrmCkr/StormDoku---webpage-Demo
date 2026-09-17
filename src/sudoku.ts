@@ -1,4 +1,11 @@
-import { boxLineStepM, buildSpaces, fishStepM, hiddenStepM, type FishSearchOptions } from './spaces';
+import {
+  boxLineStepM,
+  buildSpaces,
+  fishStepM,
+  hiddenStepM,
+  type FishSearchOptions,
+  type SectorState,
+} from './spaces';
 import { Bset, Cset, PEERS, Rset, UNITS as CARDINAL_UNITS } from './cardinals';
 
 export type Grid = number[];
@@ -9,6 +16,7 @@ export interface Parsed729Data {
   sourceCandidates: CandidateGrid;
   candidates: CandidateGrid;
   spaces: number[][];
+  givenBySector: SectorState;
   grid: Grid;
   givenCells: number[];
   conflicts: { cell: number; digits: number[] }[];
@@ -899,7 +907,7 @@ export function parse729Data(text: string): Parsed729Data | null {
       .map((present, digit) => present ? digit + 1 : 0)
       .filter(Boolean),
   );
-  const spaces = buildSpaces(sourceCandidates).M;
+  const sourceSpaces = buildSpaces(sourceCandidates).M;
   const candidates = sourceCandidates.map(values => [...values]);
   const grid = new Array<number>(81).fill(0);
   const conflicts: { cell: number; digits: number[] }[] = [];
@@ -911,9 +919,9 @@ export function parse729Data(text: string): Parsed729Data | null {
     const boxPosition = (row % 3) * 3 + (col % 3);
     const forced = sourceCandidates[cell].filter(digit => {
       const d0 = digit - 1;
-      return singletonMask(spaces[row][d0], col)
-        && singletonMask(spaces[9 + col][d0], row)
-        && singletonMask(spaces[18 + box][d0], boxPosition);
+      return singletonMask(sourceSpaces[row][d0], col)
+        && singletonMask(sourceSpaces[9 + col][d0], row)
+        && singletonMask(sourceSpaces[18 + box][d0], boxPosition);
     });
 
     if (forced.length > 1) {
@@ -926,11 +934,14 @@ export function parse729Data(text: string): Parsed729Data | null {
     candidates[cell] = [];
   }
 
+  const finalSpaces = buildSpaces(candidates, grid);
+
   return {
     bits,
     sourceCandidates,
     candidates,
-    spaces,
+    spaces: finalSpaces.M,
+    givenBySector: finalSpaces.given,
     grid,
     givenCells: grid.reduce<number[]>((cells, digit, cell) => {
       if (digit) cells.push(cell);

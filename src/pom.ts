@@ -239,6 +239,8 @@ export interface OmissionFishOptions {
   frankenEnabled?: boolean;
   mutantEnabled?: boolean;
   earlyTermination?: boolean;
+  priorityMode?: boolean;
+  enabledTechniques?: Iterable<string>;
 }
 
 interface NormalisedOmissionFishOptions {
@@ -253,6 +255,8 @@ interface NormalisedOmissionFishOptions {
   frankenEnabled: boolean;
   mutantEnabled: boolean;
   earlyTermination: boolean;
+  priorityMode: boolean;
+  enabledTechniques: Set<string> | null;
 }
 
 interface DigitSectorState {
@@ -359,6 +363,8 @@ function normaliseOmissionFishOptions(
     frankenEnabled: options.frankenEnabled ?? false,
     mutantEnabled: options.mutantEnabled ?? false,
     earlyTermination: options.earlyTermination ?? true,
+    priorityMode: options.priorityMode ?? false,
+    enabledTechniques: options.enabledTechniques ? new Set(options.enabledTechniques) : null,
   };
 }
 
@@ -389,6 +395,17 @@ function isBasicCol(sectors: readonly number[]): boolean {
   return sectors.every(sector => sector >= 9 && sector < 18);
 }
 
+function isBasicBox(sectors: readonly number[]): boolean {
+  return sectors.length > 0 && sectors.every(sector => sector >= 18);
+}
+
+function isImpossibleBoxFish(
+  baseSectors: readonly number[],
+  coverSectors: readonly number[],
+): boolean {
+  return isBasicBox(baseSectors) && isBasicBox(coverSectors);
+}
+
 function isFrankenRow(sectors: readonly number[]): boolean {
   return sectors.some(sector => sector >= 18) && sectors.every(sector => sector < 9 || sector >= 18);
 }
@@ -400,14 +417,23 @@ function isFrankenCol(sectors: readonly number[]): boolean {
 function fishType(baseSectors: readonly number[], coverSectors: readonly number[]): FishTypeId {
   const baseBasicRow = isBasicRow(baseSectors);
   const baseBasicCol = isBasicCol(baseSectors);
+  const baseBasicBox = isBasicBox(baseSectors);
   const coverBasicRow = isBasicRow(coverSectors);
   const coverBasicCol = isBasicCol(coverSectors);
+  const coverBasicBox = isBasicBox(coverSectors);
   const baseFrankenRow = isFrankenRow(baseSectors);
   const baseFrankenCol = isFrankenCol(baseSectors);
   const coverFrankenRow = isFrankenRow(coverSectors);
   const coverFrankenCol = isFrankenCol(coverSectors);
 
-  if ((baseBasicRow && coverBasicCol) || (baseBasicCol && coverBasicRow)) return 0;
+  if (
+    (baseBasicRow && coverBasicCol)
+    || (baseBasicCol && coverBasicRow)
+    || (baseBasicBox && coverBasicRow)
+    || (baseBasicBox && coverBasicCol)
+    || (baseBasicRow && coverBasicBox)
+    || (baseBasicCol && coverBasicBox)
+  ) return 0;
 
   if (
     (baseFrankenRow && coverFrankenCol)
@@ -429,9 +455,14 @@ function baseCombinationAllowed(
 ): boolean {
   if (options.mutantEnabled) return true;
   if (options.frankenEnabled) {
-    return isBasicRow(sectors) || isBasicCol(sectors) || isFrankenRow(sectors) || isFrankenCol(sectors);
+    return isBasicRow(sectors)
+      || isBasicCol(sectors)
+      || isBasicBox(sectors)
+      || isFrankenRow(sectors)
+      || isFrankenCol(sectors);
   }
-  return options.basicsEnabled && (isBasicRow(sectors) || isBasicCol(sectors));
+  return options.basicsEnabled
+    && (isBasicRow(sectors) || isBasicCol(sectors) || isBasicBox(sectors));
 }
 
 function baseSearchSectors(
@@ -439,7 +470,7 @@ function baseSearchSectors(
   options: NormalisedOmissionFishOptions,
 ): number[] {
   if (options.basicsEnabled && !options.frankenEnabled && !options.mutantEnabled) {
-    return usableSectors.filter(sector => sector < 18);
+    return [...usableSectors];
   }
 
   return [...usableSectors];
@@ -451,8 +482,9 @@ function coverSearchSectors(
   options: NormalisedOmissionFishOptions,
 ): number[] {
   if (options.basicsEnabled && !options.frankenEnabled && !options.mutantEnabled) {
-    if (isBasicRow(baseSectors)) return usableSectors.filter(sector => sector >= 9 && sector < 18);
-    if (isBasicCol(baseSectors)) return usableSectors.filter(sector => sector < 9);
+    if (isBasicRow(baseSectors)) return usableSectors.filter(sector => sector >= 9);
+    if (isBasicCol(baseSectors)) return usableSectors.filter(sector => sector < 9 || sector >= 18);
+    if (isBasicBox(baseSectors)) return usableSectors.filter(sector => sector < 18);
   }
 
   return [...usableSectors];
@@ -468,6 +500,18 @@ function fishName(size: number, k: number, type: FishTypeId): string {
   const typeName = type === 1 ? 'Franken ' : type === 2 ? 'Mutant ' : '';
   const finned = k > 0 && size > 1 ? 'Finned ' : '';
   return `${finned}${typeName}${POM_FISH_NAMES[size] ?? `Fish ${size}`}`;
+}
+
+function fishMoveTypeForReport(fish: PomOmissionFish): string | null {
+  const size = Number(fish.size);
+  const k = Number(fish.k ?? 0);
+  if (k > 0) return `${size}x${size}+k-fish`;
+  return ({ 2: 'x-wing', 3: 'swordfish', 4: 'jellyfish' } as Record<number, string>)[size] ?? null;
+}
+
+function fishReportEnabled(fish: PomOmissionFish, options: NormalisedOmissionFishOptions): boolean {
+  const moveType = fishMoveTypeForReport(fish);
+  return !options.enabledTechniques || (moveType !== null && options.enabledTechniques.has(moveType));
 }
 
 function saveSectorCells(
@@ -668,6 +712,8 @@ function processOmissionFishCover(
   triggerCells: Set<number>,
   options: NormalisedOmissionFishOptions,
 ): OmissionFishCandidate | null {
+  if (isImpossibleBoxFish(baseSectors, coverSectors)) return null;
+
   const coverSaved = saveSectorCells(state, digit, coverSectors);
   if (!isSetSubset(baseSaved.allUsedCells, coverSaved.allUsedCells)) return null;
 
@@ -901,7 +947,7 @@ function findOmissionFishPass(
               reason: 'template-omission-fish',
             });
 
-            if (opts.earlyTermination) {
+            if (opts.earlyTermination && fishReportEnabled(match, opts)) {
               stopCoverExpansion = true;
               break;
             }
@@ -1210,37 +1256,66 @@ export function omissionFishStep(
     [],
     new Set<string>(),
   );
-  const reports: PomOmissionFish[] = [];
-  findOmissionFishPass(
-    cand,
-    templatesByDigit,
-    digitTemplates,
-    omissionsByDigit,
-    reports,
-    {
-      ...options,
-      minSize: sizes[0],
-      maxSize: sizes[sizes.length - 1],
-    },
-  );
+  const priority = { Basic: 0, Franken: 1, Mutant: 2 } as Record<string, number>;
+  const categoryPasses: Array<[
+    'basicsEnabled' | 'frankenEnabled' | 'mutantEnabled',
+    boolean,
+  ]> = [
+    ['basicsEnabled', options.basicsEnabled ?? true],
+    ['frankenEnabled', options.frankenEnabled ?? false],
+    ['mutantEnabled', options.mutantEnabled ?? false],
+  ];
 
-  const report = reports[0];
-  if (!report) return null;
+  for (const [categoryFlag, enabled] of categoryPasses) {
+    if (!enabled) continue;
 
-  const items = report.cells.map(cell => ({ cell, digit: report.digit }));
-  return {
-    tech: 'fish',
-    desc: formatPomOmissionFish(report),
-    elim: { items },
-    digits: [report.digit],
-    baseSectors: report.baseSectors,
-    coverSectors: report.coverSectors,
-    vertices: report.vertices,
-    fins: report.triggerCells,
-    endofins: report.endoFins,
-    overcovered: report.overcovered,
-    triCovered: report.triCovered,
-  };
+    // Keep each hierarchy pass isolated so a broader category cannot
+    // consume a Basic or Franken candidate during the same search.
+    const reports: PomOmissionFish[] = [];
+    findOmissionFishPass(
+      cand,
+      templatesByDigit,
+      digitTemplates,
+      omissionsByDigit,
+      reports,
+      {
+        ...options,
+        minSize: sizes[0],
+        maxSize: sizes[sizes.length - 1],
+        basicsEnabled: false,
+        frankenEnabled: false,
+        mutantEnabled: false,
+        [categoryFlag]: true,
+      },
+    );
+
+    const orderedReports = options.priorityMode
+      ? [...reports].sort((a, b) => {
+          const categoryDelta = (priority[a.category] ?? 99) - (priority[b.category] ?? 99);
+          if (categoryDelta) return categoryDelta;
+          return Number(a.k ?? 0) - Number(b.k ?? 0);
+        })
+      : reports;
+    const report = orderedReports[0];
+    if (!report) continue;
+
+    const items = report.cells.map(cell => ({ cell, digit: report.digit }));
+    return {
+      tech: 'fish',
+      desc: formatPomOmissionFish(report),
+      elim: { items },
+      digits: [report.digit],
+      baseSectors: report.baseSectors,
+      coverSectors: report.coverSectors,
+      vertices: report.vertices,
+      fins: report.triggerCells,
+      endofins: report.endoFins,
+      overcovered: report.overcovered,
+      triCovered: report.triCovered,
+    };
+  }
+
+  return null;
 }
 
 export function pomCheck(

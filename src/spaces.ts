@@ -1,8 +1,16 @@
 import type { CandidateGrid, CandidateRemoval, Hint, HouseRef, SubsetSize } from './sudoku';
 import { Bset, Bxy, BxyN, Cset, Cy, PEERS, Rset, Rx, UNITS } from './cardinals';
 
+export interface SectorState {
+  cells: number[];
+  rows: number[];
+  cols: number[];
+  boxes: number[];
+}
+
 export interface Spaces {
   M: number[][];
+  given: SectorState;
 }
 
 export const POPC = new Uint8Array(512);
@@ -26,6 +34,7 @@ export interface FishSearchOptions {
   mutantEnabled?: boolean;
   grid?: number[];
   enabledTechniques?: Iterable<string>;
+  priorityMode?: boolean;
   omissionFishSearch?: (
     cand: CandidateGrid,
     sizes: readonly FishSize[],
@@ -61,8 +70,33 @@ const COMBOS: Record<SubsetSize, number[][]> = {
   4: combosIdx(4),
 };
 
-export function buildSpaces(cand: CandidateGrid): Spaces {
+function fixedSectorState(grid: number[] = []): SectorState {
+  const state: SectorState = {
+    cells: [],
+    rows: new Array(9).fill(0),
+    cols: new Array(9).fill(0),
+    boxes: new Array(9).fill(0),
+  };
+
+  for (let cell = 0; cell < 81; cell++) {
+    const digit = grid[cell];
+    if (!digit || digit < 1 || digit > 9) continue;
+    const bit = 1 << (digit - 1);
+    state.cells.push(cell);
+    state.rows[Rx[cell]] |= bit;
+    state.cols[Cy[cell]] |= bit;
+    state.boxes[Bxy[cell]] |= bit;
+  }
+
+  return state;
+}
+
+export function buildSpaces(
+  cand: CandidateGrid,
+  givenGrid: number[] = [],
+): Spaces {
   const M = Array.from({ length: 27 }, () => new Array(9).fill(0));
+  const given = fixedSectorState(givenGrid);
 
   for (let cell = 0; cell < 81; cell++) {
     for (const digit of cand[cell]) {
@@ -73,7 +107,7 @@ export function buildSpaces(cand: CandidateGrid): Spaces {
     }
   }
 
-  return { M };
+  return { M, given };
 }
 
 function bits(mask: number): number[] {
@@ -511,22 +545,17 @@ export function fishStepM(
   sizes: readonly FishSize[] = [2, 3, 4],
   options: FishSearchOptions = {},
 ): Hint | null {
-  const { M } = buildSpaces(cand);
+  const configuredMaxK = Number(options.maxK ?? 2);
+  const maxK = Number.isFinite(configuredMaxK) ? Math.max(0, configuredMaxK) : 2;
 
-  for (const k of sizes) {
-    for (let digit = 1; digit <= 9; digit++) {
-      const d0 = digit - 1;
-      const rowFish = fishByRows(M, d0, digit, k);
-      if (fishStepAllowed(rowFish, options.enabledTechniques)) return rowFish;
-
-      const colFish = fishByCols(M, d0, digit, k);
-      if (fishStepAllowed(colFish, options.enabledTechniques)) return colFish;
-    }
-
-    const omissionFish = options.omissionFishSearch?.(cand, [k], {
+  for (const size of sizes) {
+    const omissionFish = options.omissionFishSearch?.(cand, [size], {
       ...options,
-      minSize: k,
-      maxSize: k,
+      minSize: size,
+      maxSize: size,
+      minK: 0,
+      maxK,
+      priorityMode: true,
     });
     if (fishStepAllowed(omissionFish, options.enabledTechniques)) return omissionFish;
   }

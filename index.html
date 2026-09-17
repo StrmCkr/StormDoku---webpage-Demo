@@ -42,17 +42,22 @@
     }
 
     header {
-      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(420px, auto) 236px;
+      align-items: start;
+      gap: 18px;
       padding: 24px 0 12px;
     }
 
+    .header-brand {
+      min-width: 0;
+    }
+
     .settings-dock {
-      position: absolute;
-      top: 18px;
-      right: 0;
+      position: static;
       display: grid;
       gap: 8px;
-      width: 236px;
+      width: auto;
       margin: 0;
       padding: 8px 10px 10px;
       background: var(--bg);
@@ -112,21 +117,79 @@
     }
 
     .load-toolbar {
+      display: block;
       padding-bottom: 8px;
     }
 
-    .load-toolbar > label:first-child {
-      flex: 0 1 460px;
+    .puzzle-input-group {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      gap: 10px;
     }
 
-    .load-toolbar > label:not(:first-child) {
-      flex: 0 0 auto;
+    .puzzle-input-group > label {
+      width: 100%;
     }
 
-    .load-toolbar > label:first-child textarea {
+    .puzzle-input-group textarea {
       width: 100%;
       min-height: 42px;
       resize: horizontal;
+    }
+
+    .puzzle-input-actions {
+      display: flex;
+      align-items: end;
+    }
+
+    .header-controls {
+      padding: 10px 0 0;
+    }
+
+    .header-tools {
+      padding: 8px 0 0;
+    }
+
+    .generator-panel {
+      display: grid;
+      gap: 10px;
+      min-width: 0;
+      margin: 0;
+      padding: 8px 10px 10px;
+    }
+
+    .generator-panel legend {
+      padding: 0 4px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .generator-fields {
+      display: grid;
+      grid-template-columns: auto minmax(150px, 1fr) auto;
+      align-items: end;
+      gap: 10px;
+    }
+
+    .generator-fields label {
+      min-width: 0;
+    }
+
+    .generator-fields select {
+      width: 100%;
+    }
+
+    .generator-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .generator-actions button {
+      width: 100%;
     }
 
     .control-row {
@@ -606,6 +669,74 @@
       flex-wrap: wrap;
     }
 
+    .digit-focus-toolbar {
+      display: grid;
+      gap: 5px;
+      width: min(100%, 560px);
+      margin-bottom: 8px;
+    }
+
+    .digit-focus-label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .digit-focus-buttons {
+      display: grid;
+      grid-template-columns: repeat(9, minmax(24px, 1fr));
+      gap: 5px;
+      flex: 1;
+    }
+
+    .digit-focus-button {
+      min-width: 0;
+      aspect-ratio: 1;
+      padding: 3px;
+      border: 2px solid var(--line);
+      border-radius: 4px;
+      background: var(--panel);
+      color: var(--muted);
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 13px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .digit-focus-button:hover,
+    .digit-focus-button:focus-visible {
+      border-color: var(--digit-focus-color);
+      color: var(--digit-focus-color);
+    }
+
+    .digit-focus-button.selected {
+      border-color: var(--digit-focus-color);
+      color: var(--digit-focus-color);
+      box-shadow: inset 0 0 0 2px var(--digit-focus-color);
+    }
+
+    .digit-focus-button.digit-complete,
+    .digit-focus-button.digit-complete:hover,
+    .digit-focus-button.digit-complete:focus-visible {
+      --digit-focus-color: #111827;
+      border-color: #111827;
+      background: #d1d5db;
+      color: #111827;
+      filter: grayscale(1);
+      opacity: 0.58;
+    }
+
+    .digit-focus-1 { --digit-focus-color: #b45309; }
+    .digit-focus-2 { --digit-focus-color: #0f766e; }
+    .digit-focus-3 { --digit-focus-color: #7c3aed; }
+    .digit-focus-4 { --digit-focus-color: #115e59; }
+    .digit-focus-5 { --digit-focus-color: #a16207; }
+    .digit-focus-6 { --digit-focus-color: #c2410c; }
+    .digit-focus-7 { --digit-focus-color: #15803d; }
+    .digit-focus-8 { --digit-focus-color: #a21caf; }
+    .digit-focus-9 { --digit-focus-color: #374151; }
+
     .grid-view-label {
       color: var(--muted);
       font-size: 12px;
@@ -628,6 +759,40 @@
     }
 
     .grid-view-button.current {
+      border-color: var(--blue);
+      background: var(--blue);
+      color: white;
+    }
+
+    .grid-view-selector {
+      min-width: 58px;
+      padding: 6px 26px 6px 10px;
+      border-color: var(--blue);
+      background: var(--blue);
+      color: white;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .grid-view-selector:focus-visible {
+      outline: 3px solid rgba(37, 99, 235, .28);
+      outline-offset: 2px;
+    }
+
+    .grid-row-title .grid-view-selector {
+      min-width: 40px;
+      padding: 2px 14px 2px 2px;
+      border-color: transparent;
+      background: transparent;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .grid-row-title .grid-view-selector:hover,
+    .grid-row-title .grid-view-selector:focus-visible {
       border-color: var(--blue);
       background: var(--blue);
       color: white;
@@ -748,7 +913,11 @@
       color: #111827;
     }
 
-
+    .cell.solved {
+      background: #dbeafe;
+      color: #2563a6;
+      text-shadow: -1px 0 #111827, 0 1px #111827, 1px 0 #111827, 0 -1px #111827;
+    }
 
     .vantage-cell {
       flex-direction: column;
@@ -801,6 +970,88 @@
       color: var(--blue);
       background: #dbeafe;
       border-radius: 2px;
+    }
+
+    .vantage-position.elim {
+      color: var(--red);
+      background: #fee2e2;
+      border-radius: 2px;
+      font-weight: 900;
+      text-decoration: line-through;
+      text-decoration-thickness: 2px;
+    }
+
+    .vantage-position.fish {
+      color: #052e16;
+      background: #86efac;
+      border: 1px solid var(--dark-green);
+      border-radius: 2px;
+      font-weight: 900;
+    }
+
+    .vantage-position.fish-endofin {
+      color: #86198f;
+      background: #f0abfc;
+      border: 1px solid #a21caf;
+      border-radius: 2px;
+      font-weight: 900;
+    }
+
+    .vantage-position.subset {
+      color: #063f88;
+      background: var(--set-digit);
+      border: 1px solid var(--dark-green);
+      border-radius: 2px;
+      font-weight: 900;
+    }
+
+    .vantage-position.chain {
+      color: #4c1d95;
+      background: rgba(221, 214, 254, .72);
+      border-radius: 2px;
+      font-weight: 900;
+    }
+
+    .vantage-position.chain-xor-entry,
+    .vantage-position.strong-start {
+      color: #1d4ed8;
+      background: rgba(191, 219, 254, .78);
+      border: 1px solid rgba(37, 99, 235, .72);
+      border-radius: 2px;
+      font-weight: 900;
+    }
+
+    .vantage-position.chain-xor-exit,
+    .vantage-position.strong-end {
+      color: #047857;
+      background: rgba(167, 243, 208, .78);
+      border: 1px solid rgba(5, 150, 105, .72);
+      border-radius: 2px;
+      font-weight: 900;
+    }
+
+    .vantage-position.chain-weak {
+      color: #1d4ed8;
+      background: rgba(191, 219, 254, .5);
+      box-shadow: inset 0 0 0 2px rgba(37, 99, 235, .58);
+      border-radius: 2px;
+      font-weight: 900;
+    }
+
+    .vantage-position.chain-als {
+      color: var(--chain-als-ink, #6d28d9);
+      background: var(--chain-als-bg, rgba(125, 211, 252, .34));
+      box-shadow: inset 0 0 0 1px var(--chain-als-stroke, rgba(14, 116, 144, .62));
+      border-radius: 2px;
+      font-weight: 900;
+    }
+
+    .vantage-position.ahs-record {
+      color: var(--ahs-record-ink, #1e40af);
+      background: rgba(191, 219, 254, .58);
+      box-shadow: inset 0 0 0 2px var(--ahs-record-stroke, rgba(29, 78, 216, .68));
+      border-radius: 2px;
+      font-weight: 900;
     }
 
     .cell.fish-base {
@@ -1038,6 +1289,22 @@
       box-shadow: inset 0 0 0 2px rgba(109, 40, 217, .72);
     }
 
+    .mark.digit-focus {
+      outline: 2px solid var(--digit-focus-color);
+      outline-offset: -2px;
+      z-index: 2;
+    }
+
+    .cell.digit-focus-cell {
+      box-shadow: inset 0 0 0 3px var(--digit-focus-color);
+    }
+
+    .vantage-position.digit-focus {
+      outline: 2px solid var(--digit-focus-color);
+      outline-offset: -2px;
+      z-index: 2;
+    }
+
     .chain-overlay {
       position: absolute;
       inset: 0;
@@ -1167,6 +1434,16 @@
       border: 1px solid var(--line);
       border-radius: 6px;
       line-height: 1.35;
+      cursor: pointer;
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+
+    .log li:hover,
+    .log li:focus-visible,
+    .log li.selected {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, .14);
+      outline: none;
     }
 
     .log strong {
@@ -1353,6 +1630,25 @@
     .puzzle-string-box {
       display: grid;
       gap: 8px;
+    }
+
+    .puzzle-state-meta,
+    .string-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 14px;
+    }
+
+    .puzzle-state-meta {
+      color: #cbd5e1;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+    }
+
+    .string-actions button {
+      padding: 5px 8px;
+      font-size: 12px;
     }
 
     .solution-inline {
@@ -1636,6 +1932,10 @@
     }
 
     @media (max-width: 860px) {
+      header {
+        grid-template-columns: 1fr;
+      }
+
       .settings-dock {
         position: static;
         width: 100%;
@@ -1648,6 +1948,14 @@
 
       .fish-settings-grid {
         grid-template-columns: 1fr;
+      }
+
+      .load-toolbar {
+        grid-template-columns: 1fr;
+      }
+
+      .generator-fields {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
       }
 
       .control-row {
@@ -1669,9 +1977,76 @@
 </head>
 <body>
   <header>
-    <h1>StormDoku: online and offline solver</h1>
-    <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo.</p>
-    <p class="app-meta">Alpha v0.1.0 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+    <div class="header-brand">
+      <h1>StormDoku: online and offline solver</h1>
+      <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo.</p>
+      <p class="app-meta">Alpha v0.1.0 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <section class="toolbar control-row header-controls">
+        <button id="undo" class="secondary" title="Undo last cycle">Undo</button>
+        <button id="redo" class="secondary" title="Redo last cycle">Redo</button>
+        <button id="next">Next</button>
+        <button id="run" class="secondary">Run All</button>
+        <button id="pomCheck" class="secondary">P.O.M.</button>
+      </section>
+      <section class="toolbar control-row header-tools">
+        <button id="hiddenSubsetBuild" class="secondary" title="Search for hidden subsets">Hidden Subset</button>
+        <button id="nakedSubsetBuild" class="secondary" title="Search for naked subsets">Naked Subset</button>
+        <button id="fishBuild" class="secondary" title="Search for NxN+K Fish">Fish</button>
+        <button id="chainBuild" class="secondary" title="Search for A.I.C.">A.I.C</button>
+      </section>
+    </div>
+    <fieldset class="generator-panel">
+      <legend>Generator</legend>
+      <div class="generator-fields">
+        <label>
+          Givens
+          <input id="givens" type="number" min="17" max="81" value="30">
+        </label>
+        <label>
+          Difficulty
+          <select id="generationDifficulty">
+            <option value="Any" selected>Any</option>
+            <option value="Lulz">Lulz</option>
+            <option value="Extremely Easy">Extremely Easy</option>
+            <option value="Very Easy">Very Easy</option>
+            <option value="Modestly Easy">Modestly Easy</option>
+            <option value="Easy">Easy</option>
+            <option value="Moderate">Moderate</option>
+            <option value="Tough">Tough</option>
+            <option value="Challenging">Challenging</option>
+            <option value="Irritating">Irritating</option>
+            <option value="Frustrating">Frustrating</option>
+            <option value="Hard">Hard</option>
+            <option value="Demanding">Demanding</option>
+            <option value="Expert">Expert</option>
+            <option value="Brutal">Brutal</option>
+            <option value="Nightmare">Nightmare</option>
+            <option value="Unknown">Unknown</option>
+          </select>
+        </label>
+        <button id="generate" type="button">Generate</button>
+      </div>
+      <div class="generator-actions">
+        <button id="reset" class="secondary" type="button" title="Reload the current grid">Reload</button>
+        <button id="import" class="secondary" type="button"
+          title="Import from the clipboard. Accepts 81-character puzzle strings or 729-bit candidate strings.">
+          Import
+        </button>
+      </div>
+      <div class="puzzle-input-group">
+        <label>
+          Puzzle String
+          <textarea id="input" spellcheck="false"
+            title="Accepts 81-character puzzle strings, 729 candidate bits, or candidate-grid text."></textarea>
+        </label>
+        <div class="puzzle-input-actions">
+          <button id="load" class="secondary" type="button"
+            title="Accepts 81-character puzzle strings, 729 candidate bits, or candidate-grid text. Load the puzzle string shown here.">
+            Load
+          </button>
+        </div>
+      </div>
+    </fieldset>
     <fieldset class="settings-dock">
       <legend>Settings</legend>
       <div class="settings-dock-actions">
@@ -1692,58 +2067,6 @@
   </header>
 
   <main>
-    <section class="toolbar load-toolbar">
-      <label>
-        Puzzle String
-        <textarea id="input" spellcheck="false"></textarea>
-        <small class="input-note">Accepts 81-character puzzle strings, 729 candidate bits, or candidate-grid text.</small>
-      </label>
-      <button id="load" class="secondary" type="button">Load</button>
-      <label>
-        Givens
-        <input id="givens" type="number" min="17" max="81" value="30">
-      </label>
-      <label>
-        Generator Difficulty
-        <select id="generationDifficulty">
-          <option value="any" selected>Any</option>
-          <option value="Extremely Easy">Extremely Easy</option>
-          <option value="Very Easy">Very Easy</option>
-          <option value="Modestly Easy">Modestly Easy</option>
-          <option value="Easy">Easy</option>
-          <option value="Moderate">Moderate</option>
-          <option value="Tough">Tough</option>
-          <option value="Challenging">Challenging</option>
-          <option value="Irritating">Irritating</option>
-          <option value="Frustrating">Frustrating</option>
-          <option value="Hard">Hard</option>
-          <option value="Demanding">Demanding</option>
-          <option value="Expert">Expert</option>
-          <option value="Brutal">Brutal</option>
-          <option value="Nightmare">Nightmare</option>
-          <option value="Lulz">Lulz</option>
-          <option value="Unknown">Unknown</option>
-        </select>
-      </label>
-      <button id="generate">Generate</button>
-    </section>
-
-    <section class="toolbar control-row">
-      <button id="reset" class="secondary">Reset</button>
-      <button id="undo" class="secondary" title="Undo last cycle">Undo</button>
-      <button id="redo" class="secondary" title="Redo last cycle">Redo</button>
-      <button id="next">Next Cycle</button>
-      <button id="run" class="secondary">Run All</button>
-      <button id="pomCheck" class="secondary">P.O.M.</button>
-    </section>
-
-    <section class="toolbar control-row">
-      <button id="hiddenSubsetBuild" class="secondary">Find Hidden Subset</button>
-      <button id="nakedSubsetBuild" class="secondary">Find Naked Subset</button>
-      <button id="fishBuild" class="secondary">Find NxN+K Fish</button>
-      <button id="chainBuild" class="secondary">Find Chains</button>
-    </section>
-
     <div class="settings-popover-holder">
       <div id="difficultySettingsPopover" class="difficulty-settings-popover" popover>
         <div id="difficultyTable" class="difficulty-table" role="table" aria-label="Difficulty rating table"></div>
@@ -1807,7 +2130,7 @@
             <details class="move-type-group">
               <summary>Singles</summary>
               <div class="move-type-group-options">
-                <label class="check"><input id="moveLastManStanding" type="checkbox"> Last Man Standing</label>
+                <label class="check"><input id="moveLastManStanding" type="checkbox" checked> Last Man Standing</label>
                 <label class="check"><input id="moveHiddenSingle" type="checkbox" checked> Hidden Single</label>
                 <label class="check"><input id="moveNakedSingle" type="checkbox" checked> Naked Single</label>
               </div>
@@ -1993,18 +2316,20 @@
 
     <section class="layout">
       <div class="board-column">
-        <div class="grid-view-toolbar" aria-label="Grid view">
-          <span class="grid-view-label">View</span>
-          <div class="grid-view-buttons" role="group" aria-label="Grid view selector">
-            <button id="gridViewRC" class="grid-view-button current" type="button">RC</button>
-            <button id="gridViewRn" class="grid-view-button" type="button">Rn</button>
-            <button id="gridViewCn" class="grid-view-button" type="button">Cn</button>
-            <button id="gridViewBn" class="grid-view-button" type="button">Bn</button>
-          </div>
+        <div class="digit-focus-toolbar" aria-label="Digit highlights">
+          <span class="digit-focus-label">Digits</span>
+          <div id="digitFocusButtons" class="digit-focus-buttons"></div>
         </div>
         <div class="grid-frame">
           <div class="grid-side-label">Rows</div>
-          <div id="gridRowTitle" class="grid-row-title">Row</div>
+          <div id="gridRowTitle" class="grid-row-title">
+            <select id="gridViewSelector" class="grid-view-selector" title="Vantage Point" aria-label="Vantage Point">
+              <option value="RC" selected>RC</option>
+              <option value="Rn">Rn</option>
+              <option value="Cn">Cn</option>
+              <option value="Bn">Bn</option>
+            </select>
+          </div>
           <div class="grid-column-header">
             <div id="gridColumnTitle">Col</div>
             <div id="gridColumnNumbers" class="grid-column-numbers"></div>
@@ -2015,6 +2340,11 @@
         <div class="report-stack">
           <div class="code puzzle-string-box">
             <div id="puzzleString"></div>
+            <div id="puzzleStateMeta" class="puzzle-state-meta" aria-live="polite"></div>
+            <div class="string-actions" aria-label="Copy puzzle strings">
+              <button id="copyPuzzle81" class="secondary" type="button" title="Copy the original 81-character puzzle string">Copy 81</button>
+              <button id="copyPuzzle729" class="secondary" type="button" title="Copy the current 729-bit candidate string">Copy 729</button>
+            </div>
             <details class="solution-inline" id="solutionPanel">
               <summary>Solution</summary>
               <div class="solution-inline-value" id="solutionString"></div>
@@ -2136,32 +2466,31 @@
   <script src="./src/browser-core.js"></script>
   <script src="./src/set-tools-core.js"></script>
   <script src="./src/pom-core.js"></script>
-  <script src="./src/als-core.js"></script>
-  <script src="./src/als-link-core.js?v=20260915-5"></script>
+  <script src="./src/als-core.js?v=20260917-1"></script>
+  <script src="./src/als-link-core.js?v=20260917-1"></script>
   <script src="./src/ahs-core.js?v=20260912-5"></script>
   <script src="./src/subset-report-core.js"></script>
   <script src="./src/mini-sectors-core.js"></script>
-  <script src="./src/strong-link-core.js?v=20260912-1"></script>
-    <script src="./src/chain-core.js?v=20260915-6"></script>
+  <script src="./src/strong-link-core.js?v=20260917-1"></script>
+    <script src="./src/chain-core.js?v=20260917-1"></script>
   <script>
     const core = window.StormDoku;
     const boardEl = document.getElementById('board');
-    const gridRowTitleEl = document.getElementById('gridRowTitle');
+    const digitFocusButtonsEl = document.getElementById('digitFocusButtons');
     const gridColumnTitleEl = document.getElementById('gridColumnTitle');
     const gridColumnNumbersEl = document.getElementById('gridColumnNumbers');
     const gridRowHeaderEl = document.getElementById('gridRowHeader');
-    const gridViewButtons = {
-      RC: document.getElementById('gridViewRC'),
-      Rn: document.getElementById('gridViewRn'),
-      Cn: document.getElementById('gridViewCn'),
-      Bn: document.getElementById('gridViewBn'),
-    };
+    const gridViewSelector = document.getElementById('gridViewSelector');
     const givensEl = document.getElementById('givens');
     const generationDifficultyEl = document.getElementById('generationDifficulty');
     const inputEl = document.getElementById('input');
     const loadEl = document.getElementById('load');
+    const importEl = document.getElementById('import');
     const statusEl = document.getElementById('status');
     const puzzleStringEl = document.getElementById('puzzleString');
+    const puzzleStateMetaEl = document.getElementById('puzzleStateMeta');
+    const copyPuzzle81El = document.getElementById('copyPuzzle81');
+    const copyPuzzle729El = document.getElementById('copyPuzzle729');
     const solutionStringEl = document.getElementById('solutionString');
     const solutionPanelEl = document.getElementById('solutionPanel');
     const ratingSummaryEl = document.getElementById('ratingSummary');
@@ -2267,11 +2596,14 @@
     const fishCoverSectorsEl = document.getElementById('fishCoverSectors');
 
     let puzzle = new Array(81).fill(0);
+    let originalPuzzle = new Array(81).fill(0);
+    let promotedValues = new Array(81).fill(0);
     let solution = null;
     let cand = core.allCandidates(puzzle);
     let cycle = 0;
     let activeStep = null;
     let lastRemoved = [];
+    let promotionQueue = [];
     let logEntries = [];
     let undoStack = [];
     let redoStack = [];
@@ -2302,6 +2634,8 @@
     let selectedChainIndex = null;
     let ratingReport = null;
     let gridView = 'RC';
+    const activeDigitHighlights = new Set();
+    let historyPreview = null;
     let busy = false;
     let generationToken = 0;
     const pomFishSettings = {
@@ -2489,6 +2823,41 @@
       fishSettingsChanged();
     }
 
+    function digitHasRemainingCandidates(digit) {
+      return cand.some((values, cell) =>
+        !puzzle[cell]
+        && !promotedValues[cell]
+        && (values || []).includes(digit),
+      );
+    }
+
+    function renderDigitFocusButtons() {
+      digitFocusButtonsEl.textContent = '';
+      for (let digit = 1; digit <= 9; digit++) {
+        const button = document.createElement('button');
+        const hasRemainingCandidates = digitHasRemainingCandidates(digit);
+        button.type = 'button';
+        button.className = 'digit-focus-button digit-focus-' + digit;
+        button.textContent = String(digit);
+        button.classList.toggle('digit-complete', !hasRemainingCandidates);
+        button.title = hasRemainingCandidates
+          ? 'Highlight digit ' + digit
+          : 'Digit ' + digit + ' solved in full';
+        button.setAttribute('aria-label', hasRemainingCandidates
+          ? 'Highlight digit ' + digit
+          : 'Digit ' + digit + ' solved in full');
+        button.setAttribute('aria-pressed', String(activeDigitHighlights.has(digit)));
+        button.classList.toggle('selected', activeDigitHighlights.has(digit));
+        button.addEventListener('click', () => {
+          if (activeDigitHighlights.has(digit)) activeDigitHighlights.delete(digit);
+          else activeDigitHighlights.add(digit);
+          renderDigitFocusButtons();
+          renderBoard();
+        });
+        digitFocusButtonsEl.appendChild(button);
+      }
+    }
+
     function initFishSettings() {
       fillNumberSelect(fishMinSizeEl, 1, 7, 2);
       fillNumberSelect(fishMaxSizeEl, 1, 7, 4);
@@ -2534,19 +2903,11 @@
     function currentSolverFishOptions() {
       return {
         ...currentPomFishOptions(),
-        grid: currentFixedGrid(),
+        grid: puzzle,
         omissionFishSearch: core.omissionFishStep,
         enabledTechniques: currentSolverMoveTypes(),
       };
     }
-
-   function currentFixedGrid() {
-      return [...puzzle];
-   }
-
-   function fixedValue(cell) {
-      return puzzle[cell] || 0;
-   }
 
     function markFor(cell, digit) {
       return (cand[cell] || []).includes(digit) ? digit : '';
@@ -2808,6 +3169,208 @@
         x: (cell % 9) * cellSize + (((digit - 1) % 3) + 0.5) * markSize,
         y: Math.floor(cell / 9) * cellSize + (Math.floor((digit - 1) / 3) + 0.5) * markSize,
       };
+    }
+
+    function vantageCellSlot(view, cell) {
+      const row = Math.floor(cell / 9);
+      const col = cell % 9;
+
+      if (view === 'Rn') return { sector: row, position: col };
+      if (view === 'Cn') return { sector: col, position: row };
+
+      const box = Math.floor(row / 3) * 3 + Math.floor(col / 3);
+      const position = (row % 3) * 3 + (col % 3);
+      return { sector: box, position };
+    }
+
+    function vantageCellFromSlot(view, sector, position) {
+      if (view === 'Rn') return sector * 9 + position;
+      if (view === 'Cn') return position * 9 + sector;
+
+      const boxRow = Math.floor(sector / 3);
+      const boxCol = sector % 3;
+      const row = boxRow * 3 + Math.floor(position / 3);
+      const col = boxCol * 3 + (position % 3);
+      return row * 9 + col;
+    }
+
+    function vantageAtomAnchor(cell, digit) {
+      const { sector, position } = vantageCellSlot(gridView, cell);
+      const tileIndex = sector * 9 + (digit - 1);
+      const tileRow = Math.floor(tileIndex / 9);
+      const tileCol = tileIndex % 9;
+      const positionRow = Math.floor(position / 3);
+      const positionCol = position % 3;
+      const tileSize = 100 / 9;
+      const markSize = tileSize / 3;
+
+      return {
+        cell,
+        digit,
+        markSize,
+        x: tileCol * tileSize + (positionCol + 0.5) * markSize,
+        y: tileRow * tileSize + (positionRow + 0.5) * markSize,
+      };
+    }
+
+    function vantageSideAnchors(side, forcedDigit = null, existingOnly = true) {
+      const sideDigits = side?.digits || [];
+      const digits = forcedDigit == null ? sideDigits : [forcedDigit];
+      const anchors = [];
+
+      for (const cell of side?.cells || []) {
+        for (const digit of digits) {
+          if (!sideDigits.includes(digit)) continue;
+          if (existingOnly && !cellHasCandidate(cell, digit)) continue;
+          anchors.push(vantageAtomAnchor(cell, digit));
+        }
+      }
+
+      return anchors;
+    }
+
+    function vantageClosestAnchorPair(fromSide, toSide, forcedDigit = null, toDigit = forcedDigit) {
+      const fromAnchors = vantageSideAnchors(fromSide, forcedDigit);
+      const toAnchors = vantageSideAnchors(toSide, toDigit);
+      let best = null;
+
+      for (const from of fromAnchors) {
+        for (const to of toAnchors) {
+          const dx = from.x - to.x;
+          const dy = from.y - to.y;
+          const distance = dx * dx + dy * dy;
+          if (!best || distance < best.distance) best = { from, to, distance };
+        }
+      }
+
+      if (!best && (forcedDigit != null || toDigit != null)) {
+        return vantageClosestAnchorPair(fromSide, toSide);
+      }
+      return best;
+    }
+
+    function drawVantageSideBoxes(svg, side, className, color = null, onlyDigits = null) {
+      for (const anchor of vantageSideAnchors(side, null, true)) {
+        if (onlyDigits && !onlyDigits.includes(anchor.digit)) continue;
+        const half = anchor.markSize * 0.4;
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', String(anchor.x - half));
+        rect.setAttribute('y', String(anchor.y - half));
+        rect.setAttribute('width', String(anchor.markSize * .8));
+        rect.setAttribute('height', String(anchor.markSize * .8));
+        rect.setAttribute('rx', '.35');
+        rect.setAttribute('ry', '.35');
+        rect.setAttribute('class', className);
+        applyAlsColorVars(rect, color);
+        svg.appendChild(rect);
+      }
+    }
+
+    function drawVantageStrongConnection(svg, fromSide, toSide) {
+      const pair = vantageClosestAnchorPair(fromSide, toSide);
+      if (!pair) return;
+      drawArc(svg, pair.from, pair.to, 'chain-strong-line', 5, -0.22);
+      drawArc(svg, pair.from, pair.to, 'chain-strong-line', 5, 0.22);
+    }
+
+    function drawVantageWeakConnection(svg, fromSide, toSide, weakFromDigit = null, weakToDigit = weakFromDigit) {
+      const pair = vantageClosestAnchorPair(fromSide, toSide, weakFromDigit, weakToDigit);
+      if (!pair) return;
+      drawArc(svg, pair.from, pair.to, 'chain-weak-line', -4.5, 0);
+    }
+
+    function drawVantageWeakConnections(svg, fromSide, toSide, weakDigits = []) {
+      const digits = [...new Set((Array.isArray(weakDigits) ? weakDigits : [weakDigits])
+        .filter(digit => digit != null))];
+      if (!digits.length) {
+        drawVantageWeakConnection(svg, fromSide, toSide);
+        return;
+      }
+
+      const center = (digits.length - 1) / 2;
+      for (let index = 0; index < digits.length; index++) {
+        const pair = vantageClosestAnchorPair(fromSide, toSide, digits[index]);
+        if (!pair) continue;
+        drawArc(svg, pair.from, pair.to, 'chain-weak-line', -4.5, (index - center) * .7);
+      }
+    }
+
+    function renderVantageChainOverlay(chain) {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('class', 'chain-overlay');
+      svg.setAttribute('viewBox', '0 0 100 100');
+      svg.setAttribute('aria-hidden', 'true');
+
+      for (const step of chain.steps) {
+        drawVantageSideBoxes(svg, step.entry, 'chain-side-box chain-side-entry-box');
+        drawVantageSideBoxes(svg, step.exit, 'chain-side-box chain-side-exit-box');
+      }
+
+      for (let index = 0; index < chain.steps.length; index++) {
+        const step = chain.steps[index];
+        if (index > 0) {
+          const fromSide = visibleChainExitSide(chain.steps[index - 1]);
+          const toSide = visibleChainEntrySide(step);
+          const weakFromDigit = step.weakFromDigit ?? step.weakDigit;
+          const weakToDigit = step.weakToDigit ?? step.weakDigit;
+          drawVantageSideBoxes(svg, fromSide, 'chain-side-box chain-side-entry-box', null, [weakFromDigit]);
+          drawVantageSideBoxes(svg, toSide, 'chain-side-box chain-side-exit-box', null, [weakToDigit]);
+          drawVantageWeakConnection(svg, fromSide, toSide, weakFromDigit, weakToDigit);
+        }
+
+        if (isAlsVisualStep(step) && step.module?.common) {
+          const moduleSides = moduleVisualSides(step);
+          const common = step.module.common;
+          const weakDigits = common.restrictedDigits?.length
+            ? common.restrictedDigits
+            : (common.digits || []);
+          drawVantageSideBoxes(svg, moduleSides.entry, 'chain-side-box chain-side-entry-box', null, weakDigits);
+          drawVantageSideBoxes(svg, moduleSides.exit, 'chain-side-box chain-side-exit-box', null, weakDigits);
+          drawVantageWeakConnections(svg, moduleSides.entry, moduleSides.exit, weakDigits);
+        }
+
+        if (!isAlsVisualStep(step)) {
+          drawVantageStrongConnection(svg, step.entry, step.exit);
+        }
+      }
+
+      if (chain.isRing && chain.steps.length) {
+        drawVantageWeakConnection(
+          svg,
+          visibleChainExitSide(chain.steps[chain.steps.length - 1]),
+          visibleChainEntrySide(chain.steps[0]),
+          chain.ringWeakFromDigit ?? chain.ringWeakDigit,
+          chain.ringWeakToDigit ?? chain.ringWeakDigit,
+        );
+      }
+
+      boardEl.appendChild(svg);
+    }
+
+    function renderVantageStrongLinkOverlay(strongLink) {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('class', 'chain-overlay strong-link-overlay');
+      svg.setAttribute('viewBox', '0 0 100 100');
+      svg.setAttribute('aria-hidden', 'true');
+
+      const startSide = {
+        cells: strongLink.activeCells || [],
+        digits: strongLink.startingDigits || [],
+      };
+      const endSide = {
+        cells: strongLink.linkedCells || [],
+        digits: strongLink.linkDigits || [],
+      };
+      drawVantageSideBoxes(svg, startSide, 'strong-link-side-box strong-link-start-box');
+      drawVantageSideBoxes(svg, endSide, 'strong-link-side-box strong-link-end-box');
+
+      const pair = vantageClosestAnchorPair(startSide, endSide);
+      if (pair) {
+        drawArc(svg, pair.from, pair.to, 'strong-link-arc', 5, -.22);
+        drawArc(svg, pair.from, pair.to, 'strong-link-arc', 5, .22);
+      }
+
+      boardEl.appendChild(svg);
     }
 
     function digitBoxBounds(anchor, pad = 0.12) {
@@ -3379,6 +3942,7 @@
       const isHiddenSubset = !!activeStep && activeStep.tech.startsWith('hidden-');
 
       return {
+        activeDigits: activeDigitHighlights,
         removedMarks,
         vertices,
         fins,
@@ -3433,7 +3997,7 @@
     function renderGridViewHeaders() {
       const isCellView = gridView === 'RC';
       const rowPrefix = isCellView ? '' : gridView.charAt(0).toUpperCase();
-      gridRowTitleEl.textContent = gridView;
+      gridViewSelector.value = gridView;
       gridColumnTitleEl.textContent = isCellView ? 'Col' : 'Digits';
       gridColumnNumbersEl.textContent = '';
       gridRowHeaderEl.textContent = '';
@@ -3450,36 +4014,29 @@
     }
 
     function setGridView(view) {
-      if (!gridViewButtons[view]) return;
+      if (!['RC', 'Rn', 'Cn', 'Bn'].includes(view)) return;
       gridView = view;
-      for (const [name, button] of Object.entries(gridViewButtons)) {
-        button.classList.toggle('current', name === gridView);
-      }
+      gridViewSelector.value = gridView;
       renderGridViewHeaders();
       renderBoard();
     }
 
     function extractGridViewSlice(view) {
-      const units = view === 'Rn'
-        ? core.Rset
-        : view === 'Cn'
-          ? core.Cset
-          : core.Bset;
+      const state = core.buildSpaces(cand);
+      const offset = view === 'Rn' ? 0 : view === 'Cn' ? 9 : 18;
 
-      return units.map(unit => Array.from({ length: 9 }, (_, digitIndex) => {
-        const positions = new Set();
-        for (let position = 0; position < unit.length; position++) {
-          const cell = unit[position];
-          const digit = digitIndex + 1;
-          if (fixedValue(cell) === digit || (cand[cell] || []).includes(digit)) {
-            positions.add(position);
+      return Array.from({ length: 9 }, (_, sector) =>
+        Array.from({ length: 9 }, (_, digitIndex) => {
+          const mask = state.M[offset + sector][digitIndex];
+          const positions = new Set();
+          for (let position = 0; position < 9; position++) {
+            if (mask & (1 << position)) positions.add(position);
           }
-        }
-        return positions;
-      }));
+          return positions;
+        }));
     }
 
-    function renderVantageBoard(view) {
+    function renderVantageBoard(view, highlights = currentHighlights()) {
       const slice = extractGridViewSlice(view);
       const axis = view === 'Rn' ? 'R' : view === 'Cn' ? 'C' : 'B';
       const positionPrefix = view === 'Rn' ? 'c' : view === 'Cn' ? 'r' : 'p';
@@ -3501,7 +4058,78 @@
             const mark = document.createElement('span');
             mark.className = 'vantage-position';
             mark.textContent = String(position + 1);
-            if (positions.has(position)) mark.classList.add('active');
+            const cell = vantageCellFromSlot(view, sector, position);
+            const atom = atomKey(cell, digit);
+            const positionActive = positions.has(position);
+            const isDigitFocus = positionActive && highlights.activeDigits.has(digit);
+            const isElim = highlights.removedMarks.has(atom);
+            const isFishVertex = highlights.isFish
+              && highlights.patternDigits.has(digit)
+              && highlights.vertices.has(cell);
+            const isFishFin = highlights.isFish
+              && highlights.patternDigits.has(digit)
+              && highlights.fins.has(cell)
+              && !highlights.vertices.has(cell);
+            const isFishEndofin = highlights.isFish
+              && highlights.patternDigits.has(digit)
+              && highlights.endofins.has(cell);
+            const isSubsetDigit = highlights.isSubset
+              && highlights.patternDigits.has(digit)
+              && highlights.vertices.has(cell);
+            const isChain = highlights.isChain && highlights.chainMarks.has(atom);
+            const isChainXorEntry = highlights.isChain && highlights.chainXorEntryMarks.has(atom);
+            const isChainXorExit = highlights.isChain && highlights.chainXorExitMarks.has(atom);
+            const isChainWeak = highlights.isChain && highlights.chainWeakMarks.has(atom);
+            const isChainAls = highlights.isChain && highlights.chainAlsMarks.has(atom);
+            const isAlsRecord = highlights.isAlsRecord && highlights.alsRecordMarks.has(atom);
+            const isAhsRecord = highlights.isAhsRecord && highlights.ahsRecordMarks.has(atom);
+            const isChainStart = highlights.isChain && highlights.chainStartMarks.has(atom);
+            const isChainEnd = highlights.isChain && highlights.chainEndMarks.has(atom);
+            const strongLinkPartition = highlights.strongLinkPartitionByCell.get(cell);
+            const strongLinkStart = highlights.isStrongLink
+              && (highlights.strongLinkStartMarks.has(atom)
+                || (strongLinkPartition === 'active'
+                  && (highlights.strongLink.startingDigits || []).includes(digit)
+                  && cellHasCandidate(cell, digit)));
+            const strongLinkEnd = highlights.isStrongLink
+              && (highlights.strongLinkEndMarks.has(atom)
+                || (strongLinkPartition === 'linked'
+                  && (highlights.strongLink.linkDigits || []).includes(digit)
+                  && cellHasCandidate(cell, digit)));
+            const isHiddenGhost = highlights.isHiddenSubset
+              && highlights.baseCells.has(cell)
+              && highlights.patternDigits.has(digit)
+              && !(cand[cell] || []).includes(digit)
+              && !isElim;
+
+            if (positionActive) mark.classList.add('active');
+            if (isDigitFocus) mark.classList.add('digit-focus', 'digit-focus-' + digit);
+            if (isElim) mark.classList.add('elim');
+            if (isFishVertex || isFishFin) mark.classList.add('fish');
+            if (isFishEndofin) mark.classList.add('fish-endofin');
+            if (isSubsetDigit) mark.classList.add('subset');
+            if (isChain) mark.classList.add('chain');
+            if (isChainXorEntry || isChainStart || strongLinkStart) {
+              mark.classList.add(isChainXorEntry || isChainStart ? 'chain-xor-entry' : 'strong-start');
+            }
+            if (isChainXorExit || isChainEnd || strongLinkEnd) {
+              mark.classList.add(isChainXorExit || isChainEnd ? 'chain-xor-exit' : 'strong-end');
+            }
+            if (isChainWeak) mark.classList.add('chain-weak');
+            if (isChainAls || isAlsRecord) mark.classList.add('chain-als');
+            if (isAhsRecord) mark.classList.add('ahs-record');
+            if (isHiddenGhost && !positionActive) mark.classList.add('active');
+
+            if (isChainAls) applyAlsColorVars(mark, highlights.chainAlsStyleByAtom.get(atom));
+            if (isAlsRecord) applyAlsColorVars(mark, highlights.alsRecordColor);
+            if (isAhsRecord) applyAhsColorVars(mark, highlights.ahsRecordColor);
+
+            const hasOverlay = isElim || isFishVertex || isFishFin || isFishEndofin
+              || isSubsetDigit || isChain || isChainXorEntry || isChainXorExit
+              || isChainWeak || isChainAls || isAlsRecord || isAhsRecord
+              || isChainStart || isChainEnd || strongLinkStart || strongLinkEnd || isHiddenGhost
+              || isDigitFocus;
+            if (!positionActive && !hasOverlay) mark.textContent = '';
             miniGrid.appendChild(mark);
           }
 
@@ -3509,6 +4137,9 @@
           boardEl.appendChild(tile);
         }
       }
+
+      if (highlights.isChain) renderVantageChainOverlay(highlights.chain);
+      if (highlights.isStrongLink) renderVantageStrongLinkOverlay(highlights.strongLink);
     }
 
     function renderBoard() {
@@ -3520,17 +4151,21 @@
       boardEl.setAttribute('aria-label', gridView === 'RC'
         ? 'Sudoku candidate grid'
         : `Sudoku ${gridView} candidate view`);
+      const highlights = currentHighlights();
       if (gridView !== 'RC') {
-        renderVantageBoard(gridView);
+        renderVantageBoard(gridView, highlights);
         return;
       }
 
-     const highlights = currentHighlights();
-
-     for (let cell = 0; cell < 81; cell++) {
+      for (let cell = 0; cell < 81; cell++) {
        const el = document.createElement('div');
        el.className = 'cell';
        if (puzzle[cell]) el.classList.add('given');
+       if (promotedValues[cell]) el.classList.add('solved');
+       const fixedDigit = puzzle[cell] || promotedValues[cell] || 0;
+       if (fixedDigit && highlights.activeDigits.has(fixedDigit)) {
+         el.classList.add('digit-focus-cell', 'digit-focus-' + fixedDigit);
+       }
         if (highlights.isFish && highlights.baseCells.has(cell)) el.classList.add('fish-base');
         if (highlights.isFish && highlights.coverCells.has(cell)) el.classList.add('fish-cover');
         if (highlights.isFish && highlights.fins.has(cell) && !highlights.vertices.has(cell)) {
@@ -3604,8 +4239,9 @@
               && (highlights.strongLinkStartMarks.has(atomKey) || strongLinkPartitionStartDigit);
             const isStrongLinkEndDigit = highlights.isStrongLink
               && (highlights.strongLinkEndMarks.has(atomKey) || strongLinkPartitionEndDigit);
-            const isStrongLinkDigit = isStrongLinkStartDigit || isStrongLinkEndDigit;
+           const isStrongLinkDigit = isStrongLinkStartDigit || isStrongLinkEndDigit;
            const hasCandidate = cellHasCandidate(cell, digit);
+           const isDigitFocus = hasCandidate && highlights.activeDigits.has(digit);
            const isHiddenGhostDigit =
               highlights.isHiddenSubset &&
               highlights.baseCells.has(cell) &&
@@ -3616,7 +4252,8 @@
 
             mark.textContent = markFor(cell, digit)
               || (isElim || (hasCandidate && (isFishDigit || isFishEndofinDigit || isChainDigit || isStrongLinkDigit
-                || isAlsRecordDigit || isAhsRecordDigit)) ? digit : '');
+                || isAlsRecordDigit || isAhsRecordDigit || isDigitFocus)) ? digit : '');
+           if (isDigitFocus) mark.classList.add('digit-focus', 'digit-focus-' + digit);
            if (isSetDigit) mark.classList.add('set-digit');
            if (isHiddenGhostDigit) mark.classList.add('hidden-ghost-digit');
             if (isFishDigit) mark.classList.add('fish-digit');
@@ -3658,9 +4295,40 @@
     }
 
     function renderStrings() {
-      puzzleStringEl.textContent = core.encode(puzzle);
+      puzzleStringEl.textContent = core.encode(originalPuzzle);
+      const givenCount = originalPuzzle.reduce((count, value) => count + (value ? 1 : 0), 0);
+      const pencilmarkCount = cand.reduce((count, values, cell) =>
+        count + (puzzle[cell] ? 0 : values.length), 0);
+      puzzleStateMetaEl.textContent = `Givens [${givenCount}]  Pencilmarks [${pencilmarkCount}]`;
       solutionStringEl.textContent = solution ? solution.join('') : 'none';
-      inputEl.value = core.encode(puzzle);
+    }
+
+    function current729String() {
+      const bits = [];
+      for (let cell = 0; cell < 81; cell++) {
+        const values = puzzle[cell] ? [puzzle[cell]] : (cand[cell] || []);
+        for (let digit = 1; digit <= 9; digit++) bits.push(values.includes(digit) ? '1' : '0');
+      }
+      return bits.join('');
+    }
+
+    async function copyPuzzleString(text, label) {
+      try {
+        await navigator.clipboard.writeText(text);
+        setStatus(`${label} string copied.`, 'ok');
+        return;
+      } catch {
+        const fallback = document.createElement('textarea');
+        fallback.value = text;
+        fallback.setAttribute('readonly', '');
+        fallback.style.position = 'fixed';
+        fallback.style.opacity = '0';
+        document.body.appendChild(fallback);
+        fallback.select();
+        const copied = document.execCommand('copy');
+        fallback.remove();
+        setStatus(copied ? `${label} string copied.` : `${label} string selected for copying.`, 'ok');
+      }
     }
 
     function openReportPanel(resultEl) {
@@ -3687,6 +4355,7 @@
     }
 
     function render() {
+      renderDigitFocusButtons();
       renderBoard();
       renderStrings();
       renderRatingReport();
@@ -3709,6 +4378,7 @@
     }
 
     const RATING_CATEGORY_RANKS = Object.freeze({
+      Any: -1,
       Lulz: 0,
       'Extremely Easy': 10,
       'Very Easy': 20,
@@ -3724,13 +4394,46 @@
       Expert: 120,
       Brutal: 130,
       Nightmare: 140,
-      Unknown: -1,
+      Unknown: Number.POSITIVE_INFINITY,
     });
 
-    function generationTechniqueProfile(category) {
-      if (category === 'any' || category === 'Unknown') return null;
+    const RATING_CATEGORY_SCORE_BANDS = Object.freeze([
+      { category: 'Lulz', min: 0, max: 0 },
+      { category: 'Extremely Easy', min: 1, max: 1.5 },
+      { category: 'Very Easy', min: 2, max: 2 },
+      { category: 'Modestly Easy', min: 2.001, max: 2.999 },
+      { category: 'Easy', min: 3, max: 3 },
+      { category: 'Moderate', min: 3.001, max: 3.999 },
+      { category: 'Tough', min: 4, max: 4 },
+      { category: 'Challenging', min: 4.001, max: 4.999 },
+      { category: 'Irritating', min: 5, max: 5.999 },
+      { category: 'Frustrating', min: 6, max: 6.999 },
+      { category: 'Hard', min: 7, max: 7.999 },
+      { category: 'Demanding', min: 8, max: 8.999 },
+      { category: 'Expert', min: 9, max: 9.999 },
+      { category: 'Brutal', min: 10, max: 10.999 },
+      { category: 'Nightmare', min: 11, max: 11.999 },
+    ]);
 
-      const maxRank = RATING_CATEGORY_RANKS[category];
+    function normalizeRatingCategory(category) {
+      const value = String(category ?? '').trim();
+      if (!value || /^any$/i.test(value)) return 'Any';
+      if (/^unknown$/i.test(value)) return 'Unknown';
+      return value;
+    }
+
+    function ratingCategoryForValue(value, fallback = 'Unknown') {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) return fallback;
+      const band = RATING_CATEGORY_SCORE_BANDS.find(({ min, max }) => numeric >= min && numeric <= max);
+      return band?.category || fallback;
+    }
+
+    function generationTechniqueProfile(category) {
+      const normalizedCategory = normalizeRatingCategory(category);
+      if (normalizedCategory === 'Any' || normalizedCategory === 'Unknown') return null;
+
+      const maxRank = RATING_CATEGORY_RANKS[normalizedCategory];
       if (!Number.isFinite(maxRank)) return null;
 
       const moveTypes = new Set();
@@ -3741,7 +4444,7 @@
 
       addAt(0, 'last-man-standing');
       addAt(10, 'hidden-single', 'naked-single', 'box-line');
-      addAt(20, 'hidden-pair', 'naked-pair', 'x-wing', 'chains', 'x-chain', 'chain-x-wing');
+      addAt(20, 'hidden-pair', 'naked-pair', 'x-wing', 'aic-x-wing', 'chains', 'x-chain', 'chain-x-wing');
       addAt(30, '2x2+k-fish', 'empty-rectangle', '2-string-kite', 'skyscraper',
         'finned-x-wing', 'sashimi-x-wing');
       addAt(40, 'hidden-triple', 'naked-triple', 'swordfish');
@@ -3766,9 +4469,14 @@
             ? [0]
             : [];
 
+      const maxDepth = maxRank <= 30 ? 2 : maxRank <= 50 ? 3 : maxRank <= 70 ? 4 : 8;
+      const maxFishSize = maxRank < 40 ? 2 : maxRank < 60 ? 3 : 4;
+
       return {
         moveTypes,
         maxRank,
+        maxDepth,
+        maxFishSize,
         strongLinkTypes,
         includeAlsRcc: maxRank >= 100,
       };
@@ -3777,7 +4485,7 @@
     function ratingDefinition(category, value, tag, tech = null, rank = null) {
       return {
         category,
-        rank: rank ?? RATING_CATEGORY_RANKS[category] ?? RATING_CATEGORY_RANKS.Unknown,
+        rank: rank ?? RATING_CATEGORY_RANKS[normalizeRatingCategory(category)] ?? RATING_CATEGORY_RANKS.Unknown,
         value,
         tag,
         ...(tech ? { tech } : {}),
@@ -3788,11 +4496,10 @@
       ratingDefinition('Lulz', 0, 'Last Man Standing', 'last-man-standing'),
       ratingDefinition('Extremely Easy', 1, 'Hidden Single', 'hidden-single'),
       ratingDefinition('Extremely Easy', 1, 'Naked Single', 'naked-single'),
-      ratingDefinition('Extremely Easy', 1.5, 'Box - Line Reduction', 'box-line'),
+      ratingDefinition('Extremely Easy', 1, 'Box - Line Reduction', 'box-line'),
       ratingDefinition('Very Easy', 2, 'Hidden Pair', 'hidden-pair'),
       ratingDefinition('Very Easy', 2, 'Naked Pair', 'naked-pair'),
       ratingDefinition('Very Easy', 2, 'X-Wing', 'x-wing'),
-      ratingDefinition('Modestly Easy', 2.5, '2x2+K Fish', '2x2+k-fish'),
       ratingDefinition('Easy', 3, 'Hidden Triple', 'hidden-triple'),
       ratingDefinition('Easy', 3, 'Naked Triple', 'naked-triple'),
       ratingDefinition('Easy', 3, 'SwordFish', 'swordfish'),
@@ -3803,15 +4510,20 @@
 
     const DIFFICULTY_TABLE_GROUPS = Object.freeze([
       {
+        category: 'ANY', score: '—', items: [
+          ['Any target', 'No restriction'],
+        ],
+      },
+      {
         category: 'LULZ', score: '0', items: [
           ['Last Man Standing', '0'],
         ],
       },
       {
-        category: 'EXTREMELY EASY', score: '1 to 1.5', items: [
+        category: 'EXTREMELY EASY', score: '1', items: [
           ['Hidden Single', '1'],
           ['Naked Single', '1'],
-          ['Box-Line Reduction', '1.5'],
+          ['Box-Line Reduction', '1'],
         ],
       },
       {
@@ -3823,14 +4535,20 @@
         ],
       },
       {
-        category: 'MODESTLY EASY', score: '2.5 to 2.75', items: [
-          ['2x2+K Fish K1', '2.5'],
-          ['Skyscraper', '2.5'],
-          ['2-String Kite', '2.5'],
-          ['Finned X-Wing', '2.5'],
-          ['Sashimi X-Wing', '2.5'],
-          ['Empty Rectangle', '2.5'],
-          ['2x2+K Fish K2', '2.75'],
+        category: 'MODESTLY EASY', score: '2.125 to 2.75', items: [
+          ['Franken 2x2 Fish K0', '2.125'],
+          ['2x2+K1 Fish', '2.25'],
+          ['Mutant 2x2 Fish K0', '2.25'],
+          ['Skyscraper', '2.25'],
+          ['2-String Kite', '2.25'],
+          ['Empty Rectangle', '2.25'],
+          ['Finned X-Wing', '2.25'],
+          ['Sashimi X-Wing', '2.25'],
+          ['Franken 2x2+K1 Fish', '2.375'],
+          ['2x2+K2 Fish', '2.50'],
+          ['Mutant 2x2+K1 Fish', '2.50'],
+          ['Franken 2x2+K2 Fish', '2.625'],
+          ['Mutant 2x2+K2 Fish', '2.75'],
         ],
       },
       {
@@ -3841,16 +4559,23 @@
         ],
       },
       {
-        category: 'MODERATE', score: '3.25 to 3.75', items: [
+        category: 'MODERATE', score: '3.125 to 3.75', items: [
+          ['Franken 3x3 Fish K0', '3.125'],
           ['L(1)-Wing', '3.25'],
           ['3x ERI', '3.25'],
           ['Dual Empty Rectangle', '3.25'],
           ["Rec't Kite", '3.25'],
           ['Bridged Empty Rectangle', '3.25'],
           ['3x3+K Fish K1', '3.25'],
-          ['3x3+K Fish K2', '3.5'],
-          ['B.A.R.N.S. XYZ', '3.75'],
-          ['XY-Wing', '3.75'],
+          ['Mutant 3x3 Fish K0', '3.25'],
+          ['B.A.R.N.S. XYZ Wing / XY-Wing', '3.25'],
+          ['Franken 3x3+K1 Fish', '3.375'],
+          ['3x3+K Fish K2', '3.50'],
+          ['Mutant 3x3+K1 Fish', '3.50'],
+          ['X-Chain length 3, ring', '3.50'],
+          ['B.A.R.N.S. XYZ Ring / XY-Ring', '3.50'],
+          ['Franken 3x3+K2 Fish', '3.625'],
+          ['Mutant 3x3+K2 Fish', '3.75'],
         ],
       },
       {
@@ -3861,29 +4586,44 @@
         ],
       },
       {
-        category: 'CHALLENGING', score: '4.25 to 4.75', items: [
+        category: 'CHALLENGING', score: '4.125 to 4.75', items: [
+          ['Franken 4x4 Fish K0', '4.125'],
           ['4x4+K Fish K1', '4.25'],
+          ['Mutant 4x4 Fish K0', '4.25'],
           ['4x ERI', '4.25'],
-          ['X-Chain length 4', '4.25', '+0.5 for ring'],
-          ['4x4+K Fish K2', '4.5'],
+          ['X-Chain length 4, open', '4.25'],
+          ['Franken 4x4+K1 Fish', '4.375'],
+          ['4x4+K Fish K2', '4.50'],
+          ['Mutant 4x4+K1 Fish', '4.50'],
+          ['X-Chain length 4, ring', '4.50'],
+          ['4x ERI, ring', '4.50'],
+          ['B.A.R.N.S. WXYZ Ring / XY-Ring', '4.50'],
+          ['Franken 4x4+K2 Fish', '4.625'],
           ['B.A.R.N.S. XYZ Transport', '4.75'],
-          ['B.A.R.N.S. WXYZ', '4.75'],
+          ['Mutant 4x4+K2 Fish', '4.75'],
         ],
       },
       {
-        category: 'IRRITATING', score: '5 to 5.5', items: [
+        category: 'IRRITATING', score: '5 to 5.75', items: [
+          ['Hidden Quintuple', '5'],
+          ['Naked Quintuple', '5'],
+          ['Basic 5x5 Fish', '5'],
+          ['Franken/Mutant 5x5 Fish', '5.125+'],
           ['X-Chains above four nodes', '5'],
           ['ERI Chains above four nodes', '5'],
           ['Remote Pair', '5'],
-          ['XY-Chain', '5'],
           ['Hidden Remote Pair', '5'],
+          ['XY-Chain above four nodes', '5'],
           ['Hidden XY-Chain', '5'],
-          ['Hidden XY-Chain Ring', '5.5'],
-          ['Ring forms', '+0.5'],
+          ['Ring forms', 'base +0.5'],
         ],
       },
       {
-        category: 'FRUSTRATING', score: '6 to 6.5', items: [
+        category: 'FRUSTRATING', score: '6 to 6.75', items: [
+          ['Hidden Sextuple', '6'],
+          ['Naked Sextuple', '6'],
+          ['Basic 6x6 Fish', '6'],
+          ['Franken/Mutant 6x6 Fish', '6.125+'],
           ['L(2)-Wing/Ring', '6'],
           ['L(3)-Wing/Ring', '6'],
           ['W-Wing/Ring', '6'],
@@ -3896,19 +4636,27 @@
         ],
       },
       {
-        category: 'HARD', score: '7 to 7.5', items: [
+        category: 'HARD', score: '7 to 7.75', items: [
+          ['Hidden Septuple', '7'],
+          ['Naked Septuple', '7'],
+          ['Basic 7x7 Fish', '7'],
+          ['Franken/Mutant 7x7 Fish', '7.125+'],
           ['ALS-XZ', '7'],
           ['Ring forms', '+0.5'],
         ],
       },
       {
         category: 'DEMANDING', score: '8 to 8.5', items: [
+          ['Hidden Octuple', '8'],
+          ['Naked Octuple', '8'],
           ['ALS-XY', '8'],
           ['Ring forms', '+0.5'],
         ],
       },
       {
         category: 'EXPERT', score: '9 to 9.5', items: [
+          ['Hidden Nontuple', '9'],
+          ['Naked Nontuple', '9'],
           ['ALS versions of named Wings/Rings', '9'],
           ['Ring forms', '+0.5'],
         ],
@@ -3993,13 +4741,9 @@
       }
     }
 
-    function ratingCategoryForValue(value, fallback = 'Unknown') {
-      return Number.isFinite(value) && Number(value) === 0 ? 'Lulz' : fallback;
-    }
-
     function unknownRating(move = '') {
       return {
-        rank: 0,
+        rank: RATING_CATEGORY_RANKS.Unknown,
         value: null,
         tag: 'Unknown',
         category: 'Unknown',
@@ -4009,6 +4753,40 @@
         scoredMoves: 0,
         source: 'run',
       };
+    }
+
+    function fishScoreForSize(size, k = 0, fishCategory = 'Basic') {
+      const fishSize = Number(size);
+      const fishK = Number(k);
+      if (!Number.isInteger(fishSize) || fishSize < 2
+        || !Number.isInteger(fishK) || fishK < 0) return null;
+      if (fishSize > 7 || fishK > 2) return null;
+      const modifier = String(fishCategory || 'Basic').toLowerCase();
+      const shapeModifier = modifier === 'franken'
+        ? 0.125
+        : modifier === 'mutant'
+          ? 0.25
+          : 0;
+      return Number((fishSize + (fishK * 0.25) + shapeModifier).toFixed(3));
+    }
+
+    function chainLengthOf(chain) {
+      return Number(chain?.length || chain?.steps?.length || 0);
+    }
+
+    function chainMathScore(baseScore, chain, canonicalLength = baseScore, canonicalDigits = baseScore) {
+      const length = chainLengthOf(chain);
+      const actualDigits = Array.isArray(chain?.uniqueDigits)
+        ? chain.uniqueDigits.length
+        : Number(chain?.uniqueDigitCount);
+      const digitExcess = Number.isFinite(actualDigits)
+        ? Math.max(0, actualDigits - canonicalDigits)
+        : 0;
+      const lengthExcess = Number.isFinite(length)
+        ? Math.max(0, length - canonicalLength)
+        : 0;
+      const closure = chain?.isRing ? 0.5 : 0.25;
+      return Number((baseScore + lengthExcess + digitExcess + closure).toFixed(3));
     }
 
     function ratingForChain(chain, step = chain) {
@@ -4036,8 +4814,17 @@
       }
       if (barns) {
         const size = barns.sizeName.length;
-        if (size === 3) return define('Moderate', 3.75 + ringBonus, `XYZ${ringSuffix}`);
-        if (size === 4) return define('Challenging', 4.75 + ringBonus, `WXYZ${ringSuffix}`);
+        const form = barns.form;
+        if (size === 3) {
+          const value = chainMathScore(3, chain, 2, 3);
+          return define(ratingCategoryForValue(value), value,
+            `B.A.R.N.S. XYZ ${form}`);
+        }
+        if (size === 4) {
+          const value = chainMathScore(4, chain, 4, 4);
+          return define(ratingCategoryForValue(value), value,
+            `B.A.R.N.S. WXYZ ${form}`);
+        }
       }
 
       if (/^AIC\s*\+\s*ALS(?:\s*-\s*Chain)?$/i.test(fullName)) {
@@ -4065,42 +4852,59 @@
       // before the generic ERI-node count fallback below.
       const namedEriStructure = /(?:^|-)\s*(?:Empty Rectangle|Dual Empty Rectangle|Rec'T Kite|Bridged Empty Rectangle|Bridged ERI|3x ERI|4x ERI|L\(1\)-Wing|L1-Wing)$/i.test(name);
       if (eriCount > 0 && !namedEriStructure) {
-        if (eriCount === 3) return define('Moderate', 3.25 + ringBonus, `3x ERI${ringSuffix}`);
-        if (eriCount === 4) return define('Challenging', 4.25 + ringBonus, `4x ERI${ringSuffix}`);
+        if (eriCount === 3) {
+          const value = chainMathScore(3, chain, 3, 1);
+          return define(ratingCategoryForValue(value), value, `3x ERI${ringSuffix}`);
+        }
+        if (eriCount === 4) {
+          const value = chainMathScore(4, chain, 4, 1);
+          return define(ratingCategoryForValue(value), value, `4x ERI${ringSuffix}`);
+        }
         return define('Irritating', 5 + ringBonus, `ERI Chain${ringSuffix}`);
       }
 
       const alsSizeOne = alsSizeOneChainInfo(chain);
       if (alsSizeOne) {
         if (alsSizeOne.remotePair) {
-          return define('Irritating', 5 + ringBonus, `Remote Pair${ringSuffix}`);
+          const value = chainMathScore(5, chain, 4, 2);
+          return define(ratingCategoryForValue(value), value, `Remote Pair${ringSuffix}`);
         }
         if (alsSizeOne.breakdown === 'XY-Wing') {
-          return define('Moderate', 3.75 + ringBonus, `XY-Wing${ringSuffix}`);
+          const value = chainMathScore(3, chain, 3, 3);
+          return define(ratingCategoryForValue(value), value, `XY-Wing${ringSuffix}`);
         }
-        return define('Irritating', 5 + ringBonus, `XY-Chain${ringSuffix}`);
+        const value = chainMathScore(5, chain, 4, 2);
+        return define(ratingCategoryForValue(value), value, `XY-Chain${ringSuffix}`);
       }
 
       const hiddenXy = hiddenXyChainInfo(chain);
       if (hiddenXy?.remotePair) {
-        return define('Irritating', 5 + ringBonus, `Hidden Remote Pair${ringSuffix}`);
+        const value = chainMathScore(5, chain, 4, 2);
+        return define(ratingCategoryForValue(value), value, `Hidden Remote Pair${ringSuffix}`);
       }
       if (hiddenXy) {
-        return define('Irritating', 5 + ringBonus, `Hidden XY-Chain${ringSuffix}`);
+        const value = chainMathScore(5, chain, 4, 2);
+        return define(ratingCategoryForValue(value), value, `Hidden XY-Chain${ringSuffix}`);
       }
 
-      if (/^XY-Wing$/i.test(name)) return define('Moderate', 3.75 + ringBonus, `XY-Wing${ringSuffix}`);
+      if (/^XY-Wing$/i.test(name)) {
+        const value = chainMathScore(3, chain, 3, 3);
+        return define(ratingCategoryForValue(value), value, `XY-Wing${ringSuffix}`);
+      }
       if (/^W\s*-?\s*Transport$/i.test(name) || /W\s*-?\s*Transport/i.test(fullName)) {
         return define('Frustrating', 6.5 + ringBonus, `W Transport${ringSuffix}`);
       }
       if (/^(?:2-String Kite|Empty Rectangle|Skyscraper|Finned X-Wing|Sashimi X-Wing)$/i.test(name)) {
-        return define('Modestly Easy', 2.5 + ringBonus, `${name}${ringSuffix}`);
+        const value = chainMathScore(2, chain, 2, 2);
+        return define(ratingCategoryForValue(value), value, `${name}${ringSuffix}`);
       }
       if (/(?:^|-)\s*(?:Dual Empty Rectangle|Rec'T Kite|Bridged Empty Rectangle|Bridged ERI|3x ERI|L\(1\)-Wing|L1-Wing)$/i.test(name)) {
-        return define('Moderate', 3.25 + ringBonus, `${name}${ringSuffix}`);
+        const value = chainMathScore(3, chain, 3, 3);
+        return define(ratingCategoryForValue(value), value, `${name}${ringSuffix}`);
       }
       if (/(?:^|-)\s*4x ERI$/i.test(name)) {
-        return define('Challenging', 4.25 + ringBonus, `${name}${ringSuffix}`);
+        const value = chainMathScore(4, chain, 4, 1);
+        return define(ratingCategoryForValue(value), value, `${name}${ringSuffix}`);
       }
       if (/^X-Wing$/i.test(name)) return define('Very Easy', 2, 'AIC X-Wing');
 
@@ -4109,17 +4913,12 @@
         return define('Frustrating', 6 + ringBonus, `${name}${ringSuffix}`);
       }
 
-      const length = Number(chain.length || chain.steps?.length || 0);
+      const length = chainLengthOf(chain);
       if (length >= 2) {
-        const value = (length > 4 ? 5 : length === 4 ? 4.25 : length) + ringBonus;
-        const category = length <= 2
-          ? 'Very Easy'
-          : length === 3
-            ? 'Easy'
-          : length === 4
-              ? 'Challenging'
-              : 'Irritating';
-        return define(category, value, `X-Chain (Depth ${length})${ringSuffix}`);
+        const base = length > 4 ? 5 : length;
+        const value = chainMathScore(base, chain, length > 4 ? 5 : length, length);
+        return define(ratingCategoryForValue(value), value,
+          `X-Chain (Depth ${length})${ringSuffix}`);
       }
 
       return unknownRating(step?.desc || '');
@@ -4141,35 +4940,58 @@
 
       if (tech === 'pointing' || tech === 'claiming') {
         return {
-          ...ratingDefinition('Extremely Easy', 1.5, 'Box - Line Reduction'),
+          ...ratingDefinition('Extremely Easy', 1, 'Box - Line Reduction'),
           hardestMove: step.desc || '',
         };
+      }
+
+      const subsetMatch = /^(hidden|naked)-(single|pair|triple|quad|quintuple|sextuple|septuple|octuple|nontuple)$/i.exec(tech);
+      if (subsetMatch) {
+        const kind = subsetMatch[1].toLowerCase();
+        const names = {
+          single: ['Hidden Single', 'Naked Single'],
+          pair: ['Hidden Pair', 'Naked Pair'],
+          triple: ['Hidden Triple', 'Naked Triple'],
+          quad: ['Hidden Quad', 'Naked Quad'],
+          quintuple: ['Hidden Quintuple', 'Naked Quintuple'],
+          sextuple: ['Hidden Sextuple', 'Naked Sextuple'],
+          septuple: ['Hidden Septuple', 'Naked Septuple'],
+          octuple: ['Hidden Octuple', 'Naked Octuple'],
+          nontuple: ['Hidden Nontuple', 'Naked Nontuple'],
+        }[subsetMatch[2].toLowerCase()];
+        const size = {
+          single: 1,
+          pair: 2,
+          triple: 3,
+          quad: 4,
+          quintuple: 5,
+          sextuple: 6,
+          septuple: 7,
+          octuple: 8,
+          nontuple: 9,
+        }[subsetMatch[2].toLowerCase()] || 0;
+        if (size > 0) {
+          const value = size === 1 ? 1 : size;
+          return {
+            ...ratingDefinition(ratingCategoryForValue(value), value,
+              names[kind === 'hidden' ? 0 : 1]),
+            hardestMove: step.desc || '',
+          };
+        }
       }
 
       if (tech === 'fish') {
         const size = Number(step?.size);
         const k = Number(step?.k || 0);
-        const basic = {
-          2: ratingDefinition('Very Easy', 2, 'X-Wing'),
-          3: ratingDefinition('Easy', 3, 'SwordFish'),
-          4: ratingDefinition('Tough', 4, 'JellyFish'),
-        }[size];
-        const extended = {
-          2: { category: 'Modestly Easy', tag: '2x2+K Fish' },
-          3: { category: 'Moderate', tag: '3x3+K Fish' },
-          4: { category: 'Challenging', tag: '4x4+K Fish' },
-        }[size];
-        const fishRating = k > 0 ? extended : basic;
-        const value = k === 0
-          ? basic?.value
-          : k === 1
-            ? size === 2 ? 2.5 : size === 3 ? 3.25 : size === 4 ? 4.25 : null
-            : k === 2
-              ? size === 2 ? 2.75 : size === 3 ? 3.5 : size === 4 ? 4.5 : null
-              : null;
-        if (fishRating && value !== null && Number.isFinite(value)) {
+        const fishCategory = step?.category || 'Basic';
+        const value = fishScoreForSize(size, k, fishCategory);
+        if (value !== null && Number.isFinite(value)) {
+          const category = ratingCategoryForValue(value);
+          const shape = fishCategory === 'Basic' && k === 0
+            ? ({ 2: 'X-Wing', 3: 'SwordFish', 4: 'JellyFish' }[size] || `${size}x${size} Fish`)
+            : `${fishCategory} ${size}x${size}+K${k} Fish`;
           return {
-            ...ratingDefinition(fishRating.category, value, fishRating.tag),
+            ...ratingDefinition(category, value, shape),
             hardestMove: step.desc || '',
           };
         }
@@ -4197,9 +5019,11 @@
 
       return {
         ...(hardest || unknownRating()),
-        category: hardest?.category || ratingCategoryForValue(hardest?.value),
+        category: hardest?.category === 'Unknown'
+          ? 'Unknown'
+          : ratingCategoryForValue(hardest?.value, hardest?.category || 'Unknown'),
         cycles: (steps || []).length,
-        score: Number(score.toFixed(2)),
+        score: Number(score.toFixed(3)),
         scoredMoves,
         source,
       };
@@ -4209,6 +5033,7 @@
       if (solved !== false) return { ...rating, solved };
       return {
         ...rating,
+        rank: RATING_CATEGORY_RANKS.Unknown,
         value: null,
         tag: 'Unknown',
         category: 'Unknown',
@@ -4236,15 +5061,32 @@
       );
     }
 
+    function applySimulationPromotion(candidateGrid, grid, step) {
+      const cell = (step?.at || step?.vertices || [])[0];
+      const digit = step?.digits?.[0];
+      if (!Number.isInteger(cell) || !digit || grid[cell] || candidateGrid[cell]?.length !== 1) {
+        return false;
+      }
+
+      if (candidateGrid[cell][0] !== digit) return false;
+      grid[cell] = digit;
+      candidateGrid[cell] = [];
+      for (const peer of core.peersOf(cell)) {
+        candidateGrid[peer] = (candidateGrid[peer] || []).filter(value => value !== digit);
+      }
+      return true;
+    }
+
     function simulateSolver(grid, expectedSolution, profile = null) {
       const simulationCand = core.allCandidates(grid);
+      const simulationGrid = [...grid];
       const steps = [];
       const maxCycles = 100;
 
       for (let count = 0; count < maxCycles; count++) {
         const choice = chooseSolverStep(
           simulationCand,
-          grid,
+          simulationGrid,
           'generator',
           expectedSolution,
           profile,
@@ -4252,7 +5094,12 @@
         if (!choice?.step) break;
 
         const items = core.eliminationItems(choice.step.elim, simulationCand);
-        if (!items.length) break;
+        if (!items.length) {
+          if (choice.step.tech !== 'last-man-standing'
+            || !applySimulationPromotion(simulationCand, simulationGrid, choice.step)) break;
+          steps.push({ ...choice.step, elim: { items: [] } });
+          continue;
+        }
         const removed = core.applyEliminations(simulationCand, { items });
         if (!removed.length) break;
 
@@ -4264,6 +5111,7 @@
 
       return {
         cand: simulationCand,
+        grid: simulationGrid,
         steps,
         cycles: steps.length,
       };
@@ -4271,6 +5119,7 @@
 
     async function simulateSolverInWorker(grid, expectedSolution, profile = null) {
       const simulationCand = core.allCandidates(grid);
+      const simulationGrid = [...grid];
       const steps = [];
       const maxCycles = 100;
       let useWorker = !searchWorkerDisabled;
@@ -4281,9 +5130,10 @@
           try {
             choice = await chooseSolverStepInWorker(
               simulationCand,
-              grid,
+              simulationGrid,
               expectedSolution,
               profile,
+              'generator',
             );
           } catch (error) {
             // A file:// page or an older browser may reject workers. Keep the
@@ -4291,7 +5141,7 @@
             useWorker = false;
             choice = chooseSolverStep(
               simulationCand,
-              grid,
+              simulationGrid,
               'generator',
               expectedSolution,
               profile,
@@ -4300,7 +5150,7 @@
         } else {
           choice = chooseSolverStep(
             simulationCand,
-            grid,
+            simulationGrid,
             'generator',
             expectedSolution,
             profile,
@@ -4309,7 +5159,12 @@
         if (!choice?.step) break;
 
         const items = core.eliminationItems(choice.step.elim, simulationCand);
-        if (!items.length) break;
+        if (!items.length) {
+          if (choice.step.tech !== 'last-man-standing'
+            || !applySimulationPromotion(simulationCand, simulationGrid, choice.step)) break;
+          steps.push({ ...choice.step, elim: { items: [] } });
+          continue;
+        }
         const removed = core.applyEliminations(simulationCand, { items });
         if (!removed.length) break;
 
@@ -4321,6 +5176,7 @@
 
       return {
         cand: simulationCand,
+        grid: simulationGrid,
         steps,
         cycles: steps.length,
       };
@@ -4328,7 +5184,9 @@
 
     function formatRatingValue(value) {
       if (!Number.isFinite(value)) return '';
-      return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/0$/, '');
+      return Number.isInteger(value)
+        ? String(value)
+        : value.toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
     }
 
     function rateGeneratedPuzzle(grid, expectedSolution, targetCategory = 'any') {
@@ -4338,7 +5196,7 @@
         const rating = ratingFromSteps(simulation.steps, 'generated');
         return ratingWithSolvedState(
           rating,
-          candidateGridIsSolved(simulation.cand, grid, expectedSolution),
+          candidateGridIsSolved(simulation.cand, simulation.grid, expectedSolution),
         );
       } catch (error) {
         return {
@@ -4363,7 +5221,7 @@
         const rating = ratingFromSteps(simulation.steps, 'generated');
         return ratingWithSolvedState(
           rating,
-          candidateGridIsSolved(simulation.cand, grid, expectedSolution),
+          candidateGridIsSolved(simulation.cand, simulation.grid, expectedSolution),
         );
       } catch (error) {
         return {
@@ -4394,36 +5252,87 @@
       ratingDetailEl.textContent = `Cumulative score: (${formatRatingValue(ratingReport.score) || '0'}). Hardest Move: ${hardestTag}.`;
     }
 
+    function constructDisplayName(chain, ratingTag) {
+      const ratedName = String(ratingTag || '').trim();
+      const structureName = String(chain?.structureName || '').trim();
+      if (!structureName) return ratedName;
+
+      // AIC + ALS is an implementation prefix, not part of the displayed
+      // name for a named construct. Keep the specific structure while removing
+      // that prefix from the user-facing solution step.
+      const namedStructure = structureName.replace(
+        /^AIC\s*\+\s*ALS\s*-\s*/i,
+        'ALS - ',
+      );
+      const isGenericName = value => /^(?:AIC|AIC\s*\+\s*ALS(?:\s+Chain)?|ALS\s*-\s*(?:XZ|XY|Chain)(?:\s+Ring)?|X-Chain\s+\(Depth\s+\d+\)(?:\s+Ring)?)$/i.test(value);
+      if (namedStructure !== structureName && !isGenericName(ratedName)) {
+        return ratedName || namedStructure;
+      }
+      if (isGenericName(ratedName) && !isGenericName(namedStructure)) {
+        return namedStructure;
+      }
+      return ratedName || namedStructure;
+    }
+
     function appendStep(step) {
       const rating = ratingForStep(step);
-      logEntries.push({
+      const entry = {
         cycle,
         tech: step.tech,
         desc: step.desc,
+        moveName: step.chain
+          ? constructDisplayName(step.chain, rating.tag)
+          : rating.tag,
         ratingTag: rating.tag,
         rating,
         ...(step.chain ? { chain: step.chain } : {}),
-      });
+      };
+      logEntries.push(entry);
+      // Save the board after this move, including the exact drawing inputs,
+      // without recursively snapshotting the complete solution log.
+      entry.displayState = snapshotVisualState();
+    }
+
+    function displayedStepDescription(entry) {
+      const description = String(entry?.desc || '');
+      const moveName = String(entry?.moveName || entry?.ratingTag || '').trim();
+      if (!entry?.chain || !moveName || moveName === 'Unknown') return description;
+
+      const separator = description.indexOf(':');
+      if (separator < 0) return description;
+      return `${moveName}: ${description.slice(separator + 1).trim()}`;
     }
 
     function renderLog() {
       logEl.textContent = '';
 
-      const latest = logEntries[logEntries.length - 1];
+      const latest = historyPreview
+        ? logEntries[historyPreview.index]
+        : logEntries[logEntries.length - 1];
       solutionStepsPreviewEl.textContent = latest
-        ? `${latest.cycle}. ${latest.desc}`
+        ? `${latest.cycle}. ${displayedStepDescription(latest)}`
      : 'No applied steps yet.';
 
 
-      for (const entry of [...logEntries].reverse()) {
+      for (let index = logEntries.length - 1; index >= 0; index--) {
+        const entry = logEntries[index];
         const li = document.createElement('li');
         const tag = document.createElement('span');
         const title = document.createElement('strong');
 
+        li.tabIndex = 0;
+        li.setAttribute('role', 'button');
+        li.classList.toggle('selected', historyPreview?.index === index);
+        li.addEventListener('click', () => inspectLogStep(index));
+        li.addEventListener('keydown', event => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          inspectLogStep(index);
+        });
         tag.className = 'rating-tag';
         const value = formatRatingValue(entry.rating?.value);
         tag.textContent = value ? `Rating: (${value})` : 'Rating: (Unknown)';
-        title.textContent = `${entry.cycle}. ${entry.desc}`;
+        title.textContent = `${entry.cycle}. ${displayedStepDescription(entry)}`;
 
         li.appendChild(tag);
         li.appendChild(title);
@@ -5147,6 +6056,7 @@
         at: item.cells,
         base: { type: sectorType, indices: [sectorIndex] },
         vertices: item.cells,
+        genericSubset: item,
       };
     }
 
@@ -5443,6 +6353,19 @@
 
       const cells = new Set(nodes.flatMap(node => node.cells));
       const digits = new Set(nodes.flatMap(node => node.digits));
+      // The RCC is part of the B.A.R.N.S. digit inventory even though the
+      // compact node sides print it on the other side of the equals sign.
+      for (const step of chain.steps || []) {
+        const module = step.module;
+        for (const digit of [
+          module?.common?.digit,
+          ...(module?.common?.digits || []),
+          module?.displayLeftRcc,
+          module?.displayRightRcc,
+        ]) {
+          if (Number.isInteger(digit)) digits.add(digit);
+        }
+      }
       if (cells.size !== digits.size) return null;
 
       const sizeName = barnsSizeName(cells.size);
@@ -5857,14 +6780,14 @@
           .filter(index => index !== null);
       const limits = budget === 'generator'
         ? {
-            maxChains: 75,
-            maxResultAttempts: 750,
-            maxResultAttemptsPerStart: 50,
-            maxStates: 8000,
-            maxQueue: 8000,
-            maxBranching: 100,
-            maxStartViews: 250,
-            maxAlsLinks: 750,
+            maxChains: profile?.maxRank <= 30 ? 40 : profile?.maxRank <= 50 ? 75 : profile?.maxRank <= 70 ? 150 : 250,
+            maxResultAttempts: profile?.maxRank <= 30 ? 300 : profile?.maxRank <= 50 ? 750 : profile?.maxRank <= 70 ? 1500 : 3000,
+            maxResultAttemptsPerStart: profile?.maxRank <= 30 ? 25 : profile?.maxRank <= 50 ? 50 : profile?.maxRank <= 70 ? 75 : 100,
+            maxStates: profile?.maxRank <= 30 ? 2500 : profile?.maxRank <= 50 ? 8000 : profile?.maxRank <= 70 ? 16000 : 30000,
+            maxQueue: profile?.maxRank <= 30 ? 2500 : profile?.maxRank <= 50 ? 8000 : profile?.maxRank <= 70 ? 16000 : 30000,
+            maxBranching: profile?.maxRank <= 30 ? 50 : profile?.maxRank <= 50 ? 100 : profile?.maxRank <= 70 ? 150 : 250,
+            maxStartViews: profile?.maxRank <= 30 ? 100 : profile?.maxRank <= 50 ? 250 : profile?.maxRank <= 70 ? 400 : 600,
+            maxAlsLinks: profile?.maxRank <= 30 ? 250 : profile?.maxRank <= 50 ? 750 : profile?.maxRank <= 70 ? 1500 : 3000,
           }
         : {
             maxChains: 5000,
@@ -5895,7 +6818,7 @@
         alsLinkSet,
         includeAlsRcc,
         strongLinkTypes,
-        maxDepth,
+        maxDepth: profile?.maxDepth == null ? maxDepth : Math.min(maxDepth, profile.maxDepth),
         ...limits,
       };
     }
@@ -6211,8 +7134,10 @@
       const enabledTypes = currentSolverMoveTypes(profile?.moveTypes);
       if (!enabledTypes.has('chains')) return null;
 
-      const maxDepth = Math.min(8, Math.max(2, Number(chainDepthEl.value) || 8));
-      const search = chainSearchOptions(candidateGrid, maxDepth, budget, profile);
+      const requestedDepth = Math.min(8, Math.max(2, Number(chainDepthEl.value) || 8));
+      const search = chainSearchOptions(candidateGrid, requestedDepth, budget, profile);
+      const maxDepth = search.maxDepth;
+      if (maxDepth < 2) return null;
       let best = null;
       // The generator only needs one inclusive report. Rebuilding the same
       // graph once per depth made rating generation disproportionately slow.
@@ -6266,39 +7191,39 @@
       return result;
     }
 
-    function solverFishSizes(moveTypes = null) {
+    function solverFishSizes(moveTypes = null, maxFishSize = 4) {
       const enabledTypes = currentSolverMoveTypes(moveTypes);
-      return [2, 3, 4].filter(size => {
+      return [2, 3, 4].filter(size => size <= maxFishSize).filter(size => {
         if (size === 2) return enabledTypes.has('x-wing') || enabledTypes.has('2x2+k-fish');
         if (size === 3) return enabledTypes.has('swordfish') || enabledTypes.has('3x3+k-fish');
         return enabledTypes.has('jellyfish') || enabledTypes.has('4x4+k-fish');
       });
     }
 
-    function solverFishOptions(candidateGrid, fixedGrid, moveTypes = null) {
+    function solverFishOptions(candidateGrid, fixedGrid, moveTypes = null, profile = null) {
       const enabledTechniques = currentSolverMoveTypes(moveTypes);
       return {
         ...currentPomFishOptions(),
         grid: [...fixedGrid],
         omissionFishSearch: core.omissionFishStep,
         enabledTechniques,
-        fishSizes: solverFishSizes(enabledTechniques),
+        fishSizes: solverFishSizes(enabledTechniques, profile?.maxFishSize ?? 4),
       };
     }
 
-    function generatorWorkerConfig(candidateGrid, fixedGrid, profile) {
-      const maxDepth = Math.min(8, Math.max(2, Number(chainDepthEl.value) || 8));
-      const search = chainSearchOptions(candidateGrid, maxDepth, 'generator', profile, false);
+    function generatorWorkerConfig(candidateGrid, fixedGrid, profile, budget = 'generator') {
+      const requestedDepth = Math.min(8, Math.max(2, Number(chainDepthEl.value) || 8));
+      const search = chainSearchOptions(candidateGrid, requestedDepth, budget, profile, false);
       return {
         candidateGrid,
         fixedGrid: [...fixedGrid],
         moveTypes: [...currentSolverMoveTypes(profile?.moveTypes)],
         fishOptions: {
           ...currentPomFishOptions(),
-          fishSizes: solverFishSizes(profile?.moveTypes),
+          fishSizes: solverFishSizes(profile?.moveTypes, profile?.maxFishSize ?? 4),
         },
         chain: {
-          maxDepth,
+          maxDepth: search.maxDepth,
           includeAls: search.includeAlsRcc,
           strongLinkTypes: search.strongLinkTypes,
           alsMaxSizeDOF: 4,
@@ -6322,11 +7247,12 @@
       fixedGrid = puzzle,
       expectedSolution = solution,
       profile = null,
+      budget = 'interactive',
     ) {
       const enabledTypes = currentSolverMoveTypes(profile?.moveTypes);
       if (!enabledTypes.has('chains')) return null;
 
-      const config = generatorWorkerConfig(candidateGrid, fixedGrid, profile);
+      const config = generatorWorkerConfig(candidateGrid, fixedGrid, profile, budget);
       const result = await runSearchWorker('chains', {
         candidateGrid: config.candidateGrid,
         ...config.chain,
@@ -6370,8 +7296,9 @@
       fixedGrid = puzzle,
       expectedSolution = solution,
       profile = null,
+      budget = 'interactive',
     ) {
-      const config = generatorWorkerConfig(candidateGrid, fixedGrid, profile);
+      const config = generatorWorkerConfig(candidateGrid, fixedGrid, profile, budget);
       const simple = await runSearchWorker('simple', {
         candidateGrid: config.candidateGrid,
         fixedGrid: config.fixedGrid,
@@ -6389,6 +7316,7 @@
         fixedGrid,
         expectedSolution,
         profile,
+        budget,
       );
       return chooseLowerScoringMove(simple, chainResult);
     }
@@ -6401,7 +7329,10 @@
       profile = null,
     ) {
       const moveTypes = profile?.moveTypes || currentSolverMoveTypes();
-      const simple = core.subsetOrFishStep(candidateGrid, solverFishOptions(candidateGrid, fixedGrid, moveTypes));
+      const simple = core.subsetOrFishStep(
+        candidateGrid,
+        solverFishOptions(candidateGrid, fixedGrid, moveTypes, profile),
+      );
       const simpleRating = simple ? ratingForStep(simple) : null;
       const simpleCannotBeBeaten = simpleRating
         && Number.isFinite(Number(simpleRating.value))
@@ -6625,31 +7556,142 @@
       }
     }
 
-    function snapshotState() {
+    function snapshotVisualState() {
       return {
+        puzzle: [...puzzle],
+        promotedValues: [...promotedValues],
         cand: core.cloneCandidates(cand),
-        cycle,
         activeStep,
         lastRemoved: lastRemoved.map(item => ({ ...item })),
+        promotionQueue: promotionQueue.map(item => ({ ...item })),
+        visual: {
+          pomReport,
+          alsReport,
+          alsLinkReport,
+          ahsReport,
+          strongLinkReport,
+          fishReport,
+          nakedSubsetReport,
+          hiddenSubsetReport,
+          chainReport,
+          selectedAlsDof,
+          selectedAlsId,
+          openAlsSizeGroups: [...openAlsSizeGroups],
+          selectedAhsDof,
+          selectedAhsId,
+          openAhsSizeGroups: [...openAhsSizeGroups],
+          selectedStrongLinkType,
+          selectedStrongLinkIndex,
+          selectedFishCategory,
+          selectedFishSize,
+          selectedFishKey,
+          selectedNakedSubsetSize,
+          selectedNakedSubsetKey,
+          selectedHiddenSubsetSize,
+          selectedHiddenSubsetKey,
+          selectedChainIndex,
+          gridView,
+          solutionStepsPanelOpen: solutionStepsPanelEl?.open ?? false,
+        },
+      };
+    }
+
+    function snapshotState() {
+      return {
+        ...snapshotVisualState(),
+        cycle,
         logEntries: logEntries.map(entry => ({ ...entry })),
         ratingReport: ratingReport ? { ...ratingReport } : null,
       };
     }
 
-    function restoreState(state) {
+    function restoreVisualState(state) {
+      puzzle = [...state.puzzle];
+      promotedValues = [...state.promotedValues];
       cand = core.cloneCandidates(state.cand);
-      cycle = state.cycle;
       activeStep = state.activeStep;
-      lastRemoved = state.lastRemoved.map(item => ({ ...item }));
+      lastRemoved = (state.lastRemoved || []).map(item => ({ ...item }));
+      promotionQueue = (state.promotionQueue || []).map(item => ({ ...item }));
+
+      const visual = state.visual || {};
+      pomReport = visual.pomReport || null;
+      alsReport = visual.alsReport || null;
+      alsLinkReport = visual.alsLinkReport || null;
+      ahsReport = visual.ahsReport || null;
+      strongLinkReport = visual.strongLinkReport || null;
+      fishReport = visual.fishReport || null;
+      nakedSubsetReport = visual.nakedSubsetReport || null;
+      hiddenSubsetReport = visual.hiddenSubsetReport || null;
+      chainReport = visual.chainReport || null;
+      selectedAlsDof = visual.selectedAlsDof ?? null;
+      selectedAlsId = visual.selectedAlsId ?? null;
+      openAlsSizeGroups.clear();
+      for (const value of visual.openAlsSizeGroups || []) openAlsSizeGroups.add(value);
+      selectedAhsDof = visual.selectedAhsDof ?? null;
+      selectedAhsId = visual.selectedAhsId ?? null;
+      openAhsSizeGroups.clear();
+      for (const value of visual.openAhsSizeGroups || []) openAhsSizeGroups.add(value);
+      selectedStrongLinkType = visual.selectedStrongLinkType ?? null;
+      selectedStrongLinkIndex = visual.selectedStrongLinkIndex ?? null;
+      selectedFishCategory = visual.selectedFishCategory ?? null;
+      selectedFishSize = visual.selectedFishSize ?? null;
+      selectedFishKey = visual.selectedFishKey ?? null;
+      selectedNakedSubsetSize = visual.selectedNakedSubsetSize ?? null;
+      selectedNakedSubsetKey = visual.selectedNakedSubsetKey ?? null;
+      selectedHiddenSubsetSize = visual.selectedHiddenSubsetSize ?? null;
+      selectedHiddenSubsetKey = visual.selectedHiddenSubsetKey ?? null;
+      selectedChainIndex = visual.selectedChainIndex ?? null;
+      gridView = visual.gridView || 'RC';
+      if (solutionStepsPanelEl) {
+        solutionStepsPanelEl.open = Boolean(visual.solutionStepsPanelOpen);
+      }
+    }
+
+    function restoreState(state) {
+      restoreVisualState(state);
+      cycle = state.cycle;
       logEntries = state.logEntries.map(entry => ({ ...entry }));
       ratingReport = state.ratingReport ? { ...state.ratingReport } : null;
     }
 
+    function leaveHistoryPreview() {
+      if (!historyPreview) return false;
+      const liveState = historyPreview.liveState;
+      historyPreview = null;
+      restoreState(liveState);
+      return true;
+    }
+
+    function inspectLogStep(index) {
+      const entry = logEntries[index];
+      if (!entry?.displayState) {
+        setStatus('This older step has no saved board snapshot.', 'warn');
+        return;
+      }
+
+      if (!historyPreview) {
+        historyPreview = {
+          index,
+          liveState: snapshotState(),
+        };
+      } else {
+        historyPreview.index = index;
+      }
+
+      restoreVisualState(entry.displayState);
+      setStatus(`Viewing solution step ${entry.cycle}.`, 'ok');
+      render();
+      focusMap();
+    }
+
     function resetCandidates(message = 'Candidates reset from the current puzzle.', startingCandidates = null, nextRating = null) {
+      leaveHistoryPreview();
+      promotedValues = new Array(81).fill(0);
       cand = startingCandidates ? core.cloneCandidates(startingCandidates) : core.allCandidates(puzzle);
       cycle = 0;
       activeStep = null;
       lastRemoved = [];
+      promotionQueue = [];
       logEntries = [];
       ratingReport = nextRating;
       pomReport = null;
@@ -6683,22 +7725,170 @@
       render();
     }
 
-    function applyNextCycle() {
-      const choice = chooseSolverStep(cand, puzzle, 'interactive');
+    function promotionsForStep(step, removed) {
+      const promotions = new Map();
+      const addPromotion = (cell, digit, mode = 'singleton', sector = null) => {
+        if (puzzle[cell] || !(cand[cell] || []).includes(digit)) return;
+        const key = `${cell}:${digit}`;
+        if (!promotions.has(key)) promotions.set(key, { cell, digit, mode, sector, tech: step?.tech });
+      };
+
+      for (const item of removed || []) {
+        const cell = item.cell;
+        if (!puzzle[cell] && (cand[cell] || []).length === 1) {
+          addPromotion(cell, cand[cell][0]);
+        }
+      }
+
+      if (['naked-single', 'hidden-single'].includes(step?.tech)) {
+        for (const cell of step.at || step.vertices || []) {
+          if (!puzzle[cell] && (cand[cell] || []).length === 1) addPromotion(cell, cand[cell][0]);
+        }
+      }
+      if (step?.tech === 'last-man-standing') {
+        for (const cell of step.at || step.vertices || []) {
+          if (!puzzle[cell] && (cand[cell] || []).length === 1) addPromotion(cell, cand[cell][0]);
+        }
+      }
+
+      if (step?.tech?.startsWith('hidden-')) {
+        const unitIndex = Number.isInteger(Number(step.genericSubset?.sector))
+          ? Number(step.genericSubset.sector)
+          : step.base?.type === 'row'
+            ? Number(step.base.indices?.[0])
+            : step.base?.type === 'col'
+              ? 9 + Number(step.base.indices?.[0])
+              : step.base?.type === 'box'
+                ? 18 + Number(step.base.indices?.[0])
+                : -1;
+        const unit = unitIndex >= 0 && unitIndex < core.UNITS.length
+          ? core.UNITS[unitIndex]
+          : [];
+        const subsetCells = new Set(step.at || step.vertices || []);
+        const hiddenPlacements = [];
+
+        for (const digit of step.digits || []) {
+          const locations = unit.filter(cell =>
+            !puzzle[cell] && (cand[cell] || []).includes(digit),
+          );
+          if (locations.length === 1 && subsetCells.has(locations[0])) {
+            hiddenPlacements.push({ cell: locations[0], digit });
+          }
+        }
+
+        // Two selected digits sharing one cell are still a bivalue choice,
+        // not two solved placements.
+        const placementsByCell = new Map();
+        for (const placement of hiddenPlacements) {
+          const digits = placementsByCell.get(placement.cell) || [];
+          digits.push(placement.digit);
+          placementsByCell.set(placement.cell, digits);
+        }
+        for (const placement of hiddenPlacements) {
+          if ((placementsByCell.get(placement.cell) || []).length === 1) {
+            addPromotion(placement.cell, placement.digit, 'hidden-subset', unitIndex);
+          }
+        }
+      }
+
+      return [...promotions.values()]
+        .sort((a, b) => a.cell - b.cell || a.digit - b.digit);
+    }
+
+    function queuePromotions(step, removed) {
+      promotionQueue = promotionsForStep(step, removed);
+      return promotionQueue;
+    }
+
+    function applyQueuedPromotions() {
+      const pending = promotionQueue.splice(0);
+      const promoted = [];
+
+      for (const promotion of pending) {
+        const { cell, digit } = promotion;
+        if (puzzle[cell] || !(cand[cell] || []).includes(digit)) continue;
+
+        if (promotion.mode === 'hidden-subset') {
+          const unitIndex = Number(promotion.sector);
+          const locations = unitIndex >= 0 && unitIndex < core.UNITS.length
+            ? core.UNITS[unitIndex].filter(other =>
+              !puzzle[other] && (cand[other] || []).includes(digit),
+            )
+            : [];
+          if (locations.length !== 1 || locations[0] !== cell) continue;
+        } else if ((cand[cell] || []).length !== 1 || cand[cell][0] !== digit) {
+          continue;
+        }
+
+        puzzle[cell] = digit;
+        promotedValues[cell] = digit;
+        cand[cell] = [];
+        promoted.push(promotion);
+
+        for (const peer of core.peersOf(cell)) {
+          if (puzzle[peer] || !(cand[peer] || []).includes(digit)) continue;
+          cand[peer] = cand[peer].filter(value => value !== digit);
+        }
+      }
+
+      return promoted;
+    }
+
+    function promotionSummary(promotions) {
+      if (!promotions.length) return '';
+      const values = promotions.map(({ cell, digit }) => `${core.cellName(cell)} = ${digit}`);
+      return `${promotions.length} solved value${promotions.length === 1 ? '' : 's'}: ${values.join(', ')}`;
+    }
+
+    function applyCycleChoice(before, promoted, choice) {
       if (!choice?.step) {
         activeStep = null;
         lastRemoved = [];
+        if (promoted.length) {
+          cycle += 1;
+          undoStack.push(before);
+          redoStack = [];
+          setStatus(`${promotionSummary(promoted)} promoted. No enabled move found.`, 'ok');
+          return true;
+        }
         setStatus('No enabled move found. Candidate grid is current.', 'warn');
         return false;
       }
 
       const step = choice.step;
 
-      const before = snapshotState();
       const removed = core.applyEliminations(cand, step.elim);
       if (!removed.length) {
+        if (step.tech === 'last-man-standing') {
+          const queued = queuePromotions(step, removed);
+          if (!queued.length) {
+            activeStep = null;
+            lastRemoved = [];
+            setStatus('Last Man Standing found no promotable cell.', 'warn');
+            return false;
+          }
+
+          cycle += 1;
+          activeStep = step;
+          lastRemoved = [];
+          chainReport = null;
+          selectedChainIndex = null;
+          undoStack.push(before);
+          redoStack = [];
+          appendStep(step);
+          setStatus(`${displayTech(step.tech)} found. ${promotionSummary(queued)} queued for the next cycle. Candidate grid unchanged.`, 'ok');
+          return true;
+        }
+
         activeStep = null;
         lastRemoved = [];
+        if (promoted.length) {
+          cycle += 1;
+          undoStack.push(before);
+          redoStack = [];
+          setStatus(`${promotionSummary(promoted)} promoted. No real elimination remained.`, 'ok');
+          return true;
+        }
         setStatus('No real elimination remained. Candidate grid is current.', 'warn');
         return false;
       }
@@ -6711,47 +7901,67 @@
       undoStack.push(before);
       redoStack = [];
 
+      const queued = queuePromotions(step, removed);
       appendStep(step);
-      setStatus(`${displayTech(step.tech)} applied. Candidate grid updated for the next cycle.`, 'ok');
+      const promotionText = queued.length
+        ? ` ${promotionSummary(queued)} queued for the next cycle.`
+        : '';
+      const promotedText = promoted.length
+        ? ` ${promotionSummary(promoted)} promoted.`
+        : '';
+      setStatus(`${displayTech(step.tech)} applied.${promotedText}${promotionText} Candidate grid updated for the next cycle.`, 'ok');
       return true;
     }
 
+    function applyNextCycle() {
+      const before = snapshotState();
+      const promoted = applyQueuedPromotions();
+      const choice = chooseSolverStep(cand, puzzle, 'interactive');
+      return applyCycleChoice(before, promoted, choice);
+    }
 
-    function collectLastManStandingPromotions(queue, queued) {
-      const enqueue = (cell, digit) => {
-        if (fixedValue(cell) || !(cand[cell] || []).includes(digit)) return;
-        const key = `${cell}:${digit}`;
-        if (queued.has(key)) return;
-        queued.add(key);
-        queue.push({ cell, digit, tech: 'last-man-standing' });
-      };
-
-      for (let cell = 0; cell < 81; cell++) {
-        const values = cand[cell] || [];
-        if (fixedValue(cell) || values.length !== 1) continue;
-
-        const digit = values[0];
-        const peers = core.peersOf(cell);
-        if (peers.some(peer => fixedValue(peer) === digit)) continue;
-        if (peers.some(peer => (cand[peer] || []).includes(digit))) continue;
-        enqueue(cell, digit);
+    async function chooseInteractiveStep() {
+      try {
+        return await chooseSolverStepInWorker(cand, puzzle, solution, null, 'interactive');
+      } catch (error) {
+        // Keep file:// pages and browsers without worker support usable.
+        return chooseSolverStep(cand, puzzle, 'interactive');
       }
+    }
+
+    async function applyNextCycleInWorker() {
+      const before = snapshotState();
+      const promoted = applyQueuedPromotions();
+      let choice;
+
+      setBusy(true);
+      setStatus('Searching enabled moves...');
+      try {
+        choice = await chooseInteractiveStep();
+      } finally {
+        setBusy(false);
+      }
+
+      return applyCycleChoice(before, promoted, choice);
     }
 
     function advanceCycle() {
       return applyNextCycle();
     }
 
-    function nextCycle() {
-      const changed = advanceCycle();
+    async function nextCycle() {
+      if (busy) return false;
+      leaveHistoryPreview();
+      const changed = await applyNextCycleInWorker();
       if (changed) {
-        ratingReport = ratingFromLog(logEntries, candidateGridIsSolved(cand, currentFixedGrid()));
+        ratingReport = ratingFromLog(logEntries, candidateGridIsSolved(cand, puzzle));
       }
       render();
       return changed;
     }
 
     function undoCycle() {
+      leaveHistoryPreview();
       if (!undoStack.length) {
         setStatus('Nothing to undo.', 'warn');
         render();
@@ -6766,6 +7976,7 @@
     }
 
     function redoCycle() {
+      leaveHistoryPreview();
       if (!redoStack.length) {
         setStatus('Nothing to redo.', 'warn');
         render();
@@ -6779,13 +7990,27 @@
       return true;
     }
 
-    function runAll() {
+    async function runAll() {
+      if (busy) return;
+      leaveHistoryPreview();
       let ran = 0;
-      while (ran < 100 && advanceCycle()) ran += 1;
-      if (ran > 0) {
-        ratingReport = ratingFromLog(logEntries, candidateGridIsSolved(cand, currentFixedGrid()));
+      setBusy(true);
+      setStatus('Running enabled moves in priority order...');
+      try {
+        while (ran < 100) {
+          const before = snapshotState();
+          const promoted = applyQueuedPromotions();
+          const choice = await chooseInteractiveStep();
+          if (!applyCycleChoice(before, promoted, choice)) break;
+          ran += 1;
+        }
+      } finally {
+        setBusy(false);
       }
-      if (solution && !candidateGridIsSolved(cand, currentFixedGrid())) {
+      if (ran > 0) {
+        ratingReport = ratingFromLog(logEntries, candidateGridIsSolved(cand, puzzle));
+      }
+      if (solution && !candidateGridIsSolved(cand, puzzle)) {
         setStatus('Run All stopped: retained logic stalled before the puzzle was solved.', 'warn');
       }
       if (ran === 100) setStatus('Stopped at 100 cycles.', 'warn');
@@ -6797,7 +8022,7 @@
       setStatus('Running POM check...');
 
       setTimeout(() => {
-        pomReport = core.pomCheck(cand, currentFixedGrid());
+        pomReport = core.pomCheck(cand, puzzle);
         renderPomReport();
         openReportPanel(pomResultsEl);
         const omissionCount = pomReport.omissions.reduce((total, item) => total + item.cells.length, 0);
@@ -6967,13 +8192,13 @@
           try {
             fishReport = await runSearchWorker('fish', {
               candidateGrid: cand,
-              fixedGrid: currentFixedGrid(),
+              fixedGrid: puzzle,
               options: currentPomFishOptions(),
             });
           } catch (error) {
             fishReport = core.findOmissionFishReports(cand, {
               ...currentPomFishOptions(),
-              grid: currentFixedGrid(),
+              grid: puzzle,
             });
           }
           selectedFishCategory = null;
@@ -7112,18 +8337,20 @@
     }
 
     function generatePuzzle() {
+      leaveHistoryPreview();
       const givens = Number(givensEl.value) || 30;
       const targetCategory = generationDifficultyEl.value;
+      const isAnyTarget = normalizeRatingCategory(targetCategory) === 'Any';
       const requestToken = ++generationToken;
       setBusy(true);
       const article = /^[AEIOU]/i.test(targetCategory) ? 'an' : 'a';
-      setStatus(targetCategory === 'any'
+      setStatus(isAnyTarget
         ? 'Generating...'
         : `Generating ${article} ${targetCategory} puzzle...`);
 
       setTimeout(() => {
         if (requestToken !== generationToken) return;
-        const quickGeneration = targetCategory === 'any';
+        const quickGeneration = isAnyTarget;
         const maxRatingAttempts = quickGeneration ? 1 : 1000;
         let result = null;
         let rating = null;
@@ -7147,7 +8374,14 @@
                 targetCategory,
                 generationTechniqueProfile('Nightmare'),
               );
-          const matches = quickGeneration || rating.category === targetCategory;
+          const normalizedTarget = normalizeRatingCategory(targetCategory);
+          const matches = quickGeneration
+            || (
+              limitedRating.solved === true
+              && rating.solved === true
+              && (normalizedTarget !== 'Lulz' || (limitedRating.score === 0 && rating.score === 0))
+              && rating.category === normalizedTarget
+            );
 
           if (!matches) {
             if (attempts >= maxRatingAttempts) {
@@ -7164,10 +8398,12 @@
           }
 
           puzzle = result.puzzle;
+          originalPuzzle = [...result.puzzle];
+          inputEl.value = core.encode(originalPuzzle);
           solution = result.solution;
           hideSolution();
           resetCandidates('Generated a unique puzzle and rebuilt candidates.', null, rating);
-          if (targetCategory !== 'any') {
+          if (!isAnyTarget) {
             setStatus(`Generated a ${targetCategory} puzzle after ${attempts} attempt${attempts === 1 ? '' : 's'}.`, 'ok');
           } else if (!rating.solved) {
             setStatus(
@@ -7182,7 +8418,19 @@
       }, 20);
     }
 
+    async function importPuzzle() {
+      try {
+        const clipboardText = await navigator.clipboard?.readText?.();
+        if (clipboardText?.trim()) inputEl.value = clipboardText.trim();
+      } catch (error) {
+        // Clipboard access can be unavailable on file:// pages; use the text
+        // already in the input as a manual-paste fallback.
+      }
+      loadPuzzle();
+    }
+
     function loadPuzzle() {
+      leaveHistoryPreview();
       const input = inputEl.value;
       const grid = core.decode(input);
       const parsed729 = grid ? null : core.parse729Data(input);
@@ -7207,6 +8455,8 @@
           if (dlxResult.count === 0) {
             if (parsed729) {
               puzzle = loadedGrid;
+              originalPuzzle = [...loadedGrid];
+              inputEl.value = core.encode(originalPuzzle);
               solution = null;
               resetCandidates('Loaded 729 candidate data. No DLX solution was found.', parsed729.candidates);
               showLoadWarning('The 729 candidate data has no DLX solution. The candidate grid was loaded for inspection.');
@@ -7219,6 +8469,8 @@
           if (dlxResult.count > 1) {
             if (parsed729) {
               puzzle = loadedGrid;
+              originalPuzzle = [...loadedGrid];
+              inputEl.value = core.encode(originalPuzzle);
               solution = null;
               resetCandidates('Loaded 729 candidate data. DLX found multiple solutions.', parsed729.candidates);
               showLoadWarning('The 729 candidate data has multiple DLX solutions. The candidate grid was loaded for inspection.');
@@ -7229,6 +8481,8 @@
           }
 
           puzzle = loadedGrid;
+          originalPuzzle = [...loadedGrid];
+          inputEl.value = core.encode(originalPuzzle);
           solution = dlxResult.solution;
           hideSolution();
           resetCandidates(
@@ -7254,15 +8508,15 @@
     alsLinkBuildEl.addEventListener('click', runAlsLinkBuild);
     ahsBuildEl.addEventListener('click', runAhsBuild);
     strongLinkBuildEl.addEventListener('click', runStrongLinkBuild);
-    for (const [view, button] of Object.entries(gridViewButtons)) {
-      button.addEventListener('click', () => setGridView(view));
-    }
+    gridViewSelector.addEventListener('change', () => setGridView(gridViewSelector.value));
     chainBuildEl.addEventListener('click', runChainBuild);
     fishBuildEl.addEventListener('click', runFishBuild);
     nakedSubsetBuildEl.addEventListener('click', () => runGenericSubsetBuild('naked'));
     hiddenSubsetBuildEl.addEventListener('click', () => runGenericSubsetBuild('hidden'));
     chainCopyEl.addEventListener('click', () => copyChainOutput(false));
     chainCopyVerboseEl.addEventListener('click', () => copyChainOutput(true));
+    copyPuzzle81El.addEventListener('click', () => copyPuzzleString(core.encode(originalPuzzle), '81-character puzzle'));
+    copyPuzzle729El.addEventListener('click', () => copyPuzzleString(current729String(), '729-bit candidate'));
     chainClearEl.addEventListener('click', clearChainSelection);
     undoEl.addEventListener('click', undoCycle);
     redoEl.addEventListener('click', redoCycle);
@@ -7279,6 +8533,7 @@
       });
     }
     loadEl.addEventListener('click', loadPuzzle);
+    importEl.addEventListener('click', importPuzzle);
     for (const button of document.querySelectorAll('[data-example-puzzle]')) {
       button.addEventListener('click', () => {
         inputEl.value = button.dataset.examplePuzzle;
@@ -7287,6 +8542,7 @@
     }
 
     initFishSettings();
+    renderDigitFocusButtons();
     renderDifficultyTable();
     renderGridViewHeaders();
     generatePuzzle();

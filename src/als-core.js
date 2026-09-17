@@ -32,15 +32,6 @@
     };
   }
 
-  function containsDofZeroSubset(cand, cells) {
-    for (let size = 1; size < cells.length; size++) {
-      for (const subset of combinations(cells, size)) {
-        if (candidateDigits(cand, subset).length === size) return true;
-      }
-    }
-    return false;
-  }
-
   function buildAls(cand, sector, positionSize, fox, cells, powerSetIndex) {
     const digits = candidateDigits(cand, cells);
     const rccList = digits.map(digit => {
@@ -64,6 +55,15 @@
       rccList,
       uniqueID: nextAlsId++,
     };
+  }
+
+  function containsDofZeroSubset(cand, cells) {
+    for (let size = 1; size < cells.length; size++) {
+      for (const subset of combinations(cells, size)) {
+        if (candidateDigits(cand, subset).length === size) return true;
+      }
+    }
+    return false;
   }
 
   function alsConstructor(cand, options = {}) {

@@ -76,6 +76,7 @@
   const FISH_NAME = { 2: 'X-Wing', 3: 'SwordFish', 4: 'JellyFish' };
   const COMBOS = { 1: combosIdx(1), 2: combosIdx(2), 3: combosIdx(3), 4: combosIdx(4) };
   const TECH_NAME = {
+    'last-man-standing': 'Last Man Standing',
     'naked-single': 'Naked Single',
     'hidden-single': 'Hidden Single',
     'naked-pair': 'Naked Pair',
@@ -353,11 +354,33 @@
     return { puzzle, solution };
   }
 
-  function buildSpaces(cand) {
+  function fixedSectorState(grid = []) {
+    const state = {
+      cells: [],
+      rows: new Array(9).fill(0),
+      cols: new Array(9).fill(0),
+      boxes: new Array(9).fill(0),
+    };
+
+    const addFixed = (cell, digit) => {
+      if (!digit || digit < 1 || digit > 9) return;
+      const bit = 1 << (digit - 1);
+      state.cells.push(cell);
+      state.rows[Rx[cell]] |= bit;
+      state.cols[Cy[cell]] |= bit;
+      state.boxes[Bxy[cell]] |= bit;
+    };
+
+    for (let cell = 0; cell < 81; cell++) addFixed(cell, grid[cell]);
+    return state;
+  }
+
+  function buildSpaces(cand, givenGrid = []) {
     const M = Array.from({ length: 27 }, () => new Array(9).fill(0));
+    const given = fixedSectorState(givenGrid);
 
     for (let cell = 0; cell < 81; cell++) {
-      for (const digit of cand[cell]) {
+      for (const digit of cand[cell] || []) {
         const d0 = digit - 1;
         M[Rx[cell]][d0] |= 1 << Cy[cell];
         M[9 + Cy[cell]][d0] |= 1 << Rx[cell];
@@ -365,7 +388,7 @@
       }
     }
 
-    return { M };
+    return { M, given };
   }
 
   function bits(mask) {
@@ -667,6 +690,27 @@
     return null;
   }
 
+  function lastManStandingStep(cand) {
+    for (let cell = 0; cell < 81; cell++) {
+      if (cand[cell].length !== 1) continue;
+
+      const digit = cand[cell][0];
+      if (peerSubsetEliminations(cand, [cell], [digit]).length) continue;
+
+      return {
+        tech: 'last-man-standing',
+        desc: `Last Man Standing: (≧︿≦) ${cellName(cell)} = ${digit}`,
+        elim: { items: [] },
+        digits: [digit],
+        at: [cell],
+        vertices: [cell],
+        promote: true,
+      };
+    }
+
+    return null;
+  }
+
   function nakedSubsetStep(cand, k) {
     if (k === 1) return nakedSingleStep(cand);
 
@@ -878,24 +922,19 @@
   }
 
   function fishStepM(cand, sizes = [2, 3, 4], options = {}) {
-    const { M } = buildSpaces(cand);
     const omissionFishSearch = options.omissionFishSearch || global.StormDoku.omissionFishStep;
     const enabledTypes = options.enabledTechniques;
+    const configuredMaxK = Number(options.maxK ?? 2);
+    const maxK = Number.isFinite(configuredMaxK) ? Math.max(0, configuredMaxK) : 2;
 
-    for (const k of sizes) {
-      for (let digit = 1; digit <= 9; digit++) {
-        const d0 = digit - 1;
-        const rowFish = fishByRows(M, d0, digit, k);
-        if (fishStepAllowed(rowFish, enabledTypes)) return rowFish;
-
-        const colFish = fishByCols(M, d0, digit, k);
-        if (fishStepAllowed(colFish, enabledTypes)) return colFish;
-      }
-
-      const omissionFish = omissionFishSearch?.(cand, [k], {
+    for (const size of sizes) {
+      const omissionFish = omissionFishSearch?.(cand, [size], {
         ...options,
-        minSize: k,
-        maxSize: k,
+        minSize: size,
+        maxSize: size,
+        minK: 0,
+        maxK,
+        priorityMode: true,
       });
       if (fishStepAllowed(omissionFish, enabledTypes)) return omissionFish;
     }
@@ -1033,6 +1072,10 @@
 
   function subsetOrFishStep(cand, fishOptions = {}) {
     const enabledTypes = fishOptions.enabledTechniques;
+    if (moveTypeEnabled(enabledTypes, 'last-man-standing')) {
+      const lastMan = lastManStandingStep(cand);
+      if (lastMan) return lastMan;
+    }
     const singles = subsetStepForSizes(cand, [1], enabledTypes);
     if (singles) return singles;
 
@@ -1168,7 +1211,7 @@
         .map((present, digit) => present ? digit + 1 : 0)
         .filter(Boolean),
     );
-    const spaces = buildSpaces(sourceCandidates).M;
+    const sourceSpaces = buildSpaces(sourceCandidates).M;
     const candidates = sourceCandidates.map(values => [...values]);
     const grid = new Array(81).fill(0);
     const conflicts = [];
@@ -1180,9 +1223,9 @@
       const boxPosition = (row % 3) * 3 + (col % 3);
       const forced = sourceCandidates[cell].filter(digit => {
         const d0 = digit - 1;
-        return singletonMask(spaces[row][d0], col)
-          && singletonMask(spaces[9 + col][d0], row)
-          && singletonMask(spaces[18 + box][d0], boxPosition);
+        return singletonMask(sourceSpaces[row][d0], col)
+          && singletonMask(sourceSpaces[9 + col][d0], row)
+          && singletonMask(sourceSpaces[18 + box][d0], boxPosition);
       });
 
       if (forced.length > 1) {
@@ -1195,11 +1238,14 @@
       candidates[cell] = [];
     }
 
+    const spaceState = buildSpaces(candidates, grid);
+
     return {
       bits,
       sourceCandidates,
       candidates,
-      spaces,
+      spaces: spaceState.M,
+      givenBySector: spaceState.given,
       grid,
       givenCells: grid.reduce((cells, digit, cell) => {
         if (digit) cells.push(cell);
@@ -1243,6 +1289,7 @@
     nakedSingleStep,
     nakedSubsetStep,
     hiddenSubsetStep,
+    lastManStandingStep,
     boxLineStep,
     subsetStep,
     fishStep,

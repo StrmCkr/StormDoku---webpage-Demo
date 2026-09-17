@@ -7,13 +7,13 @@ importScripts(
   './browser-core.js',
   './set-tools-core.js',
   './pom-core.js',
-  './als-core.js',
-  './als-link-core.js',
+  './als-core.js?v=20260917-1',
+  './als-link-core.js?v=20260917-1',
   './ahs-core.js',
   './subset-report-core.js',
   './mini-sectors-core.js',
-  './strong-link-core.js',
-  './chain-core.js',
+  './strong-link-core.js?v=20260917-1',
+  './chain-core.js?v=20260917-1',
 );
 
 const core = globalThis.StormDoku;

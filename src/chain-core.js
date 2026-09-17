@@ -731,10 +731,7 @@
 
   function alsBoundaryDigits(view, side) {
     const subset = alsSubsetForSide(view, side);
-    const bridgeDigits = sortedUnique([
-      ...(view.node.raw.C?.digits || []),
-      ...(view.node.raw.C?.restrictedDigits || []),
-    ]);
+    const bridgeDigits = alsBridgeDigits(view.node.raw);
     return sortedUnique((subset?.digits || []).filter(digit => !bridgeDigits.includes(digit)));
   }
 
@@ -745,15 +742,24 @@
   }
 
   function subsetPotentialEliminations(subset, digit) {
-    return subset?.rccList?.find(rcc => rcc.digit === digit)?.potentialElim || [];
+    const record = subset?.rccList?.find(rcc => Number(rcc.rccDigit ?? rcc.digit) === digit);
+    return record
+      ? [...(record.rccPotentialElim ?? record.potentialElim ?? [])]
+      : [];
   }
 
   function subsetRccCells(subset, digit) {
-    return subset?.rccList?.find(rcc => rcc.digit === digit)?.cells || [];
+    const record = subset?.rccList?.find(rcc => Number(rcc.rccDigit ?? rcc.digit) === digit);
+    return record
+      ? [...(record.rccCells ?? record.cells ?? [])]
+      : [];
   }
 
   function subsetRccSectors(subset, digit) {
-    return subset?.rccList?.find(rcc => rcc.digit === digit)?.sectors || [];
+    const record = subset?.rccList?.find(rcc => Number(rcc.rccDigit ?? rcc.digit) === digit);
+    return record
+      ? [...(record.rccSectors ?? record.sectors ?? [])]
+      : [];
   }
 
   function alsTargetCells(leftSubset, rightSubset, digit) {
@@ -766,10 +772,7 @@
 
   function alsModuleExposedDigits(view, side) {
     const subset = alsSubsetForSide(view, side);
-    const restricted = sortedUnique([
-      ...(view.node.raw.C?.digits || []),
-      ...(view.node.raw.C?.restrictedDigits || []),
-    ]);
+    const restricted = alsBridgeDigits(view.node.raw);
     return sortedUnique((subset?.digits || []).filter(digit => !restricted.includes(digit)));
   }
 
