@@ -46,6 +46,7 @@
       grid-template-columns: minmax(0, 1fr) minmax(420px, auto) 236px;
       align-items: start;
       gap: 18px;
+      column-gap: 20px;
       padding: 24px 0 12px;
     }
 
@@ -73,12 +74,15 @@
 
     .settings-dock-actions {
       display: grid;
-      gap: 8px;
+      gap: 6px;
     }
 
     .settings-dock button {
       width: 100%;
       min-width: 0;
+      padding: 6px 8px;
+      font-size: 13px;
+      line-height: 1.15;
     }
 
     .settings-popover-holder {
@@ -143,12 +147,23 @@
       align-items: end;
     }
 
-    .header-controls {
-      padding: 10px 0 0;
+    .header-tool-frame {
+      width: max-content;
+      max-width: 100%;
+      margin: 8px 0 0;
+      padding: 6px 8px 8px;
     }
 
-    .header-tools {
-      padding: 8px 0 0;
+    .header-button-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .header-button-row button {
+      padding: 7px 9px;
+      font-size: 13px;
     }
 
     .generator-panel {
@@ -167,11 +182,17 @@
       text-transform: uppercase;
     }
 
+    .generator-panel button {
+      padding: 6px 8px;
+      font-size: 13px;
+      line-height: 1.15;
+    }
+
     .generator-fields {
       display: grid;
       grid-template-columns: auto minmax(150px, 1fr) auto;
       align-items: end;
-      gap: 10px;
+      gap: 8px;
     }
 
     .generator-fields label {
@@ -185,7 +206,7 @@
     .generator-actions {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
+      gap: 8px;
     }
 
     .generator-actions button {
@@ -669,11 +690,29 @@
       flex-wrap: wrap;
     }
 
+    .candidate-filter-toolbar-row {
+      display: grid;
+      grid-template-columns: max-content max-content;
+      grid-template-areas:
+        "digits cell"
+        "actions cell";
+      align-items: start;
+      gap: 8px;
+    }
+
+    .candidate-filter-frame {
+      width: 100%;
+      max-width: 100%;
+      margin: 0;
+      padding: 4px 5px 5px;
+    }
+
     .digit-focus-toolbar {
       display: grid;
       gap: 5px;
-      width: min(100%, 560px);
-      margin-bottom: 8px;
+      width: auto;
+      flex: 0 0 auto;
+      grid-area: digits;
     }
 
     .digit-focus-label {
@@ -685,21 +724,22 @@
 
     .digit-focus-buttons {
       display: grid;
-      grid-template-columns: repeat(9, minmax(24px, 1fr));
+      grid-template-columns: repeat(9, 32px);
       gap: 5px;
-      flex: 1;
+      width: max-content;
     }
 
     .digit-focus-button {
       min-width: 0;
       aspect-ratio: 1;
-      padding: 3px;
+      width: 32px;
+      padding: 2px;
       border: 2px solid var(--line);
       border-radius: 4px;
       background: var(--panel);
       color: var(--muted);
       font-family: Consolas, "Courier New", monospace;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 900;
       line-height: 1;
     }
@@ -725,6 +765,114 @@
       color: #111827;
       filter: grayscale(1);
       opacity: 0.58;
+    }
+
+    .candidate-size-toolbar {
+      display: grid;
+      gap: 5px;
+      width: auto;
+      flex: 0 0 auto;
+      margin: 0;
+      padding: 6px 2px;
+      grid-area: cell;
+    }
+
+    .candidate-filter-toolbar-row > .header-tool-frame {
+      grid-area: actions;
+      margin: 0;
+    }
+
+    .candidate-size-heading {
+      display: inline-flex !important;
+      align-items: center;
+      gap: 8px;
+      justify-content: flex-start;
+      width: max-content;
+    }
+
+    .candidate-size-label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .candidate-size-buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 32px);
+      gap: 5px;
+      width: max-content;
+    }
+
+    .candidate-size-button {
+      min-width: 0;
+      aspect-ratio: 1;
+      width: 32px;
+      padding: 2px;
+      border: 2px solid var(--line);
+      border-radius: 4px;
+      background: var(--panel);
+      color: var(--muted);
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .candidate-size-button:hover,
+    .candidate-size-button:focus-visible,
+    .candidate-size-button.selected {
+      border-color: #2563eb;
+      color: #1d4ed8;
+    }
+
+    .candidate-size-button.selected {
+      box-shadow: inset 0 0 0 2px #2563eb;
+    }
+
+    .candidate-size-toggle {
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: flex-start !important;
+      gap: 4px !important;
+      width: auto !important;
+      flex: 0 0 auto;
+      margin: 0;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .candidate-size-toggle input {
+      display: inline-block;
+      width: auto;
+      margin: 0;
+      accent-color: #2563eb;
+    }
+
+    .candidate-size-toggle span {
+      display: inline;
+      width: auto;
+      margin: 0;
+    }
+
+    .cell.candidate-size-filter-cell {
+      background: var(--candidate-size-filter-fill, #fff7cc) !important;
+      outline: 3px solid var(--candidate-size-filter-border, #b7791f);
+      outline-offset: -4px;
+    }
+
+    .mark.candidate-size-filter-digit {
+      color: var(--candidate-size-filter-ink, #7c5a00);
+      background: var(--candidate-size-filter-mark, rgba(255, 237, 160, .62));
+      border-radius: 4px;
+      font-weight: 900;
+    }
+
+    .vantage-position.candidate-size-filter {
+      outline: 2px solid var(--candidate-size-filter-border, #b7791f);
+      outline-offset: -2px;
+      border-radius: 2px;
     }
 
     .digit-focus-1 { --digit-focus-color: #b45309; }
@@ -1566,16 +1714,92 @@
       font-size: 16px;
     }
 
+    .pom-panel summary .search-action {
+      margin-left: auto;
+      padding: 5px 8px;
+      font-size: 12px;
+      line-height: 1;
+    }
+
     .pom-body {
       display: grid;
       gap: 10px;
       padding: 12px;
     }
 
+    .als-search-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .als-search-buttons button {
+      padding: 7px 10px;
+      font-size: 13px;
+    }
+
+    .pom-panel summary .als-search-buttons {
+      margin-left: auto;
+    }
+
     .pom-results {
       display: grid;
       gap: 10px;
       min-width: 0;
+    }
+
+    .als-dof-table-wrap {
+      overflow-x: auto;
+    }
+
+    .als-dof-table {
+      width: 100%;
+      min-width: 0;
+      border-collapse: collapse;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+    }
+
+    .als-dof-table th,
+    .als-dof-table td {
+      padding: 7px 8px;
+      border: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+    }
+
+    .als-dof-table th {
+      background: var(--bg);
+      color: var(--heavy);
+      font-family: inherit;
+      font-weight: 800;
+    }
+
+    .als-dof-notation {
+      min-width: 460px;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      line-height: 1.45;
+    }
+
+    .als-dof-table tbody tr {
+      cursor: pointer;
+    }
+
+    .als-dof-table tbody tr:hover,
+    .als-dof-table tbody tr.selected {
+      background: rgba(219, 234, 254, .58);
+    }
+
+    .als-dof-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 8px 0;
+    }
+
+    .als-dof-table td:last-child {
+      color: var(--red);
     }
 
     .strong-type-group {
@@ -1972,28 +2196,59 @@
       .board {
         margin: 0 auto;
       }
+
+      .candidate-filter-toolbar-row {
+        grid-template-columns: max-content;
+        grid-template-areas:
+          "digits"
+          "cell"
+          "actions";
+      }
+
+      .candidate-filter-frame {
+        width: 100%;
+        max-width: 100%;
+      }
     }
   </style>
 </head>
 <body>
   <header>
     <div class="header-brand">
-      <h1>StormDoku: online and offline solver</h1>
+      <h1>StormDoku: on-line | off-line</h1>
       <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo.</p>
-      <p class="app-meta">Alpha v0.1.0 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
-      <section class="toolbar control-row header-controls">
-        <button id="undo" class="secondary" title="Undo last cycle">Undo</button>
-        <button id="redo" class="secondary" title="Redo last cycle">Redo</button>
-        <button id="next">Next</button>
-        <button id="run" class="secondary">Run All</button>
-        <button id="pomCheck" class="secondary">P.O.M.</button>
-      </section>
-      <section class="toolbar control-row header-tools">
-        <button id="hiddenSubsetBuild" class="secondary" title="Search for hidden subsets">Hidden Subset</button>
-        <button id="nakedSubsetBuild" class="secondary" title="Search for naked subsets">Naked Subset</button>
-        <button id="fishBuild" class="secondary" title="Search for NxN+K Fish">Fish</button>
-        <button id="chainBuild" class="secondary" title="Search for A.I.C.">A.I.C</button>
-      </section>
+      <p class="app-meta">Alpha v0.2.1 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <fieldset class="candidate-filter-frame">
+        <legend>Digits</legend>
+        <div class="candidate-filter-toolbar-row">
+          <div class="digit-focus-toolbar" aria-label="Digit highlights">
+            <div id="digitFocusButtons" class="digit-focus-buttons"></div>
+          </div>
+          <fieldset class="candidate-size-toolbar" aria-label="Candidate size filter">
+            <legend>Cell size</legend>
+            <div class="candidate-size-heading">
+              <label class="candidate-size-toggle"
+                title="When enabled, selected digit highlights appear only in the active X, XY, XYZ, or WXYZ size filters.">
+                <input id="limitDigitHighlightsToSize" type="checkbox"
+                  aria-label="Restrict digit highlights to selected sizes">
+                <span>Mask</span>
+              </label>
+            </div>
+            <div id="candidateSizeFilterButtons" class="candidate-size-buttons"></div>
+          </fieldset>
+          <fieldset class="header-tool-frame">
+            <legend>Actions</legend>
+            <div class="header-button-row">
+              <button id="undo" class="secondary" title="Undo last cycle">Undo</button>
+              <button id="redo" class="secondary" title="Redo last cycle">Redo</button>
+              <button id="next">Next</button>
+              <button id="run" class="secondary">Run All</button>
+              <button id="applyBasics" class="secondary" type="button"
+                title="Last Man Standing, subsets, and basic fish size 1-4">Basics</button>
+            </div>
+          </fieldset>
+        </div>
+      </fieldset>
     </div>
     <fieldset class="generator-panel">
       <legend>Generator</legend>
@@ -2035,8 +2290,7 @@
       </div>
       <div class="puzzle-input-group">
         <label>
-          Puzzle String
-          <textarea id="input" spellcheck="false"
+          <textarea id="input" aria-label="Puzzle string" spellcheck="false"
             title="Accepts 81-character puzzle strings, 729 candidate bits, or candidate-grid text."></textarea>
         </label>
         <div class="puzzle-input-actions">
@@ -2057,6 +2311,10 @@
         <button id="fishSettingsButton" class="secondary" type="button"
           popovertarget="fishSettingsPopover" popovertargetaction="toggle">
           N x (N + K) Fish Finder Settings
+        </button>
+        <button id="alsDofSettingsButton" class="secondary" type="button"
+          popovertarget="alsDofSettingsPopover" popovertargetaction="toggle">
+          ALS DOF Settings
         </button>
         <button id="difficultySettingsButton" class="secondary" type="button"
           popovertarget="difficultySettingsPopover" popovertargetaction="toggle">
@@ -2230,6 +2488,26 @@
     </div>
 
     <div class="settings-popover-holder">
+      <div id="alsDofSettingsPopover" class="chain-settings-popover" popover>
+        <div class="chain-settings-grid">
+          <fieldset>
+            <legend>ALS DOF Search Range</legend>
+            <div class="chain-settings-row">
+              <label title="Maximum number of candidate digits allowed in each ALS. Larger values increase search cost.">
+                Maximum ALS Size / Digits
+                <input id="alsDofMaxDigits" type="number" min="2" max="9" step="1" value="6">
+              </label>
+              <label title="Maximum number of auxiliary ALSs in one ALS-DOF collection.">
+                Maximum Auxiliary ALSs
+                <input id="alsDofMaxAuxiliary" type="number" min="1" max="9" step="1" value="3">
+              </label>
+            </div>
+          </fieldset>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-popover-holder">
       <div id="fishSettingsPopover" class="fish-settings-popover" popover>
       <div class="fish-settings-grid">
         <fieldset>
@@ -2316,10 +2594,6 @@
 
     <section class="layout">
       <div class="board-column">
-        <div class="digit-focus-toolbar" aria-label="Digit highlights">
-          <span class="digit-focus-label">Digits</span>
-          <div id="digitFocusButtons" class="digit-focus-buttons"></div>
-        </div>
         <div class="grid-frame">
           <div class="grid-side-label">Rows</div>
           <div id="gridRowTitle" class="grid-row-title">
@@ -2343,7 +2617,10 @@
             <div id="puzzleStateMeta" class="puzzle-state-meta" aria-live="polite"></div>
             <div class="string-actions" aria-label="Copy puzzle strings">
               <button id="copyPuzzle81" class="secondary" type="button" title="Copy the original 81-character puzzle string">Copy 81</button>
-              <button id="copyPuzzle729" class="secondary" type="button" title="Copy the current 729-bit candidate string">Copy 729</button>
+              <button id="copyPuzzle729" class="secondary" type="button"
+                title="Copy 729 bits: one fixed bit for each given or solved cell, otherwise its remaining pencilmarks">
+                Copy 729
+              </button>
             </div>
             <details class="solution-inline" id="solutionPanel">
               <summary>Solution</summary>
@@ -2390,6 +2667,10 @@
             <div class="pom-body">
               <div class="report-subsection-body">
                 <div class="example-item">
+                  <button class="secondary example-load" type="button" data-example-puzzle="85..7.269.7.5.934.3..264758.2764..351.8.3.6.7..6.21894485316..276149....29385..1.">Lulz grid</button>
+                  <code class="example-puzzle">85..7.269.7.5.934.3..264758.2764..351.8.3.6.7..6.21894485316..276149....29385..1.</code>
+                </div>
+                <div class="example-item">
                   <button class="secondary example-load" type="button" data-example-puzzle="46..83....5.21.436.134..8....164859...4.7.1...951327....6...38.53.8.4......39...5">XY - example</button>
                   <code class="example-puzzle">46..83....5.21.436.134..8....164859...4.7.1...951327....6...38.53.8.4......39...5</code>
                 </div>
@@ -2400,6 +2681,14 @@
                 <div class="example-item">
                   <button class="secondary example-load" type="button" data-example-puzzle="4..8.1..28....3....2596..3..3...825....5..9...8....6..9...4...834...5.......9.7..">4x4+2 fish</button>
                   <code class="example-puzzle">4..8.1..28....3....2596..3..3...825....5..9...8....6..9...4...834...5.......9.7..</code>
+                </div>
+                <div class="example-item">
+                  <button class="secondary example-load" type="button" data-example-puzzle=".68..314974...6.....5...7.2.7.5.14...512.....38....59.....8...45.....8.7.....5..6">WXYZ-Wing</button>
+                  <code class="example-puzzle">.68..314974...6.....5...7.2.7.5.14...512.....38....59.....8...45.....8.7.....5..6</code>
+                </div>
+                <div class="example-item">
+                  <button class="secondary example-load" type="button" data-example-puzzle="1..4.69.....1...24...2......82.4.7..5....8....9....3..2.78..5...68.752....592.68.">XY-Wing</button>
+                  <code class="example-puzzle">1..4.69.....1...24...2......82.4.7..5....8....9....3..2.78..5...68.752....592.68.</code>
                 </div>
               </div>
             </div>
@@ -2419,25 +2708,60 @@
           </div>
         </details>
         <details class="pom-panel" id="hiddenSubsetPanel">
-          <summary><h2>Hidden Subsets</h2></summary>
+          <summary>
+            <h2>Hidden Subsets</h2>
+            <button id="hiddenSubsetBuild" class="secondary search-action" type="button"
+              title="Search for hidden subsets">Search</button>
+          </summary>
           <div class="pom-body">
             <div id="hiddenSubsetResults" class="pom-results"></div>
           </div>
         </details>
         <details class="pom-panel" id="nakedSubsetPanel">
-          <summary><h2>Naked Subsets</h2></summary>
+          <summary>
+            <h2>Naked Subsets</h2>
+            <button id="nakedSubsetBuild" class="secondary search-action" type="button"
+              title="Search for naked subsets">Search</button>
+          </summary>
           <div class="pom-body">
             <div id="nakedSubsetResults" class="pom-results"></div>
           </div>
         </details>
         <details class="pom-panel" id="fishPanel">
-          <summary><h2>Fish</h2></summary>
+          <summary>
+            <h2>Fish: n x n+k</h2>
+            <button id="fishBuild" class="secondary search-action" type="button"
+              title="Search for NxN+K Fish">Search</button>
+          </summary>
           <div class="pom-body">
             <div id="fishResults" class="pom-results"></div>
           </div>
         </details>
+        <details class="pom-panel" id="alsSearchPanel">
+          <summary>
+            <h2>Almost Locked Sets</h2>
+            <div class="als-search-buttons" aria-label="Almost Locked Set searches">
+              <button id="alsXzBuild" class="secondary" type="button"
+                title="Search ALS-XZ using ALS_RCC and type 5 links only">ALS-XZ</button>
+              <button id="alsXyBuild" class="secondary" type="button"
+                title="Search ALS-XY using ALS_RCC and type 5 links only">ALS-XY</button>
+              <button id="alsChainBuild" class="secondary" type="button"
+                title="Search ALS chains using ALS_RCC and type 5 links only">ALS-Chain</button>
+              <button id="alsDofBuild" class="secondary" type="button"
+                title="Search ALS-DOF auxiliary nets">ALS-DOF</button>
+            </div>
+          </summary>
+          <div class="pom-body">
+            <div id="alsSearchResults" class="pom-results">No ALS search has been run.</div>
+            <div id="alsDofResults" class="pom-results">No ALS-DOF search has been run.</div>
+          </div>
+        </details>
         <details class="pom-panel" id="chainPanel">
-          <summary><h2>Chains</h2></summary>
+          <summary>
+            <h2>Alternating Inference Chain</h2>
+            <button id="chainBuild" class="secondary search-action" type="button"
+              title="Search for Alternating Inference Chain">Search</button>
+          </summary>
           <div class="pom-body">
             <div class="chain-tools">
               <button id="chainCopy" class="secondary" type="button">Copy Eureka</button>
@@ -2454,7 +2778,11 @@
           </div>
         </details>
         <details class="pom-panel" id="pomPanel">
-          <summary><h2>POM Check Results</h2></summary>
+          <summary>
+            <h2>Pattern Overlay Method</h2>
+            <button id="pomCheck" class="secondary search-action" type="button"
+              title="Run the Pattern Overlay Method check">Check</button>
+          </summary>
           <div class="pom-body">
             <div id="pomResults" class="pom-results">No POM check has been run.</div>
           </div>
@@ -2468,6 +2796,7 @@
   <script src="./src/pom-core.js"></script>
   <script src="./src/als-core.js?v=20260917-1"></script>
   <script src="./src/als-link-core.js?v=20260917-1"></script>
+  <script src="./src/als-dof-core.js?v=20260918-1"></script>
   <script src="./src/ahs-core.js?v=20260912-5"></script>
   <script src="./src/subset-report-core.js"></script>
   <script src="./src/mini-sectors-core.js"></script>
@@ -2477,6 +2806,8 @@
     const core = window.StormDoku;
     const boardEl = document.getElementById('board');
     const digitFocusButtonsEl = document.getElementById('digitFocusButtons');
+    const candidateSizeFilterButtonsEl = document.getElementById('candidateSizeFilterButtons');
+    const limitDigitHighlightsToSizeEl = document.getElementById('limitDigitHighlightsToSize');
     const gridColumnTitleEl = document.getElementById('gridColumnTitle');
     const gridColumnNumbersEl = document.getElementById('gridColumnNumbers');
     const gridRowHeaderEl = document.getElementById('gridRowHeader');
@@ -2508,7 +2839,9 @@
     const fishResultsEl = document.getElementById('fishResults');
     const nakedSubsetResultsEl = document.getElementById('nakedSubsetResults');
     const hiddenSubsetResultsEl = document.getElementById('hiddenSubsetResults');
+    const alsSearchResultsEl = document.getElementById('alsSearchResults');
     const chainResultsEl = document.getElementById('chainResults');
+    const alsDofResultsEl = document.getElementById('alsDofResults');
     const chainOutputEl = document.getElementById('chainOutput');
     const illegalChainAreaEl = document.getElementById('illegalChainArea');
     const illegalChainHeadingEl = document.getElementById('illegalChainHeading');
@@ -2518,6 +2851,7 @@
     const chainClearEl = document.getElementById('chainClear');
     const undoEl = document.getElementById('undo');
     const redoEl = document.getElementById('redo');
+    const applyBasicsEl = document.getElementById('applyBasics');
     const alsBuildEl = document.getElementById('alsBuild');
     const alsLinkBuildEl = document.getElementById('alsLinkBuild');
     const ahsBuildEl = document.getElementById('ahsBuild');
@@ -2526,6 +2860,12 @@
     const fishBuildEl = document.getElementById('fishBuild');
     const nakedSubsetBuildEl = document.getElementById('nakedSubsetBuild');
     const hiddenSubsetBuildEl = document.getElementById('hiddenSubsetBuild');
+    const alsXzBuildEl = document.getElementById('alsXzBuild');
+    const alsXyBuildEl = document.getElementById('alsXyBuild');
+    const alsChainBuildEl = document.getElementById('alsChainBuild');
+    const alsDofBuildEl = document.getElementById('alsDofBuild');
+    const alsDofMaxDigitsEl = document.getElementById('alsDofMaxDigits');
+    const alsDofMaxAuxiliaryEl = document.getElementById('alsDofMaxAuxiliary');
     const chainDepthEl = document.getElementById('chainDepth');
     const chainAlsRccEl = document.getElementById('chainAlsRcc');
     const chainStrongTypeEls = Array.from({ length: 5 }, (_, index) =>
@@ -2610,8 +2950,10 @@
     let pomReport = null;
     let alsReport = null;
     let alsLinkReport = null;
+    let alsDofReport = null;
     let ahsReport = null;
     let selectedAlsDof = null;
+    let selectedAlsDofIndex = null;
     let selectedAlsId = null;
     const openAlsSizeGroups = new Set();
     let selectedAhsDof = null;
@@ -2631,10 +2973,13 @@
     let selectedHiddenSubsetSize = null;
     let selectedHiddenSubsetKey = null;
     let chainReport = null;
+    let alsSearchFamily = null;
     let selectedChainIndex = null;
     let ratingReport = null;
     let gridView = 'RC';
     const activeDigitHighlights = new Set();
+    const activeCandidateSizeFilters = new Set();
+    let limitDigitHighlightsToSize = false;
     let historyPreview = null;
     let busy = false;
     let generationToken = 0;
@@ -2667,7 +3012,7 @@
       }
 
       try {
-        searchWorker = new Worker(new URL('./src/search-worker.js', document.baseURI));
+        searchWorker = new Worker(new URL('./src/search-worker.js?v=20260917-2', document.baseURI));
         searchWorker.onmessage = event => {
           const { id, result, error } = event.data || {};
           const job = searchWorkerJobs.get(id);
@@ -2858,6 +3203,97 @@
       }
     }
 
+    function candidateSizeDigits(cell) {
+      // Cell size is the full remaining candidate count. Digit highlights
+      // restrict which marks are shown, but do not change X/XY/XYZ/WXYZ.
+      return cand[cell] || [];
+    }
+
+    function candidateSizeFilterStyle() {
+      const selectedDigits = [...activeDigitHighlights].sort((left, right) => left - right);
+      if (!selectedDigits.length) {
+        return {
+          fill: '#fff7cc',
+          border: '#b7791f',
+          ink: '#7c5a00',
+          mark: 'rgba(255, 237, 160, .62)',
+        };
+      }
+
+      const key = selectedDigits.join('');
+      let hash = 0;
+      for (const character of key) hash = (hash * 31 + character.charCodeAt(0)) % 360;
+      return {
+        fill: `hsl(${hash}, 86%, 91%)`,
+        border: `hsl(${hash}, 55%, 42%)`,
+        ink: `hsl(${hash}, 58%, 30%)`,
+        mark: `hsla(${hash}, 82%, 76%, .62)`,
+      };
+    }
+
+    function applyCandidateSizeFilterStyle(element, style) {
+      element.style.setProperty('--candidate-size-filter-fill', style.fill);
+      element.style.setProperty('--candidate-size-filter-border', style.border);
+      element.style.setProperty('--candidate-size-filter-ink', style.ink);
+      element.style.setProperty('--candidate-size-filter-mark', style.mark);
+    }
+
+    function candidateSizeFilterMatches(cell) {
+      if (!activeCandidateSizeFilters.size || puzzle[cell] || promotedValues[cell]) return false;
+      const values = candidateSizeDigits(cell);
+      if (!values.length || !activeCandidateSizeFilters.has(values.length)) return false;
+      if (activeDigitHighlights.size) {
+        const selectedDigits = [...activeDigitHighlights].sort((left, right) => left - right);
+        const cellDigits = [...values].sort((left, right) => left - right);
+        const isExactSet = cellDigits.length === selectedDigits.length
+          && cellDigits.every((digit, index) => digit === selectedDigits[index]);
+        const isOneStepSubset = cellDigits.length === selectedDigits.length - 1
+          && cellDigits.every(digit => activeDigitHighlights.has(digit));
+        if (!isExactSet && !isOneStepSubset) return false;
+      }
+      return true;
+    }
+
+    function candidateSizeFilterDigitMatches(cell, digit) {
+      return candidateSizeFilterMatches(cell)
+        && (activeDigitHighlights.size === 0 || activeDigitHighlights.has(digit))
+        && cellHasCandidate(cell, digit);
+    }
+
+    function digitHighlightIsVisible(cell, digit) {
+      return activeDigitHighlights.has(digit)
+        && (!limitDigitHighlightsToSize
+          || !activeCandidateSizeFilters.size
+          || candidateSizeFilterMatches(cell));
+    }
+
+    function renderCandidateSizeFilterButtons() {
+      candidateSizeFilterButtonsEl.textContent = '';
+      const labels = ['X', 'XY', 'XYZ', 'WXYZ'];
+      for (let size = 1; size <= 4; size++) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'candidate-size-button';
+        button.textContent = labels[size - 1];
+        button.title = `Highlight exact ${labels[size - 1]} cells and one-size-lower selected subsets`;
+        button.setAttribute('aria-label', `Highlight exact ${labels[size - 1]} cells and one-size-lower selected subsets`);
+        button.setAttribute('aria-pressed', String(activeCandidateSizeFilters.has(size)));
+        button.classList.toggle('selected', activeCandidateSizeFilters.has(size));
+        button.addEventListener('click', () => {
+          if (activeCandidateSizeFilters.has(size)) activeCandidateSizeFilters.delete(size);
+          else activeCandidateSizeFilters.add(size);
+          renderCandidateSizeFilterButtons();
+          renderBoard();
+        });
+        candidateSizeFilterButtonsEl.appendChild(button);
+      }
+    }
+
+    limitDigitHighlightsToSizeEl.addEventListener('change', () => {
+      limitDigitHighlightsToSize = limitDigitHighlightsToSizeEl.checked;
+      renderBoard();
+    });
+
     function initFishSettings() {
       fillNumberSelect(fishMinSizeEl, 1, 7, 2);
       fillNumberSelect(fishMaxSizeEl, 1, 7, 4);
@@ -2979,6 +3415,11 @@
     function selectedAlsRecord() {
       if (!alsReport || selectedAlsId === null) return null;
       return alsReport.find(record => record.uniqueID === selectedAlsId) || null;
+    }
+
+    function selectedAlsDofRecord() {
+      if (!alsDofReport || selectedAlsDofIndex === null) return null;
+      return alsDofReport.results[selectedAlsDofIndex] || null;
     }
 
     function selectedAhsRecord() {
@@ -3702,6 +4143,50 @@
       boardEl.appendChild(svg);
     }
 
+    function renderAlsDofOverlay(record, vantage = false) {
+      if (!record || !record.primaryA) return;
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('class', 'chain-overlay als-dof-overlay');
+      svg.setAttribute('viewBox', '0 0 100 100');
+      svg.setAttribute('aria-hidden', 'true');
+
+      const hubSide = {
+        cells: record.primaryA.cells || [],
+        digits: record.primaryA.digits || [],
+      };
+      const hubColor = alsColorAt(0);
+      const drawBoxes = vantage ? drawVantageSideBoxes : drawSideDigitBoxes;
+      const anchorPair = vantage ? vantageClosestAnchorPair : groupedAnchorPair;
+      drawBoxes(svg, hubSide, 'chain-side-box chain-side-als-box', hubColor);
+
+      const auxiliary = record.auxiliary || [];
+      const center = (auxiliary.length - 1) / 2;
+      for (const [index, node] of auxiliary.entries()) {
+        const side = { cells: node.cells || [], digits: node.digits || [] };
+        const color = alsColorAt(index + 1);
+        drawBoxes(svg, side, 'chain-side-box chain-side-als-box', color);
+
+        const weakDigits = node.rccDigits?.length
+          ? node.rccDigits
+          : [node.rccDigit ?? node.aBridges?.[0]?.digit ?? null].filter(digit => digit != null);
+        const digitCenter = (weakDigits.length - 1) / 2;
+        for (const [digitIndex, weakDigit] of weakDigits.entries()) {
+          const pair = anchorPair(hubSide, side, weakDigit, weakDigit);
+          if (!pair) continue;
+          drawArc(
+            svg,
+            pair.from,
+            pair.to,
+            'chain-weak-line',
+            -4.5,
+            (index - center) * 1.2 + (digitIndex - digitCenter) * .7,
+          );
+        }
+      }
+
+      boardEl.appendChild(svg);
+    }
+
     function chainHighlights(chain) {
       const marks = new Set();
       const xorEntryMarks = new Set();
@@ -3859,6 +4344,7 @@
       const chain = selectedChain();
       const chainView = chainHighlights(chain);
       const alsRecord = selectedAlsRecord();
+      const alsDofRecord = selectedAlsDofRecord();
       const ahsRecord = selectedAhsRecord();
       const alsRecordCells = new Set(alsRecord?.alsAllCells || []);
       const alsRecordMarks = new Set();
@@ -3870,6 +4356,34 @@
       const alsRecordColor = alsRecord
         ? ALS_CHAIN_COLORS[hashString(String(alsRecord.uniqueID)) % ALS_CHAIN_COLORS.length]
         : null;
+      const alsDofMarks = new Set();
+      const alsDofCells = new Set();
+      const alsDofStyleByCell = new Map();
+      const alsDofStyleByAtom = new Map();
+      if (alsDofRecord) {
+        const nodes = [
+          { node: alsDofRecord.primaryA, color: alsColorAt(0) },
+          ...(alsDofRecord.auxiliary || []).map((node, index) => ({
+            node,
+            color: alsColorAt(index + 1),
+          })),
+        ];
+        for (const { node, color } of nodes) {
+          for (const cell of node?.cells || []) {
+            alsDofCells.add(cell);
+            alsDofStyleByCell.set(cell, color);
+            for (const digit of node?.digits || []) {
+              if (!cellHasCandidate(cell, digit)) continue;
+              const atom = atomKey(cell, digit);
+              alsDofMarks.add(atom);
+              alsDofStyleByAtom.set(atom, color);
+            }
+          }
+        }
+      }
+      const alsDofElimMarks = new Set(
+        (alsDofRecord?.eliminations || []).map(item => atomKey(item.cell, item.digit)),
+      );
       const ahsRecordCells = new Set(ahsRecord?.ahsAllCells || []);
       const ahsRecordMarks = new Set();
       for (const cell of ahsRecord?.ahsAllCells || []) {
@@ -3931,6 +4445,12 @@
       const fins = new Set(activeStep?.fins || activeStep?.triggerCells || []);
       const endofins = new Set(activeStep?.endofins || activeStep?.endoFins || []);
       const patternDigits = new Set(activeStep?.digits || []);
+      const candidateSizeFilterCells = new Set();
+      if (activeCandidateSizeFilters.size) {
+        for (let cell = 0; cell < 81; cell++) {
+          if (candidateSizeFilterMatches(cell)) candidateSizeFilterCells.add(cell);
+        }
+      }
       const baseCells = activeStep?.baseSectors
         ? cellsForSectors(activeStep.baseSectors)
         : cellsForHouse(activeStep?.base);
@@ -3943,6 +4463,8 @@
 
       return {
         activeDigits: activeDigitHighlights,
+        candidateSizeFilterCells,
+        candidateSizeFilterStyle: candidateSizeFilterStyle(),
         removedMarks,
         vertices,
         fins,
@@ -3958,6 +4480,13 @@
         alsRecordCells,
         alsRecordMarks,
         alsRecordColor,
+        isAlsDof: !!alsDofRecord,
+        alsDofRecord,
+        alsDofCells,
+        alsDofStyleByCell,
+        alsDofMarks,
+        alsDofStyleByAtom,
+        alsDofElimMarks,
         isAhsRecord: !!ahsRecord,
         ahsRecordCells,
         ahsRecordMarks,
@@ -4061,8 +4590,10 @@
             const cell = vantageCellFromSlot(view, sector, position);
             const atom = atomKey(cell, digit);
             const positionActive = positions.has(position);
-            const isDigitFocus = positionActive && highlights.activeDigits.has(digit);
-            const isElim = highlights.removedMarks.has(atom);
+            const isDigitFocus = positionActive && digitHighlightIsVisible(cell, digit);
+            const isCandidateSizeFilter = candidateSizeFilterDigitMatches(cell, digit);
+            const isAlsDofElim = highlights.alsDofElimMarks.has(atom);
+            const isElim = highlights.removedMarks.has(atom) || isAlsDofElim;
             const isFishVertex = highlights.isFish
               && highlights.patternDigits.has(digit)
               && highlights.vertices.has(cell);
@@ -4082,6 +4613,7 @@
             const isChainWeak = highlights.isChain && highlights.chainWeakMarks.has(atom);
             const isChainAls = highlights.isChain && highlights.chainAlsMarks.has(atom);
             const isAlsRecord = highlights.isAlsRecord && highlights.alsRecordMarks.has(atom);
+            const isAlsDof = highlights.isAlsDof && highlights.alsDofMarks.has(atom);
             const isAhsRecord = highlights.isAhsRecord && highlights.ahsRecordMarks.has(atom);
             const isChainStart = highlights.isChain && highlights.chainStartMarks.has(atom);
             const isChainEnd = highlights.isChain && highlights.chainEndMarks.has(atom);
@@ -4104,6 +4636,10 @@
 
             if (positionActive) mark.classList.add('active');
             if (isDigitFocus) mark.classList.add('digit-focus', 'digit-focus-' + digit);
+            if (isCandidateSizeFilter) {
+              mark.classList.add('candidate-size-filter');
+              applyCandidateSizeFilterStyle(mark, highlights.candidateSizeFilterStyle);
+            }
             if (isElim) mark.classList.add('elim');
             if (isFishVertex || isFishFin) mark.classList.add('fish');
             if (isFishEndofin) mark.classList.add('fish-endofin');
@@ -4116,19 +4652,20 @@
               mark.classList.add(isChainXorExit || isChainEnd ? 'chain-xor-exit' : 'strong-end');
             }
             if (isChainWeak) mark.classList.add('chain-weak');
-            if (isChainAls || isAlsRecord) mark.classList.add('chain-als');
+            if (isChainAls || isAlsRecord || isAlsDof) mark.classList.add('chain-als');
             if (isAhsRecord) mark.classList.add('ahs-record');
             if (isHiddenGhost && !positionActive) mark.classList.add('active');
 
             if (isChainAls) applyAlsColorVars(mark, highlights.chainAlsStyleByAtom.get(atom));
             if (isAlsRecord) applyAlsColorVars(mark, highlights.alsRecordColor);
+            if (isAlsDof) applyAlsColorVars(mark, highlights.alsDofStyleByAtom.get(atom));
             if (isAhsRecord) applyAhsColorVars(mark, highlights.ahsRecordColor);
 
             const hasOverlay = isElim || isFishVertex || isFishFin || isFishEndofin
               || isSubsetDigit || isChain || isChainXorEntry || isChainXorExit
-              || isChainWeak || isChainAls || isAlsRecord || isAhsRecord
+              || isChainWeak || isChainAls || isAlsRecord || isAlsDof || isAhsRecord
               || isChainStart || isChainEnd || strongLinkStart || strongLinkEnd || isHiddenGhost
-              || isDigitFocus;
+              || isDigitFocus || isCandidateSizeFilter;
             if (!positionActive && !hasOverlay) mark.textContent = '';
             miniGrid.appendChild(mark);
           }
@@ -4139,6 +4676,7 @@
       }
 
       if (highlights.isChain) renderVantageChainOverlay(highlights.chain);
+      if (highlights.isAlsDof) renderAlsDofOverlay(highlights.alsDofRecord, true);
       if (highlights.isStrongLink) renderVantageStrongLinkOverlay(highlights.strongLink);
     }
 
@@ -4162,8 +4700,12 @@
        el.className = 'cell';
        if (puzzle[cell]) el.classList.add('given');
        if (promotedValues[cell]) el.classList.add('solved');
+       if (highlights.candidateSizeFilterCells.has(cell)) {
+         el.classList.add('candidate-size-filter-cell');
+         applyCandidateSizeFilterStyle(el, highlights.candidateSizeFilterStyle);
+       }
        const fixedDigit = puzzle[cell] || promotedValues[cell] || 0;
-       if (fixedDigit && highlights.activeDigits.has(fixedDigit)) {
+       if (fixedDigit && digitHighlightIsVisible(cell, fixedDigit)) {
          el.classList.add('digit-focus-cell', 'digit-focus-' + fixedDigit);
        }
         if (highlights.isFish && highlights.baseCells.has(cell)) el.classList.add('fish-base');
@@ -4182,6 +4724,10 @@
         if (highlights.isAlsRecord && highlights.alsRecordCells.has(cell)) {
           el.classList.add('chain-als-cell');
           applyAlsColorVars(el, highlights.alsRecordColor);
+        }
+        if (highlights.isAlsDof && highlights.alsDofCells.has(cell)) {
+          el.classList.add('chain-als-cell');
+          applyAlsColorVars(el, highlights.alsDofStyleByCell.get(cell));
         }
         if (highlights.isAhsRecord && highlights.ahsRecordCells.has(cell)) {
           el.classList.add('ahs-record-cell');
@@ -4209,8 +4755,9 @@
           for (let digit = 1; digit <= 9; digit++) {
             const mark = document.createElement('span');
             mark.className = 'mark';
-            const isElim = highlights.removedMarks.has(`${cell}:${digit}`);
             const atomKey = `${cell}:${digit}`;
+            const isAlsDofElim = highlights.alsDofElimMarks.has(atomKey);
+            const isElim = highlights.removedMarks.has(atomKey) || isAlsDofElim;
             const isSetDigit = highlights.isSubset && highlights.patternDigits.has(digit) && highlights.vertices.has(cell);
             const isFishVertexDigit = highlights.isFish && highlights.patternDigits.has(digit) && highlights.vertices.has(cell);
             const isFishFinDigit = highlights.isFish && highlights.patternDigits.has(digit)
@@ -4224,6 +4771,7 @@
             const isChainWeakDigit = highlights.isChain && highlights.chainWeakMarks.has(atomKey);
             const isChainAlsDigit = highlights.isChain && highlights.chainAlsMarks.has(atomKey);
             const isAlsRecordDigit = highlights.isAlsRecord && highlights.alsRecordMarks.has(atomKey);
+            const isAlsDofDigit = highlights.isAlsDof && highlights.alsDofMarks.has(atomKey);
             const isAhsRecordDigit = highlights.isAhsRecord && highlights.ahsRecordMarks.has(atomKey);
             const isChainStartDigit = highlights.isChain && highlights.chainStartMarks.has(atomKey);
             const isChainEndDigit = highlights.isChain && highlights.chainEndMarks.has(atomKey);
@@ -4240,8 +4788,9 @@
             const isStrongLinkEndDigit = highlights.isStrongLink
               && (highlights.strongLinkEndMarks.has(atomKey) || strongLinkPartitionEndDigit);
            const isStrongLinkDigit = isStrongLinkStartDigit || isStrongLinkEndDigit;
-           const hasCandidate = cellHasCandidate(cell, digit);
-           const isDigitFocus = hasCandidate && highlights.activeDigits.has(digit);
+            const hasCandidate = cellHasCandidate(cell, digit);
+           const isDigitFocus = hasCandidate && digitHighlightIsVisible(cell, digit);
+           const isCandidateSizeFilter = candidateSizeFilterDigitMatches(cell, digit);
            const isHiddenGhostDigit =
               highlights.isHiddenSubset &&
               highlights.baseCells.has(cell) &&
@@ -4252,8 +4801,12 @@
 
             mark.textContent = markFor(cell, digit)
               || (isElim || (hasCandidate && (isFishDigit || isFishEndofinDigit || isChainDigit || isStrongLinkDigit
-                || isAlsRecordDigit || isAhsRecordDigit || isDigitFocus)) ? digit : '');
+                || isAlsRecordDigit || isAlsDofDigit || isAhsRecordDigit || isDigitFocus || isCandidateSizeFilter)) ? digit : '');
            if (isDigitFocus) mark.classList.add('digit-focus', 'digit-focus-' + digit);
+           if (isCandidateSizeFilter) {
+             mark.classList.add('candidate-size-filter-digit');
+             applyCandidateSizeFilterStyle(mark, highlights.candidateSizeFilterStyle);
+           }
            if (isSetDigit) mark.classList.add('set-digit');
            if (isHiddenGhostDigit) mark.classList.add('hidden-ghost-digit');
             if (isFishDigit) mark.classList.add('fish-digit');
@@ -4269,6 +4822,10 @@
             if (isAlsRecordDigit) {
               mark.classList.add('chain-als-digit');
               applyAlsColorVars(mark, highlights.alsRecordColor);
+            }
+            if (isAlsDofDigit) {
+              mark.classList.add('chain-als-digit');
+              applyAlsColorVars(mark, highlights.alsDofStyleByAtom.get(atomKey));
             }
             if (isAhsRecordDigit) {
               mark.classList.add('ahs-record-digit');
@@ -4291,6 +4848,7 @@
 
       if (highlights.isSubset) renderSectorFrames(activeStep?.base);
       if (highlights.isChain) renderChainOverlay(highlights.chain);
+      if (highlights.isAlsDof) renderAlsDofOverlay(highlights.alsDofRecord);
       if (highlights.isStrongLink) renderStrongLinkOverlay(highlights.strongLink);
     }
 
@@ -4298,7 +4856,7 @@
       puzzleStringEl.textContent = core.encode(originalPuzzle);
       const givenCount = originalPuzzle.reduce((count, value) => count + (value ? 1 : 0), 0);
       const pencilmarkCount = cand.reduce((count, values, cell) =>
-        count + (puzzle[cell] ? 0 : values.length), 0);
+        count + (puzzle[cell] || promotedValues[cell] ? 0 : (values || []).length), 0);
       puzzleStateMetaEl.textContent = `Givens [${givenCount}]  Pencilmarks [${pencilmarkCount}]`;
       solutionStringEl.textContent = solution ? solution.join('') : 'none';
     }
@@ -4306,7 +4864,8 @@
     function current729String() {
       const bits = [];
       for (let cell = 0; cell < 81; cell++) {
-        const values = puzzle[cell] ? [puzzle[cell]] : (cand[cell] || []);
+        const fixedDigit = puzzle[cell] || promotedValues[cell] || 0;
+        const values = fixedDigit ? [fixedDigit] : (cand[cell] || []);
         for (let digit = 1; digit <= 9; digit++) bits.push(values.includes(digit) ? '1' : '0');
       }
       return bits.join('');
@@ -4329,6 +4888,14 @@
         fallback.remove();
         setStatus(copied ? `${label} string copied.` : `${label} string selected for copying.`, 'ok');
       }
+    }
+
+    async function copyAlsDofResult(result) {
+      if (!result || !result.verification?.ok) {
+        setStatus('No verified ALS-DOF result selected.', 'warn');
+        return;
+      }
+      await copyPuzzleString(core.formatAlsDof(result), 'ALS-DOF Eureka');
     }
 
     function openReportPanel(resultEl) {
@@ -4366,6 +4933,7 @@
       renderAhsReport();
       renderStrongLinkReport();
       renderFishReport();
+      renderAlsDofReport();
       renderNakedSubsetReport();
       renderHiddenSubsetReport();
       renderChainReport();
@@ -4818,12 +5386,12 @@
         if (size === 3) {
           const value = chainMathScore(3, chain, 2, 3);
           return define(ratingCategoryForValue(value), value,
-            `B.A.R.N.S. XYZ ${form}`);
+            `XYZ ${form}`);
         }
         if (size === 4) {
           const value = chainMathScore(4, chain, 4, 4);
           return define(ratingCategoryForValue(value), value,
-            `B.A.R.N.S. WXYZ ${form}`);
+            `WXYZ ${form}`);
         }
       }
 
@@ -6771,6 +7339,7 @@
       budget = 'interactive',
       profile = null,
       buildSets = true,
+      phase = null,
     ) {
       const includeAlsRcc = profile?.includeAlsRcc ?? chainAlsRccEl.checked;
       const generator = budget === 'generator';
@@ -6805,22 +7374,293 @@
         maxSizeDOF: generator ? 4 : 8,
         maxSizeFox: generator ? 5 : 7,
         ...(generator ? { searchLimit: true } : {}),
-      }) : null;
+      }).filter(als => phase?.alsCellCount == null
+        || (als.alsAllCells || []).length === phase.alsCellCount) : null;
       const alsLinkSet = buildSets && includeAlsRcc ? core.buildAlsLinks(candidateGrid, {
         alsList,
         strictSingleCommon: true,
+        xzOnly: phase?.alsLinkMode === 'xz-only',
         maxLinks: limits.maxAlsLinks,
       }) : null;
+      const filteredAlsLinkSet = phase?.alsModuleKinds && alsLinkSet
+        ? alsLinkSet.map(bucket => bucket.filter(link => phase.alsModuleKinds.includes(link.moduleKind)))
+        : alsLinkSet;
 
       return {
         strongSet,
         alsList,
-        alsLinkSet,
+        alsLinkSet: filteredAlsLinkSet,
         includeAlsRcc,
         strongLinkTypes,
         maxDepth: profile?.maxDepth == null ? maxDepth : Math.min(maxDepth, profile.maxDepth),
         ...limits,
       };
+    }
+
+    function phaseCombinations(values, size) {
+      if (size < 1 || size > values.length) return [];
+      const result = [];
+      const current = [];
+      const visit = start => {
+        if (current.length === size) {
+          result.push([...current]);
+          return;
+        }
+        for (let index = start; index < values.length; index++) {
+          current.push(values[index]);
+          visit(index + 1);
+          current.pop();
+        }
+      };
+      visit(0);
+      return result;
+    }
+
+    function chainSearchPhasePlan(maxDepth, profile = null) {
+      const includeAls = profile?.includeAlsRcc ?? chainAlsRccEl.checked;
+      const strongLinkTypes = [...new Set(
+        (profile?.strongLinkTypes || chainStrongTypeEls
+          .map((element, index) => element.checked ? index : null)
+          .filter(index => index !== null))
+          .filter(type => Number.isInteger(type) && type >= 0 && type <= 4),
+      )].sort((left, right) => left - right);
+      const phases = [];
+      const addPhase = (name, types, options = {}) => {
+        const phaseDepth = Math.min(maxDepth, options.maxDepth || maxDepth);
+        if (phaseDepth < 2) return;
+        phases.push({
+          name,
+          includeAls: !!options.includeAls,
+          strongLinkTypes: [...types],
+          maxDepth: phaseDepth,
+          requireAls: !!options.requireAls,
+          alsCellCount: options.alsCellCount,
+          alsModuleKinds: options.alsModuleKinds || null,
+          alsLinkMode: options.alsLinkMode || null,
+          barnsSize: options.barnsSize ?? null,
+          requireMixed: !!options.requireMixed,
+          minAlsNodes: options.minAlsNodes ?? null,
+          minDepth: options.minDepth ?? null,
+          family: options.family || null,
+        });
+      };
+
+      const addMixedStage = (name, options = {}) => {
+        if (!strongLinkTypes.length) return;
+        addPhase(name, strongLinkTypes, {
+          includeAls: true,
+          requireAls: true,
+          requireMixed: true,
+          ...options,
+        });
+      };
+
+      // Phase 1: B.A.R.N.S. and transport forms. B.A.R.N.S. is checked by
+      // increasing size so a smaller equal-cell/equal-digit form wins first.
+      if (includeAls) {
+        for (let barnsSize = 2; barnsSize <= 9; barnsSize++) {
+          addPhase(`barns-${barnsSize}`, [], {
+            includeAls: true,
+            maxDepth: 2,
+            alsLinkMode: 'xz-only',
+            alsModuleKinds: ['ALS_XZ'],
+            barnsSize,
+            family: 'barns',
+          });
+        }
+
+        for (let barnsSize = 2; barnsSize <= 9; barnsSize++) {
+          addPhase(`barns-transport-${barnsSize}`, strongLinkTypes, {
+            includeAls: true,
+            maxDepth: 3,
+            barnsSize,
+            family: 'barns-transport',
+          });
+        }
+
+      }
+
+      // Phase 2: pure strong-link chains. Type 4 is the BIVALVE (size-1 ALS)
+      // strong link, so it is searched in the same individual/combination
+      // sequence as types 0 through 3.
+      for (const type of strongLinkTypes) addPhase(`strong-${type}`, [type]);
+      for (let size = 2; size <= 4; size++) {
+        for (const types of phaseCombinations(strongLinkTypes, size)) {
+          addPhase(`strong-${types.join('-')}`, types);
+        }
+      }
+
+      if (includeAls) {
+        // After ordinary strong-link combinations, continue with type 5
+        // (ALS_RCC) by itself at the longer-chain depth.
+        addPhase('type5-only', [], {
+          includeAls: true,
+          maxDepth,
+          minDepth: 3,
+        });
+
+        // Type 5 plus ordinary strong links is the next search family.  It is
+        // intentionally depth 3+; depth-2 ALS-XZ/B.A.R.N.S. was handled above.
+        addMixedStage('type5-strong', {
+          maxDepth,
+          minDepth: 3,
+        });
+
+        // ALS-XZ and ALS-XY are both searched in their pure ALS form and in
+        // their mixed type-5-plus-strong form.  The minimum depth prevents a
+        // depth-3 request from re-reporting shorter links in these stages.
+        addPhase('als-xz-type5', [], {
+          includeAls: true,
+          maxDepth: 2,
+          minDepth: 2,
+          alsLinkMode: 'xz-only',
+          alsModuleKinds: ['ALS_XZ'],
+          family: 'als-xz',
+        });
+        addMixedStage('als-xz-mixed', {
+          maxDepth: 2,
+          minDepth: 2,
+          family: 'als-xz',
+        });
+
+        addPhase('als-xy', [], {
+          includeAls: true,
+          maxDepth: 3,
+          minDepth: 3,
+          alsCellCount: 3,
+          family: 'als-xy',
+        });
+        addMixedStage('als-xy-mixed', {
+          maxDepth: 3,
+          minDepth: 3,
+          alsCellCount: 3,
+          family: 'als-xy',
+        });
+
+        // Longer ALS chains come after the fixed ALS-XZ/ALS-XY stages.
+        addPhase('als-chain-type5', [], {
+          includeAls: true,
+          maxDepth,
+          minDepth: 3,
+          family: 'als-chain',
+        });
+        addMixedStage('als-chain-mixed', {
+          maxDepth,
+          minDepth: 3,
+          family: 'als-chain',
+        });
+
+        // AIC + ALS named constructs are the final mixed-chain stage.
+        addMixedStage('aic-als', {
+          maxDepth,
+          minDepth: 3,
+          family: 'aic-als',
+        });
+      }
+
+      // The phase list is deliberately ordered. The engine's inclusive depth
+      // search supplies the 2 -> max depth scaling inside each phase.
+
+      return phases;
+    }
+
+    function chainAlsNodeCount(chain) {
+      const nodes = new Set();
+      for (const step of chain?.steps || []) {
+        if (step.family !== 'ALS' || step.linkTypeName !== 'ALS_RCC') continue;
+        for (const subset of [step.module?.entrySubset, step.module?.exitSubset]) {
+          if (!subset) continue;
+          nodes.add([
+            subset.id ?? '',
+            (subset.cells || []).join(','),
+            (subset.digits || []).join(''),
+          ].join('|'));
+        }
+      }
+      return nodes.size;
+    }
+
+    function chainMatchesSearchPhase(chain, phase) {
+      const alsSteps = (chain?.steps || []).filter(step => step.family === 'ALS');
+      if (phase.requireAls && !alsSteps.length) return false;
+      if (phase.minDepth != null && Number(chain?.length) < phase.minDepth) return false;
+      if (phase.requireMixed
+        && (!alsSteps.length || !(chain?.steps || []).some(step => step.family === 'SL'))) return false;
+      if (phase.alsCellCount != null
+        && alsSteps.some(step => {
+          const entryCells = step.module?.entrySubset?.cells || [];
+          const exitCells = step.module?.exitSubset?.cells || [];
+          return entryCells.length !== phase.alsCellCount
+            && exitCells.length !== phase.alsCellCount;
+        })) return false;
+
+      const alsNodeCount = chainAlsNodeCount(chain);
+      if (phase.minAlsNodes != null && alsNodeCount < phase.minAlsNodes) return false;
+
+      if (phase.barnsSize != null) {
+        const info = phase.family === 'barns-transport'
+          ? barnsTransportChainInfo(chain)
+          : barnsChainInfo(chain);
+        if (!info || info.sizeName.length !== phase.barnsSize) return false;
+      }
+
+      if (!phase.family) return true;
+      const keys = chainMoveKeys(chain);
+      if (phase.family === 'barns') return keys.has('barns');
+      if (phase.family === 'barns-transport') return keys.has('barns-transport');
+      if (phase.family === 'als-xz') return keys.has('als-xz') || keys.has('barns') || alsNodeCount === 2;
+      if (phase.family === 'als-xy') return keys.has('als-xy') || alsNodeCount === 3;
+      if (phase.family === 'als-chain') return keys.has('als-chain') || alsNodeCount > 3;
+      if (phase.family === 'aic-als') return keys.has('aic-als');
+      return true;
+    }
+
+    function phaseProfile(profile, phase) {
+      return {
+        ...(profile || {}),
+        includeAlsRcc: phase.includeAls,
+        strongLinkTypes: phase.strongLinkTypes,
+        maxDepth: phase.maxDepth,
+      };
+    }
+
+    function bestChainFromReport(
+      report,
+      phase,
+      enabledTypes,
+      candidateGrid,
+      fixedGrid,
+      expectedSolution,
+      maxDepth,
+      profile,
+    ) {
+      let best = null;
+      for (let index = 0; index < report.chains.length; index++) {
+        const chain = report.chains[index];
+        if (!chainMatchesSearchPhase(chain, phase)) continue;
+        if (!chainMoveEnabled(chain, enabledTypes)) continue;
+
+        const items = core.eliminationItems({ items: chain.eliminations || [] }, candidateGrid);
+        if (!items.length) continue;
+        if (chainSafetyFlags(chain, candidateGrid, expectedSolution, fixedGrid).length > 0) continue;
+
+        const step = {
+          ...chainStepFromResult(chain, report, index, candidateGrid),
+          elim: { items },
+          desc: core.formatChainEureka({ ...chain, eliminations: items }),
+        };
+        step.rating = ratingForStep(step);
+        if (profile?.maxRank !== undefined && step.rating.rank > profile.maxRank) continue;
+        const candidate = {
+          report,
+          index,
+          chain,
+          step,
+          priority: solverMovePriority(chain, step, maxDepth, index),
+        };
+        if (isHigherPriorityMove(candidate, best)) best = candidate;
+      }
+      return best;
     }
 
     function chainStepFromResult(chain, report, index, candidateGrid = cand) {
@@ -7135,23 +7975,26 @@
       if (!enabledTypes.has('chains')) return null;
 
       const requestedDepth = Math.min(8, Math.max(2, Number(chainDepthEl.value) || 8));
-      const search = chainSearchOptions(candidateGrid, requestedDepth, budget, profile);
-      const maxDepth = search.maxDepth;
-      if (maxDepth < 2) return null;
-      let best = null;
-      // The generator only needs one inclusive report. Rebuilding the same
-      // graph once per depth made rating generation disproportionately slow.
-      const depths = budget === 'generator'
-        ? [maxDepth]
-        : Array.from({ length: maxDepth - 1 }, (_, index) => index + 2);
-      for (const depth of depths) {
+      const phases = chainSearchPhasePlan(requestedDepth, profile);
+      for (const phase of phases) {
+        const phaseSearchProfile = phaseProfile(profile, phase);
+        const search = chainSearchOptions(
+          candidateGrid,
+          phase.maxDepth,
+          budget,
+          phaseSearchProfile,
+          true,
+          phase,
+        );
+        if (search.maxDepth < 2) continue;
+
         const report = core.findAicChains(candidateGrid, {
           strongLinkSet: search.strongSet,
           alsList: search.alsList,
           alsLinkSet: search.alsLinkSet,
           includeAls: search.includeAlsRcc,
           strongLinkTypes: search.strongLinkTypes,
-          maxDepth: depth,
+          maxDepth: search.maxDepth,
           maxChains: search.maxChains,
           maxResultAttempts: search.maxResultAttempts,
           maxResultAttemptsPerStart: search.maxResultAttemptsPerStart,
@@ -7161,34 +8004,22 @@
           maxStartViews: search.maxStartViews,
           maxAlsLinks: search.maxAlsLinks,
         });
-        for (let index = 0; index < report.chains.length; index++) {
-          const chain = report.chains[index];
-          if (!chainMoveEnabled(chain, enabledTypes)) continue;
-
-          const items = core.eliminationItems({ items: chain.eliminations || [] }, candidateGrid);
-          if (!items.length) continue;
-          if (chainSafetyFlags(chain, candidateGrid, expectedSolution, fixedGrid).length > 0) continue;
-
-          const step = {
-            ...chainStepFromResult(chain, report, index, candidateGrid),
-            elim: { items },
-            desc: core.formatChainEureka({ ...chain, eliminations: items }),
-          };
-          step.rating = ratingForStep(step);
-          if (profile?.maxRank !== undefined && step.rating.rank > profile.maxRank) continue;
-          const candidate = {
-            report,
-            index,
-            chain,
-            step,
-            priority: solverMovePriority(chain, step, depth, index),
-          };
-          if (isHigherPriorityMove(candidate, best)) best = candidate;
+        const best = bestChainFromReport(
+          report,
+          phase,
+          enabledTypes,
+          candidateGrid,
+          fixedGrid,
+          expectedSolution,
+          search.maxDepth,
+          profile,
+        );
+        if (best) {
+          const { priority, ...result } = best;
+          return result;
         }
       }
-      if (!best) return null;
-      const { priority, ...result } = best;
-      return result;
+      return null;
     }
 
     function solverFishSizes(moveTypes = null, maxFishSize = 4) {
@@ -7211,9 +8042,9 @@
       };
     }
 
-    function generatorWorkerConfig(candidateGrid, fixedGrid, profile, budget = 'generator') {
+    function generatorWorkerConfig(candidateGrid, fixedGrid, profile, budget = 'generator', phase = null) {
       const requestedDepth = Math.min(8, Math.max(2, Number(chainDepthEl.value) || 8));
-      const search = chainSearchOptions(candidateGrid, requestedDepth, budget, profile, false);
+      const search = chainSearchOptions(candidateGrid, requestedDepth, budget, profile, false, phase);
       return {
         candidateGrid,
         fixedGrid: [...fixedGrid],
@@ -7226,6 +8057,9 @@
           maxDepth: search.maxDepth,
           includeAls: search.includeAlsRcc,
           strongLinkTypes: search.strongLinkTypes,
+          alsCellCount: phase?.alsCellCount ?? null,
+          alsModuleKinds: phase?.alsModuleKinds ?? null,
+          alsLinkMode: phase?.alsLinkMode ?? null,
           alsMaxSizeDOF: 4,
           alsMaxSizeFox: 5,
           limits: {
@@ -7252,43 +8086,41 @@
       const enabledTypes = currentSolverMoveTypes(profile?.moveTypes);
       if (!enabledTypes.has('chains')) return null;
 
-      const config = generatorWorkerConfig(candidateGrid, fixedGrid, profile, budget);
-      const result = await runSearchWorker('chains', {
-        candidateGrid: config.candidateGrid,
-        ...config.chain,
-      });
-      const report = {
-        chains: result?.chains || [],
-        stats: result?.stats || {},
-      };
-      let best = null;
-      for (let index = 0; index < report.chains.length; index++) {
-        const chain = report.chains[index];
-        if (!chainMoveEnabled(chain, enabledTypes)) continue;
-
-        const items = core.eliminationItems({ items: chain.eliminations || [] }, candidateGrid);
-        if (!items.length) continue;
-        if (chainSafetyFlags(chain, candidateGrid, expectedSolution, fixedGrid).length > 0) continue;
-
-        const step = {
-          ...chainStepFromResult(chain, report, index, candidateGrid),
-          elim: { items },
-          desc: core.formatChainEureka({ ...chain, eliminations: items }),
+      const requestedDepth = Math.min(8, Math.max(2, Number(chainDepthEl.value) || 8));
+      const phases = chainSearchPhasePlan(requestedDepth, profile);
+      for (const phase of phases) {
+        const searchProfile = phaseProfile(profile, phase);
+        const config = generatorWorkerConfig(
+          candidateGrid,
+          fixedGrid,
+          searchProfile,
+          budget,
+          phase,
+        );
+        const result = await runSearchWorker('chains', {
+          candidateGrid: config.candidateGrid,
+          ...config.chain,
+        });
+        const report = {
+          chains: result?.chains || [],
+          stats: result?.stats || {},
         };
-        step.rating = ratingForStep(step);
-        if (profile?.maxRank !== undefined && step.rating.rank > profile.maxRank) continue;
-        const candidate = {
+        const best = bestChainFromReport(
           report,
-          index,
-          chain,
-          step,
-          priority: solverMovePriority(chain, step, config.chain.maxDepth, index),
-        };
-        if (isHigherPriorityMove(candidate, best)) best = candidate;
+          phase,
+          enabledTypes,
+          candidateGrid,
+          fixedGrid,
+          expectedSolution,
+          config.chain.maxDepth,
+          profile,
+        );
+        if (best) {
+          const { priority, ...resultMove } = best;
+          return resultMove;
+        }
       }
-      if (!best) return null;
-      const { priority, ...resultMove } = best;
-      return resultMove;
+      return null;
     }
 
     async function chooseSolverStepInWorker(
@@ -7341,6 +8173,31 @@
 
       const chainResult = findSolverChainMove(candidateGrid, fixedGrid, budget, expectedSolution, profile);
       return chooseLowerScoringMove(simple, chainResult);
+    }
+
+    function chooseBasicStep(candidateGrid = cand, fixedGrid = puzzle) {
+      const basicMoveTypes = new Set([
+        'last-man-standing',
+        'hidden-single', 'naked-single',
+        'hidden-pair', 'naked-pair',
+        'hidden-triple', 'naked-triple',
+        'hidden-quad', 'naked-quad',
+        'x-wing', 'swordfish', 'jellyfish',
+      ]);
+      return core.subsetOrFishStep(candidateGrid, {
+        ...currentPomFishOptions(),
+        grid: [...fixedGrid],
+        omissionFishSearch: core.omissionFishStep,
+        enabledTechniques: basicMoveTypes,
+        fishSizes: [2, 3, 4],
+        minSize: 2,
+        maxSize: 4,
+        minK: 0,
+        maxK: 0,
+        basicsEnabled: true,
+        frankenEnabled: false,
+        mutantEnabled: false,
+      });
     }
 
     function flaggedChainEntries(verbose = false) {
@@ -7435,6 +8292,7 @@
       renderNakedSubsetReport();
       renderHiddenSubsetReport();
       renderChainReport();
+      if (alsSearchFamily) renderAlsSearchResults();
       setStatus('Chain view cleared.', 'ok');
     }
 
@@ -7454,6 +8312,7 @@
       renderNakedSubsetReport();
       renderHiddenSubsetReport();
       renderChainReport();
+      if (alsSearchFamily) renderAlsSearchResults();
       setStatus(`Chain ${index + 1} selected.`, 'ok');
       focusMap();
     }
@@ -7556,6 +8415,242 @@
       }
     }
 
+    function renderAlsSearchResults() {
+      alsSearchResultsEl.textContent = '';
+      if (!alsSearchFamily || !chainReport) {
+        alsSearchResultsEl.textContent = 'No dedicated ALS search has been run.';
+        return;
+      }
+
+      const summary = document.createElement('p');
+      summary.textContent = `${chainReport.chains.length} ${alsSearchFamily.toUpperCase()} result${chainReport.chains.length === 1 ? '' : 's'} using ALS_RCC and type 5 links only.`;
+      alsSearchResultsEl.appendChild(summary);
+      if (!chainReport.chains.length) return;
+
+      const list = document.createElement('div');
+      list.className = 'chain-list';
+      chainReport.chains.slice(0, 200).forEach((chain, index) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `chain-result${index === selectedChainIndex ? ' selected' : ''}`;
+        button.textContent = `${index + 1}. ${chainText(chain)}`;
+        button.addEventListener('click', () => {
+          selectChain(index);
+          openReportPanel(chainResultsEl);
+        });
+        list.appendChild(button);
+      });
+      alsSearchResultsEl.appendChild(list);
+      if (chainReport.chains.length > 200) {
+        const moreText = document.createElement('p');
+        moreText.textContent = `Showing 200 of ${chainReport.chains.length} records.`;
+        alsSearchResultsEl.appendChild(moreText);
+      }
+    }
+
+    function alsDofTechniqueInfo(result) {
+      const mode = result?.mode === 'dds'
+        ? 'Disjointed Distributed Subset'
+        : result?.mode === 'almost-dds'
+          ? 'Almost Disjointed Distributed Subset'
+          : result?.mode === 'chain'
+            ? 'ALS DOF Chain'
+          : 'ALS DOF';
+      const form = result?.isRing
+        ? (result.ringForm === 'single-auxiliary'
+          ? 'Ring / Single Auxiliary'
+          : result.ringForm === 'fluid-auxiliary'
+            ? 'Ring / Fluid Auxiliary'
+            : result.ringForm === 'collection'
+              ? 'Ring / Collection'
+              : result.ringForm === 'almost-dds'
+                ? 'Ring'
+                : 'Ring')
+        : 'Open';
+      return {
+        family: mode,
+        form,
+        dof: Number.isInteger(result?.size) ? result.size : 0,
+        label: `${mode} - ${form}`,
+      };
+    }
+
+    function renderAlsDofResultList(container, results) {
+      const familyGroups = new Map();
+      results.forEach((result, index) => {
+        const info = alsDofTechniqueInfo(result);
+        const family = familyGroups.get(info.family) || new Map();
+        const form = family.get(info.form) || new Map();
+        const dof = form.get(info.dof) || [];
+        dof.push({ result, index, info });
+        form.set(info.dof, dof);
+        family.set(info.form, form);
+        familyGroups.set(info.family, family);
+      });
+
+      const categories = document.createElement('div');
+      categories.className = 'chain-categories';
+
+      for (const [familyName, formGroups] of familyGroups) {
+        const familyEntries = [...formGroups.values()].flatMap(dofGroups =>
+          [...dofGroups.values()].flat(),
+        );
+        const familyPanel = document.createElement('details');
+        familyPanel.className = 'chain-category';
+        familyPanel.open = familyEntries.some(({ index }) => index === selectedAlsDofIndex);
+
+        const familySummary = document.createElement('summary');
+        const familyLabel = document.createElement('strong');
+        familyLabel.className = 'chain-category-name';
+        familyLabel.textContent = familyName;
+        const familyCount = document.createElement('span');
+        familyCount.className = 'chain-category-count';
+        familyCount.textContent = `${familyEntries.length} ${familyEntries.length === 1 ? 'result' : 'results'}`;
+        familySummary.append(familyLabel, familyCount);
+        familyPanel.appendChild(familySummary);
+
+        const forms = document.createElement('div');
+        forms.className = 'chain-subcategories';
+        for (const [formName, dofGroups] of formGroups) {
+          const formEntries = [...dofGroups.values()].flat();
+          const formPanel = document.createElement('details');
+          formPanel.className = 'chain-subcategory';
+          formPanel.open = formEntries.some(({ index }) => index === selectedAlsDofIndex);
+
+          const formSummary = document.createElement('summary');
+          const formLabel = document.createElement('strong');
+          formLabel.textContent = formName;
+          const formCount = document.createElement('span');
+          formCount.className = 'chain-category-count';
+          formCount.textContent = `${formEntries.length} ${formEntries.length === 1 ? 'result' : 'results'}`;
+          formSummary.append(formLabel, formCount);
+          formPanel.appendChild(formSummary);
+
+          const dofPanels = document.createElement('div');
+          dofPanels.className = 'chain-subcategories';
+          for (const [dof, entries] of dofGroups) {
+            const dofPanel = document.createElement('details');
+            dofPanel.className = 'chain-subcategory';
+            dofPanel.open = entries.some(({ index }) => index === selectedAlsDofIndex);
+
+            const dofSummary = document.createElement('summary');
+            const dofLabel = document.createElement('strong');
+            dofLabel.textContent = `DOF ${dof}`;
+            const dofCount = document.createElement('span');
+            dofCount.className = 'chain-category-count';
+            dofCount.textContent = `${entries.length} ${entries.length === 1 ? 'result' : 'results'}`;
+            dofSummary.append(dofLabel, dofCount);
+            dofPanel.appendChild(dofSummary);
+
+            const list = document.createElement('ul');
+            list.className = 'chain-list';
+            for (const { result, index, info } of entries.slice(0, 200)) {
+              const item = document.createElement('li');
+              const button = document.createElement('button');
+              button.type = 'button';
+              button.className = 'chain-result';
+              if (selectedAlsDofIndex === index) button.classList.add('selected');
+              button.textContent = `${index + 1}. ${info.label}: ${core.formatAlsDof(result)}`;
+              button.title = 'Display this ALS-DOF result on the grid';
+              const select = () => {
+                selectedAlsDofIndex = index;
+                selectedAlsDof = null;
+                selectedAlsId = null;
+                selectedChainIndex = null;
+                selectedStrongLinkType = null;
+                selectedStrongLinkIndex = null;
+                renderBoard();
+                renderAlsDofReport();
+                focusMap();
+                setStatus(`ALS-DOF result ${index + 1} displayed.`, 'ok');
+              };
+              button.addEventListener('click', select);
+              item.appendChild(button);
+              list.appendChild(item);
+            }
+            if (entries.length > 200) {
+              const more = document.createElement('li');
+              more.textContent = `Showing 200 of ${entries.length} DOF ${dof} records.`;
+              list.appendChild(more);
+            }
+            dofPanel.appendChild(list);
+            dofPanels.appendChild(dofPanel);
+          }
+          formPanel.appendChild(dofPanels);
+          forms.appendChild(formPanel);
+        }
+        familyPanel.appendChild(forms);
+        categories.appendChild(familyPanel);
+      }
+
+      container.appendChild(categories);
+    }
+
+    function renderAlsDofReport() {
+      alsDofResultsEl.textContent = '';
+      if (!alsDofReport) {
+        alsDofResultsEl.textContent = 'No ALS-DOF search has been run.';
+        return;
+      }
+      if (selectedAlsDofIndex !== null
+        && selectedAlsDofIndex >= alsDofReport.results.length) {
+        selectedAlsDofIndex = null;
+      }
+
+      const summary = document.createElement('p');
+      summary.textContent = `${alsDofReport.results.length} ALS-DOF result${alsDofReport.results.length === 1 ? '' : 's'}. `
+        + `${alsDofReport.stats.alsRecords} ALS records checked`
+        + `; ALS DOF Chain ${alsDofReport.stats.chainNets || 0}`
+        + `; ALS DOF ${alsDofReport.stats.hubNets || 0}`
+        + `, Disjointed Distributed Subset ${alsDofReport.stats.ddsNets || 0}`
+        + `, Almost Disjointed Distributed Subset ${alsDofReport.stats.almostDdsNets || 0}`
+        + `${alsDofReport.stats.truncated ? '; result limit reached.' : '.'}`
+        + `${alsDofReport.stats.verifierRejected ? ` ${alsDofReport.stats.verifierRejected} rejected by verifier.` : ''}`;
+      alsDofResultsEl.appendChild(summary);
+      const actions = document.createElement('div');
+      actions.className = 'als-dof-actions';
+      const copy = document.createElement('button');
+      copy.type = 'button';
+      copy.className = 'secondary';
+      copy.textContent = 'Copy verified result';
+      copy.disabled = !selectedAlsDofRecord();
+      copy.title = 'Copy the selected verified ALS-DOF Eureka notation and eliminations';
+      copy.addEventListener('click', () => copyAlsDofResult(selectedAlsDofRecord()));
+      actions.appendChild(copy);
+      alsDofResultsEl.appendChild(actions);
+
+      const rejected = alsDofReport.rejectedResults || [];
+      if (rejected.length) {
+        const flaggedArea = document.createElement('section');
+        flaggedArea.className = 'chain-safety-warning';
+        const flaggedHeading = document.createElement('h3');
+        flaggedHeading.textContent = `Flagged / Rejected ALS-DOF (${rejected.length})`;
+        flaggedArea.appendChild(flaggedHeading);
+        const flaggedList = document.createElement('ul');
+        for (const entry of rejected) {
+          const item = document.createElement('li');
+          const detail = document.createElement('div');
+          detail.className = 'chain-result chain-result-flagged';
+          const notation = core.formatAlsDof(entry.result);
+          const reasons = entry.verification?.errors?.join('; ') || 'Verifier rejected the record.';
+          detail.textContent = `${notation} [${reasons}]`;
+          detail.title = reasons;
+          item.appendChild(detail);
+          flaggedList.appendChild(item);
+        }
+        flaggedArea.appendChild(flaggedList);
+        alsDofResultsEl.appendChild(flaggedArea);
+      }
+      if (!alsDofReport.results.length) return;
+
+      renderAlsDofResultList(alsDofResultsEl, alsDofReport.results);
+      if (alsDofReport.results.length > 500) {
+        const more = document.createElement('p');
+        more.textContent = `Showing the first 500 records in the technique lists.`;
+        alsDofResultsEl.appendChild(more);
+      }
+    }
+
     function snapshotVisualState() {
       return {
         puzzle: [...puzzle],
@@ -7568,13 +8663,16 @@
           pomReport,
           alsReport,
           alsLinkReport,
+          alsDofReport,
           ahsReport,
           strongLinkReport,
           fishReport,
           nakedSubsetReport,
           hiddenSubsetReport,
           chainReport,
+          alsSearchFamily,
           selectedAlsDof,
+          selectedAlsDofIndex,
           selectedAlsId,
           openAlsSizeGroups: [...openAlsSizeGroups],
           selectedAhsDof,
@@ -7617,13 +8715,16 @@
       pomReport = visual.pomReport || null;
       alsReport = visual.alsReport || null;
       alsLinkReport = visual.alsLinkReport || null;
+      alsDofReport = visual.alsDofReport || null;
       ahsReport = visual.ahsReport || null;
       strongLinkReport = visual.strongLinkReport || null;
       fishReport = visual.fishReport || null;
       nakedSubsetReport = visual.nakedSubsetReport || null;
       hiddenSubsetReport = visual.hiddenSubsetReport || null;
       chainReport = visual.chainReport || null;
+      alsSearchFamily = visual.alsSearchFamily || null;
       selectedAlsDof = visual.selectedAlsDof ?? null;
+      selectedAlsDofIndex = visual.selectedAlsDofIndex ?? null;
       selectedAlsId = visual.selectedAlsId ?? null;
       openAlsSizeGroups.clear();
       for (const value of visual.openAlsSizeGroups || []) openAlsSizeGroups.add(value);
@@ -7697,8 +8798,10 @@
       pomReport = null;
       alsReport = null;
       alsLinkReport = null;
+      alsDofReport = null;
       ahsReport = null;
       selectedAlsDof = null;
+      selectedAlsDofIndex = null;
       selectedAlsId = null;
       openAlsSizeGroups.clear();
       selectedAhsDof = null;
@@ -7990,6 +9093,42 @@
       return true;
     }
 
+    async function applyBasics() {
+      if (busy) return;
+      leaveHistoryPreview();
+      const maxSteps = 1000;
+      let applied = 0;
+      setBusy(true);
+      setStatus('Applying basic subsets and fish through size 4...');
+
+      try {
+        while (applied < maxSteps) {
+          const before = snapshotState();
+          const promoted = applyQueuedPromotions();
+          const step = chooseBasicStep(cand, puzzle);
+          if (!applyCycleChoice(before, promoted, step ? { step, chain: null } : null)) break;
+
+          applied += 1;
+          renderLog();
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+      } finally {
+        setBusy(false);
+      }
+
+      if (applied > 0) {
+        ratingReport = ratingFromLog(logEntries, candidateGridIsSolved(cand, puzzle));
+      }
+      if (applied === maxSteps) {
+        setStatus(`Apply Basics stopped at ${maxSteps} cycles.`, 'warn');
+      } else if (applied > 0) {
+        setStatus(`Apply Basics complete. ${applied} cycle${applied === 1 ? '' : 's'} applied; size 1-4 subsets and basic fish are exhausted.`, 'ok');
+      } else {
+        setStatus('Apply Basics found no enabled subset or basic fish move.', 'warn');
+      }
+      render();
+    }
+
     async function runAll() {
       if (busy) return;
       leaveHistoryPreview();
@@ -8053,6 +9192,7 @@
             maxSizeFox: 7,
           });
           selectedAlsDof = null;
+          selectedAlsDofIndex = null;
           selectedAlsId = null;
           selectedAhsId = null;
           openAlsSizeGroups.clear();
@@ -8270,6 +9410,161 @@
       }, 20);
     }
 
+    function runAlsDofBuild() {
+      setBusy(true);
+      setStatus('Searching ALS-DOF auxiliary nets...');
+
+      setTimeout(() => {
+        try {
+          const maxDigits = Math.min(9, Math.max(2,
+            Number(alsDofMaxDigitsEl.value) || 6));
+          const maxAuxiliary = Math.min(9, Math.max(1,
+            Number(alsDofMaxAuxiliaryEl.value) || 3));
+          alsDofMaxDigitsEl.value = String(maxDigits);
+          alsDofMaxAuxiliaryEl.value = String(maxAuxiliary);
+          const sourceAls = core.alsConstructor(cand, {
+            maxSizeDOF: maxDigits - 1,
+            maxSizeFox: maxDigits - 1,
+          });
+          alsReport = sourceAls;
+          const rawAlsDofReport = core.findAlsDofNets(cand, {
+            alsList: sourceAls,
+            maxAuxiliary,
+            maxDigits,
+            maxResults: 5000,
+          });
+          const verifiedResults = rawAlsDofReport.results.map(result => ({
+            ...result,
+            verification: core.verifyAlsDofNet(cand, result, { alsList: sourceAls }),
+          }));
+          const acceptedResults = verifiedResults.filter(result => result.verification.ok);
+          alsDofReport = {
+            ...rawAlsDofReport,
+            results: acceptedResults,
+            rejectedResults: verifiedResults.filter(result => !result.verification.ok),
+            stats: {
+              ...rawAlsDofReport.stats,
+              verifierChecked: verifiedResults.length,
+              verifierRejected: verifiedResults.length - acceptedResults.length,
+            },
+          };
+          selectedAlsDof = null;
+          selectedAlsDofIndex = null;
+          selectedAlsId = null;
+          renderAlsReport();
+          renderAlsDofReport();
+          openReportPanel(alsDofResultsEl);
+          setStatus(
+            `ALS-DOF search complete. ${alsDofReport.results.length} auxiliary net${alsDofReport.results.length === 1 ? '' : 's'} found.`,
+            alsDofReport.results.length ? 'ok' : 'warn',
+          );
+        } catch (error) {
+          alsDofReport = null;
+          renderAlsDofReport();
+          setStatus('Could not search ALS-DOF auxiliary nets.', 'warn');
+        } finally {
+          setBusy(false);
+        }
+      }, 20);
+    }
+
+    function runAlsSearch(family) {
+      const phase = family === 'als-xz'
+        ? {
+            includeAls: true,
+            maxDepth: 2,
+            minDepth: 2,
+            alsLinkMode: 'xz-only',
+            alsModuleKinds: ['ALS_XZ'],
+            family: 'als-xz',
+          }
+        : family === 'als-xy'
+          ? {
+              includeAls: true,
+              maxDepth: 3,
+              minDepth: 3,
+              alsCellCount: 3,
+              family: 'als-xy',
+            }
+          : {
+              includeAls: true,
+              maxDepth: Math.max(2, Number(chainDepthEl.value) || 6),
+              minDepth: 3,
+              family: 'als-chain',
+            };
+      const maxDepth = phase.maxDepth;
+      const label = family === 'als-xz' ? 'ALS-XZ'
+        : family === 'als-xy' ? 'ALS-XY' : 'ALS-Chain';
+
+      setBusy(true);
+      setStatus(`Searching ${label} with ALS_RCC and type 5 links only...`);
+
+      setTimeout(() => {
+        try {
+          const search = chainSearchOptions(
+            cand,
+            maxDepth,
+            'interactive',
+            {
+              includeAlsRcc: true,
+              strongLinkTypes: [4],
+            },
+            true,
+            phase,
+          );
+          const rawReport = core.findAicChains(cand, {
+            strongLinkSet: search.strongSet,
+            alsList: search.alsList,
+            alsLinkSet: search.alsLinkSet,
+            includeAls: true,
+            strongLinkTypes: [4],
+            maxDepth: search.maxDepth,
+            maxChains: search.maxChains,
+            maxResultAttempts: search.maxResultAttempts,
+            maxResultAttemptsPerStart: search.maxResultAttemptsPerStart,
+            maxStates: search.maxStates,
+            maxQueue: search.maxQueue,
+            maxBranching: search.maxBranching,
+            maxStartViews: search.maxStartViews,
+            maxAlsLinks: search.maxAlsLinks,
+          });
+          const chains = rawReport.chains.filter(chain => chainMatchesSearchPhase(chain, phase));
+
+          alsSearchFamily = family;
+          chainReport = { ...rawReport, chains };
+          selectedChainIndex = chains.length ? 0 : null;
+          activeStep = null;
+          lastRemoved = [];
+          strongLinkReport = chainReport.linkSets?.strongSet || search.strongSet;
+          alsReport = search.alsList;
+          alsLinkReport = search.alsLinkSet;
+          selectedAlsId = null;
+          selectedAhsId = null;
+          renderAlsReport();
+          renderAlsLinkReport();
+          renderBoard();
+          renderChainReport();
+          renderAlsSearchResults();
+          openReportPanel(alsSearchResultsEl);
+
+          setStatus(
+            `${label} search complete. ${chains.length} result${chains.length === 1 ? '' : 's'} using ALS_RCC and type 5 links only.`
+              + `${rawReport.stats?.truncated ? ` Stopped at ${rawReport.stats.stopReason}.` : ''}`,
+            chains.length ? 'ok' : 'warn',
+          );
+        } catch (error) {
+          alsSearchFamily = null;
+          chainReport = null;
+          selectedChainIndex = null;
+          renderChainReport();
+          renderAlsSearchResults();
+          setStatus(`Could not search ${label}.`, 'warn');
+        } finally {
+          setBusy(false);
+        }
+      }, 20);
+    }
+
     function runChainBuild() {
       setBusy(true);
       setStatus('Walking chains...');
@@ -8310,12 +9605,14 @@
             maxAlsLinks: 5000,
           });
 
+          alsSearchFamily = null;
           selectedChainIndex = chainReport.chains.length ? 0 : null;
           activeStep = null;
           lastRemoved = [];
           strongLinkReport = chainReport.linkSets.strongSet;
           renderBoard();
           renderChainReport();
+          renderAlsSearchResults();
           openReportPanel(chainResultsEl);
 
           const { stats, chains } = chainReport;
@@ -8366,6 +9663,33 @@
             result.solution,
             targetCategory,
           );
+          const normalizedTarget = normalizeRatingCategory(targetCategory);
+          const limitedMatchesTarget = quickGeneration
+            || normalizedTarget === 'Unknown'
+            || (
+              limitedRating.solved === true
+              && (normalizedTarget !== 'Lulz' || limitedRating.score === 0)
+              && limitedRating.category === normalizedTarget
+            );
+
+          // Reject candidates using the inexpensive target-bounded search
+          // before running the full Nightmare verification pass. This keeps
+          // Moderate and lower target generation from doing two deep chain
+          // searches for every one of the 1,000 attempts.
+          if (!limitedMatchesTarget) {
+            if (attempts >= maxRatingAttempts) {
+              setBusy(false);
+              setStatus(
+                `Could not generate a ${targetCategory} puzzle after ${attempts} attempts. Current puzzle unchanged.`,
+                'warn',
+              );
+              return;
+            }
+            setStatus(`Generating ${article} ${targetCategory} puzzle... attempt ${attempts}`);
+            setTimeout(() => { void tryGeneration(); }, 0);
+            return;
+          }
+
           rating = quickGeneration
             ? limitedRating
             : await rateGeneratedPuzzleInWorker(
@@ -8374,7 +9698,6 @@
                 targetCategory,
                 generationTechniqueProfile('Nightmare'),
               );
-          const normalizedTarget = normalizeRatingCategory(targetCategory);
           const matches = quickGeneration
             || (
               limitedRating.solved === true
@@ -8503,16 +9826,57 @@
     document.getElementById('reset').addEventListener('click', () => resetCandidates());
     document.getElementById('next').addEventListener('click', nextCycle);
     document.getElementById('run').addEventListener('click', runAll);
-    document.getElementById('pomCheck').addEventListener('click', runPomCheck);
+    applyBasicsEl.addEventListener('click', applyBasics);
+    document.getElementById('pomCheck').addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      runPomCheck();
+    });
     alsBuildEl.addEventListener('click', runAlsBuild);
     alsLinkBuildEl.addEventListener('click', runAlsLinkBuild);
     ahsBuildEl.addEventListener('click', runAhsBuild);
     strongLinkBuildEl.addEventListener('click', runStrongLinkBuild);
     gridViewSelector.addEventListener('change', () => setGridView(gridViewSelector.value));
-    chainBuildEl.addEventListener('click', runChainBuild);
-    fishBuildEl.addEventListener('click', runFishBuild);
-    nakedSubsetBuildEl.addEventListener('click', () => runGenericSubsetBuild('naked'));
-    hiddenSubsetBuildEl.addEventListener('click', () => runGenericSubsetBuild('hidden'));
+    chainBuildEl.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      runChainBuild();
+    });
+    fishBuildEl.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      runFishBuild();
+    });
+    alsXzBuildEl.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      runAlsSearch('als-xz');
+    });
+    alsXyBuildEl.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      runAlsSearch('als-xy');
+    });
+    alsChainBuildEl.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      runAlsSearch('als-chain');
+    });
+    alsDofBuildEl.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      runAlsDofBuild();
+    });
+    nakedSubsetBuildEl.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      runGenericSubsetBuild('naked');
+    });
+    hiddenSubsetBuildEl.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      runGenericSubsetBuild('hidden');
+    });
     chainCopyEl.addEventListener('click', () => copyChainOutput(false));
     chainCopyVerboseEl.addEventListener('click', () => copyChainOutput(true));
     copyPuzzle81El.addEventListener('click', () => copyPuzzleString(core.encode(originalPuzzle), '81-character puzzle'));
@@ -8543,6 +9907,7 @@
 
     initFishSettings();
     renderDigitFocusButtons();
+    renderCandidateSizeFilterButtons();
     renderDifficultyTable();
     renderGridViewHeaders();
     generatePuzzle();

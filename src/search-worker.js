@@ -8,7 +8,7 @@ importScripts(
   './set-tools-core.js',
   './pom-core.js',
   './als-core.js?v=20260917-1',
-  './als-link-core.js?v=20260917-1',
+  './als-link-core.js?v=20260917-2',
   './ahs-core.js',
   './subset-report-core.js',
   './mini-sectors-core.js',
@@ -54,20 +54,25 @@ function runChains(payload) {
         maxSizeDOF: payload.alsMaxSizeDOF || 4,
         maxSizeFox: payload.alsMaxSizeFox || 5,
         searchLimit: true,
-      })
+      }).filter(als => payload.alsCellCount == null
+        || (als.alsAllCells || []).length === payload.alsCellCount)
     : null;
   const alsLinkSet = includeAls
     ? core.buildAlsLinks(candidateGrid, {
         alsList,
         strictSingleCommon: true,
+        xzOnly: payload.alsLinkMode === 'xz-only',
         maxLinks: limits.maxAlsLinks || 750,
       })
     : null;
+  const filteredAlsLinkSet = payload.alsModuleKinds && alsLinkSet
+    ? alsLinkSet.map(bucket => bucket.filter(link => payload.alsModuleKinds.includes(link.moduleKind)))
+    : alsLinkSet;
 
   const report = core.findAicChains(candidateGrid, {
     strongLinkSet: strongSet,
     alsList,
-    alsLinkSet,
+    alsLinkSet: filteredAlsLinkSet,
     includeAls,
     strongLinkTypes,
     maxDepth: payload.maxDepth,

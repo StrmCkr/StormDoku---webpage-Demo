@@ -323,6 +323,7 @@
     nextAlsLinkId = 0;
     const opts = {
       includePairedAls: options.includePairedAls ?? true,
+      xzOnly: options.xzOnly === true,
       strictSingleCommon: options.strictSingleCommon ?? true,
       maxLinks: Number.isInteger(options.maxLinks) && options.maxLinks > 0 ? options.maxLinks : undefined,
       maxTraversalLinks: Number.isInteger(options.maxTraversalLinks) && options.maxTraversalLinks > 0
@@ -333,6 +334,12 @@
     const buckets = Array.from({ length: ALS_RCC + 1 }, () => []);
 
     if (opts.includePairedAls) {
+      if (opts.xzOnly) {
+        const xzSeen = new Set();
+        buildAlsXzLinks(cand, alsList, buckets[ALS_RCC], xzSeen, opts.maxLinks);
+        return buckets;
+      }
+
       const traversalSeen = new Set();
       const traversalLinks = [];
       buildAlsTraversalLinks(
