@@ -21,10 +21,6 @@
       --dark-green: #064e3b;
       --amber: #b7791f;
       --red: #c2410c;
-      --gunmetal-panel: linear-gradient(145deg, rgba(76, 87, 98, .52), rgba(30, 38, 45, .5));
-      --gunmetal-solid: linear-gradient(145deg, #4c5762, #1e262d);
-      --gunmetal-line: rgba(218, 226, 234, .46);
-      --gunmetal-ink: #f3f6f8;
     }
 
     * {
@@ -47,7 +43,7 @@
 
     header {
       display: grid;
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr) minmax(420px, auto) 236px;
       align-items: start;
       gap: 18px;
       column-gap: 20px;
@@ -65,7 +61,7 @@
       width: auto;
       margin: 0;
       padding: 8px 10px 10px;
-      background: var(--gunmetal-panel);
+      background: var(--bg);
     }
 
     .settings-dock legend {
@@ -201,7 +197,6 @@
 
     .generator-fields label {
       min-width: 0;
-      color: rgba(243, 246, 248, .94);
     }
 
     .generator-fields select {
@@ -551,38 +546,6 @@
       min-width: 560px;
     }
 
-    .difficulty-math {
-      border-bottom: 1px solid var(--line);
-      margin-bottom: 10px;
-      padding: 0 0 10px;
-    }
-
-    .difficulty-math h2 {
-      margin: 0 0 7px;
-      font-size: 15px;
-    }
-
-    .difficulty-math-grid {
-      display: grid;
-      grid-template-columns: minmax(150px, .8fr) minmax(360px, 2fr);
-      gap: 4px 14px;
-      font-size: 12px;
-    }
-
-    .difficulty-math-grid strong {
-      color: var(--heavy);
-    }
-
-    .difficulty-math-grid span {
-      color: var(--muted);
-    }
-
-    .difficulty-math-note {
-      margin: 8px 0 0;
-      color: var(--muted);
-      font-size: 12px;
-    }
-
     .difficulty-table-header,
     .difficulty-category summary,
     .difficulty-item {
@@ -707,187 +670,10 @@
 
     .layout {
       display: grid;
-      grid-template-columns: minmax(320px, 560px) minmax(0, 1fr);
-      gap: 14px;
+      grid-template-columns: minmax(320px, 520px) minmax(300px, 1fr);
+      gap: 22px;
       align-items: start;
       padding-bottom: 32px;
-    }
-
-    .controls-workspace-panel {
-      display: grid;
-      grid-template-columns: minmax(300px, .9fr) minmax(420px, 1.25fr) 236px;
-      gap: 12px;
-      align-items: start;
-    }
-
-    .controls-workspace-panel > .puzzle-string-box {
-      min-width: 0;
-      margin: 0;
-    }
-
-    .filter-workspace-panel {
-      min-width: 0;
-      align-self: stretch;
-      display: grid;
-      grid-template-columns: max-content;
-      grid-template-areas:
-        "cell"
-        "actions";
-      align-items: start;
-      align-content: end;
-      gap: 8px;
-    }
-
-    .digit-focus-panel {
-      min-width: 0;
-      margin: 0;
-      padding: 6px 5px 7px;
-    }
-
-    .grid-digit-panel {
-      width: max-content;
-      margin: 0;
-    }
-
-    .grid-controls-row {
-      display: grid;
-      grid-template-columns: max-content max-content;
-      grid-template-areas: "actions digits";
-      align-items: start;
-      justify-content: center;
-      gap: 10px;
-      margin-bottom: 0;
-    }
-
-    .grid-controls-panel {
-      padding: 3px 6px;
-    }
-
-    .grid-digit-stack {
-      grid-area: digits;
-      display: grid;
-      grid-template-columns: max-content;
-      gap: 8px;
-      justify-items: center;
-    }
-
-    .grid-digit-stack .grid-cell-size-panel {
-      grid-area: auto;
-    }
-
-    .grid-actions-panel {
-      width: max-content;
-      margin: 0;
-      grid-area: actions;
-    }
-
-    .grid-actions-panel .header-button-row {
-      display: grid;
-      grid-template-columns: repeat(2, 56px);
-      gap: 5px;
-    }
-
-    .grid-actions-panel .header-button-row button {
-      width: 56px;
-      padding: 5px 3px;
-      font-size: 12px;
-    }
-
-    .candidate-size-toolbar.grid-cell-size-panel {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      width: max-content;
-      flex-wrap: nowrap;
-      padding: 4px 5px;
-    }
-
-    .grid-cell-size-panel .candidate-size-heading {
-      flex: 0 0 auto;
-      order: 2;
-    }
-
-    .grid-cell-size-panel .candidate-size-buttons {
-      flex: 0 0 auto;
-      order: 1;
-    }
-
-    .filter-workspace-panel .candidate-size-toolbar {
-      grid-area: cell;
-      margin: 0;
-    }
-
-    .filter-workspace-panel .header-tool-frame {
-      grid-area: actions;
-      margin: 0;
-    }
-
-    .controls-workspace-panel .generator-panel,
-    .controls-workspace-panel .settings-dock {
-      min-width: 0;
-      width: 100%;
-      margin: 0;
-    }
-
-    .controls-workspace-panel .settings-dock {
-      background: var(--gunmetal-panel);
-    }
-
-    .workspace-panel {
-      min-width: 0;
-      padding: 12px;
-      border: 1px solid var(--gunmetal-line);
-      border-radius: 8px;
-      background: var(--gunmetal-panel);
-      color: var(--gunmetal-ink);
-    }
-
-    .workspace-panel-heading {
-      margin: 0 0 10px;
-      color: var(--gunmetal-ink);
-      font-size: 13px;
-      font-weight: 800;
-      letter-spacing: .04em;
-      text-transform: uppercase;
-    }
-
-    .visually-hidden {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border: 0;
-    }
-
-    .controls-workspace-panel .candidate-filter-frame {
-      width: 100%;
-      max-width: none;
-      margin: 0;
-      padding: 4px 5px 5px;
-      border: 1px solid var(--line);
-    }
-
-    .board-workspace-panel .grid-frame {
-      margin: 0;
-    }
-
-    .report-workspace-panel {
-      margin-top: 12px;
-      padding: 8px;
-    }
-
-    .board-workspace-panel {
-      grid-column: 1;
-      grid-row: 1;
-    }
-
-    .solution-workspace-panel {
-      grid-column: 2;
-      grid-row: 1;
     }
 
     .board-column,
@@ -1863,18 +1649,6 @@
       white-space: nowrap;
     }
 
-    .solution-summary-actions {
-      display: flex;
-      gap: 6px;
-      margin-left: auto;
-    }
-
-    .solution-summary-actions button {
-      padding: 4px 7px;
-      font-size: 12px;
-      line-height: 1;
-    }
-
     .solution-steps .log:empty::before {
       content: "No applied steps yet.";
       display: block;
@@ -1890,8 +1664,7 @@
       overflow: hidden;
       border: 1px solid var(--line);
       border-radius: 6px;
-      background: var(--gunmetal-panel);
-      color: var(--gunmetal-ink);
+      background: var(--panel);
     }
 
     .pom-panel summary {
@@ -2019,6 +1792,13 @@
       background: rgba(219, 234, 254, .58);
     }
 
+    .als-dof-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 8px 0;
+    }
+
     .als-dof-table td:last-child {
       color: var(--red);
     }
@@ -2133,16 +1913,10 @@
 
     .rating-summary {
       border-top: 1px solid rgba(248, 250, 252, .28);
-      display: block;
+      display: grid;
+      gap: 3px;
       margin-top: 8px;
       padding-top: 8px;
-    }
-
-    .rating-summary-line {
-      display: flex;
-      align-items: baseline;
-      flex-wrap: wrap;
-      gap: 4px 8px;
     }
 
     .rating-summary-label {
@@ -2150,7 +1924,7 @@
       font-size: 11px;
       font-weight: 800;
       letter-spacing: .04em;
-      text-transform: none;
+      text-transform: uppercase;
     }
 
     .rating-summary-category {
@@ -2162,44 +1936,6 @@
     .rating-summary-detail {
       color: #cbd5e1;
       font-size: 12px;
-      overflow-wrap: anywhere;
-    }
-
-    .rating-summary-line .rating-summary-label:nth-of-type(2) {
-      margin-left: 12px;
-    }
-
-    .rating-hardest-move {
-      margin-top: 5px;
-      color: #cbd5e1;
-      font-size: 12px;
-    }
-
-    .rating-hardest-move summary {
-      color: #bae6fd;
-      cursor: pointer;
-      list-style: none;
-      user-select: none;
-    }
-
-    .rating-hardest-move summary::-webkit-details-marker {
-      display: none;
-    }
-
-    .rating-hardest-move summary::before {
-      display: inline-block;
-      width: 16px;
-      content: "+";
-      font-weight: 900;
-    }
-
-    .rating-hardest-move[open] summary::before {
-      content: "-";
-    }
-
-    .rating-hardest-move-value {
-      margin-top: 4px;
-      padding-left: 16px;
       overflow-wrap: anywhere;
     }
 
@@ -2420,134 +2156,9 @@
       background: #fff7ed;
     }
 
-    /* Keep the interface surfaces gunmetal while leaving the Sudoku board light. */
-    body {
-      background: var(--gunmetal-panel);
-      color: var(--gunmetal-ink);
-    }
-
-    fieldset,
-    .status,
-    .log li,
-    .example-item,
-    .solution-steps .log:empty::before,
-    .chain-category,
-    .chain-subcategory,
-    .dof-button {
-      border-color: var(--gunmetal-line);
-      background: var(--gunmetal-panel);
-      color: var(--gunmetal-ink);
-    }
-
-    legend,
-    .settings-dock legend,
-    .generator-panel legend,
-    .candidate-size-label,
-    .digit-focus-label,
-    .example-puzzle,
-    .solution-steps-preview {
-      color: rgba(243, 246, 248, .82);
-    }
-
-    .chain-result:not(.selected) {
-      border-color: var(--gunmetal-line);
-      background: var(--gunmetal-panel);
-      color: var(--gunmetal-ink);
-    }
-
-    .chain-safety-warning .chain-result-flagged,
-    .chain-result-flagged {
-      background: rgba(127, 29, 29, .32);
-      color: #fff1f2;
-    }
-
-    .topline,
-    .app-meta,
-    .rating-tag,
-    .chain-category-count {
-      color: rgba(243, 246, 248, .78);
-    }
-
-    .chain-settings-popover,
-    .move-type-popover,
-    .fish-settings-popover,
-    .difficulty-settings-popover {
-      border-color: var(--gunmetal-line);
-      background: var(--gunmetal-solid);
-      color: var(--gunmetal-ink);
-    }
-
-    .chain-settings-popover label,
-    .move-type-popover label,
-    .fish-settings-popover label,
-    .difficulty-settings-popover label,
-    .difficulty-settings-popover .difficulty-table-header,
-    .difficulty-settings-popover .difficulty-item,
-    .difficulty-settings-popover .difficulty-item-index,
-    .difficulty-settings-popover .difficulty-item-note,
-    .difficulty-settings-popover .difficulty-math-grid span,
-    .difficulty-settings-popover .difficulty-math-note {
-      color: rgba(243, 246, 248, .84);
-    }
-
-    .difficulty-settings-popover .difficulty-math-grid strong {
-      color: var(--gunmetal-ink);
-    }
-
-    .difficulty-settings-popover .difficulty-category {
-      border-color: var(--gunmetal-line);
-      background: rgba(30, 38, 45, .28);
-      color: var(--gunmetal-ink);
-    }
-
-    .difficulty-settings-popover .difficulty-item {
-      border-top-color: var(--gunmetal-line);
-    }
-
-    #illegalChainArea {
-      display: none !important;
-    }
-
-    .grid-view-label,
-    .grid-side-label,
-    .grid-row-title,
-    .grid-column-header,
-    .grid-column-numbers,
-    .grid-row-header,
-    .grid-row-title .grid-view-selector {
-      color: #111827;
-      font-weight: 900;
-    }
-
-    @media (max-width: 1100px) {
-      .controls-workspace-panel {
-        grid-template-columns: minmax(0, 1fr) minmax(360px, 1fr);
-      }
-
-      .filter-workspace-panel {
-        grid-column: 1 / -1;
-      }
-
-      .controls-workspace-panel > .settings-dock {
-        grid-column: 1 / -1;
-      }
-    }
-
     @media (max-width: 860px) {
       header {
         grid-template-columns: 1fr;
-      }
-
-      .controls-workspace-panel {
-        grid-template-columns: 1fr;
-      }
-
-      .filter-workspace-panel {
-        grid-column: auto;
-      }
-
-      .controls-workspace-panel > .settings-dock {
-        grid-column: auto;
       }
 
       .settings-dock {
@@ -2558,12 +2169,6 @@
 
       .layout {
         grid-template-columns: 1fr;
-      }
-
-      .board-workspace-panel,
-      .solution-workspace-panel {
-        grid-column: auto;
-        grid-row: auto;
       }
 
       .fish-settings-grid {
@@ -2613,135 +2218,116 @@
     <div class="header-brand">
       <h1>StormDoku: on-line | off-line</h1>
       <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo.</p>
-      <p class="app-meta">Alpha v0.3.2 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <p class="app-meta">Alpha v0.2.1 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <fieldset class="candidate-filter-frame">
+        <legend>Digits</legend>
+        <div class="candidate-filter-toolbar-row">
+          <div class="digit-focus-toolbar" aria-label="Digit highlights">
+            <div id="digitFocusButtons" class="digit-focus-buttons"></div>
+          </div>
+          <fieldset class="candidate-size-toolbar" aria-label="Candidate size filter">
+            <legend>Cell size</legend>
+            <div class="candidate-size-heading">
+              <label class="candidate-size-toggle"
+                title="When enabled, selected digit highlights appear only in the active X, XY, XYZ, or WXYZ size filters.">
+                <input id="limitDigitHighlightsToSize" type="checkbox"
+                  aria-label="Restrict digit highlights to selected sizes">
+                <span>Mask</span>
+              </label>
+            </div>
+            <div id="candidateSizeFilterButtons" class="candidate-size-buttons"></div>
+          </fieldset>
+          <fieldset class="header-tool-frame">
+            <legend>Actions</legend>
+            <div class="header-button-row">
+              <button id="undo" class="secondary" title="Undo last cycle">Undo</button>
+              <button id="redo" class="secondary" title="Redo last cycle">Redo</button>
+              <button id="next">Next</button>
+              <button id="run" class="secondary">Run All</button>
+              <button id="applyBasics" class="secondary" type="button"
+                title="Last Man Standing, subsets, and basic fish size 1-4">Basics</button>
+            </div>
+          </fieldset>
+        </div>
+      </fieldset>
     </div>
+    <fieldset class="generator-panel">
+      <legend>Generator</legend>
+      <div class="generator-fields">
+        <label>
+          Givens
+          <input id="givens" type="number" min="17" max="81" value="30">
+        </label>
+        <label>
+          Difficulty
+          <select id="generationDifficulty">
+            <option value="Any" selected>Any</option>
+            <option value="Lulz">Lulz</option>
+            <option value="Extremely Easy">Extremely Easy</option>
+            <option value="Very Easy">Very Easy</option>
+            <option value="Modestly Easy">Modestly Easy</option>
+            <option value="Easy">Easy</option>
+            <option value="Moderate">Moderate</option>
+            <option value="Tough">Tough</option>
+            <option value="Challenging">Challenging</option>
+            <option value="Irritating">Irritating</option>
+            <option value="Frustrating">Frustrating</option>
+            <option value="Hard">Hard</option>
+            <option value="Demanding">Demanding</option>
+            <option value="Expert">Expert</option>
+            <option value="Brutal">Brutal</option>
+            <option value="Nightmare">Nightmare</option>
+            <option value="Unknown">Unknown</option>
+          </select>
+        </label>
+        <button id="generate" type="button">Generate</button>
+      </div>
+      <div class="generator-actions">
+        <button id="reset" class="secondary" type="button" title="Reload the current grid">Reload</button>
+        <button id="import" class="secondary" type="button"
+          title="Import from the clipboard. Accepts 81-character puzzle strings or 729-bit candidate strings.">
+          Import
+        </button>
+      </div>
+      <div class="puzzle-input-group">
+        <label>
+          <textarea id="input" aria-label="Puzzle string" spellcheck="false"
+            title="Accepts 81-character puzzle strings, 729 candidate bits, or candidate-grid text."></textarea>
+        </label>
+        <div class="puzzle-input-actions">
+          <button id="load" class="secondary" type="button"
+            title="Accepts 81-character puzzle strings, 729 candidate bits, or candidate-grid text. Load the puzzle string shown here.">
+            Load
+          </button>
+        </div>
+      </div>
+    </fieldset>
+    <fieldset class="settings-dock">
+      <legend>Settings</legend>
+      <div class="settings-dock-actions">
+        <button id="chainSettingsButton" class="secondary" type="button"
+          popovertarget="chainSettingsPopover" popovertargetaction="toggle">
+          Chain Settings
+        </button>
+        <button id="fishSettingsButton" class="secondary" type="button"
+          popovertarget="fishSettingsPopover" popovertargetaction="toggle">
+          N x (N + K) Fish Finder Settings
+        </button>
+        <button id="alsDofSettingsButton" class="secondary" type="button"
+          popovertarget="alsDofSettingsPopover" popovertargetaction="toggle">
+          ALS DOF Settings
+        </button>
+        <button id="difficultySettingsButton" class="secondary" type="button"
+          popovertarget="difficultySettingsPopover" popovertargetaction="toggle">
+          Difficulty
+        </button>
+      </div>
+    </fieldset>
   </header>
 
   <main>
-    <section class="workspace-panel controls-workspace-panel" aria-label="Controls">
-      <div class="code puzzle-string-box">
-        <div id="puzzleString"></div>
-        <div id="puzzleStateMeta" class="puzzle-state-meta" aria-live="polite"></div>
-        <div class="string-actions" aria-label="Copy puzzle strings">
-          <button id="copyPuzzle81" class="secondary" type="button" title="Copy the original 81-character puzzle string">Copy 81</button>
-          <button id="copyPuzzle729" class="secondary" type="button"
-            title="Copy the current 729-candidate grid with cell and box borders">
-            Copy 729
-          </button>
-        </div>
-        <details class="solution-inline" id="solutionPanel">
-          <summary>Solution</summary>
-          <div class="solution-inline-value" id="solutionString"></div>
-        </details>
-        <div id="ratingSummary" class="rating-summary" hidden aria-live="polite">
-          <div class="rating-summary-line">
-            <span class="rating-summary-label">Rating Category:</span>
-            <strong id="ratingCategory" class="rating-summary-category"></strong>
-            <span class="rating-summary-label">Score:</span>
-            <span id="ratingDetail" class="rating-summary-detail"></span>
-          </div>
-          <details class="rating-hardest-move">
-            <summary>Hardest Move</summary>
-            <div id="ratingHardestMove" class="rating-hardest-move-value"></div>
-          </details>
-        </div>
-      </div>
-      <fieldset class="generator-panel">
-        <legend>Generator</legend>
-        <div class="generator-fields">
-          <label>
-            Givens
-            <input id="givens" type="number" min="17" max="81" value="30">
-          </label>
-          <label>
-            Difficulty
-            <select id="generationDifficulty">
-              <option value="Any" selected>Any</option>
-              <option value="Lulz">Lulz</option>
-              <option value="Extremely Easy">Extremely Easy</option>
-              <option value="Very Easy">Very Easy</option>
-              <option value="Modestly Easy">Modestly Easy</option>
-              <option value="Easy">Easy</option>
-              <option value="Moderate">Moderate</option>
-              <option value="Tough">Tough</option>
-              <option value="Challenging">Challenging</option>
-              <option value="Irritating">Irritating</option>
-              <option value="Frustrating">Frustrating</option>
-              <option value="Hard">Hard</option>
-              <option value="Demanding">Demanding</option>
-              <option value="Expert">Expert</option>
-              <option value="Brutal">Brutal</option>
-              <option value="Nightmare">Nightmare</option>
-              <option value="Abyssal">Abyssal</option>
-              <option value="Transcendent">Transcendent</option>
-              <option value="Unknown">Unknown</option>
-            </select>
-          </label>
-          <button id="generate" type="button">Generate</button>
-        </div>
-        <div class="generator-actions">
-          <button id="reset" class="secondary" type="button" title="Reload the current grid">Reload</button>
-          <button id="import" class="secondary" type="button"
-            title="Import from the clipboard. Accepts 81-character puzzle strings or 729-bit candidate strings.">
-            Import
-          </button>
-        </div>
-        <div class="puzzle-input-group">
-          <label>
-            <textarea id="input" aria-label="Puzzle string" spellcheck="false"
-              title="Accepts 81-character puzzle strings, 729 candidate bits, or candidate-grid text."></textarea>
-          </label>
-          <div class="puzzle-input-actions">
-            <button id="load" class="secondary" type="button"
-              title="Accepts 81-character puzzle strings, 729 candidate bits, or candidate-grid text. Load the puzzle string shown here.">
-              Load
-            </button>
-          </div>
-        </div>
-      </fieldset>
-      <fieldset class="settings-dock">
-        <legend>Settings</legend>
-        <div class="settings-dock-actions">
-          <button id="chainSettingsButton" class="secondary" type="button"
-            popovertarget="chainSettingsPopover" popovertargetaction="toggle">
-            A.I.C | ALS
-          </button>
-          <button id="fishSettingsButton" class="secondary" type="button"
-            popovertarget="fishSettingsPopover" popovertargetaction="toggle">
-            Fish
-          </button>
-          <button id="alsDofSettingsButton" class="secondary" type="button"
-            popovertarget="alsDofSettingsPopover" popovertargetaction="toggle">
-            ALS-DOF
-          </button>
-          <button id="difficultySettingsButton" class="secondary" type="button"
-            popovertarget="difficultySettingsPopover" popovertargetaction="toggle">
-            Difficulty
-          </button>
-        </div>
-      </fieldset>
-    </section>
-
     <div class="settings-popover-holder">
       <div id="difficultySettingsPopover" class="difficulty-settings-popover" popover>
-        <section class="difficulty-math" aria-labelledby="difficultyMathHeading">
-          <h2 id="difficultyMathHeading">Score Math</h2>
-          <div class="difficulty-math-grid">
-            <strong>Final move score</strong>
-            <span>base score + K modifier + shape modifier + form modifier</span>
-            <strong>Fish</strong>
-            <span>n + (0.25 * K) + Franken 0.125 or Mutant 0.25</span>
-            <strong>Chain / ALS</strong>
-            <span>base + length excess + unique-digit excess + Open 0.25 or Ring 0.5</span>
-            <strong>Transport</strong>
-            <span>named transport modifier +1.0; generic chain length already accounts for length</span>
-            <strong>DDS / ADDS</strong>
-            <span>ALS-DOF = 12 + (0.25 * (DOF - 1)); DDS ring adds 0.5; Almost DDS adds 0.25 beyond DDS</span>
-            <strong>DDS / ADDS Chain</strong>
-            <span>base 13; Ring adds 0.5</span>
-          </div>
-          <p class="difficulty-math-note">The solver selects the lowest final score first. Ties use the item order inside the categories below.</p>
-        </section>
         <div id="difficultyTable" class="difficulty-table" role="table" aria-label="Difficulty rating table"></div>
       </div>
     </div>
@@ -2896,9 +2482,6 @@
                 <label class="check"><input id="moveTAlsXy" type="checkbox" checked> T-ALS-XY</label>
                 <label class="check"><input id="moveAlsChain" type="checkbox" checked> ALS - Chain</label>
                 <label class="check"><input id="moveAicAls" type="checkbox" checked> AIC + ALS</label>
-                <label class="check"><input id="moveAlsDof" type="checkbox" checked> ALS - DOF</label>
-                <label class="check"><input id="moveDds" type="checkbox" checked> DDS</label>
-                <label class="check"><input id="moveAdds" type="checkbox" checked> Almost DDS</label>
               </div>
             </details>
           </div>
@@ -3013,41 +2596,7 @@
     </div>
 
     <section class="layout">
-      <section class="workspace-panel board-workspace-panel" aria-label="Grid">
-        <section class="workspace-panel grid-controls-panel" aria-label="Grid controls">
-        <div class="grid-controls-row">
-          <div class="grid-digit-stack">
-            <fieldset class="digit-focus-panel grid-digit-panel">
-              <legend>Digits</legend>
-              <div class="digit-focus-toolbar" aria-label="Digit highlights">
-                <div id="digitFocusButtons" class="digit-focus-buttons"></div>
-              </div>
-            </fieldset>
-            <fieldset class="candidate-size-toolbar grid-cell-size-panel" aria-label="Candidate size filter">
-              <div class="candidate-size-heading">
-                <label class="candidate-size-toggle"
-                  title="When enabled, selected digit highlights appear only in the active X, XY, XYZ, or WXYZ size filters.">
-                  <input id="limitDigitHighlightsToSize" type="checkbox"
-                    aria-label="Restrict digit highlights to selected sizes">
-                  <span>Mask</span>
-                </label>
-              </div>
-              <div id="candidateSizeFilterButtons" class="candidate-size-buttons"></div>
-            </fieldset>
-          </div>
-          <fieldset class="header-tool-frame grid-actions-panel">
-            <legend>Actions</legend>
-            <div class="header-button-row">
-              <button id="undo" class="secondary" title="Undo last cycle">Undo</button>
-              <button id="redo" class="secondary" title="Redo last cycle">Redo</button>
-              <button id="next">Next</button>
-              <button id="run" class="secondary">Run All</button>
-              <button id="applyBasics" class="secondary" type="button"
-                title="Last Man Standing, subsets, and basic fish size 1-4">Basics</button>
-            </div>
-          </fieldset>
-        </div>
-        </section>
+      <div class="board-column">
         <div class="grid-frame">
           <div class="grid-side-label">Rows</div>
           <div id="gridRowTitle" class="grid-row-title">
@@ -3065,8 +2614,27 @@
           <div id="gridRowHeader" class="grid-row-header"></div>
           <div id="board" class="board" aria-label="Sudoku candidate grid"></div>
         </div>
-        <section class="workspace-panel report-workspace-panel" aria-label="Grid reports">
-          <div class="report-stack">
+        <div class="report-stack">
+          <div class="code puzzle-string-box">
+            <div id="puzzleString"></div>
+            <div id="puzzleStateMeta" class="puzzle-state-meta" aria-live="polite"></div>
+            <div class="string-actions" aria-label="Copy puzzle strings">
+              <button id="copyPuzzle81" class="secondary" type="button" title="Copy the original 81-character puzzle string">Copy 81</button>
+              <button id="copyPuzzle729" class="secondary" type="button"
+                title="Copy 729 bits: one fixed bit for each given or solved cell, otherwise its remaining pencilmarks">
+                Copy 729
+              </button>
+            </div>
+            <details class="solution-inline" id="solutionPanel">
+              <summary>Solution</summary>
+              <div class="solution-inline-value" id="solutionString"></div>
+            </details>
+            <div id="ratingSummary" class="rating-summary" hidden aria-live="polite">
+              <span class="rating-summary-label">Rating Category</span>
+              <strong id="ratingCategory" class="rating-summary-category"></strong>
+              <span id="ratingDetail" class="rating-summary-detail"></span>
+            </div>
+          </div>
           <details class="pom-panel" id="alsPanel">
             <summary><h2>LS / ALS Builder</h2></summary>
             <div class="pom-body">
@@ -3128,26 +2696,15 @@
               </div>
             </div>
           </details>
-          </div>
-        </section>
-      </section>
+        </div>
+      </div>
 
-      <section class="workspace-panel solution-workspace-panel" aria-labelledby="solutionHeading">
-        <h2 id="solutionHeading" class="workspace-panel-heading visually-hidden">Solution</h2>
-        <div class="panel solution-column">
-        <div id="status" class="status" role="status" aria-live="polite" aria-atomic="true">Ready.</div>
+      <div class="panel solution-column">
+        <div id="status" class="status">Ready.</div>
         <details class="pom-panel solution-steps" id="solutionStepsPanel">
           <summary>
             <h2>Solution Steps:</h2>
             <span id="solutionStepsPreview" class="solution-steps-preview">No applied steps yet.</span>
-            <span class="solution-summary-actions">
-              <button id="solutionCopyEureka" class="secondary" type="button"
-                title="Copy the selected highlighted move's Eureka" disabled>Copy Eureka</button>
-              <button id="solutionCopyList" class="secondary" type="button"
-                title="Copy the complete solution list" disabled>Copy Solution</button>
-              <button id="clearHighlight" class="secondary" type="button"
-                title="Clear the highlighted move from the grid">Clear Highlight</button>
-            </span>
           </summary>
           <div class="pom-body">
             <ol id="log" class="log"></ol>
@@ -3212,7 +2769,12 @@
               title="Search for Alternating Inference Chain">Search</button>
           </summary>
           <div class="pom-body">
-            <textarea id="chainOutput" class="chain-output" readonly spellcheck="false" hidden></textarea>
+            <div class="chain-tools">
+              <button id="chainCopy" class="secondary" type="button">Copy Eureka</button>
+              <button id="chainCopyVerbose" class="secondary" type="button">Copy Debug</button>
+              <button id="chainClear" class="secondary" type="button">Clear View</button>
+            </div>
+            <textarea id="chainOutput" class="chain-output" readonly spellcheck="false"></textarea>
             <section id="illegalChainArea" class="chain-safety-warning" hidden>
               <h3 id="illegalChainHeading">Flagged / Illegal Chains</h3>
               <p>These chains conflict with the loaded solution or leave a cell or sector without a legal candidate.</p>
@@ -3231,8 +2793,7 @@
             <div id="pomResults" class="pom-results">No POM check has been run.</div>
           </div>
         </details>
-        </div>
-      </section>
+      </div>
     </section>
   </main>
 
@@ -3241,7 +2802,7 @@
   <script src="./src/pom-core.js"></script>
   <script src="./src/als-core.js?v=20260917-1"></script>
   <script src="./src/als-link-core.js?v=20260918-2"></script>
-  <script src="./src/als-dof-core.js?v=20260918-15"></script>
+  <script src="./src/als-dof-core.js?v=20260918-11"></script>
   <script src="./src/ahs-core.js?v=20260912-5"></script>
   <script src="./src/subset-report-core.js"></script>
   <script src="./src/mini-sectors-core.js"></script>
@@ -3272,13 +2833,9 @@
     const ratingSummaryEl = document.getElementById('ratingSummary');
     const ratingCategoryEl = document.getElementById('ratingCategory');
     const ratingDetailEl = document.getElementById('ratingDetail');
-    const ratingHardestMoveEl = document.getElementById('ratingHardestMove');
     const difficultyTableEl = document.getElementById('difficultyTable');
     const solutionStepsPanelEl = document.getElementById('solutionStepsPanel');
     const solutionStepsPreviewEl = document.getElementById('solutionStepsPreview');
-    const solutionCopyEurekaEl = document.getElementById('solutionCopyEureka');
-    const solutionCopyListEl = document.getElementById('solutionCopyList');
-    const clearHighlightEl = document.getElementById('clearHighlight');
     const logEl = document.getElementById('log');
     const pomResultsEl = document.getElementById('pomResults');
     const alsResultsEl = document.getElementById('alsResults');
@@ -3296,6 +2853,9 @@
     const illegalChainAreaEl = document.getElementById('illegalChainArea');
     const illegalChainHeadingEl = document.getElementById('illegalChainHeading');
     const illegalChainResultsEl = document.getElementById('illegalChainResults');
+    const chainCopyEl = document.getElementById('chainCopy');
+    const chainCopyVerboseEl = document.getElementById('chainCopyVerbose');
+    const chainClearEl = document.getElementById('chainClear');
     const undoEl = document.getElementById('undo');
     const redoEl = document.getElementById('redo');
     const applyBasicsEl = document.getElementById('applyBasics');
@@ -3372,9 +2932,6 @@
       ['t-als-xy', document.getElementById('moveTAlsXy')],
       ['als-chain', document.getElementById('moveAlsChain')],
       ['aic-als', document.getElementById('moveAicAls')],
-      ['als-dof', document.getElementById('moveAlsDof')],
-      ['dds', document.getElementById('moveDds')],
-      ['adds', document.getElementById('moveAdds')],
     ]);
     const fishMinSizeEl = document.getElementById('fishMinSize');
     const fishMaxSizeEl = document.getElementById('fishMaxSize');
@@ -3432,7 +2989,6 @@
     let selectedChainIndex = null;
     let ratingReport = null;
     let gridView = 'RC';
-    const SHOW_AIC_DEBUG = false;
     const activeDigitHighlights = new Set();
     const activeCandidateSizeFilters = new Set();
     let limitDigitHighlightsToSize = false;
@@ -3468,7 +3024,7 @@
       }
 
       try {
-        searchWorker = new Worker(new URL('./src/search-worker.js?v=20260918-16', document.baseURI));
+        searchWorker = new Worker(new URL('./src/search-worker.js?v=20260917-2', document.baseURI));
         searchWorker.onmessage = event => {
           const { id, result, error } = event.data || {};
           const job = searchWorkerJobs.get(id);
@@ -3519,7 +3075,6 @@
     function setStatus(text, kind = '') {
       statusEl.className = `status ${kind}`.trim();
       statusEl.textContent = text;
-      renderSolutionActions();
     }
 
     function fillNumberSelect(select, min, max, selected) {
@@ -3865,10 +3420,8 @@
     }
 
     function selectedChain() {
-      if (chainReport && selectedChainIndex !== null) {
-        return chainReport.chains[selectedChainIndex] || null;
-      }
-      return null;
+      if (!chainReport || selectedChainIndex === null) return null;
+      return chainReport.chains[selectedChainIndex] || null;
     }
 
     function selectedAlsRecord() {
@@ -5413,36 +4966,13 @@
     }
 
     function current729String() {
-      const cells = [];
+      const bits = [];
       for (let cell = 0; cell < 81; cell++) {
-        // Export each cell in state order: original given, promoted solution,
-        // or the cell's current remaining pencilmarks.
-        const given = originalPuzzle[cell] || 0;
-        const solved = given
-          ? 0
-          : (promotedValues[cell] || puzzle[cell] || 0);
-        const values = given
-          ? [given]
-          : solved
-            ? [solved]
-            : [...(cand[cell] || [])];
-        cells.push(values.join(''));
+        const fixedDigit = puzzle[cell] || promotedValues[cell] || 0;
+        const values = fixedDigit ? [fixedDigit] : (cand[cell] || []);
+        for (let digit = 1; digit <= 9; digit++) bits.push(values.includes(digit) ? '1' : '0');
       }
-      const cellWidth = Math.max(1, ...cells.map(value => value.length));
-      const boxWidth = cellWidth * 3 + 4;
-      const horizontal = '.' + Array.from({ length: 3 }, () => '-'.repeat(boxWidth)).join('.') + '.';
-      const divider = ':' + Array.from({ length: 3 }, () => '-'.repeat(boxWidth)).join('+') + ':';
-      const formatRow = row => '|' + Array.from({ length: 3 }, (_, box) => {
-        const start = row * 9 + box * 3;
-        return ` ${cells[start].padEnd(cellWidth)} ${cells[start + 1].padEnd(cellWidth)} ${cells[start + 2].padEnd(cellWidth)} `;
-      }).join('|') + '|';
-      const lines = [horizontal];
-      for (let row = 0; row < 9; row++) {
-        lines.push(formatRow(row));
-        if (row === 2 || row === 5) lines.push(divider);
-      }
-      lines.push(horizontal);
-      return lines.join('\n');
+      return bits.join('');
     }
 
     async function copyPuzzleString(text, label) {
@@ -5464,74 +4994,12 @@
       }
     }
 
-    function solutionEurekaText() {
-      return logEntries
-        .map(entry => `${entry.cycle}. ${displayedStepDescription(entry)}`)
-        .join('\n');
-    }
-
-    function selectedFishStep() {
-      if (!fishReport || !selectedFishKey) return '';
-      const separator = selectedFishKey.lastIndexOf(':');
-      const category = selectedFishKey.slice(0, separator);
-      const index = Number(selectedFishKey.slice(separator + 1));
-      const fish = fishReport.filter(item => item.category === category)[index];
-      return fish ? fishStepFromReport(fish) : null;
-    }
-
-    function selectedFishEureka() {
-      return selectedFishStep()?.desc || '';
-    }
-
-    function selectedSubsetStep(kind) {
-      const report = kind === 'hidden' ? hiddenSubsetReport : nakedSubsetReport;
-      const key = kind === 'hidden' ? selectedHiddenSubsetKey : selectedNakedSubsetKey;
-      if (!report || !key) return null;
-      const [sizeText, indexText] = key.split(':');
-      const size = Number(sizeText);
-      const index = Number(indexText);
-      const item = report.filter(record => record.size === size)[index];
-      return item ? subsetStepFromReport(kind, item) : null;
-    }
-
-    function selectedSubsetEureka(kind) {
-      return selectedSubsetStep(kind)?.desc || '';
-    }
-
-    function selectedChainStep() {
-      const chain = chainReport?.chains?.[selectedChainIndex];
-      return chain ? chainStepFromResult(chain, chainReport, selectedChainIndex, cand) : null;
-    }
-
-    function selectedChainEureka() {
-      return selectedChainStep()?.desc || '';
-    }
-
-    function highlightedEurekaText() {
-      if (activeStep?.chain) return chainText(activeStep.chain);
-      if (activeStep?.desc) return activeStep.desc;
-      const alsDof = selectedAlsDofRecord();
-      if (alsDof) return core.formatAlsDof(alsDof);
-      return selectedFishEureka()
-        || selectedSubsetEureka('hidden')
-        || selectedSubsetEureka('naked')
-        || selectedChainEureka();
-    }
-
-    function solutionListText() {
-      return logEntries
-        .map(entry => {
-          const value = formatRatingValue(entry.rating?.value);
-          const rating = value ? `Rating: (${value}) ` : 'Rating: (Unknown) ';
-          return `${entry.cycle}. ${rating}${displayedStepDescription(entry)}`;
-        })
-        .join('\n');
-    }
-
-    function renderSolutionActions() {
-      const hasHighlightedMove = !!highlightedEurekaText();
-      if (solutionCopyEurekaEl) solutionCopyEurekaEl.disabled = !hasHighlightedMove;
-      if (solutionCopyListEl) solutionCopyListEl.disabled = logEntries.length === 0;
+    async function copyAlsDofResult(result) {
+      if (!result || !result.verification?.ok) {
+        setStatus('No verified ALS-DOF result selected.', 'warn');
+        return;
+      }
+      await copyPuzzleString(core.formatAlsDof(result), 'ALS-DOF Eureka');
     }
 
     function openReportPanel(resultEl) {
@@ -5563,7 +5031,6 @@
       renderStrings();
       renderRatingReport();
       renderLog();
-      renderSolutionActions();
       renderPomReport();
       renderAlsReport();
       renderAlsLinkReport();
@@ -5599,8 +5066,6 @@
       Expert: 120,
       Brutal: 130,
       Nightmare: 140,
-      Abyssal: 150,
-      Transcendent: 160,
       Unknown: Number.POSITIVE_INFINITY,
     });
 
@@ -5620,8 +5085,6 @@
       { category: 'Expert', min: 9, max: 9.999 },
       { category: 'Brutal', min: 10, max: 10.999 },
       { category: 'Nightmare', min: 11, max: 11.999 },
-      { category: 'Abyssal', min: 12, max: 12.999 },
-      { category: 'Transcendent', min: 13, max: 14.999 },
     ]);
 
     function normalizeRatingCategory(category) {
@@ -5669,8 +5132,6 @@
       addAt(110, 't-als-xz', 'als-xy');
       addAt(120, 't-als-xy', 'aic-als');
       addAt(130, 'als-chain');
-      addAt(150, 'als-dof', 'dds', 'adds');
-      addAt(160, 'dds-chain', 'adds-chain');
 
       const strongLinkTypes = maxRank >= 50
         ? [0, 1, 2, 3, 4]
@@ -5883,21 +5344,6 @@
       {
         category: 'NIGHTMARE', score: '11 to 11.5', items: [
           ['AIC + ALS Chains', '11'],
-          ['Ring forms', '+0.5'],
-        ],
-      },
-      {
-        category: 'ABYSSAL', score: '12 to 12.999', items: [
-          ['ALS - DOF (DOF 1-8)', '12 + 0.25 * (DOF - 1)'],
-          ['DDS ring (DOF 1-8)', 'ALS-DOF + 0.5'],
-          ['Almost DDS (DOF 1-8)', 'DDS + 0.25'],
-        ],
-      },
-      {
-        category: 'TRANSCENDENT', score: '13 to 14.5', items: [
-          ['ALS-DOF / DDS / Almost DDS above 13', 'DOF-scaled'],
-          ['DDS - Chain', '13'],
-          ['ADDS - Chain', '13'],
           ['Ring forms', '+0.5'],
         ],
       },
@@ -6162,68 +5608,9 @@
       return unknownRating(step?.desc || '');
     }
 
-    function alsDofScore(step) {
-      const dof = Math.max(1, Number(step?.size ?? step?.primaryA?.dof ?? 1));
-      const dofShift = 0.25 * Math.max(0, dof - 1);
-      if (step?.mode === 'almost-dds') return 12 + dofShift + 0.75;
-      if (step?.mode === 'dds') return 12 + dofShift + (step.isRing ? 0.5 : 0);
-      return 12 + dofShift + (step?.isRing ? 0.5 : 0);
-    }
-
-    function alsDofMoveKey(result) {
-      if (result?.mode === 'dds') return 'dds';
-      if (result?.mode === 'almost-dds') return 'adds';
-      return 'als-dof';
-    }
-
-    function alsDofMoveEnabled(result, enabledTypes) {
-      return enabledTypes.has(alsDofMoveKey(result));
-    }
-
-    function alsDofStepFromResult(result, report, index, candidateGrid) {
-      const items = core.eliminationItems({ items: result?.eliminations || [] }, candidateGrid);
-      if (!items.length) return null;
-      const step = {
-        tech: 'als-dof',
-        name: result.name,
-        structureName: result.name,
-        mode: result.mode,
-        isRing: !!result.isRing,
-        ringForm: result.ringForm,
-        size: result.size,
-        alsDofRecord: result,
-        alsDofReport: report,
-        alsDofIndex: index,
-        desc: core.formatAlsDof({ ...result, eliminations: items }),
-        elim: { items },
-        digits: [...new Set(items.map(item => item.digit))],
-        at: [...new Set((result.primaryA?.cells || [])
-          .concat((result.auxiliary || []).flatMap(node => node.cells || []))
-          .concat(result.primaryC?.cells || []))],
-      };
-      step.rating = ratingForStep(step);
-      return step;
-    }
-
     function ratingForStep(step) {
       const tech = String(step?.tech || '');
       if (tech === 'chain') return ratingForChain(step.chain || step, step);
-      if (tech === 'als-dof') {
-        const isChain = step.mode === 'chain' || !!step.chainForm;
-        const score = isChain ? 13 + (step.isRing ? 0.5 : 0) : alsDofScore(step);
-        const category = isChain ? 'Transcendent' : ratingCategoryForValue(score);
-        const label = isChain
-          ? (step.mode === 'almost-dds' ? 'ADDS - Chain' : 'DDS - Chain')
-          : step.mode === 'almost-dds'
-            ? 'Almost DDS'
-            : step.mode === 'dds'
-              ? 'DDS'
-              : 'ALS - DOF';
-        return {
-          ...ratingDefinition(category, score, `${label}${step.isRing ? ' Ring' : ''}`),
-          hardestMove: step.desc || '',
-        };
-      }
       const direct = RATING_TAGS.find(definition => definition.tech === tech);
       if (direct) {
         return {
@@ -6539,15 +5926,14 @@
       ratingCategoryEl.textContent = ratingReport.category || ratingCategoryForValue(ratingReport.value);
       if (ratingReport.solved === false) {
         const partialScore = formatRatingValue(ratingReport.partialScore ?? ratingReport.score);
-        ratingDetailEl.textContent = partialScore || '0';
-        ratingHardestMoveEl.textContent = 'Unknown';
+        ratingDetailEl.textContent = `Cumulative score: (${partialScore || '0'}). Hardest Move: Unknown.`;
         return;
       }
 
-      ratingDetailEl.textContent = formatRatingValue(ratingReport.score) || '0';
-      ratingHardestMoveEl.textContent = ratingReport.hardestMove
+      const hardestTag = ratingReport.hardestMove
         ? `${ratingReport.tag} (${formatRatingValue(ratingReport.value)})`
         : 'Unknown';
+      ratingDetailEl.textContent = `Cumulative score: (${formatRatingValue(ratingReport.score) || '0'}). Hardest Move: ${hardestTag}.`;
     }
 
     function constructDisplayName(chain, ratingTag) {
@@ -7149,6 +6535,7 @@
       summary.textContent = `${fishReport.length} N x (N + K) fish reports.`
         + ` ${categories.map((category, index) => `${category} ${groups[index].length}`).join(', ')}.`;
       fishResultsEl.appendChild(summary);
+
       const categoriesEl = document.createElement('div');
       categoriesEl.className = 'chain-categories';
       categories.forEach((category, categoryIndex) => {
@@ -7206,10 +6593,9 @@
               + `${core.sectorGroupName(fish.baseSectors)} / `
               + `${core.sectorGroupName(fish.coverSectors)} => `
               + `${core.formatRemovals(removals)}`;
-        const select = () => selectFishReport(category, index);
-        button.addEventListener('click', select);
-        item.appendChild(button);
-        list.appendChild(item);
+            button.addEventListener('click', () => selectFishReport(category, index));
+            item.appendChild(button);
+            list.appendChild(item);
           }
           if (sizeRecords.length > visible.length) {
             const more = document.createElement('li');
@@ -7282,6 +6668,7 @@
       const summary = document.createElement('p');
       summary.textContent = `${report.length} ${hidden ? 'hidden' : 'naked'} subset reports.`;
       resultsEl.appendChild(summary);
+
       const groups = new Map();
       for (const item of report) {
         const bucket = groups.get(item.size) || [];
@@ -7323,8 +6710,7 @@
           button.textContent = `${label}: (${item.digits.join('')}) `
             + `${core.cellGroupName(item.cells)} in ${core.sectorGroupName([item.sector])} => `
             + `${core.formatRemovals(item.removals)}`;
-          const select = () => selectSubsetReport(kind, index, size);
-          button.addEventListener('click', select);
+          button.addEventListener('click', () => selectSubsetReport(kind, index, size));
           entry.appendChild(button);
           list.appendChild(entry);
         }
@@ -7983,8 +7369,7 @@
         if (index === selectedChainIndex) button.classList.add('selected');
         button.textContent = `${index + 1}. ${entry.displayName || chainText(chain)}`;
         if (core.formatChainVerbose) button.title = chainText(chain, true);
-        const select = () => selectChain(index);
-        button.addEventListener('click', select);
+        button.addEventListener('click', () => selectChain(index));
         item.appendChild(button);
         list.appendChild(item);
       }
@@ -8619,15 +8004,11 @@
       'als-named': 55,
       'als-chain': 56,
       'aic-als': 57,
-      'als-dof': 58,
-      dds: 59,
-      adds: 60,
     });
 
     function directMoveTieKey(step) {
       const tech = String(step?.tech || '');
       if (tech === 'pointing' || tech === 'claiming') return 'box-line';
-      if (tech === 'als-dof') return alsDofMoveKey(step);
       if (tech === 'fish') {
         const size = Number(step?.size);
         const k = Number(step?.k || 0);
@@ -8750,97 +8131,25 @@
       ];
     }
 
-    function chooseBestSolverMove(choices = []) {
-      let best = null;
-      for (const choice of choices) {
-        if (!choice?.step) continue;
-        const candidate = {
-          ...choice,
-          priority: choice.priority || (choice.chain
-            ? solverMovePriority(
-                choice.chain,
-                choice.step,
-                choice.step?.chainLength,
-                choice.index,
-              )
-            : directMovePriority(choice.step)),
-        };
-        if (isHigherPriorityMove(candidate, best)) best = candidate;
-      }
-      if (!best) return null;
-      const { priority, ...result } = best;
-      return result;
-    }
-
     function chooseLowerScoringMove(simple, chainResult) {
-      return chooseBestSolverMove([
-        simple ? { step: simple, chain: null } : null,
-        chainResult,
-      ]);
-    }
+      if (!simple) return chainResult;
+      if (!chainResult) return { step: simple, chain: null };
 
-    function bestAlsDofMoveFromReport(candidateGrid, report, enabledTypes, profile = null) {
-      let best = null;
-      for (let index = 0; index < (report?.results || []).length; index++) {
-        const result = report.results[index];
-        if (!alsDofMoveEnabled(result, enabledTypes)) continue;
-        const step = alsDofStepFromResult(result, report, index, candidateGrid);
-        if (!step) continue;
-        if (profile?.maxRank !== undefined && step.rating.rank > profile.maxRank) continue;
-        const candidate = {
-          step,
-          chain: null,
-          alsDofReport: report,
-          alsDofIndex: index,
-          priority: directMovePriority(step),
-        };
-        if (isHigherPriorityMove(candidate, best)) best = candidate;
-      }
-      return best;
-    }
-
-    function findSolverAlsDofMove(
-      candidateGrid = cand,
-      budget = 'interactive',
-      profile = null,
-    ) {
-      const enabledTypes = currentSolverMoveTypes(profile?.moveTypes);
-      if (!['als-dof', 'dds', 'adds'].some(type => enabledTypes.has(type))) return null;
-
-      const maxDigits = Math.min(9, Math.max(2,
-        Number(alsDofMaxDigitsEl.value) || 6));
-      const maxAuxiliary = Math.min(9, Math.max(1,
-        Number(alsDofMaxAuxiliaryEl.value) || 3));
-      const sourceAls = core.alsConstructor(candidateGrid, {
-        maxSizeDOF: maxDigits - 1,
-        maxSizeFox: maxDigits - 1,
-      });
-      const raw = core.findAlsDofNets(candidateGrid, {
-        alsList: sourceAls,
-        maxAuxiliary,
-        maxDigits,
-        maxResults: budget === 'generator' ? 2500 : 5000,
-        includeChain: false,
-      });
-      const accepted = [];
-      const rejected = [];
-      for (const result of raw.results || []) {
-        const verification = core.verifyAlsDofNet(candidateGrid, result, { alsList: sourceAls });
-        if (verification.ok) accepted.push({ ...result, verification });
-        else rejected.push({ result, verification });
-      }
-      const report = {
-        ...raw,
-        results: accepted,
-        rejectedResults: rejected,
-        stats: {
-          ...(raw.stats || {}),
-          verifierChecked: (raw.results || []).length,
-          verifierRejected: rejected.length,
-        },
+      const direct = { step: simple, priority: directMovePriority(simple) };
+      const chain = {
+        ...chainResult,
+        priority: solverMovePriority(
+          chainResult.chain,
+          chainResult.step,
+          chainResult.step?.chainLength,
+          chainResult.index,
+        ),
       };
-
-      return bestAlsDofMoveFromReport(candidateGrid, report, enabledTypes, profile);
+      if (isHigherPriorityMove(direct, chain)) {
+        return { step: simple, chain: null };
+      }
+      const { priority, ...result } = chain;
+      return result;
     }
 
     function findSolverChainMove(
@@ -9029,29 +8338,7 @@
         profile,
         budget,
       );
-      const currentBest = chooseLowerScoringMove(simple, chainResult);
-      const currentScore = currentBest?.step
-        ? Number(currentBest.step.rating?.value ?? ratingForStep(currentBest.step).value)
-        : Number.POSITIVE_INFINITY;
-      if (currentScore < 12) return currentBest;
-
-      const enabledTypes = currentSolverMoveTypes(profile?.moveTypes);
-      if (!['als-dof', 'dds', 'adds'].some(type => enabledTypes.has(type))) {
-        return currentBest;
-      }
-      const alsDofReport = await runSearchWorker('als-dof', {
-        candidateGrid,
-        maxDigits: Math.min(9, Math.max(2, Number(alsDofMaxDigitsEl.value) || 6)),
-        maxAuxiliary: Math.min(9, Math.max(1, Number(alsDofMaxAuxiliaryEl.value) || 3)),
-        maxResults: budget === 'generator' ? 2500 : 5000,
-      });
-      const alsDofResult = bestAlsDofMoveFromReport(
-        candidateGrid,
-        alsDofReport,
-        enabledTypes,
-        profile,
-      );
-      return chooseBestSolverMove([currentBest, alsDofResult]);
+      return chooseLowerScoringMove(simple, chainResult);
     }
 
     function chooseSolverStep(
@@ -9073,14 +8360,7 @@
       if (simpleCannotBeBeaten) return { step: simple, chain: null };
 
       const chainResult = findSolverChainMove(candidateGrid, fixedGrid, budget, expectedSolution, profile);
-      const currentBest = chooseLowerScoringMove(simple, chainResult);
-      const currentScore = currentBest?.step
-        ? Number(currentBest.step.rating?.value ?? ratingForStep(currentBest.step).value)
-        : Number.POSITIVE_INFINITY;
-      if (currentScore < 12) return currentBest;
-
-      const alsDofResult = findSolverAlsDofMove(candidateGrid, budget, profile);
-      return chooseBestSolverMove([currentBest, alsDofResult]);
+      return chooseLowerScoringMove(simple, chainResult);
     }
 
     function chooseBasicStep(candidateGrid = cand, fixedGrid = puzzle) {
@@ -9148,11 +8428,8 @@
     }
 
     function renderIllegalChainReport() {
-      illegalChainResultsEl.textContent = '';
-      illegalChainAreaEl.hidden = !SHOW_AIC_DEBUG;
-      if (!SHOW_AIC_DEBUG) return;
-
       const flagged = flaggedChainEntries();
+      illegalChainResultsEl.textContent = '';
       illegalChainAreaEl.hidden = flagged.length === 0;
       if (!flagged.length) return;
 
@@ -9189,27 +8466,22 @@
       }
     }
 
-    function clearHighlightedMove() {
-      leaveHistoryPreview();
+    function clearChainSelection() {
       selectedAlsId = null;
       selectedAhsId = null;
       selectedChainIndex = null;
-      selectedAlsDof = null;
-      selectedAlsDofIndex = null;
-      selectedAlsDofSource = 'net';
       activeStep = null;
       lastRemoved = [];
       selectedFishKey = null;
       selectedNakedSubsetKey = null;
       selectedHiddenSubsetKey = null;
-      selectedStrongLinkType = null;
-      selectedStrongLinkIndex = null;
-      render();
-      setStatus('Highlighted move cleared.', 'ok');
-    }
-
-    function clearChainSelection() {
-      clearHighlightedMove();
+      renderBoard();
+      renderFishReport();
+      renderNakedSubsetReport();
+      renderHiddenSubsetReport();
+      renderChainReport();
+      if (alsSearchFamily) renderAlsSearchResults();
+      setStatus('Chain view cleared.', 'ok');
     }
 
     function selectChain(index) {
@@ -9243,10 +8515,18 @@
         return;
       }
 
-      const { chains } = chainReport;
+      const { stats, chains } = chainReport;
       if (selectedChainIndex !== null && selectedChainIndex >= chains.length) selectedChainIndex = null;
+      const flagged = flaggedChainEntries();
       const summary = document.createElement('p');
-      summary.textContent = `${chains.length} chains with eliminations.`;
+      summary.textContent = `${chains.length} chains with eliminations. `
+        + `Links: strong ${stats.strongLinks}; ALS ${stats.alsLinks || 0}; `
+        + `views ${stats.directedViews}, walked ${stats.statesVisited}, `
+        + `NAND checks ${stats.transitionsChecked}, accepted ${stats.transitionsAccepted}, reports ${stats.resultAttempts || 0}`
+        + `${stats.duplicatesSuppressed ? `, duplicates ${stats.duplicatesSuppressed}` : ''}`
+        + `${stats.startCapsHit ? `, start caps ${stats.startCapsHit}` : ''}`
+        + `${stats.truncated ? `; stopped at ${stats.stopReason}` : ''}`
+        + `${flagged.length ? `; flagged ${flagged.length}` : ''}.`;
       chainResultsEl.appendChild(summary);
 
       const visible = chains.slice(0, 200);
@@ -9283,7 +8563,7 @@
         (folderMemberships.get(selectedChainIndex) || []).map(location => location.key),
       );
       const selectedLocations = folderMemberships.get(selectedChainIndex) || [];
-      if (SHOW_AIC_DEBUG && selectedLocations.length) {
+      if (selectedLocations.length) {
         const locations = document.createElement('p');
         locations.className = 'chain-memberships';
         locations.textContent = `Selected chain folders: ${selectedLocations.map(location => location.label).join(' | ')}`;
@@ -9338,18 +8618,15 @@
       const list = document.createElement('div');
       list.className = 'chain-list';
       chainReport.chains.slice(0, 200).forEach((chain, index) => {
-        const item = document.createElement('li');
         const button = document.createElement('button');
         button.type = 'button';
         button.className = `chain-result${index === selectedChainIndex ? ' selected' : ''}`;
         button.textContent = `${index + 1}. ${chainText(chain)}`;
-        const select = () => {
+        button.addEventListener('click', () => {
           selectChain(index);
           openReportPanel(chainResultsEl);
-        };
-        button.addEventListener('click', select);
-        item.appendChild(button);
-        list.appendChild(item);
+        });
+        list.appendChild(button);
       });
       alsSearchResultsEl.appendChild(list);
       if (chainReport.chains.length > 200) {
@@ -9476,8 +8753,6 @@
                 selectedChainIndex = null;
                 selectedStrongLinkType = null;
                 selectedStrongLinkIndex = null;
-                activeStep = null;
-                lastRemoved = [];
                 renderBoard();
                 renderAlsDofReport();
                 focusMap();
@@ -9522,7 +8797,6 @@
         summary.textContent = `${report.results.length} ALS-DOF chain result${report.results.length === 1 ? '' : 's'}. `
           + `${report.stats.alsRecords} ALS records checked`
           + `; Hub-Auxiliary-Hub only`
-          + `; digit/DOF limit ${report.options.maxDigits}`
           + `; ${report.stats.constructionCandidates || 0} complete two-endpoint constructions checked`
           + `, ${report.stats.zeroEliminationCandidates || 0} had no eliminations`
           + `, ${report.stats.verifierRejected || 0} rejected by verifier`
@@ -9537,6 +8811,18 @@
           + `${report.stats.truncated ? '; result limit reached.' : '.'}`;
       }
       container.appendChild(summary);
+
+      const actions = document.createElement('div');
+      actions.className = 'als-dof-actions';
+      const copy = document.createElement('button');
+      copy.type = 'button';
+      copy.className = 'secondary';
+      copy.textContent = 'Copy verified result';
+      copy.disabled = !(selectedAlsDofSource === source && selectedAlsDofRecord());
+      copy.title = `Copy the selected verified ${label} Eureka notation and eliminations`;
+      copy.addEventListener('click', () => copyAlsDofResult(selectedAlsDofRecord()));
+      actions.appendChild(copy);
+      container.appendChild(actions);
 
       const rejected = report.rejectedResults || [];
       if (rejected.length) {
@@ -9929,18 +9215,8 @@
       cycle += 1;
       activeStep = step;
       lastRemoved = removed;
-      if (step.tech === 'als-dof' && choice.alsDofReport) {
-        alsDofReport = choice.alsDofReport;
-        selectedAlsDofSource = choice.alsDofSource || 'net';
-        selectedAlsDofIndex = choice.alsDofIndex ?? null;
-        selectedAlsDof = null;
-        chainReport = null;
-        selectedChainIndex = null;
-      } else {
-        selectedAlsDofIndex = null;
-        chainReport = choice.report || null;
-        selectedChainIndex = choice.report ? choice.index : null;
-      }
+      chainReport = choice.report || null;
+      selectedChainIndex = choice.report ? choice.index : null;
       undoStack.push(before);
       redoStack = [];
 
@@ -10039,7 +9315,7 @@
       const maxSteps = 1000;
       let applied = 0;
       setBusy(true);
-      setStatus('Basics started. Applying Last Man Standing, subsets, and basic fish sizes 1 through 4 until exhausted.');
+      setStatus('Applying basic subsets and fish through size 4...');
 
       try {
         while (applied < maxSteps) {
@@ -10060,11 +9336,11 @@
         ratingReport = ratingFromLog(logEntries, candidateGridIsSolved(cand, puzzle));
       }
       if (applied === maxSteps) {
-        setStatus(`Basics stopped after ${maxSteps} cycles. Last Man Standing, subsets, and basic fish sizes 1 through 4 were being applied.`, 'warn');
+        setStatus(`Apply Basics stopped at ${maxSteps} cycles.`, 'warn');
       } else if (applied > 0) {
-        setStatus(`Basics complete. ${applied} cycle${applied === 1 ? '' : 's'} applied; Last Man Standing, subsets, and basic fish sizes 1 through 4 are exhausted.`, 'ok');
+        setStatus(`Apply Basics complete. ${applied} cycle${applied === 1 ? '' : 's'} applied; size 1-4 subsets and basic fish are exhausted.`, 'ok');
       } else {
-        setStatus('Basics found no enabled Last Man Standing, subset, or basic fish move.', 'warn');
+        setStatus('Apply Basics found no enabled subset or basic fish move.', 'warn');
       }
       render();
     }
@@ -10074,7 +9350,7 @@
       leaveHistoryPreview();
       let ran = 0;
       setBusy(true);
-      setStatus('Run All started. Applying enabled moves in hierarchy order: lowest score first, then configured priority.');
+      setStatus('Running enabled moves in priority order...');
       try {
         while (ran < 100) {
           const before = snapshotState();
@@ -10090,12 +9366,9 @@
         ratingReport = ratingFromLog(logEntries, candidateGridIsSolved(cand, puzzle));
       }
       if (solution && !candidateGridIsSolved(cand, puzzle)) {
-        setStatus('Run All stopped: enabled moves stalled before the puzzle was solved.', 'warn');
+        setStatus('Run All stopped: retained logic stalled before the puzzle was solved.', 'warn');
       }
-      if (ran === 100) setStatus('Run All stopped at 100 cycles.', 'warn');
-      if (ran > 0 && ran < 100 && (!solution || candidateGridIsSolved(cand, puzzle))) {
-        setStatus(`Run All complete. ${ran} enabled move${ran === 1 ? '' : 's'} applied in hierarchy order.`, 'ok');
-      }
+      if (ran === 100) setStatus('Stopped at 100 cycles.', 'warn');
       render();
     }
 
@@ -10353,79 +9626,64 @@
       }, 20);
     }
 
-    async function runAlsDofBuild() {
+    function runAlsDofBuild() {
       setBusy(true);
-      setStatus('Searching ALS-DOF auxiliary nets in the background...');
+      setStatus('Searching ALS-DOF auxiliary nets...');
 
-      try {
-        const maxDigits = Math.min(9, Math.max(2,
-          Number(alsDofMaxDigitsEl.value) || 6));
-        const maxAuxiliary = Math.min(9, Math.max(1,
-          Number(alsDofMaxAuxiliaryEl.value) || 3));
-        alsDofMaxDigitsEl.value = String(maxDigits);
-        alsDofMaxAuxiliaryEl.value = String(maxAuxiliary);
-
-        let report;
+      setTimeout(() => {
         try {
-          report = await runSearchWorker('als-dof', {
-            candidateGrid: cand,
-            maxDigits,
-            maxAuxiliary,
-            maxResults: 5000,
-          });
-        } catch (workerError) {
-          // Preserve file:// and older-browser support when workers are
-          // unavailable. This fallback is intentionally explicit because it
-          // can be CPU-heavy at the upper DOF limits.
+          const maxDigits = Math.min(9, Math.max(2,
+            Number(alsDofMaxDigitsEl.value) || 6));
+          const maxAuxiliary = Math.min(9, Math.max(1,
+            Number(alsDofMaxAuxiliaryEl.value) || 3));
+          alsDofMaxDigitsEl.value = String(maxDigits);
+          alsDofMaxAuxiliaryEl.value = String(maxAuxiliary);
           const sourceAls = core.alsConstructor(cand, {
             maxSizeDOF: maxDigits - 1,
             maxSizeFox: maxDigits - 1,
           });
-          const raw = core.findAlsDofNets(cand, {
+          alsReport = sourceAls;
+          const rawAlsDofReport = core.findAlsDofNets(cand, {
             alsList: sourceAls,
             maxAuxiliary,
             maxDigits,
             maxResults: 5000,
             includeChain: false,
           });
-          const verifiedResults = raw.results.map(result => ({
+          const verifiedResults = rawAlsDofReport.results.map(result => ({
             ...result,
             verification: core.verifyAlsDofNet(cand, result, { alsList: sourceAls }),
           }));
           const acceptedResults = verifiedResults.filter(result => result.verification.ok);
-          report = {
-            ...raw,
+          alsDofReport = {
+            ...rawAlsDofReport,
             results: acceptedResults,
             rejectedResults: verifiedResults.filter(result => !result.verification.ok),
             stats: {
-              ...raw.stats,
+              ...rawAlsDofReport.stats,
               verifierChecked: verifiedResults.length,
               verifierRejected: verifiedResults.length - acceptedResults.length,
-              workerFallback: workerError.message || String(workerError),
             },
           };
+          selectedAlsDof = null;
+          selectedAlsDofIndex = null;
+          selectedAlsDofSource = 'net';
+          selectedAlsId = null;
+          renderAlsReport();
+          renderAlsDofReport();
+          openReportPanel(alsDofResultsEl);
+          setStatus(
+            `ALS-DOF net search complete. ${alsDofReport.results.length} net${alsDofReport.results.length === 1 ? '' : 's'} found.`,
+            alsDofReport.results.length ? 'ok' : 'warn',
+          );
+        } catch (error) {
+          alsDofReport = null;
+          renderAlsDofReport();
+          setStatus('Could not search ALS-DOF auxiliary nets.', 'warn');
+        } finally {
+          setBusy(false);
         }
-        alsReport = null;
-        alsDofReport = report;
-        selectedAlsDof = null;
-        selectedAlsDofIndex = null;
-        selectedAlsDofSource = 'net';
-        selectedAlsId = null;
-        renderAlsReport();
-        renderAlsDofReport();
-        openReportPanel(alsDofResultsEl);
-        setStatus(
-          `ALS-DOF net search complete. ${alsDofReport.results.length} net${alsDofReport.results.length === 1 ? '' : 's'} found.`,
-          alsDofReport.results.length ? 'ok' : 'warn',
-        );
-      } catch (error) {
-        alsDofReport = null;
-        renderAlsDofReport();
-        console.error('ALS-DOF auxiliary-net search failed:', error);
-        setStatus(`Could not search ALS-DOF auxiliary nets: ${error.message || error}`, 'warn');
-      } finally {
-        setBusy(false);
-      }
+      }, 20);
     }
 
     function runAlsDofChainBuild() {
@@ -10447,10 +9705,7 @@
           alsReport = sourceAls;
           const rawChainReport = core.findAlsDofChains(cand, {
             alsList: sourceAls,
-            // Chain mode is exactly Hub-Auxiliary-Hub. This is the number of
-            // auxiliary ALS nodes, not a cap on the auxiliary's digit/DOF
-            // size; maxDigits remains the user's ALS-DOF digit limit.
-            maxAuxiliary: 1,
+            maxAuxiliary,
             maxDigits,
             maxResults: 5000,
             includePathChain: false,
@@ -10905,22 +10160,11 @@
       event.stopPropagation();
       runGenericSubsetBuild('hidden');
     });
+    chainCopyEl.addEventListener('click', () => copyChainOutput(false));
+    chainCopyVerboseEl.addEventListener('click', () => copyChainOutput(true));
     copyPuzzle81El.addEventListener('click', () => copyPuzzleString(core.encode(originalPuzzle), '81-character puzzle'));
-    copyPuzzle729El.addEventListener('click', () => copyPuzzleString(current729String(), '729 candidate grid'));
-    solutionCopyEurekaEl.addEventListener('click', event => {
-      event.stopPropagation();
-      const text = highlightedEurekaText();
-      if (text) void copyPuzzleString(text, 'Eureka');
-    });
-    solutionCopyListEl.addEventListener('click', event => {
-      event.stopPropagation();
-      const text = solutionListText();
-      if (text) void copyPuzzleString(text, 'Solution');
-    });
-    clearHighlightEl.addEventListener('click', event => {
-      event.stopPropagation();
-      clearHighlightedMove();
-    });
+    copyPuzzle729El.addEventListener('click', () => copyPuzzleString(current729String(), '729-bit candidate'));
+    chainClearEl.addEventListener('click', clearChainSelection);
     undoEl.addEventListener('click', undoCycle);
     redoEl.addEventListener('click', redoCycle);
     document.getElementById('fishDigitsOn').addEventListener('click', () => setAllDigits(true));
