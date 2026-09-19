@@ -79,6 +79,25 @@
     return sortedUnique(bridges.map(bridge => bridge.digit));
   }
 
+  function alsShapeSignature(node) {
+    return `${node.dof}|${node.digits.join(',')}`;
+  }
+
+  function endpointBridgeCoverage(primaryA, primaryC, auxiliary, residualDof = 1) {
+    const aDigits = sortedUnique(auxiliary.flatMap(entry =>
+      bridgeDigits(entry.aBridges || [])));
+    const cDigits = sortedUnique(auxiliary.flatMap(entry =>
+      bridgeDigits(entry.cBridges || [])));
+    return {
+      aDigits,
+      cDigits,
+      requiredA: Math.max(0, primaryA.dof - residualDof),
+      requiredC: Math.max(0, primaryC.dof - residualDof),
+      valid: aDigits.length >= Math.max(0, primaryA.dof - residualDof)
+        && cDigits.length >= Math.max(0, primaryC.dof - residualDof),
+    };
+  }
+
   function peersEverywhere(cell, sourceCells) {
     return sourceCells.length > 0
       && sourceCells.every(source => core.peersOf(source).includes(cell));
@@ -154,6 +173,16 @@
     }));
   }
 
+  function chainRccBridges(cand, left, right) {
+    const strict = restrictedCommons(left, right);
+    const strictDigits = new Set(strict.map(bridge => bridge.digit));
+    return [
+      ...strict,
+      ...groupedRccBridges(cand, left, right)
+        .filter(bridge => !strictDigits.has(bridge.digit)),
+    ];
+  }
+
   function sameDigitSet(left, right) {
     const a = sortedUnique(left);
     const b = sortedUnique(right);
@@ -170,41 +199,114 @@
       && auxiliary.every(entry => entry.bridge.digit !== undefined);
   }
 
+  // A chain result can also contain a complete hub ring.  The hub is the
+  // endpoint whose DOF is supplied by the auxiliary collection; the other
+  // endpoint is the bridge that carries the final common digit Z.  The ring
+  // condition is structural and does not require the auxiliaries' Z cells to
+  // be peers of one another.
+  function endpointReduction(endpoint, auxiliary, bridgeKey, z) {
+    const rccDigits = sortedUnique(auxiliary.flatMap(entry =>
+      (entry[bridgeKey] || [])
+        .map(bridge => bridge.digit)
+        .filter(digit => digit !== z)));
+    return {
+      rccDigits,
+      residualDof: Math.max(0, endpoint.dof - rccDigits.length),
+    };
+  }
+
+  function chainHubRingInfo(primaryA, primaryC, auxiliary, z) {
+    const endpoints = [
+      { hub: primaryA, bridgeKey: 'aBridges' },
+      { hub: primaryC, bridgeKey: 'cBridges' },
+    ];
+
+    for (const { hub, bridgeKey } of endpoints) {
+      if (!hub || hub.dof < 2 || auxiliary.length !== hub.dof) continue;
+      if (!Number.isInteger(z) || !hub.digits.includes(z)) continue;
+      if (!auxiliary.every(entry => {
+        const node = entry.node || entry;
+        return node.dof > 0 && node.digits.includes(z);
+      })) continue;
+
+      const reduction = endpointReduction(hub, auxiliary, bridgeKey, z);
+      if (reduction.residualDof !== 0) continue;
+
+      const expected = sortedUnique(hub.digits.filter(digit => digit !== z));
+      const supplied = reduction.rccDigits;
+      if (expected.join(',') !== supplied.join(',')) continue;
+
+      // Every auxiliary must contribute a non-Z bridge to the hub.  The
+      // union check above permits shared RCCs, while this check prevents an
+      // auxiliary from being present only because it contains Z.
+      if (!auxiliary.every(entry => (entry[bridgeKey] || [])
+        .some(bridge => bridge.digit !== z))) continue;
+
+      return {
+        hubId: hub.id,
+        hubDigits: [...hub.digits],
+        z,
+        rccDigits: supplied,
+        form: 'hub-auxiliary-closure',
+      };
+    }
+
+    return null;
+  }
+
   function eliminationRecords(cand, primaryA, primaryC, auxiliary, digit) {
+    const nodes = [primaryA, primaryC, ...auxiliary.map(entry => entry.node)];
+    const assignmentResults = nodes.map(node => cachedChainAssignments(cand, node));
+    if (assignmentResults.some(item => item.truncated || !item.assignments.length)) {
+      return [];
+    }
+    const nodeAssignments = assignmentResults.map(item => item.assignments);
     const excluded = new Set([
       ...primaryA.cells,
       ...primaryC.cells,
       ...auxiliary.flatMap(entry => entry.node.cells),
     ]);
-    const aCells = rccForDigit(primaryA, digit)?.cells || [];
-    const cCells = rccForDigit(primaryC, digit)?.cells || [];
     const records = [];
 
     for (let cell = 0; cell < 81; cell++) {
       if (excluded.has(cell) || !(cand[cell] || []).includes(digit)) continue;
 
-      const reasons = [];
-      if (peersEverywhere(cell, aCells) && peersEverywhere(cell, cCells)) {
-        reasons.push('A∩C');
+      if (!ringCanPlaceTarget(nodeAssignments, nodes, cell, digit)) {
+        records.push({
+          cell,
+          digit,
+          reasons: ['A∩C'],
+        });
       }
-
-      for (const entry of auxiliary) {
-        const sCells = rccForDigit(entry.node, digit)?.cells || [];
-        if (peersEverywhere(cell, aCells) && peersEverywhere(cell, sCells)) {
-          reasons.push('A∩S');
-        }
-        if (peersEverywhere(cell, cCells) && peersEverywhere(cell, sCells)) {
-          reasons.push('C∩S');
-        }
-      }
-
-      if (reasons.length) records.push({
-        cell,
-        digit,
-        reasons: [...new Set(reasons)],
-      });
     }
 
+    return records;
+  }
+
+  // A bridged ALS-DOF chain has two endpoint hubs and one intermediate hub:
+  // A - S1 - C - S2 - B.  The auxiliary ALSs S1/S2 carry the RCCs on their
+  // respective sides; the endpoint common digit is therefore eliminated
+  // only from cells that see both endpoint occurrences.
+  function pathEliminationRecords(cand, primaryA, primaryC, digit) {
+    const leftCells = nodeCandidateCells(cand, primaryA, digit);
+    const rightCells = nodeCandidateCells(cand, primaryC, digit);
+    if (!leftCells.length || !rightCells.length) return [];
+
+    const excluded = new Set([
+      ...(primaryA.cells || []),
+      ...(primaryC.cells || []),
+    ]);
+    const records = [];
+    for (let cell = 0; cell < 81; cell += 1) {
+      if (excluded.has(cell) || !(cand[cell] || []).includes(digit)) continue;
+      if (peersEverywhere(cell, [...leftCells, ...rightCells])) {
+        records.push({
+          cell,
+          digit,
+          reasons: ['A∩B'],
+        });
+      }
+    }
     return records;
   }
 
@@ -300,6 +402,24 @@
     return visit(0);
   }
 
+  // RCC counts alone do not prove that several restricted digits are
+  // independent when they share the same ALS cell. Cache the finite
+  // occupancy model so chain candidates can be checked without rebuilding it.
+  const chainAssignmentCache = new WeakMap();
+
+  function cachedChainAssignments(cand, node) {
+    let byCandidateGrid = chainAssignmentCache.get(node);
+    if (!byCandidateGrid) {
+      byCandidateGrid = new WeakMap();
+      chainAssignmentCache.set(node, byCandidateGrid);
+    }
+    const cached = byCandidateGrid.get(cand);
+    if (cached) return cached;
+    const assignments = ringAssignments(cand, node);
+    byCandidateGrid.set(cand, assignments);
+    return assignments;
+  }
+
   // Closed rings lock every non-RCC value to its participating ALS. Evaluate
   // the whole ring as a constrained occupancy network so those locked values
   // produce their cumulative external eliminations, not only the common Z.
@@ -341,6 +461,8 @@
         : 5000,
       requireAuxiliaryZ: options.requireAuxiliaryZ === true,
       includeChain: options.includeChain === true,
+      includePathChain: options.includePathChain === true,
+      audit: options.audit === true,
     };
   }
 
@@ -359,6 +481,7 @@
       .filter(als => (als.alsDigits || []).length <= opts.maxDigits)
       .map(normaliseAls);
     const results = [];
+    const auditCandidates = [];
     const seen = new Set();
     const stats = {
       alsRecords: alsList.length,
@@ -366,6 +489,9 @@
       commonDigits: 0,
       auxiliaryCandidates: 0,
       collections: 0,
+      constructionCandidates: 0,
+      zeroEliminationCandidates: 0,
+      duplicateCandidates: 0,
       truncated: false,
     };
 
@@ -387,18 +513,26 @@
           for (const node of alsList) {
             if (node.id === primaryA.id || node.id === primaryC.id) continue;
             if (!disjoint(primaryA.cells, node.cells) || !disjoint(primaryC.cells, node.cells)) continue;
-            if (opts.requireAuxiliaryZ && !node.digits.includes(digit)) continue;
+            if (opts.requireAuxiliaryZ
+              ? !node.digits.includes(digit)
+              : node.digits.includes(digit)) continue;
 
-            const aBridges = restrictedCommons(primaryA, node);
-            const cBridges = restrictedCommons(primaryC, node);
+            const aBridges = chainRccBridges(cand, primaryA, node);
+            const cBridges = chainRccBridges(cand, primaryC, node);
+            // Each connector ALS must link both ALS-DOF endpoints. A
+            // collection-wide RCC union is not enough: an auxiliary with a
+            // smaller RCC count than its own DOF has not been reduced to a
+            // locked state and cannot transmit the endpoint constraint.
             if (!aBridges.length || !cBridges.length) continue;
 
+            const rccDigits = union(bridgeDigits(aBridges), bridgeDigits(cBridges))
+              .filter(value => value !== digit);
+            if (rccDigits.length < node.dof) continue;
             auxiliaryCandidates.push({
               node,
               aBridges,
               cBridges,
-              rccDigits: union(bridgeDigits(aBridges), bridgeDigits(cBridges))
-                .filter(value => value !== digit),
+              rccDigits,
             });
           }
 
@@ -411,7 +545,32 @@
               return;
             }
 
-            if (selected.length && rccDigits.length === n - 1) {
+            const coverageReady = opts.requireAuxiliaryZ
+              ? rccDigits.length === n - 1
+              : rccDigits.length > 0;
+            const endpointCoverage = selected.length
+              ? endpointBridgeCoverage(primaryA, primaryC, selected)
+              : null;
+            if (selected.length && coverageReady && endpointCoverage?.valid) {
+              const primaryAReduction = endpointReduction(
+                primaryA,
+                selected,
+                'aBridges',
+                digit,
+              );
+              const primaryCReduction = endpointReduction(
+                primaryC,
+                selected,
+                'cBridges',
+                digit,
+              );
+              const reducedToOne = primaryAReduction.residualDof === 1
+                && primaryCReduction.residualDof === 1;
+              const ring = opts.requireAuxiliaryZ
+                ? chainHubRingInfo(primaryA, primaryC, selected, digit)
+                : null;
+              if (!reducedToOne && !ring) return;
+
               const key = [
                 primaryA.id,
                 primaryC.id,
@@ -420,41 +579,58 @@
               ].join('|');
               if (!seen.has(key)) {
                 seen.add(key);
+                stats.constructionCandidates += 1;
                 const eliminations = eliminationRecords(cand, primaryA, primaryC, selected, digit);
+                const record = {
+                  tech: 'als-dof',
+                  name: ring ? 'ALS DOF Ring' : 'ALS DOF Chain',
+                  type: 'ALS_DOF_CHAIN',
+                  mode: 'chain',
+                  chainForm: opts.requireAuxiliaryZ
+                    ? 'shared-z-auxiliary'
+                    : 'shared-auxiliary',
+                  isRing: !!ring,
+                  ...(ring ? {
+                    ringForm: ring.form,
+                    ringHubId: ring.hubId,
+                    ringRccDigits: ring.rccDigits,
+                  } : {}),
+                  z: digit,
+                  size: n,
+                  primaryAResidualDof: primaryAReduction.residualDof,
+                  primaryCResidualDof: primaryCReduction.residualDof,
+                  primaryA,
+                  primaryC,
+                  auxiliary: selected.map(entry => ({
+                    ...entry.node,
+                    rccDigits: [...entry.rccDigits],
+                    aBridges: entry.aBridges,
+                    cBridges: entry.cBridges,
+                  })),
+                  rccDigits: [...rccDigits],
+                  eliminations,
+                  cells: eliminations.map(item => item.cell),
+                };
+                if (opts.audit) auditCandidates.push(record);
                 if (eliminations.length) {
                   stats.collections += 1;
-                  results.push({
-                    tech: 'als-dof',
-                    name: 'ALS DOF Chain',
-                    type: 'ALS_DOF_CHAIN',
-                    mode: 'chain',
-                    isRing: false,
-                    z: digit,
-                    size: n,
-                    primaryA,
-                    primaryC,
-                    auxiliary: selected.map(entry => ({
-                      ...entry.node,
-                      rccDigits: [...entry.rccDigits],
-                      aBridges: entry.aBridges,
-                      cBridges: entry.cBridges,
-                    })),
-                    rccDigits: [...rccDigits],
-                    eliminations,
-                    cells: eliminations.map(item => item.cell),
-                  });
+                  results.push(record);
+                } else {
+                  stats.zeroEliminationCandidates += 1;
                 }
+              } else {
+                stats.duplicateCandidates += 1;
               }
               return;
             }
 
-            if (selected.length >= opts.maxAuxiliary || rccDigits.length >= n - 1) return;
+            if (selected.length >= opts.maxAuxiliary) return;
 
             for (let index = start; index < auxiliaryCandidates.length; index++) {
               const candidate = auxiliaryCandidates[index];
               if (selected.some(entry => !disjoint(entry.node.cells, candidate.node.cells))) continue;
               const nextRccDigits = union(rccDigits, candidate.rccDigits);
-              if (nextRccDigits.length > n - 1) continue;
+              if (opts.requireAuxiliaryZ && nextRccDigits.length > n - 1) continue;
               visit(index + 1, [...selected, candidate], nextRccDigits);
               if (results.length >= opts.maxResults) return;
             }
@@ -466,7 +642,289 @@
       }
     }
 
+    return { results, auditCandidates, stats, options: opts };
+  }
+
+  function findAlsDofAuxiliaryPaths(cand, options = {}) {
+    const opts = normaliseOptions(options);
+    const source = options.alsList || core.alsConstructor(cand, {
+      maxSizeDOF: opts.maxDigits - 1,
+      maxSizeFox: opts.maxDigits - 1,
+    });
+    const alsList = source
+      .filter(als => als.alsDOF > 0)
+      .filter(als => (als.alsDigits || []).length >= 2)
+      .filter(als => (als.alsDigits || []).length <= opts.maxDigits)
+      .map(normaliseAls);
+    const endpoints = alsList.filter(als => als.dof >= 2);
+    const results = [];
+    const seen = new Set();
+    const stats = {
+      alsRecords: alsList.length,
+      endpointPairs: 0,
+      centralHubs: 0,
+      linkCandidates: 0,
+      auxiliarySignatureMatches: 0,
+      paths: 0,
+      truncated: false,
+    };
+
+    const addPath = (primaryA, leftAux, central, rightAux, primaryC,
+      leftToAux, auxToCentral, centralToAux, auxToRight, digit) => {
+      const pathNodes = [primaryA, leftAux, central, rightAux, primaryC];
+      const occupied = new Set();
+      for (const node of pathNodes) {
+        for (const cell of node.cells) {
+          if (occupied.has(cell)) return;
+          occupied.add(cell);
+        }
+      }
+
+      const links = [
+        { left: primaryA.id, right: leftAux.id, bridges: leftToAux },
+        { left: leftAux.id, right: central.id, bridges: auxToCentral },
+        { left: central.id, right: rightAux.id, bridges: centralToAux },
+        { left: rightAux.id, right: primaryC.id, bridges: auxToRight },
+      ];
+      const allRccDigits = sortedUnique(links.flatMap(link =>
+        bridgeDigits(link.bridges).filter(value => value !== digit)));
+      const key = [
+        primaryA.id,
+        leftAux.id,
+        central.id,
+        rightAux.id,
+        primaryC.id,
+        digit,
+      ].join('|');
+      if (seen.has(key)) return;
+      seen.add(key);
+
+      const auxiliary = [
+        {
+          ...leftAux,
+          rccDigits: sortedUnique([
+            ...bridgeDigits(leftToAux),
+            ...bridgeDigits(auxToCentral),
+          ].filter(value => value !== digit)),
+          pathPrevBridges: leftToAux,
+          pathNextBridges: auxToCentral,
+        },
+        {
+          ...central,
+          rccDigits: sortedUnique([
+            ...bridgeDigits(auxToCentral),
+            ...bridgeDigits(centralToAux),
+          ].filter(value => value !== digit)),
+          pathPrevBridges: auxToCentral,
+          pathNextBridges: centralToAux,
+        },
+        {
+          ...rightAux,
+          rccDigits: sortedUnique([
+            ...bridgeDigits(centralToAux),
+            ...bridgeDigits(auxToRight),
+          ].filter(value => value !== digit)),
+          pathPrevBridges: centralToAux,
+          pathNextBridges: auxToRight,
+        },
+      ];
+      const eliminations = pathEliminationRecords(cand, primaryA, primaryC, digit);
+      if (!eliminations.length) return;
+
+      stats.paths += 1;
+      results.push({
+        tech: 'als-dof',
+        name: 'ALS DOF Chain',
+        type: 'ALS_DOF_CHAIN',
+        mode: 'chain',
+        chainForm: 'auxiliary-hub-path',
+        isRing: false,
+        z: digit,
+        size: primaryA.digits.length,
+        primaryAResidualDof: Math.max(0,
+          primaryA.dof - bridgeDigits(leftToAux).filter(value => value !== digit).length),
+        primaryCResidualDof: Math.max(0,
+          primaryC.dof - bridgeDigits(auxToRight).filter(value => value !== digit).length),
+        primaryA,
+        primaryC,
+        auxiliary,
+        pathLinks: links,
+        rccDigits: allRccDigits,
+        eliminations,
+        cells: eliminations.map(item => item.cell),
+      });
+    };
+
+    outer:
+    for (let leftIndex = 0; leftIndex < endpoints.length; leftIndex += 1) {
+      const primaryA = endpoints[leftIndex];
+      for (let rightIndex = leftIndex + 1; rightIndex < endpoints.length; rightIndex += 1) {
+        const primaryC = endpoints[rightIndex];
+        if (primaryA.digits.length !== primaryC.digits.length) continue;
+        if (!disjoint(primaryA.cells, primaryC.cells)) continue;
+        const commonZ = intersection(primaryA.digits, primaryC.digits);
+        if (!commonZ.length) continue;
+        stats.endpointPairs += 1;
+
+        for (const digit of commonZ) {
+          const centralHubs = alsList.filter(central =>
+            central.id !== primaryA.id
+            && central.id !== primaryC.id
+            && !central.digits.includes(digit)
+            && disjoint(primaryA.cells, central.cells)
+            && disjoint(primaryC.cells, central.cells));
+          stats.centralHubs += centralHubs.length;
+
+          for (const central of centralHubs) {
+            const leftLinks = [];
+            const rightLinks = [];
+            for (const node of alsList) {
+              if (node.id === primaryA.id || node.id === primaryC.id || node.id === central.id) continue;
+              if (node.digits.includes(digit)) continue;
+              if (!disjoint(node.cells, primaryA.cells)
+                || !disjoint(node.cells, primaryC.cells)
+                || !disjoint(node.cells, central.cells)) continue;
+
+              const leftToAux = chainRccBridges(cand, primaryA, node);
+              const auxToCentral = chainRccBridges(cand, node, central);
+              if (leftToAux.length && auxToCentral.length
+                && bridgeDigits(leftToAux).length >= Math.max(primaryA.dof, node.dof)) {
+                leftLinks.push({ node, leftToAux, auxToCentral });
+              }
+
+              const centralToAux = chainRccBridges(cand, central, node);
+              const auxToRight = chainRccBridges(cand, node, primaryC);
+              if (centralToAux.length && auxToRight.length
+                && bridgeDigits(auxToRight).length >= Math.max(primaryC.dof, node.dof)) {
+                rightLinks.push({ node, centralToAux, auxToRight });
+              }
+            }
+            stats.linkCandidates += leftLinks.length + rightLinks.length;
+            const rightBySignature = new Map();
+            for (const right of rightLinks) {
+              const signature = alsShapeSignature(right.node);
+              const entries = rightBySignature.get(signature) || [];
+              entries.push(right);
+              rightBySignature.set(signature, entries);
+            }
+            for (const left of leftLinks) {
+              const matchingRights = rightBySignature.get(alsShapeSignature(left.node)) || [];
+              stats.auxiliarySignatureMatches += matchingRights.length;
+              for (const right of matchingRights) {
+                if (left.node.id === right.node.id) continue;
+                if (!disjoint(left.node.cells, right.node.cells)) continue;
+                addPath(
+                  primaryA,
+                  left.node,
+                  central,
+                  right.node,
+                  primaryC,
+                  left.leftToAux,
+                  left.auxToCentral,
+                  right.centralToAux,
+                  right.auxToRight,
+                  digit,
+                );
+                if (results.length >= opts.maxResults) {
+                  stats.truncated = true;
+                  break outer;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
     return { results, stats, options: opts };
+  }
+
+  function findAlsDofChains(cand, options = {}) {
+    const maxResults = options.maxResults || 5000;
+    const chainLimit = Math.max(1, Math.floor(maxResults / 2));
+    // The current chain evaluator is deliberately limited to the two ALS
+    // endpoints plus their auxiliary collection. The deeper A-S-C-S-B path
+    // remains available as a separate experimental finder, but is not part
+    // of this evaluated chain mode until its proof and verifier are settled.
+    const includePathChain = options.includePathChain === true;
+    const chainAuxiliaryCount = 1;
+    const chain = findAlsDofAuxiliary(cand, {
+      ...options,
+      requireAuxiliaryZ: true,
+      maxAuxiliary: chainAuxiliaryCount,
+      audit: options.audit === true,
+      maxResults: chainLimit,
+    });
+    const connectorChain = findAlsDofAuxiliary(cand, {
+      ...options,
+      requireAuxiliaryZ: false,
+      maxAuxiliary: chainAuxiliaryCount,
+      audit: options.audit === true,
+      maxResults: chainLimit,
+    });
+    const pathChain = includePathChain
+      ? findAlsDofAuxiliaryPaths(cand, {
+          ...options,
+          maxResults: chainLimit,
+        })
+      : {
+          results: [],
+          stats: {
+            alsRecords: Math.max(chain.stats.alsRecords, connectorChain.stats.alsRecords),
+            endpointPairs: 0,
+            centralHubs: 0,
+            linkCandidates: 0,
+            auxiliarySignatureMatches: 0,
+            paths: 0,
+            disabled: true,
+            truncated: false,
+          },
+        };
+    const results = [
+      ...chain.results,
+      ...connectorChain.results,
+      ...pathChain.results,
+    ].slice(0, maxResults);
+    const auditCandidates = [
+      ...(chain.auditCandidates || []),
+      ...(connectorChain.auditCandidates || []),
+    ];
+    return {
+      results,
+      stats: {
+        alsRecords: Math.max(
+          chain.stats.alsRecords,
+          connectorChain.stats.alsRecords,
+          pathChain.stats.alsRecords,
+        ),
+        chainNets: results.length,
+        chainCandidates: chain.results.length
+          + connectorChain.results.length
+          + pathChain.results.length,
+        auditCandidates: auditCandidates.length,
+        constructionCandidates: chain.stats.constructionCandidates
+          + connectorChain.stats.constructionCandidates,
+        zeroEliminationCandidates: chain.stats.zeroEliminationCandidates
+          + connectorChain.stats.zeroEliminationCandidates,
+        duplicateCandidates: chain.stats.duplicateCandidates
+          + connectorChain.stats.duplicateCandidates,
+        pathChainsEnabled: includePathChain,
+        pathChains: pathChain.results.length,
+        chainAuxiliaryCount,
+        truncated: chain.stats.truncated
+          || connectorChain.stats.truncated
+          || pathChain.stats.truncated
+          || chain.results.length + connectorChain.results.length
+            + pathChain.results.length > maxResults,
+      },
+      auditCandidates,
+      options: {
+        ...chain.options,
+        includePathChain,
+        maxAuxiliary: chainAuxiliaryCount,
+        audit: options.audit === true,
+      },
+    };
   }
 
   function findAlsDofHubNets(cand, options = {}) {
@@ -834,6 +1292,71 @@
       left.cell - right.cell || left.digit - right.digit);
   }
 
+  function auxiliaryRccDigits(entry) {
+    return sortedUnique([
+      ...(entry.bridges || []).map(bridge => bridge.digit),
+      ...(entry.aBridges || []).map(bridge => bridge.digit),
+      ...(entry.rccDigits || []),
+    ].filter(digit => Number.isInteger(digit)));
+  }
+
+  // A compact higher-DOF collection can use fewer auxiliary ALSs than the
+  // hub DOF when every selected auxiliary supplies a full DOF-sized grouped
+  // RCC set. Digits common to every auxiliary are then locked to the whole
+  // collection and may be removed from candidates seeing all their copies.
+  function ddsCollectionCommonEliminationRecords(cand, hub, auxiliary) {
+    if (!auxiliary.length) return [];
+    const shared = auxiliary.reduce(
+      (digits, entry) => intersection(digits, auxiliaryRccDigits(entry)),
+      [...hub.digits],
+    );
+    const excluded = new Set([
+      ...hub.cells,
+      ...auxiliary.flatMap(entry => entry.node?.cells || entry.cells || []),
+    ]);
+    const records = [];
+
+    for (const digit of shared) {
+      const sourceCells = [hub, ...auxiliary.map(entry => entry.node || entry)]
+        .flatMap(node => nodeCandidateCells(cand, node, digit));
+      if (!sourceCells.length) continue;
+      for (let cell = 0; cell < 81; cell += 1) {
+        if (excluded.has(cell) || !(cand[cell] || []).includes(digit)) continue;
+        if (!peersEverywhere(cell, sourceCells)) continue;
+        records.push({
+          cell,
+          digit,
+          reasons: ['DDS collection-common RCC'],
+        });
+      }
+    }
+
+    return records.sort((left, right) =>
+      left.cell - right.cell || left.digit - right.digit);
+  }
+
+  function compactDdsEliminationRecords(cand, hub, auxiliary, alsPool = null) {
+    const direct = ddsCollectionCommonEliminationRecords(cand, hub, auxiliary);
+    const internal = internalAlsXzEliminationRecords(cand, auxiliary, alsPool);
+    const records = new Map();
+    for (const item of [...direct, ...internal]) {
+      const key = `${item.cell}:${item.digit}`;
+      const record = records.get(key) || {
+        cell: item.cell,
+        digit: item.digit,
+        reasons: [],
+      };
+      for (const reason of item.reasons || []) {
+        if (!record.reasons.includes(reason)) record.reasons.push(reason);
+      }
+      if (item.internalized) record.internalized = true;
+      if (item.internalAlsXz) record.internalAlsXz = item.internalAlsXz;
+      records.set(key, record);
+    }
+    return [...records.values()].sort((left, right) =>
+      left.cell - right.cell || left.digit - right.digit);
+  }
+
   function alsDofAuxiliaryCandidates(cand, hub, auxiliaries) {
     return auxiliaries.flatMap(node => {
       if (!disjoint(hub.cells, node.cells)) return [];
@@ -876,7 +1399,7 @@
       stats.hubs += 1;
       const candidates = alsDofAuxiliaryCandidates(cand, hub, auxiliaries);
       stats.auxiliaryCandidates += candidates.length;
-      if (candidates.length < hub.dof) continue;
+      if (!candidates.length) continue;
 
       const selected = [];
       const covered = new Set();
@@ -942,6 +1465,79 @@
       };
 
       visit(0);
+      if (stats.truncated) break;
+
+      // Compact DDS ring: fewer auxiliaries are allowed when each selected
+      // auxiliary supplies at least hub.dof grouped RCC digits and the
+      // collection still covers every hub digit. The common bridge digits
+      // are the collection-locked values used for external eliminations.
+      const compactCandidates = candidates.filter(entry =>
+        entry.bridges.length >= hub.dof);
+      const visitCompact = (start, selected, covered, shared) => {
+        if (results.length >= opts.maxResults) {
+          stats.truncated = true;
+          return;
+        }
+
+        if (selected.length > 0
+          && selected.length < hub.dof
+          && hub.digits.every(digit => covered.has(digit))
+          && shared.length > 0) {
+          const key = [
+            hub.id,
+            'compact',
+            selected.map(entry => `${entry.node.id}:${entry.bridges.map(bridge => bridge.digit).join(',')}`).join('|'),
+          ].join('||');
+          if (!seen.has(key)) {
+            seen.add(key);
+            const eliminations = compactDdsEliminationRecords(cand, hub, selected, alsList);
+            if (eliminations.length) {
+              stats.collections += 1;
+              results.push({
+                tech: 'als-dof',
+                name: 'Disjointed Distributed Subset Ring',
+                type: 'ALS_DOF_DDS',
+                mode: 'dds',
+                isRing: true,
+                ringForm: 'compact-collection',
+                lockScope: 'collection',
+                z: null,
+                size: hub.dof,
+                primaryA: hub,
+                primaryC: null,
+                auxiliary: selected.map(entry => ({
+                  ...entry.node,
+                  rccDigits: entry.bridges.map(bridge => bridge.digit).sort((a, b) => a - b),
+                  aBridges: entry.bridges,
+                })),
+                rccDigits: [...covered].sort((a, b) => a - b),
+                collectionRccDigits: [...shared],
+                eliminations,
+                cells: eliminations.map(item => item.cell),
+              });
+            }
+          }
+        }
+
+        if (selected.length >= Math.min(opts.maxAuxiliary, hub.dof - 1)) return;
+        for (let index = start; index < compactCandidates.length; index += 1) {
+          const candidate = compactCandidates[index];
+          if (selected.some(entry => !disjoint(entry.node.cells, candidate.node.cells))) continue;
+          const nextCovered = new Set(covered);
+          for (const bridge of candidate.bridges) nextCovered.add(bridge.digit);
+          if ([...nextCovered].some(digit => !hub.digits.includes(digit))) continue;
+          const candidateDigits = candidate.bridges.map(bridge => bridge.digit);
+          const nextShared = selected.length
+            ? intersection(shared, candidateDigits)
+            : sortedUnique(candidateDigits);
+          selected.push(candidate);
+          visitCompact(index + 1, selected, nextCovered, nextShared);
+          selected.pop();
+          if (stats.truncated) return;
+        }
+      };
+
+      if (compactCandidates.length) visitCompact(0, [], new Set(), []);
       if (stats.truncated) break;
     }
 
@@ -1053,13 +1649,29 @@
     const maxResults = options.maxResults || 5000;
     // The endpoint/auxiliary chain remains available, but is opt-in until
     // its updated rules are ready for the normal ALS-DOF report.
+    const chainLimit = Math.max(1, Math.floor(maxResults / 2));
     const chain = options.includeChain === true ? findAlsDofAuxiliary(cand, {
       ...options,
       alsList: options.alsList || undefined,
       requireAuxiliaryZ: true,
-      maxResults,
+      maxResults: chainLimit,
     }) : { results: [], stats: { alsRecords: options.alsList?.length || 0, truncated: false } };
-    const results = chain.results.slice(0, maxResults);
+    const connectorChain = options.includeChain === true ? findAlsDofAuxiliary(cand, {
+      ...options,
+      alsList: options.alsList || undefined,
+      requireAuxiliaryZ: false,
+      maxResults: chainLimit,
+    }) : { results: [], stats: { alsRecords: chain.stats.alsRecords, truncated: false } };
+    const pathChain = options.includeChain === true ? findAlsDofAuxiliaryPaths(cand, {
+      ...options,
+      alsList: options.alsList || undefined,
+      maxResults: chainLimit,
+    }) : { results: [], stats: { alsRecords: chain.stats.alsRecords, truncated: false } };
+    const results = [
+      ...chain.results,
+      ...connectorChain.results,
+      ...pathChain.results,
+    ].slice(0, maxResults);
     let remaining = maxResults - results.length;
     const hub = remaining > 0 ? findAlsDofHubNets(cand, {
       ...options,
@@ -1086,17 +1698,22 @@
       stats: {
         alsRecords: Math.max(
           chain.stats.alsRecords,
+          pathChain.stats.alsRecords,
           hub.stats.alsRecords,
           dds.stats.alsRecords,
           almostDds.stats.alsRecords,
         ),
-        chainNets: chain.results.length,
+        chainNets: chain.results.length + connectorChain.results.length
+          + pathChain.results.length,
         hubNets: hub.results.length,
         ddsNets: dds.results.length,
         almostDdsNets: almostDds.results.length,
-        truncated: chain.stats.truncated || hub.stats.truncated || dds.stats.truncated
+        truncated: chain.stats.truncated || connectorChain.stats.truncated
+          || pathChain.stats.truncated
+          || hub.stats.truncated || dds.stats.truncated
           || almostDds.stats.truncated
-          || chain.results.length + hub.results.length + dds.results.length + almostDds.results.length > maxResults,
+          || chain.results.length + connectorChain.results.length + pathChain.results.length
+            + hub.results.length + dds.results.length + almostDds.results.length > maxResults,
       },
       options: hub.options,
     };
@@ -1176,7 +1793,7 @@
   // Independent witness pass: each proposed deletion must be supported by
   // the raw candidate locations and peer relationships, not only by the
   // finder helper that produced the record.
-  function verifyEliminationWitnesses(cand, result) {
+  function verifyEliminationWitnesses(cand, result, alsPool = null) {
     const errors = [];
     const hub = result?.primaryA;
     const auxiliary = result?.auxiliary || [];
@@ -1198,14 +1815,34 @@
       ).map(eliminationKey))
       : null;
     const ddsWitnesses = (result?.mode === 'dds' || result?.mode === 'almost-dds')
-      ? new Set(ringEliminationRecords(
+      ? new Set((result.ringForm === 'compact-collection'
+        ? compactDdsEliminationRecords(
+          cand,
+          hub,
+          auxiliary.map(node => ({
+            node,
+            rccDigits: node.rccDigits || [],
+            aBridges: node.aBridges || [],
+          })),
+          alsPool,
+        )
+        : ringEliminationRecords(
+          cand,
+          hub,
+          auxiliary.map(node => ({ node })),
+          'DDS occupancy',
+        )).map(eliminationKey))
+      : null;
+    const pathWitnesses = result?.chainForm === 'auxiliary-hub-path'
+      ? new Set(pathEliminationRecords(
         cand,
-        hub,
-        auxiliary.map(node => ({ node })),
-        'DDS occupancy',
+        result.primaryA,
+        result.primaryC,
+        result.z,
       ).map(eliminationKey))
       : null;
     const chainWitnesses = result?.mode === 'chain'
+      && result?.chainForm !== 'auxiliary-hub-path'
       ? new Set(eliminationRecords(
         cand,
         hub,
@@ -1234,6 +1871,7 @@
       }
       if (ringWitnesses) return ringWitnesses.has(eliminationKey(item));
       if (ddsWitnesses) return ddsWitnesses.has(eliminationKey(item));
+      if (pathWitnesses) return pathWitnesses.has(eliminationKey(item));
       if (chainWitnesses) return chainWitnesses.has(eliminationKey(item));
 
       if (excluded.has(item.cell)) return false;
@@ -1302,7 +1940,54 @@
     }
 
     let expectedEliminations = [];
-    if (result.mode === 'chain') {
+    if (result.mode === 'chain' && result.chainForm === 'auxiliary-hub-path') {
+      const primaryC = result.primaryC;
+      const z = result.z;
+      const pathNodes = [hub, ...(result.auxiliary || []), primaryC].filter(Boolean);
+      const pathLinks = result.pathLinks || [];
+      if (!primaryC) errors.push('ALS DOF path requires endpoint ALS B');
+      if (pathNodes.length !== 5 || pathLinks.length !== 4) {
+        errors.push('ALS DOF path requires A-S1-C-S2-B');
+      }
+      if (!Number.isInteger(z)
+        || !hub.digits.includes(z)
+        || !primaryC?.digits.includes(z)) {
+        errors.push(`ALS DOF path endpoints must share Z=${z}`);
+      }
+      for (const node of result.auxiliary || []) {
+        if (node.dof <= 0) errors.push(`path ALS ${node.id} is not an ALS DOF node`);
+        if (node.digits.includes(z)) {
+          errors.push(`path ALS ${node.id} must not contain endpoint Z=${z}`);
+        }
+      }
+      const covered = new Set();
+      for (let index = 0; index < pathLinks.length; index += 1) {
+        const link = pathLinks[index];
+        const left = pathNodes[index];
+        const right = pathNodes[index + 1];
+        const actual = left && right ? chainRccBridges(cand, left, right) : [];
+        const actualDigits = sortedUnique(actual.map(bridge => bridge.digit));
+        const listedDigits = sortedUnique((link.bridges || [])
+          .map(bridge => bridge.digit));
+        if (link.left !== left?.id || link.right !== right?.id) {
+          errors.push(`ALS DOF path link ${index + 1} is out of order`);
+        }
+        if (!actual.length) errors.push(`ALS DOF path link ${index + 1} has no RCC`);
+        if (actualDigits.join(',') !== listedDigits.join(',')) {
+          errors.push(`ALS DOF path link ${index + 1} RCC list is stale`);
+        }
+        for (const digit of actualDigits) {
+          if (digit !== z) covered.add(digit);
+        }
+      }
+      const listedRcc = sortedUnique(result.rccDigits || []);
+      if (listedRcc.join(',') !== sortedUnique([...covered]).join(',')) {
+        errors.push('ALS DOF path RCC list is stale');
+      }
+      if (!errors.length) {
+        expectedEliminations = pathEliminationRecords(cand, hub, primaryC, z);
+      }
+    } else if (result.mode === 'chain') {
       const primaryC = result.primaryC;
       const z = result.z;
       if (!primaryC) errors.push('ALS DOF chain requires endpoint ALS C');
@@ -1322,26 +2007,50 @@
       }
       if (!auxiliary.length) errors.push('ALS DOF chain requires an auxiliary collection');
 
+      const connectorForm = result.chainForm === 'shared-auxiliary';
       const covered = new Set();
+      let hasABridge = false;
+      let hasCBridge = false;
       for (const node of auxiliary) {
         if (node.dof <= 0) errors.push(`auxiliary ALS ${node.id} is not an ALS DOF node`);
-        if (!node.digits.includes(z)) errors.push(`auxiliary ALS ${node.id} lacks Z=${z}`);
+        if (connectorForm
+          ? node.digits.includes(z)
+          : !node.digits.includes(z)) {
+          errors.push(connectorForm
+            ? `auxiliary ALS ${node.id} must not contain endpoint Z=${z}`
+            : `auxiliary ALS ${node.id} lacks Z=${z}`);
+        }
         if (primaryC && !disjoint(primaryC.cells, node.cells)) {
           errors.push(`auxiliary ALS ${node.id} overlaps endpoint C`);
         }
 
-        const aBridges = restrictedCommons(hub, node);
+        const aBridges = chainRccBridges(cand, hub, node);
         const cBridges = primaryC
-          ? restrictedCommons(primaryC, node)
+          ? chainRccBridges(cand, primaryC, node)
           : [];
-        if (!aBridges.length) errors.push(`auxiliary ALS ${node.id} lacks an A RCC`);
-        if (!cBridges.length) errors.push(`auxiliary ALS ${node.id} lacks a C RCC`);
+        if (!aBridges.length || !cBridges.length) {
+          errors.push(`auxiliary ALS ${node.id} must have RCCs to both endpoints`);
+        }
         const listedA = (node.aBridges || []).map(bridge => bridge.digit);
         const listedC = (node.cBridges || []).map(bridge => bridge.digit);
         const validBridgeDigits = new Set([
           ...aBridges.map(bridge => bridge.digit),
           ...cBridges.map(bridge => bridge.digit),
         ]);
+        const expectedNodeRcc = sortedUnique([
+          ...aBridges.map(bridge => bridge.digit),
+          ...cBridges.map(bridge => bridge.digit),
+        ].filter(digit => digit !== z));
+        const listedNodeRcc = sortedUnique((node.rccDigits || [])
+          .filter(digit => digit !== z));
+        if (aBridges.length) hasABridge = true;
+        if (cBridges.length) hasCBridge = true;
+        if (expectedNodeRcc.join(',') !== listedNodeRcc.join(',')) {
+          errors.push(`auxiliary ALS ${node.id} RCC list is stale`);
+        }
+        if (listedNodeRcc.length < node.dof) {
+          errors.push(`auxiliary ALS ${node.id} needs ${node.dof} non-Z RCCs`);
+        }
         for (const digit of listedA) {
           if (!aBridges.some(bridge => bridge.digit === digit)) {
             errors.push(`invalid A RCC ${digit} for auxiliary ALS ${node.id}`);
@@ -1367,8 +2076,43 @@
       }
       if (primaryC) {
         const expectedRccCount = hub.digits.length - 1;
-        if (covered.size !== expectedRccCount) {
+        if (!connectorForm && covered.size !== expectedRccCount) {
           errors.push(`ALS DOF chain requires ${expectedRccCount} unique non-Z RCCs`);
+        }
+        if (!hasABridge || !hasCBridge) {
+          errors.push('ALS DOF chain collection must connect both endpoints');
+        }
+        const endpointCoverage = endpointBridgeCoverage(
+          hub,
+          primaryC,
+          auxiliary.map(node => ({
+            aBridges: node.aBridges || [],
+            cBridges: node.cBridges || [],
+          })),
+        );
+        if (!endpointCoverage.valid) {
+          errors.push('ALS DOF chain needs each endpoint DOF covered by RCCs');
+        }
+
+        const primaryAReduction = endpointReduction(
+          hub,
+          auxiliary,
+          'aBridges',
+          z,
+        );
+        const primaryCReduction = endpointReduction(
+          primaryC,
+          auxiliary,
+          'cBridges',
+          z,
+        );
+        if (result.isRing) {
+          if (!chainHubRingInfo(hub, primaryC, auxiliary, z)) {
+            errors.push('ALS DOF ring hub is not fully reduced by its auxiliary RCCs');
+          }
+        } else if (primaryAReduction.residualDof !== 1
+          || primaryCReduction.residualDof !== 1) {
+          errors.push('ALS DOF chain endpoints must each retain residual DOF 1');
         }
       }
       if (!errors.length) {
@@ -1441,9 +2185,12 @@
       }
     } else if (result.mode === 'dds' || result.mode === 'almost-dds') {
       const almostDds = result.mode === 'almost-dds';
+      const compactDds = result.ringForm === 'compact-collection';
       const requiredAuxiliaries = hub.dof + (almostDds ? 1 : 0);
       if (hub.dof < 2) errors.push(`${almostDds ? 'Almost DDS' : 'DDS'} requires hub DOF >= 2`);
-      if (auxiliary.length !== requiredAuxiliaries) {
+      if (compactDds
+        ? (auxiliary.length < 1 || auxiliary.length >= hub.dof)
+        : auxiliary.length !== requiredAuxiliaries) {
         errors.push(`${almostDds ? 'Almost DDS' : 'DDS'} requires ${requiredAuxiliaries} auxiliary ALSs`);
       }
       const covered = new Set();
@@ -1470,6 +2217,9 @@
           node,
           bridges: bridges.filter(bridge => listedDigits.includes(bridge.digit)),
         });
+        if (compactDds && bridges.length < hub.dof) {
+          errors.push(`compact DDS auxiliary ALS ${node.id} must expose at least ${hub.dof} RCCs`);
+        }
       }
       for (const digit of hub.digits) {
         if (!covered.has(digit)) errors.push(`hub digit ${digit} is not RCC-covered`);
@@ -1477,19 +2227,35 @@
       for (const digit of covered) {
         if (!hub.digits.includes(digit)) errors.push(`RCC ${digit} is outside hub digits`);
       }
+      if (compactDds) {
+        const shared = entries.reduce(
+          (digits, entry) => intersection(
+            digits,
+            entry.bridges.map(bridge => bridge.digit),
+          ),
+          [...hub.digits],
+        );
+        const listedShared = sortedUnique(result.collectionRccDigits || []);
+        if (!shared.length) errors.push('compact DDS has no collection-common RCC');
+        if (shared.join(',') !== listedShared.join(',')) {
+          errors.push('compact DDS collection RCC list is stale');
+        }
+      }
       if (!errors.length) {
         const source = options.alsList || core.alsConstructor(cand, {
           maxSizeDOF: 5,
           maxSizeFox: 5,
         });
         const alsPool = source.map(als => als.cells ? als : normaliseAls(als));
-        expectedEliminations = cumulativeDdsEliminationRecords(cand, hub, entries, alsPool);
+        expectedEliminations = compactDds
+          ? compactDdsEliminationRecords(cand, hub, entries, alsPool)
+          : cumulativeDdsEliminationRecords(cand, hub, entries, alsPool);
       }
     } else {
       errors.push('unsupported ALS-DOF net form');
     }
 
-    errors.push(...verifyEliminationWitnesses(cand, result));
+    errors.push(...verifyEliminationWitnesses(cand, result, options.alsList || null));
     errors.push(...verifyEliminations(result.eliminations, expectedEliminations));
     return {
       ok: errors.length === 0,
@@ -1527,6 +2293,8 @@
   }
 
   core.findAlsDofAuxiliary = findAlsDofAuxiliary;
+  core.findAlsDofAuxiliaryPaths = findAlsDofAuxiliaryPaths;
+  core.findAlsDofChains = findAlsDofChains;
   core.findAlsDofHubNets = findAlsDofHubNets;
   core.findAlsDofDdsNets = findAlsDofDdsNets;
   core.findAlsDofAlmostDdsNets = findAlsDofAlmostDdsNets;

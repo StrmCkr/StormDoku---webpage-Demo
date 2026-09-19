@@ -52,7 +52,7 @@ the candidate grid itself may be useful while testing.
 
 - `Load` parses the input and checks the puzzle when possible.
 - `Generate` creates a unique puzzle. The difficulty selector can request
-  any rating category from `Lulz` through `Nightmare`, plus `Unknown` or
+  any rating category from `Lulz` through `Transcendent`, plus `Unknown` or
   `Any`.
 - `Reset` rebuilds candidates from the current puzzle or loaded candidate data.
 - `Undo` and `Redo` move through candidate-grid cycles.
@@ -225,21 +225,38 @@ ordered ladder:
     W Transport, S-Wing/Ring, M(2,3)-Wing/Ring, H(1,2,3)-Wing/Ring, and
     B.A.R.N.S. WXYZ Transport. Ring forms receive `+0.5`.
 11. `Hard` (`7`-`7.5`): ALS-XZ. Ring forms receive `+0.5`.
-12. `Demanding` (`8`-`8.5`): ALS-XY. Ring forms receive `+0.5`.
-13. `Expert` (`9`-`9.5`): ALS versions of named Wings and Rings. Ring forms
+12. `Demanding` (`8`-`8.5`): T-ALS-XZ and ALS-XY. T-ALS-XZ is ALS-XZ plus
+    the `+1` transport modifier. Ring forms receive `+0.5`.
+13. `Expert` (`9`-`9.5`): T-ALS-XY and ALS versions of named Wings and
+    Rings. T-ALS-XY is ALS-XY plus the `+1` transport modifier. Ring forms
     receive `+0.5`.
 14. `Brutal` (`10`-`10.5`): ALS Chains. Ring forms receive `+0.5`.
 15. `Nightmare` (`11`-`11.5`): AIC + ALS Chains. Ring forms receive `+0.5`.
-16. `Unknown`: unsolved or unclassified.
+16. `Abyssal` (`12`-`12.999`): ALS-DOF, DDS, and Almost DDS moves whose
+    calculated score is below `13`.
+17. `Transcendent` (`13`-`14.999`): DOF-scaled ALS-DOF, DDS, and Almost DDS
+    moves at or above `13`, followed by DDS Chains and ADDS Chains.
+18. `Unknown`: unsolved or unclassified.
 
 The solver chooses the lowest numeric score first. When scores tie, it uses the
 order above, including the named structure order within each category. Ring
 forms receive the stated `+0.5` bonus without creating a separate rating
 category. The advanced ladder increases by `+1` at each tier after
 `Irritating`: `Frustrating 6`, `Hard 7`, `Demanding 8`, `Expert 9`,
-`Brutal 10`, and `Nightmare 11`. Fish K-values use `2.5`, `2.75`, `3.25`, `3.5`, `4.25`, and `4.5`
+`Brutal 10`, `Nightmare 11`, `Abyssal 12`, and `Transcendent 13`. Fish K-values use `2.5`, `2.75`, `3.25`, `3.5`, `4.25`, and `4.5`
 for K1 and K2 at sizes 2, 3, and 4 respectively. A selected generation
 category is checked against the resulting rating and solved-state result.
+
+The score equations shown in the Difficulty panel are:
+
+- Fish: `n + (0.25 * K) + Franken 0.125 or Mutant 0.25`.
+- Chain/ALS: `base + length excess + unique-digit excess + Open 0.25 or Ring 0.5`.
+- Named transport: `+1.0`; generic chain length already includes chain length.
+- ALS-DOF: `12 + (0.25 * (DOF - 1))`, for hub DOF `1` through `8`.
+- DDS: ALS-DOF score plus the intrinsic closed-ring modifier `0.5`.
+- Almost DDS: DDS score plus `0.25` for the additional final-RCC auxiliary
+  stage. The auxiliary search limit is `DOF + 1`, up to `9`.
+- DDS/ADDS Chains: base `13`; ring forms add `0.5`.
 
 When a requested category is selected for generation, StormDoku tests up to
 1,000 generated puzzles and keeps the current puzzle unchanged if no match is

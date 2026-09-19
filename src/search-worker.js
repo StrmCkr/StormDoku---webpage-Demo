@@ -8,12 +8,13 @@ importScripts(
   './set-tools-core.js',
   './pom-core.js',
   './als-core.js?v=20260917-1',
-  './als-link-core.js?v=20260917-2',
+  './als-dof-core.js?v=20260918-15',
+  './als-link-core.js?v=20260918-2',
   './ahs-core.js',
   './subset-report-core.js',
   './mini-sectors-core.js',
   './strong-link-core.js?v=20260917-1',
-  './chain-core.js?v=20260917-1',
+  './chain-core.js?v=20260918-3',
 );
 
 const core = globalThis.StormDoku;
@@ -94,6 +95,39 @@ function runChains(payload) {
   };
 }
 
+function runAlsDof(payload) {
+  const maxDigits = Math.min(9, Math.max(2, Number(payload.maxDigits) || 6));
+  const maxAuxiliary = Math.min(9, Math.max(1, Number(payload.maxAuxiliary) || 3));
+  const alsList = core.alsConstructor(payload.candidateGrid, {
+    maxSizeDOF: maxDigits - 1,
+    maxSizeFox: maxDigits - 1,
+  });
+  const raw = core.findAlsDofNets(payload.candidateGrid, {
+    alsList,
+    maxAuxiliary,
+    maxDigits,
+    maxResults: payload.maxResults || 5000,
+    includeChain: false,
+  });
+  const accepted = [];
+  const rejected = [];
+  for (const result of raw.results || []) {
+    const verification = core.verifyAlsDofNet(payload.candidateGrid, result, { alsList });
+    if (verification.ok) accepted.push({ ...result, verification });
+    else rejected.push({ result, verification });
+  }
+  return {
+    ...raw,
+    results: accepted,
+    rejectedResults: rejected,
+    stats: {
+      ...(raw.stats || {}),
+      verifierChecked: (raw.results || []).length,
+      verifierRejected: rejected.length,
+    },
+  };
+}
+
 self.onmessage = event => {
   const { id, type, payload } = event.data || {};
   if (type === 'cancel') {
@@ -111,6 +145,7 @@ self.onmessage = event => {
     if (type === 'simple') result = runSimple(payload || {});
     else if (type === 'fish') result = runFish(payload || {});
     else if (type === 'chains') result = runChains(payload || {});
+    else if (type === 'als-dof') result = runAlsDof(payload || {});
     else throw new Error(`Unknown search worker operation: ${type}`);
 
     if (cancelled.has(id)) {

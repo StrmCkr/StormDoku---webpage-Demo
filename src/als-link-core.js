@@ -190,12 +190,19 @@
   }
 
   function buildAlsTraversalLinks(cand, alsList, out, seen, maxLinks) {
-    const pairable = alsList.filter(als => als.alsDOF === 1 && als.alsAllCells.length > 1);
+    // A size-one ALS is the bivalent/type-4 node used by XY structures.  It
+    // must be allowed to participate at an endpoint of a traversal link: a
+    // higher ALS can hand its RCC to a bivalent cell and then continue through
+    // that cell's ordinary type-4 strong link.  Keep the all-bivalent case out
+    // of this builder because the ordinary strong-link inventory already owns
+    // those edges.
+    const pairable = alsList.filter(als => als.alsDOF === 1);
 
     for (let leftIndex = 0; leftIndex < pairable.length; leftIndex++) {
       const leftAls = pairable[leftIndex];
       for (let rightIndex = leftIndex + 1; rightIndex < pairable.length; rightIndex++) {
         const rightAls = pairable[rightIndex];
+        if (leftAls.alsAllCells.length === 1 && rightAls.alsAllCells.length === 1) continue;
         if (!disjoint(leftAls.alsAllCells, rightAls.alsAllCells)) continue;
 
         // A restricted common is enough to join two ALS modules for a chain

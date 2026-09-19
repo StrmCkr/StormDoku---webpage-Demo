@@ -1191,7 +1191,12 @@
   }
 
   function parseCandidateGridText(text) {
-    const rows = String(text ?? '').split(/\r?\n/)
+    const source = String(text ?? '').trim();
+    const cells = source.split(/\s+/);
+    const cellTokens = cells.length === 81 && cells.every(token => /^[1-9]+$/.test(token))
+      ? [cells]
+      : null;
+    const rows = cellTokens || source.split(/\r?\n/)
       .map(line => line.match(/[1-9]+/g) || [])
       .filter(tokens => tokens.length === 9);
     if (rows.length !== 9) return null;

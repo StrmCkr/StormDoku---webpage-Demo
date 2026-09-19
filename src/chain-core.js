@@ -1601,6 +1601,32 @@
     return isBivalveStep(step) || isAlsRccStep(step);
   }
 
+  function isOrdinaryStrongLinkStep(step) {
+    return step.family === 'SL'
+      && step.linkType >= 0
+      && step.linkType <= 3
+      && !isBivalveStep(step)
+      && step.linkTypeName !== 'ALS';
+  }
+
+  // A transported ALS-XY has the three ALS nodes of an ALS-XY structure,
+  // with one ordinary strong link carrying the endpoint inference away from
+  // the ALS chain. The graph stores links, so that shape is two ALS_RCC
+  // links plus one ordinary strong link: VVL (or its reverse).
+  function isTransportAlsXy(steps) {
+    if (steps.length !== 3 || normalisedOpenPattern(steps) !== 'VVL') return false;
+    return steps.filter(isAlsRccStep).length === 2
+      && steps.filter(isOrdinaryStrongLinkStep).length === 1;
+  }
+
+  // The lower transport form is an ALS-XZ with one ordinary strong-link
+  // bridge: one ALS_RCC link plus one ordinary strong link, or its reverse.
+  function isTransportAlsXz(steps) {
+    if (steps.length !== 2 || normalisedOpenPattern(steps) !== 'VL') return false;
+    return steps.filter(isAlsRccStep).length === 1
+      && steps.filter(isOrdinaryStrongLinkStep).length === 1;
+  }
+
   function hasWRingValueNodes(steps) {
     const valueNodes = steps.filter(step => chainValueToken(step) === 'V');
     if (valueNodes.length !== 2) return false;
@@ -1811,6 +1837,8 @@
     }
 
     const pattern = normalisedOpenPattern(steps);
+    if (isTransportAlsXz(steps)) return 'T-ALS-XZ';
+    if (isTransportAlsXy(steps)) return 'T-ALS-XY';
     const simpleName = classifyTwoLinkXChain(steps);
     if (simpleName) return prefixedStructureName(simpleName, steps);
     const threeLinkEri = classifyThreeLinkEri(steps, false);
