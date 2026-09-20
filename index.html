@@ -749,6 +749,12 @@
       margin: 0;
     }
 
+    .grid-digit-panel > legend,
+    .grid-actions-panel > legend {
+      width: 100%;
+      text-align: center;
+    }
+
     .grid-controls-row {
       display: grid;
       grid-template-columns: max-content max-content;
@@ -773,6 +779,26 @@
 
     .grid-digit-stack .grid-cell-size-panel {
       grid-area: auto;
+    }
+
+    .grid-filter-row {
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+      width: max-content;
+    }
+
+    .grid-filter-clear-panel {
+      display: flex;
+      align-items: center;
+      width: max-content;
+      margin: 0;
+      padding: 4px 5px 5px;
+    }
+
+    .grid-filter-clear-panel button {
+      padding: 5px 8px;
+      font-size: 12px;
     }
 
     .grid-actions-panel {
@@ -878,6 +904,9 @@
     .report-workspace-panel {
       margin-top: 12px;
       padding: 8px;
+      min-width: 0;
+      grid-column: 1;
+      grid-row: 2;
     }
 
     .board-workspace-panel {
@@ -887,7 +916,7 @@
 
     .solution-workspace-panel {
       grid-column: 2;
-      grid-row: 1;
+      grid-row: 1 / span 2;
     }
 
     .board-column,
@@ -1281,6 +1310,40 @@
       text-shadow: -1px 0 #111827, 0 1px #111827, 1px 0 #111827, 0 -1px #111827;
     }
 
+    .cell.player-selected {
+      outline: 3px solid #f59e0b;
+      outline-offset: -3px;
+      z-index: 3;
+    }
+
+    .cell.player-editable,
+    .mark.player-mark,
+    .vantage-position.player-mark {
+      cursor: pointer;
+    }
+
+    .mark.player-mark:hover,
+    .mark.player-mark:focus-visible,
+    .vantage-position.player-mark:hover,
+    .vantage-position.player-mark:focus-visible {
+      outline: 2px solid #f59e0b;
+      outline-offset: -1px;
+      border-radius: 2px;
+    }
+
+    .mark.player-digit-selected,
+    .vantage-position.player-digit-selected {
+      outline: 2px solid #b45309;
+      outline-offset: -1px;
+      border-radius: 2px;
+    }
+
+    .vantage-position.player-cell-selected {
+      outline: 3px solid #f59e0b;
+      outline-offset: -2px;
+      border-radius: 2px;
+    }
+
     .vantage-cell {
       flex-direction: column;
       gap: 1px;
@@ -1332,6 +1395,14 @@
       color: var(--blue);
       background: #dbeafe;
       border-radius: 2px;
+    }
+
+    .vantage-position.fixed {
+      color: #713f12;
+      background: #fef3c7;
+      border: 1px solid #d97706;
+      border-radius: 2px;
+      font-weight: 900;
     }
 
     .vantage-position.elim {
@@ -1885,6 +1956,499 @@
       border-radius: 6px;
     }
 
+    .toy-panel fieldset {
+      margin: 0;
+      padding: 7px;
+    }
+
+    .toy-panel fieldset > legend {
+      width: 100%;
+      text-align: center;
+    }
+
+    .toy-transform-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .toy-transform-buttons button,
+    .toy-swap-control button {
+      padding: 5px 8px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .toy-swap-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .toy-swap-control {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      gap: 5px;
+    }
+
+    .toy-digit-pair {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 5px;
+    }
+
+    .toy-swap-control label {
+      display: grid;
+      gap: 3px;
+      color: var(--gunmetal-ink);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .toy-swap-control select {
+      min-width: 0;
+      width: 100%;
+      padding: 4px 6px;
+      border-color: var(--gunmetal-line);
+      background: var(--gunmetal-panel);
+      color: var(--gunmetal-ink);
+      font-size: 12px;
+    }
+
+    .toy-automorph-toolbar {
+      position: relative;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: end;
+      gap: 7px;
+      margin-bottom: 7px;
+    }
+
+    .toy-automorph-toolbar label {
+      display: grid;
+      gap: 3px;
+      color: var(--gunmetal-ink);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .toy-automorph-toolbar select {
+      min-width: 142px;
+      padding: 4px 6px;
+      border-color: var(--gunmetal-line);
+      background: var(--gunmetal-panel);
+      color: var(--gunmetal-ink);
+      font-size: 12px;
+    }
+
+    .toy-automorph-toolbar button,
+    .toy-minilex-toolbar button {
+      padding: 5px 8px;
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    .toy-automorph-toolbar #toyAutomorphLegend {
+      margin-left: auto;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      color: var(--gunmetal-ink);
+    }
+
+    .toy-automorph-legend-symbol {
+      color: #1f6feb;
+      font-weight: 900;
+    }
+
+    .toy-automorph-legend-panel {
+      position: absolute;
+      top: calc(100% + 4px);
+      right: 0;
+      z-index: 20;
+      width: min(360px, calc(100vw - 30px));
+      margin: 0;
+      padding: 7px 9px;
+      max-height: min(430px, 70vh);
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: var(--panel);
+      color: var(--ink);
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .toy-automorph-legend-close {
+      position: absolute;
+      top: 4px;
+      right: 7px;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      color: #1f6feb;
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .toy-automorph-legend-panel > .toy-automorph-legend-grid,
+    .toy-automorph-legend-panel > .toy-automorph-legend-note {
+      padding-right: 18px;
+    }
+
+    .toy-automorph-legend-panel[hidden] {
+      display: none;
+    }
+
+    .toy-automorph-legend-panel p {
+      margin: 0 0 4px;
+    }
+
+    .toy-automorph-legend-panel p:last-child {
+      margin-bottom: 0;
+    }
+
+    .toy-automorph-legend-grid {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 3px 9px;
+      align-items: baseline;
+    }
+
+    .toy-automorph-legend-grid code {
+      color: var(--ink);
+      font-weight: 900;
+    }
+
+    .toy-automorph-shortcuts {
+      display: grid;
+      gap: 4px;
+      margin-top: 6px;
+      padding-top: 5px;
+      border-top: 1px solid var(--line);
+    }
+
+    .toy-automorph-shortcut-grid {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 3px 9px;
+      align-items: baseline;
+    }
+
+    .toy-automorph-shortcut-grid code {
+      color: var(--ink);
+      font-weight: 900;
+    }
+
+    .toy-automorph-shortcut-note {
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .toy-automorph-catalog {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px 8px;
+      margin: 0 0 7px;
+    }
+
+    .toy-automorph-catalog details {
+      min-width: 0;
+      border: 1px solid var(--gunmetal-line);
+      border-radius: 5px;
+      background: var(--gunmetal-solid);
+      color: var(--gunmetal-ink);
+    }
+
+    .toy-automorph-catalog summary {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 7px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .toy-automorph-catalog summary::before {
+      content: '+';
+      display: inline-grid;
+      width: 15px;
+      height: 15px;
+      place-items: center;
+      border: 1px solid currentColor;
+      border-radius: 3px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .toy-automorph-catalog details[open] summary::before {
+      content: '\2212';
+    }
+
+    .toy-automorph-catalog-body {
+      padding: 0 7px 6px;
+      border-top: 1px solid var(--gunmetal-line);
+    }
+
+    .toy-automorph-catalog-description {
+      margin: 5px 0;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.35;
+    }
+
+    .toy-automorph-catalog ol {
+      margin: 0 0 0 17px;
+      padding: 0;
+    }
+
+    .toy-automorph-catalog li {
+      margin: 3px 0;
+      font-size: 10px;
+      line-height: 1.3;
+    }
+
+    .toy-automorph-catalog code {
+      color: var(--gunmetal-ink);
+      font-weight: 800;
+    }
+
+    @media (max-width: 620px) {
+      .toy-automorph-catalog {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .toy-automorph-families {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px 14px;
+      margin: 0;
+    }
+
+    .toy-automorph-families-panel {
+      margin: 0 0 7px;
+      padding: 6px 8px 7px;
+      border-color: var(--gunmetal-line);
+      background: var(--gunmetal-solid);
+      color: var(--gunmetal-ink);
+    }
+
+    .toy-automorph-families-panel legend {
+      padding: 0 4px;
+      color: var(--gunmetal-ink);
+      font-size: 11px;
+    }
+
+    .toy-automorph-families label {
+      display: inline-flex;
+      min-width: 0;
+      align-items: center;
+      gap: 4px;
+      color: var(--gunmetal-ink);
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+
+    .toy-automorph-families input {
+      accent-color: #1f6feb;
+    }
+
+    .toy-automorph-family-item {
+      min-width: 0;
+    }
+
+    .toy-automorph-family-row {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .toy-automorph-family-row label {
+      flex: 1 1 auto;
+    }
+
+    .toy-automorph-family-toggle {
+      display: inline-block;
+      width: auto;
+      height: auto;
+      flex: 0 0 auto;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: #1f6feb;
+      font-size: 16px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .toy-automorph-family-catalog[hidden] {
+      display: none;
+    }
+
+    .toy-automorph-family-catalog {
+      margin: 5px 0 0;
+      padding: 5px 7px 6px;
+      border: 1px solid var(--gunmetal-line);
+      border-radius: 4px;
+      background: rgba(255, 255, 255, .08);
+      color: var(--gunmetal-ink);
+    }
+
+    .toy-automorph-family-catalog .toy-automorph-catalog-description {
+      margin: 0 0 4px;
+      color: rgba(243, 246, 248, .78);
+    }
+
+    .toy-automorph-family-catalog ol {
+      margin: 0 0 0 16px;
+      padding: 0;
+    }
+
+    .toy-automorph-family-catalog li {
+      margin: 3px 0;
+      font-size: 10px;
+      line-height: 1.3;
+    }
+
+    .toy-automorph-family-catalog code {
+      color: var(--gunmetal-ink);
+      font-weight: 800;
+    }
+
+    .toy-automorph-results {
+      max-height: 260px;
+      overflow: auto;
+      padding: 7px 9px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: var(--panel);
+      color: var(--ink);
+      font-size: 12px;
+    }
+
+    .toy-automorph-results p {
+      margin: 0;
+    }
+
+    .toy-automorph-results details + details {
+      margin-top: 6px;
+    }
+
+    .toy-automorph-results summary {
+      padding: 2px 0;
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    .toy-automorph-results ol {
+      margin: 4px 0 0 20px;
+      padding: 0;
+    }
+
+    .toy-automorph-results li {
+      margin: 2px 0;
+      line-height: 1.35;
+    }
+
+    .toy-minilex-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 7px;
+    }
+
+    .toy-minilex-summary {
+      color: var(--gunmetal-ink);
+      font-size: 11px;
+    }
+
+    .toy-minilex-string {
+      display: block;
+      margin: 0 0 7px;
+      padding: 6px 7px;
+      overflow-wrap: anywhere;
+      border: 1px solid var(--gunmetal-line);
+      border-radius: 5px;
+      background: var(--gunmetal-panel);
+      color: var(--gunmetal-ink);
+      font: 700 11px/1.35 ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
+
+    .toy-minilex-grid {
+      display: grid;
+      grid-template-columns: repeat(9, minmax(18px, 1fr));
+      max-width: 320px;
+      border: 1px solid var(--gunmetal-line);
+      background: var(--gunmetal-line);
+      gap: 1px;
+    }
+
+    .toy-minilex-grid-panel {
+      margin-top: 7px;
+    }
+
+    .toy-minilex-grid-panel summary {
+      padding: 6px 8px;
+      cursor: pointer;
+      color: var(--gunmetal-ink);
+      font-size: 12px;
+      font-weight: 800;
+      list-style: none;
+      user-select: none;
+    }
+
+    .toy-minilex-grid-panel summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .toy-minilex-grid-panel summary::after {
+      display: inline-block;
+      width: auto;
+      height: auto;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      content: "+";
+      float: right;
+      color: var(--blue);
+      font-size: 16px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .toy-minilex-grid-panel[open] summary::after {
+      content: "-";
+    }
+
+    .toy-minilex-grid-panel .toy-minilex-grid {
+      margin: 0 8px 8px;
+    }
+
+    .toy-minilex-cell {
+      display: grid;
+      min-height: 21px;
+      place-items: center;
+      background: var(--gunmetal-panel);
+      color: var(--gunmetal-ink);
+      font: 700 12px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
+
+    .toy-minilex-cell:nth-child(3n) {
+      margin-right: 2px;
+    }
+
+    .toy-minilex-cell:nth-child(n + 28):nth-child(-n + 36),
+    .toy-minilex-cell:nth-child(n + 55):nth-child(-n + 63) {
+      margin-bottom: 2px;
+    }
+
     .pom-panel {
       display: block;
       overflow: hidden;
@@ -1952,6 +2516,80 @@
       display: grid;
       gap: 10px;
       padding: 12px;
+    }
+
+    .overlay-information-key {
+      border-top: 1px solid var(--line);
+      padding-top: 8px;
+    }
+
+    .overlay-information-key summary {
+      color: var(--gunmetal-ink);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 800;
+      list-style: none;
+      user-select: none;
+    }
+
+    .overlay-information-key summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .overlay-information-key summary::before {
+      display: inline-block;
+      width: 16px;
+      color: #1f6feb;
+      content: "+";
+      font-weight: 900;
+    }
+
+    .overlay-information-key[open] summary::before {
+      content: "-";
+    }
+
+    .overlay-key-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 6px 12px;
+      padding-top: 8px;
+    }
+
+    .player-controls-toggle {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: rgba(243, 246, 248, .84);
+      cursor: pointer;
+      font-size: 11px;
+      line-height: 1.2;
+    }
+
+    .player-controls-toggle input {
+      margin: 0;
+      accent-color: var(--blue);
+      cursor: pointer;
+    }
+
+    .overlay-key-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: rgba(243, 246, 248, .84);
+      font-size: 12px;
+    }
+
+    .overlay-key-item kbd {
+      min-width: 92px;
+      padding: 3px 5px;
+      border: 1px solid var(--gunmetal-line);
+      border-radius: 3px;
+      background: rgba(15, 23, 42, .42);
+      color: #f8fafc;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 11px;
+      text-align: center;
     }
 
     .als-search-buttons {
@@ -2154,9 +2792,66 @@
     }
 
     .rating-summary-category {
-      color: #f8fafc;
+      display: inline-block;
+      padding: 2px 7px;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      background: #f8fafc;
+      color: #161616;
       font-size: 15px;
       font-weight: 900;
+    }
+
+    .rating-category-white {
+      background: #f8fafc;
+      color: #161616;
+      border-color: #cbd5e1;
+    }
+
+    .rating-category-green {
+      background: #22c55e;
+      color: #052e16;
+    }
+
+    .rating-category-blue {
+      background: #3b82f6;
+      color: #eff6ff;
+    }
+
+    .rating-category-yellow {
+      background: #facc15;
+      color: #422006;
+    }
+
+    .rating-category-red {
+      background: #ef4444;
+      color: #fff1f2;
+    }
+
+    .rating-category-purple {
+      background: #a855f7;
+      color: #faf5ff;
+    }
+
+    .rating-category-violet {
+      background: #d946ef;
+      color: #fdf4ff;
+    }
+
+    .rating-category-brown {
+      background: #92400e;
+      color: #fff7ed;
+    }
+
+    .rating-category-black {
+      background: #111827;
+      color: #f8fafc;
+      border-color: #64748b;
+    }
+
+    .rating-category-unknown {
+      background: #64748b;
+      color: #f8fafc;
     }
 
     .rating-summary-detail {
@@ -2531,6 +3226,7 @@
       .controls-workspace-panel > .settings-dock {
         grid-column: 1 / -1;
       }
+
     }
 
     @media (max-width: 860px) {
@@ -2561,9 +3257,101 @@
       }
 
       .board-workspace-panel,
-      .solution-workspace-panel {
+      .solution-workspace-panel,
+      .report-workspace-panel {
         grid-column: auto;
         grid-row: auto;
+      }
+
+      .grid-controls-panel {
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      .grid-controls-row {
+        width: 100%;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+          "digits"
+          "actions";
+        justify-content: stretch;
+      }
+
+      .grid-digit-stack {
+        width: 100%;
+        min-width: 0;
+        grid-template-columns: minmax(0, 1fr);
+        justify-items: stretch;
+      }
+
+      .grid-filter-row {
+        width: 100%;
+        min-width: 0;
+      }
+
+      .grid-filter-clear-panel {
+        flex: 0 0 auto;
+      }
+
+      .grid-digit-panel {
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      .digit-focus-buttons {
+        width: 100%;
+        grid-template-columns: repeat(9, minmax(0, 1fr));
+        gap: 3px;
+      }
+
+      .digit-focus-button {
+        width: 100%;
+      }
+
+      .grid-cell-size-panel.candidate-size-toolbar {
+        width: 100%;
+        box-sizing: border-box;
+        justify-content: space-between;
+      }
+
+      .grid-cell-size-panel .candidate-size-buttons {
+        width: min(100%, 180px);
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 3px;
+      }
+
+      .grid-cell-size-panel .candidate-size-button {
+        width: 100%;
+      }
+
+      .grid-actions-panel {
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      .grid-actions-panel .header-button-row {
+        width: 100%;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .grid-actions-panel .header-button-row button {
+        width: 100%;
+      }
+
+      .toy-swap-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .board-workspace-panel {
+        order: 1;
+      }
+
+      .solution-workspace-panel {
+        order: 2;
+      }
+
+      .report-workspace-panel {
+        order: 3;
       }
 
       .fish-settings-grid {
@@ -2612,8 +3400,8 @@
   <header>
     <div class="header-brand">
       <h1>StormDoku: on-line | off-line</h1>
-      <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo.</p>
-      <p class="app-meta">Alpha v0.3.2 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo for regular Sudoku 9x9 grids.</p>
+      <p class="app-meta">Alpha v0.3.4 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
     </div>
   </header>
 
@@ -2698,6 +3486,57 @@
             </button>
           </div>
         </div>
+      <details class="pom-panel examples-panel" id="examplesPanel">
+        <summary><h2>Examples</h2></summary>
+        <div class="pom-body">
+          <div class="report-subsection-body">
+            <div class="example-item">
+              <button class="secondary example-load" type="button" data-example-puzzle="123456789456789123789123456231564897564897231897231564312645978645978312978312645">Most Canonical</button>
+              <code class="example-puzzle">123456789456789123789123456231564897564897231897231564312645978645978312978312645</code>
+            </div>
+            <div class="example-item">
+              <button class="secondary example-load" type="button" data-example-puzzle="85..7.269.7.5.934.3..264758.2764..351.8.3.6.7..6.21894485316..276149....29385..1.">Lulz grid</button>
+              <code class="example-puzzle">85..7.269.7.5.934.3..264758.2764..351.8.3.6.7..6.21894485316..276149....29385..1.</code>
+            </div>
+            <div class="example-item">
+              <button class="secondary example-load" type="button" data-example-puzzle="46..83....5.21.436.134..8....164859...4.7.1...951327....6...38.53.8.4......39...5">XY - example</button>
+              <code class="example-puzzle">46..83....5.21.436.134..8....164859...4.7.1...951327....6...38.53.8.4......39...5</code>
+            </div>
+            <div class="example-item">
+              <button class="secondary example-load" type="button" data-example-puzzle=".46...92..9.......8.13...4..8..4.61.2...6.5......2..94..37.9.....8.....6.......7.">3x3+2 fish</button>
+              <code class="example-puzzle">.46...92..9.......8.13...4..8..4.61.2...6.5......2..94..37.9.....8.....6.......7.</code>
+            </div>
+            <div class="example-item">
+              <button class="secondary example-load" type="button" data-example-puzzle="4..8.1..28....3....2596..3..3...825....5..9...8....6..9...4...834...5.......9.7..">4x4+2 fish</button>
+              <code class="example-puzzle">4..8.1..28....3....2596..3..3...825....5..9...8....6..9...4...834...5.......9.7..</code>
+            </div>
+            <div class="example-item">
+              <button class="secondary example-load" type="button" data-example-puzzle=".31...6..2.9....5.....8..9...8.6........29..79....3.684...32.8.76....3......45...">2x2+K1 Fish 2.25</button>
+              <code class="example-puzzle">.31...6..2.9....5.....8..9...8.6........29..79....3.684...32.8.76....3......45...</code>
+            </div>
+            <div class="example-item">
+              <button class="secondary example-load" type="button" data-example-puzzle=".68..314974...6.....5...7.2.7.5.14...512.....38....59.....8...45.....8.7.....5..6">WXYZ-Wing</button>
+              <code class="example-puzzle">.68..314974...6.....5...7.2.7.5.14...512.....38....59.....8...45.....8.7.....5..6</code>
+            </div>
+            <div class="example-item">
+              <button class="secondary example-load" type="button" data-example-puzzle="1..4.69.....1...24...2......82.4.7..5....8....9....3..2.78..5...68.752....592.68.">XY-Wing</button>
+              <code class="example-puzzle">1..4.69.....1...24...2......82.4.7..5....8....9....3..2.78..5...68.752....592.68.</code>
+            </div>
+            <div class="example-item">
+              <button class="secondary example-load" type="button" data-example-puzzle="..6.2....3..6.8..92.139.....7.....5..1...67.4.6..5.9.1...16.5..62...9.17.4....8..">Hidden Triple</button>
+              <code class="example-puzzle">..6.2....3..6.8..92.139.....7.....5..1...67.4.6..5.9.1...16.5..62...9.17.4....8..</code>
+            </div>
+            <div class="example-item">
+              <button class="secondary example-load" type="button" data-example-puzzle="726.......85.4..31.1.8........2..3..3...7.6.2....1..5463...1..81.8..64...74.8....">ALS-XZ</button>
+              <code class="example-puzzle">726.......85.4..31.1.8........2..3..3...7.6.2....1..5463...1..81.8..64...74.8....</code>
+            </div>
+            <div class="example-item">
+              <button class="secondary example-load" type="button" data-example-puzzle="4.5.2.6..26819.....1.........961.48.3.4.8.....86.3......2..9.6..4.2..8.7...8..9..">VWXYZ Transport</button>
+              <code class="example-puzzle">4.5.2.6..26819.....1.........961.48.3.4.8.....86.3......2..9.6..4.2..8.7...8..9..</code>
+            </div>
+          </div>
+        </div>
+      </details>
       </fieldset>
       <fieldset class="settings-dock">
         <legend>Settings</legend>
@@ -2719,6 +3558,27 @@
             Difficulty
           </button>
         </div>
+        <details class="overlay-information-key">
+          <summary>Player Controls</summary>
+          <div class="overlay-key-grid">
+            <label class="player-controls-toggle" title="Show givens/solved in Rn,Cn,Bn space">
+              <input id="showFixedInVantage" type="checkbox" aria-label="Show givens and solved values in Rn, Cn, Bn space">
+              <span>Show givens/solved in Rn,Cn,Bn space</span>
+            </label>
+            <div class="overlay-key-item"><kbd>Left click cell</kbd><span>Select or focus cell</span></div>
+            <div class="overlay-key-item"><kbd>Left click candidate</kbd><span>Add candidate</span></div>
+            <div class="overlay-key-item"><kbd>Double-left-click candidate</kbd><span>Promote candidate to solved</span></div>
+            <div class="overlay-key-item"><kbd>Right click candidate</kbd><span>Remove candidate</span></div>
+            <div class="overlay-key-item"><kbd>1-9 / Numpad</kbd><span>Add candidate</span></div>
+            <div class="overlay-key-item"><kbd>Spacebar + digit</kbd><span>Set solved value</span></div>
+            <div class="overlay-key-item"><kbd>Spacebar + left click</kbd><span>Set clicked candidate solved</span></div>
+            <div class="overlay-key-item"><kbd>Delete / Backspace</kbd><span>Remove or clear value</span></div>
+            <div class="overlay-key-item"><kbd>Arrow keys</kbd><span>Wrap cell focus</span></div>
+            <div class="overlay-key-item"><kbd>Home / End</kbd><span>Jump to r1c1 / r9c9</span></div>
+            <div class="overlay-key-item"><kbd>Ctrl/Cmd + Z/Y</kbd><span>Undo / redo</span></div>
+            <div class="overlay-key-item"><kbd>Escape</kbd><span>Clear cell focus</span></div>
+          </div>
+        </details>
       </fieldset>
     </section>
 
@@ -3023,17 +3883,24 @@
                 <div id="digitFocusButtons" class="digit-focus-buttons"></div>
               </div>
             </fieldset>
-            <fieldset class="candidate-size-toolbar grid-cell-size-panel" aria-label="Candidate size filter">
-              <div class="candidate-size-heading">
-                <label class="candidate-size-toggle"
-                  title="When enabled, selected digit highlights appear only in the active X, XY, XYZ, or WXYZ size filters.">
-                  <input id="limitDigitHighlightsToSize" type="checkbox"
-                    aria-label="Restrict digit highlights to selected sizes">
-                  <span>Mask</span>
-                </label>
-              </div>
-              <div id="candidateSizeFilterButtons" class="candidate-size-buttons"></div>
-            </fieldset>
+            <div class="grid-filter-row">
+              <fieldset class="grid-filter-clear-panel" aria-label="Clear digit filter">
+                <legend class="visually-hidden">Digit Filter</legend>
+                <button id="clearDigitFilter" class="secondary" type="button"
+                  title="Clear selected digit highlights">Clear Filters</button>
+              </fieldset>
+              <fieldset class="candidate-size-toolbar grid-cell-size-panel" aria-label="Candidate size filter">
+                <div class="candidate-size-heading">
+                  <label class="candidate-size-toggle"
+                    title="When enabled, selected digit highlights appear only in the active X, XY, XYZ, or WXYZ size filters.">
+                    <input id="limitDigitHighlightsToSize" type="checkbox"
+                      aria-label="Restrict digit highlights to selected sizes">
+                    <span>Mask</span>
+                  </label>
+                </div>
+                <div id="candidateSizeFilterButtons" class="candidate-size-buttons"></div>
+              </fieldset>
+            </div>
           </div>
           <fieldset class="header-tool-frame grid-actions-panel">
             <legend>Actions</legend>
@@ -3065,6 +3932,8 @@
           <div id="gridRowHeader" class="grid-row-header"></div>
           <div id="board" class="board" aria-label="Sudoku candidate grid"></div>
         </div>
+      </section>
+
         <section class="workspace-panel report-workspace-panel" aria-label="Grid reports">
           <div class="report-stack">
           <details class="pom-panel" id="alsPanel">
@@ -3097,40 +3966,8 @@
               <div id="strongLinkResults" class="pom-results"></div>
             </div>
           </details>
-          <details class="pom-panel" id="examplesPanel">
-            <summary><h2>Examples</h2></summary>
-            <div class="pom-body">
-              <div class="report-subsection-body">
-                <div class="example-item">
-                  <button class="secondary example-load" type="button" data-example-puzzle="85..7.269.7.5.934.3..264758.2764..351.8.3.6.7..6.21894485316..276149....29385..1.">Lulz grid</button>
-                  <code class="example-puzzle">85..7.269.7.5.934.3..264758.2764..351.8.3.6.7..6.21894485316..276149....29385..1.</code>
-                </div>
-                <div class="example-item">
-                  <button class="secondary example-load" type="button" data-example-puzzle="46..83....5.21.436.134..8....164859...4.7.1...951327....6...38.53.8.4......39...5">XY - example</button>
-                  <code class="example-puzzle">46..83....5.21.436.134..8....164859...4.7.1...951327....6...38.53.8.4......39...5</code>
-                </div>
-                <div class="example-item">
-                  <button class="secondary example-load" type="button" data-example-puzzle=".46...92..9.......8.13...4..8..4.61.2...6.5......2..94..37.9.....8.....6.......7.">3x3+2 fish</button>
-                  <code class="example-puzzle">.46...92..9.......8.13...4..8..4.61.2...6.5......2..94..37.9.....8.....6.......7.</code>
-                </div>
-                <div class="example-item">
-                  <button class="secondary example-load" type="button" data-example-puzzle="4..8.1..28....3....2596..3..3...825....5..9...8....6..9...4...834...5.......9.7..">4x4+2 fish</button>
-                  <code class="example-puzzle">4..8.1..28....3....2596..3..3...825....5..9...8....6..9...4...834...5.......9.7..</code>
-                </div>
-                <div class="example-item">
-                  <button class="secondary example-load" type="button" data-example-puzzle=".68..314974...6.....5...7.2.7.5.14...512.....38....59.....8...45.....8.7.....5..6">WXYZ-Wing</button>
-                  <code class="example-puzzle">.68..314974...6.....5...7.2.7.5.14...512.....38....59.....8...45.....8.7.....5..6</code>
-                </div>
-                <div class="example-item">
-                  <button class="secondary example-load" type="button" data-example-puzzle="1..4.69.....1...24...2......82.4.7..5....8....9....3..2.78..5...68.752....592.68.">XY-Wing</button>
-                  <code class="example-puzzle">1..4.69.....1...24...2......82.4.7..5....8....9....3..2.78..5...68.752....592.68.</code>
-                </div>
-              </div>
-            </div>
-          </details>
           </div>
         </section>
-      </section>
 
       <section class="workspace-panel solution-workspace-panel" aria-labelledby="solutionHeading">
         <h2 id="solutionHeading" class="workspace-panel-heading visually-hidden">Solution</h2>
@@ -3151,6 +3988,163 @@
           </summary>
           <div class="pom-body">
             <ol id="log" class="log"></ol>
+          </div>
+        </details>
+        <details class="pom-panel toy-panel" id="toysPanel">
+          <summary><h2>Toys</h2></summary>
+          <div class="pom-body">
+            <fieldset>
+              <legend>Transformation</legend>
+              <div class="toy-transform-buttons" aria-label="Grid transformations">
+                <button class="secondary" type="button" data-toy-transform="transpose"
+                  title="Transpose rows and columns">Transpose</button>
+                <button class="secondary" type="button" data-toy-transform="horizontal-mirror"
+                  title="Reflect across a horizontal axis">Horizontal Mirror</button>
+                <button class="secondary" type="button" data-toy-transform="vertical-mirror"
+                  title="Reflect across a vertical axis">Vertical Mirror</button>
+                <button class="secondary" type="button" data-toy-transform="diagonal-reflection"
+                  title="Reflect across the main diagonal">Diagonal Reflection</button>
+                <button class="secondary" type="button" data-toy-transform="anti-diagonal-reflection"
+                  title="Reflect across the anti-diagonal">Anti-Diagonal Reflection</button>
+                <button class="secondary" type="button" data-toy-transform="pivot-left"
+                  title="Rotate a quarter turn left">Pivot Left</button>
+                <button class="secondary" type="button" data-toy-transform="pivot-right"
+                  title="Rotate a quarter turn right">Pivot Right</button>
+                <button class="secondary" type="button" data-toy-transform="half-turn"
+                  title="Rotate a half turn">Half Turn</button>
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>Swaps and Digit Exchange</legend>
+              <div class="toy-swap-grid">
+                <div class="toy-swap-control">
+                  <label>Stacks<select id="toyStackSwap" aria-label="Stack swap"></select></label>
+                  <button id="toyStackSwapButton" class="secondary" type="button">Swap</button>
+                </div>
+                <div class="toy-swap-control">
+                  <label>Bands<select id="toyBandSwap" aria-label="Band swap"></select></label>
+                  <button id="toyBandSwapButton" class="secondary" type="button">Swap</button>
+                </div>
+                <div class="toy-swap-control">
+                  <label>Rows<select id="toyRowSwap" aria-label="Row swap"></select></label>
+                  <button id="toyRowSwapButton" class="secondary" type="button">Swap</button>
+                </div>
+                <div class="toy-swap-control">
+                  <label>Columns<select id="toyColumnSwap" aria-label="Column swap"></select></label>
+                  <button id="toyColumnSwapButton" class="secondary" type="button">Swap</button>
+                </div>
+                <div class="toy-swap-control toy-digit-swap-control">
+                  <div class="toy-digit-pair">
+                    <label>Digit A<select id="toyDigitA" aria-label="First digit"></select></label>
+                    <label>Digit B<select id="toyDigitB" aria-label="Second digit"></select></label>
+                  </div>
+                  <button id="toyDigitSwapButton" class="secondary" type="button">Exchange</button>
+                </div>
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>Automorphic Identities</legend>
+              <div class="toy-automorph-toolbar">
+                <button id="toyAutomorphSearch" class="secondary" type="button"
+                  title="Search the R1-anchored Mini-lex grid for digit-renamed matches">Search</button>
+                <button id="toyAutomorphClear" class="secondary" type="button">Clear</button>
+                <button id="toyAutomorphLegend" class="secondary" type="button"
+                  aria-expanded="false" title="Explain automorphic identity results">Legend <span class="toy-automorph-legend-symbol" aria-hidden="true">+</span></button>
+              </div>
+              <div id="toyAutomorphLegendPanel" class="toy-automorph-legend-panel" role="note" hidden>
+                <button id="toyAutomorphLegendClose" class="toy-automorph-legend-close" type="button" aria-label="Close automorphic identity legend" title="Close legend">×</button>
+                <div class="toy-automorph-legend-grid">
+                  <code>B</code><span>Cyclically move the bands down: B123 → B231.</span>
+                  <code>S</code><span>Cyclically move the stacks right: S123 → S231.</span>
+                  <code>Bx</code><span>Exchange bands 1 and 3: B123 → B321.</span>
+                  <code>Sx</code><span>Exchange stacks 1 and 3: S123 → S321.</span>
+                  <code>R1/R2/R3</code><span>Cyclically move rows inside band 1, 2, or 3.</span>
+                  <code>C1/C2/C3</code><span>Cyclically move columns inside stack 1, 2, or 3.</span>
+                  <code>R</code><span>Cyclically move rows in all bands: R1R2R3.</span>
+                  <code>C</code><span>Cyclically move columns in all stacks: C1C2C3.</span>
+                  <code>Rx</code><span>Invert row order in all bands: r123456789 → r321654987.</span>
+                  <code>Cx</code><span>Invert column order in all stacks: c123456789 → c321654987.</span>
+                  <code>D</code><span>Mirror the main diagonal: r123456789 ↔ c123456789.</span>
+                  <code>D2</code><span>Mirror the anti-diagonal: r123456789 ↔ c987654321.</span>
+                </div>
+                <div class="toy-automorph-legend-note toy-automorph-shortcuts">
+                  <strong>Shortcuts</strong>
+                  <div class="toy-automorph-shortcut-grid">
+                    <code>BxRx</code><span>Horizontal mirror</span>
+                    <code>SxCx</code><span>Vertical mirror</span>
+                    <code>DD2</code><span>Half-turn</span>
+                    <code>BxRxSxCx</code><span>Half-turn</span>
+                    <code>DBxRx</code><span>Quarter-turn</span>
+                    <code>D</code><span>Diagonal reflection</span>
+                    <code>D2</code><span>Anti-diagonal reflection</span>
+                  </div>
+                  <span class="toy-automorph-shortcut-note">Composite codes run left to right.</span>
+                </div>
+              </div>
+              <fieldset class="toy-automorph-families-panel">
+                <legend>Symmetries</legend>
+                <div class="toy-automorph-families" aria-label="Automorphic identity families">
+                  <div class="toy-automorph-family-item">
+                    <div class="toy-automorph-family-row">
+                      <label><input type="checkbox" value="fixedBoxes" data-toy-automorph-family checked> Fixed Boxes</label>
+                      <button class="toy-automorph-family-toggle" type="button" data-toy-automorph-family-toggle="fixedBoxes" aria-expanded="false" aria-controls="toyAutomorphFamilyCatalog-fixedBoxes" title="Show Fixed Boxes subtypes and transformations">+</button>
+                    </div>
+                    <div id="toyAutomorphFamilyCatalog-fixedBoxes" class="toy-automorph-family-catalog" hidden></div>
+                  </div>
+                  <div class="toy-automorph-family-item">
+                    <div class="toy-automorph-family-row">
+                      <label><input type="checkbox" value="bands" data-toy-automorph-family checked> Boxes Move in Bands</label>
+                      <button class="toy-automorph-family-toggle" type="button" data-toy-automorph-family-toggle="bands" aria-expanded="false" aria-controls="toyAutomorphFamilyCatalog-bands" title="Show Boxes Move in Bands subtypes and transformations">+</button>
+                    </div>
+                    <div id="toyAutomorphFamilyCatalog-bands" class="toy-automorph-family-catalog" hidden></div>
+                  </div>
+                  <div class="toy-automorph-family-item">
+                    <div class="toy-automorph-family-row">
+                      <label><input type="checkbox" value="triangular" data-toy-automorph-family checked> Boxes Move Triangular</label>
+                      <button class="toy-automorph-family-toggle" type="button" data-toy-automorph-family-toggle="triangular" aria-expanded="false" aria-controls="toyAutomorphFamilyCatalog-triangular" title="Show Boxes Move Triangular subtypes and transformations">+</button>
+                    </div>
+                    <div id="toyAutomorphFamilyCatalog-triangular" class="toy-automorph-family-catalog" hidden></div>
+                  </div>
+                  <div class="toy-automorph-family-item">
+                    <div class="toy-automorph-family-row">
+                      <label><input type="checkbox" value="rotational" data-toy-automorph-family checked> Rotational</label>
+                      <button class="toy-automorph-family-toggle" type="button" data-toy-automorph-family-toggle="rotational" aria-expanded="false" aria-controls="toyAutomorphFamilyCatalog-rotational" title="Show Rotational subtypes and transformations">+</button>
+                    </div>
+                    <div id="toyAutomorphFamilyCatalog-rotational" class="toy-automorph-family-catalog" hidden></div>
+                  </div>
+                  <div class="toy-automorph-family-item">
+                    <div class="toy-automorph-family-row">
+                      <label><input type="checkbox" value="diagonal" data-toy-automorph-family checked> Diagonal</label>
+                      <button class="toy-automorph-family-toggle" type="button" data-toy-automorph-family-toggle="diagonal" aria-expanded="false" aria-controls="toyAutomorphFamilyCatalog-diagonal" title="Show Diagonal subtypes and transformations">+</button>
+                    </div>
+                    <div id="toyAutomorphFamilyCatalog-diagonal" class="toy-automorph-family-catalog" hidden></div>
+                  </div>
+                  <div class="toy-automorph-family-item">
+                    <div class="toy-automorph-family-row">
+                      <label><input type="checkbox" value="sticks" data-toy-automorph-family checked> Sticks</label>
+                      <button class="toy-automorph-family-toggle" type="button" data-toy-automorph-family-toggle="sticks" aria-expanded="false" aria-controls="toyAutomorphFamilyCatalog-sticks" title="Show Sticks subtypes and transformations">+</button>
+                    </div>
+                    <div id="toyAutomorphFamilyCatalog-sticks" class="toy-automorph-family-catalog" hidden></div>
+                  </div>
+                </div>
+              </fieldset>
+              <div id="toyAutomorphResults" class="toy-automorph-results" aria-live="polite">
+                No automorphic identity search has been run.
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>Mini-lex Representation</legend>
+              <div class="toy-minilex-toolbar">
+                <button id="toyMiniLexBuild" class="secondary" type="button"
+                  title="Build the R1-anchored Mini-lex form: clue pattern first, then digit order">Build Mini-Lex</button>
+                <span id="toyMiniLexSummary" class="toy-minilex-summary">No Mini-lex representation has been built.</span>
+              </div>
+              <code id="toyMiniLexString" class="toy-minilex-string">none</code>
+              <details class="toy-minilex-grid-panel" id="toyMiniLexGridPanel">
+                <summary>Mini-lex Grid</summary>
+                <div id="toyMiniLexGrid" class="toy-minilex-grid" aria-label="Mini-lex graphical grid"></div>
+              </details>
+            </fieldset>
           </div>
         </details>
         <details class="pom-panel" id="hiddenSubsetPanel">
@@ -3252,11 +4246,13 @@
     const boardEl = document.getElementById('board');
     const digitFocusButtonsEl = document.getElementById('digitFocusButtons');
     const candidateSizeFilterButtonsEl = document.getElementById('candidateSizeFilterButtons');
+    const clearDigitFilterEl = document.getElementById('clearDigitFilter');
     const limitDigitHighlightsToSizeEl = document.getElementById('limitDigitHighlightsToSize');
     const gridColumnTitleEl = document.getElementById('gridColumnTitle');
     const gridColumnNumbersEl = document.getElementById('gridColumnNumbers');
     const gridRowHeaderEl = document.getElementById('gridRowHeader');
     const gridViewSelector = document.getElementById('gridViewSelector');
+    const showFixedInVantageEl = document.getElementById('showFixedInVantage');
     const givensEl = document.getElementById('givens');
     const generationDifficultyEl = document.getElementById('generationDifficulty');
     const inputEl = document.getElementById('input');
@@ -3279,6 +4275,30 @@
     const solutionCopyEurekaEl = document.getElementById('solutionCopyEureka');
     const solutionCopyListEl = document.getElementById('solutionCopyList');
     const clearHighlightEl = document.getElementById('clearHighlight');
+    const toyStackSwapEl = document.getElementById('toyStackSwap');
+    const toyBandSwapEl = document.getElementById('toyBandSwap');
+    const toyRowSwapEl = document.getElementById('toyRowSwap');
+    const toyColumnSwapEl = document.getElementById('toyColumnSwap');
+    const toyDigitAEl = document.getElementById('toyDigitA');
+    const toyDigitBEl = document.getElementById('toyDigitB');
+    const toyStackSwapButtonEl = document.getElementById('toyStackSwapButton');
+    const toyBandSwapButtonEl = document.getElementById('toyBandSwapButton');
+    const toyRowSwapButtonEl = document.getElementById('toyRowSwapButton');
+    const toyColumnSwapButtonEl = document.getElementById('toyColumnSwapButton');
+    const toyDigitSwapButtonEl = document.getElementById('toyDigitSwapButton');
+    const toyAutomorphSearchEl = document.getElementById('toyAutomorphSearch');
+    const toyAutomorphClearEl = document.getElementById('toyAutomorphClear');
+    const toyAutomorphLegendEl = document.getElementById('toyAutomorphLegend');
+    const toyAutomorphLegendPanelEl = document.getElementById('toyAutomorphLegendPanel');
+    const toyAutomorphLegendCloseEl = document.getElementById('toyAutomorphLegendClose');
+    const toyAutomorphLegendSymbolEl = toyAutomorphLegendEl.querySelector('.toy-automorph-legend-symbol');
+    const toyAutomorphResultsEl = document.getElementById('toyAutomorphResults');
+    const toyMiniLexBuildEl = document.getElementById('toyMiniLexBuild');
+    const toyMiniLexSummaryEl = document.getElementById('toyMiniLexSummary');
+    const toyMiniLexStringEl = document.getElementById('toyMiniLexString');
+    const toyMiniLexGridEl = document.getElementById('toyMiniLexGrid');
+    let toyAutomorphFamilyCache = null;
+    let toyMiniLexLayoutCache = null;
     const logEl = document.getElementById('log');
     const pomResultsEl = document.getElementById('pomResults');
     const alsResultsEl = document.getElementById('alsResults');
@@ -3432,6 +4452,11 @@
     let selectedChainIndex = null;
     let ratingReport = null;
     let gridView = 'RC';
+    let showFixedInVantage = false;
+    let selectedPlayerCell = null;
+    let selectedPlayerDigit = null;
+    let playerPromotionMode = false;
+    let playerSolveBackups = new Map();
     const SHOW_AIC_DEBUG = false;
     const activeDigitHighlights = new Set();
     const activeCandidateSizeFilters = new Set();
@@ -3660,6 +4685,12 @@
       }
     }
 
+    function clearDigitFilter() {
+      activeDigitHighlights.clear();
+      renderDigitFocusButtons();
+      renderBoard();
+    }
+
     function candidateSizeDigits(cell) {
       // Cell size is the full remaining candidate count. Digit highlights
       // restrict which marks are shown, but do not change X/XY/XYZ/WXYZ.
@@ -3750,6 +4781,7 @@
       limitDigitHighlightsToSize = limitDigitHighlightsToSizeEl.checked;
       renderBoard();
     });
+    clearDigitFilterEl.addEventListener('click', clearDigitFilter);
 
     function initFishSettings() {
       fillNumberSelect(fishMinSizeEl, 1, 7, 2);
@@ -3895,6 +4927,1555 @@
 
     function cellHasCandidate(cell, digit) {
       return (cand[cell] || []).includes(digit);
+    }
+
+    function clonePlayerSolveBackups() {
+      return [...playerSolveBackups.entries()].map(([cell, backup]) => [cell, {
+        digit: backup.digit,
+        entries: backup.entries.map(entry => ({
+          ...entry,
+          cand: [...entry.cand],
+          afterCand: [...entry.afterCand],
+        })),
+      }]);
+    }
+
+    function restorePlayerSolveBackups(saved) {
+      playerSolveBackups = new Map((saved || []).map(([cell, backup]) => [cell, {
+        digit: backup.digit,
+        entries: (backup.entries || []).map(entry => ({
+          ...entry,
+          cand: [...(entry.cand || [])],
+          afterCand: [...(entry.afterCand || [])],
+        })),
+      }]));
+    }
+
+    function playerArraysEqual(left, right) {
+      return left.length === right.length && left.every((value, index) => value === right[index]);
+    }
+
+    function isPlayerEditableCell(cell) {
+      return Number.isInteger(cell) && cell >= 0 && cell < 81 && !originalPuzzle[cell];
+    }
+
+    function resetAnalysisAfterPlayerEdit() {
+      cycle = 0;
+      activeStep = null;
+      lastRemoved = [];
+      promotionQueue = [];
+      logEntries = [];
+      ratingReport = null;
+      pomReport = null;
+      alsReport = null;
+      alsLinkReport = null;
+      alsDofReport = null;
+      alsDofChainReport = null;
+      ahsReport = null;
+      strongLinkReport = null;
+      fishReport = null;
+      nakedSubsetReport = null;
+      hiddenSubsetReport = null;
+      chainReport = null;
+      alsSearchFamily = null;
+      selectedAlsDof = null;
+      selectedAlsDofIndex = null;
+      selectedAlsDofSource = 'net';
+      selectedAlsId = null;
+      selectedAhsDof = null;
+      selectedAhsId = null;
+      selectedStrongLinkType = null;
+      selectedStrongLinkIndex = null;
+      selectedFishCategory = null;
+      selectedFishSize = null;
+      selectedFishKey = null;
+      selectedNakedSubsetSize = null;
+      selectedNakedSubsetKey = null;
+      selectedHiddenSubsetSize = null;
+      selectedHiddenSubsetKey = null;
+      selectedChainIndex = null;
+      if (solutionStepsPanelEl) solutionStepsPanelEl.open = false;
+    }
+
+    function toyCellPermutation(mapper) {
+      const permutation = new Array(81);
+      for (let row = 0; row < 9; row++) {
+        for (let col = 0; col < 9; col++) {
+          const [newRow, newCol] = mapper(row, col);
+          const target = newRow * 9 + newCol;
+          if (!Number.isInteger(target) || target < 0 || target >= 81) {
+            throw new Error('Invalid toy transformation map.');
+          }
+          permutation[row * 9 + col] = target;
+        }
+      }
+      if (new Set(permutation).size !== 81) throw new Error('Toy transformation map is not bijective.');
+      return permutation;
+    }
+
+    function toyMapValues(values, permutation) {
+      if (!Array.isArray(values)) return values;
+      const mapped = new Array(81).fill(0);
+      for (let cell = 0; cell < 81; cell++) mapped[permutation[cell]] = values[cell] || 0;
+      return mapped;
+    }
+
+    function toyMapCandidates(values, permutation) {
+      if (!Array.isArray(values)) return values;
+      const mapped = Array.from({ length: 81 }, () => []);
+      for (let cell = 0; cell < 81; cell++) mapped[permutation[cell]] = [...(values[cell] || [])];
+      return mapped;
+    }
+
+    function toyMapAutomorphScalarValues(values, permutation, mapping) {
+      return toyMapValues(values, permutation).map(value => mapping[value] || value);
+    }
+
+    function toyMapAutomorphCandidates(values, permutation, mapping) {
+      return toyMapCandidates(values, permutation).map(cellValues => [...new Set(
+        cellValues.map(value => mapping[value] || value),
+      )].sort((left, right) => left - right));
+    }
+
+    function applyToyCellPermutationInPlace(permutation) {
+      originalPuzzle = toyMapValues(originalPuzzle, permutation);
+      puzzle = toyMapValues(puzzle, permutation);
+      promotedValues = toyMapValues(promotedValues, permutation);
+      cand = toyMapCandidates(cand, permutation);
+      if (solution) solution = toyMapValues(solution, permutation);
+    }
+
+    function applyToyDigitSwapInPlace(first, second) {
+      const remap = value => value === first ? second : value === second ? first : value;
+      originalPuzzle = originalPuzzle.map(remap);
+      puzzle = puzzle.map(remap);
+      promotedValues = promotedValues.map(remap);
+      cand = cand.map(values => values.map(remap).sort((left, right) => left - right));
+      if (solution) solution = solution.map(remap);
+
+      const selectedDigits = new Set([...activeDigitHighlights].map(remap));
+      activeDigitHighlights.clear();
+      for (const digit of selectedDigits) activeDigitHighlights.add(digit);
+      pomFishSettings.digits = new Set([...pomFishSettings.digits].map(remap));
+    }
+
+    function completeToyDigitMapping(mapping) {
+      const completed = new Array(10).fill(0);
+      const used = new Set();
+      for (let digit = 1; digit <= 9; digit++) {
+        const target = Number(mapping?.[digit]);
+        if (target >= 1 && target <= 9 && !used.has(target)) {
+          completed[digit] = target;
+          used.add(target);
+        }
+      }
+      const remaining = Array.from({ length: 9 }, (_, index) => index + 1)
+        .filter(digit => !used.has(digit));
+      for (let digit = 1; digit <= 9; digit++) {
+        if (!completed[digit]) completed[digit] = remaining.shift();
+      }
+      return completed;
+    }
+
+    function toyBandStackSwapMapper(axis, first, second) {
+      return (row, col) => {
+        if (axis === 'band') {
+          const band = Math.floor(row / 3);
+          const newBand = band === first ? second : band === second ? first : band;
+          return [newBand * 3 + (row % 3), col];
+        }
+        if (axis === 'stack') {
+          const stack = Math.floor(col / 3);
+          const newStack = stack === first ? second : stack === second ? first : stack;
+          return [row, newStack * 3 + (col % 3)];
+        }
+        return [row, col];
+      };
+    }
+
+    function toyLocalSwapMapper(axis, unit, first, second) {
+      return (row, col) => {
+        if (axis === 'row' && Math.floor(row / 3) === unit) {
+          const local = row % 3;
+          return [unit * 3 + (local === first ? second : local === second ? first : local), col];
+        }
+        if (axis === 'column' && Math.floor(col / 3) === unit) {
+          const local = col % 3;
+          return [row, unit * 3 + (local === first ? second : local === second ? first : local)];
+        }
+        return [row, col];
+      };
+    }
+
+    function applyToyStateChange(label, transform) {
+      if (busy) return false;
+      leaveHistoryPreview();
+      const before = snapshotState();
+      try {
+        transform();
+      } catch (error) {
+        setStatus(`${label} could not be applied.`, 'warn');
+        return false;
+      }
+
+      resetAnalysisAfterPlayerEdit();
+      clearToyAutomorphResults();
+      clearToyMiniLex();
+      playerSolveBackups = new Map();
+      selectedPlayerCell = null;
+      selectedPlayerDigit = null;
+      playerPromotionMode = false;
+      inputEl.value = core.encode(originalPuzzle);
+      undoStack.push(before);
+      redoStack = [];
+      setStatus(`${label} applied. Analysis reports were cleared for the transformed grid.`, 'ok');
+      render();
+      return true;
+    }
+
+    function applyToyCellTransform(label, mapper) {
+      const permutation = toyCellPermutation(mapper);
+      return applyToyStateChange(label, () => {
+        originalPuzzle = toyMapValues(originalPuzzle, permutation);
+        puzzle = toyMapValues(puzzle, permutation);
+        promotedValues = toyMapValues(promotedValues, permutation);
+        cand = toyMapCandidates(cand, permutation);
+        if (solution) solution = toyMapValues(solution, permutation);
+      });
+    }
+
+    function remapToyDigit(value, first, second) {
+      if (value === first) return second;
+      if (value === second) return first;
+      return value;
+    }
+
+    function remapToyDigitSet(set, first, second) {
+      return new Set([...set].map(digit => remapToyDigit(digit, first, second)));
+    }
+
+    function applyToyDigitExchange(first, second) {
+      if (first === second) return false;
+      return applyToyStateChange(`Digits ${first} and ${second} exchanged`, () => {
+        const remapValues = values => values?.map(value => remapToyDigit(value, first, second));
+        originalPuzzle = remapValues(originalPuzzle);
+        puzzle = remapValues(puzzle);
+        promotedValues = remapValues(promotedValues);
+        cand = cand.map(values => remapValues(values).sort((left, right) => left - right));
+        if (solution) solution = remapValues(solution);
+
+        const selectedDigits = remapToyDigitSet(activeDigitHighlights, first, second);
+        activeDigitHighlights.clear();
+        for (const digit of selectedDigits) activeDigitHighlights.add(digit);
+        pomFishSettings.digits = remapToyDigitSet(pomFishSettings.digits, first, second);
+      });
+    }
+
+    function toyPairValue(select) {
+      const [left, right] = String(select.value).split(':').map(Number);
+      return [left, right];
+    }
+
+    function fillToySelect(select, options) {
+      select.textContent = '';
+      for (const option of options) {
+        const element = document.createElement('option');
+        element.value = option.value;
+        element.textContent = option.label;
+        select.appendChild(element);
+      }
+    }
+
+    function initToyControls() {
+      const pairs = [[0, 1], [0, 2], [1, 2]];
+      fillToySelect(toyStackSwapEl, pairs.map(([first, second]) => ({
+        value: `${first}:${second}`,
+        label: `Stack ${first + 1} ↔ ${second + 1}`,
+      })));
+      fillToySelect(toyBandSwapEl, pairs.map(([first, second]) => ({
+        value: `${first}:${second}`,
+        label: `Band ${first + 1} ↔ ${second + 1}`,
+      })));
+
+      const rowOptions = [];
+      const columnOptions = [];
+      for (let unit = 0; unit < 3; unit++) {
+        for (const [first, second] of pairs) {
+          rowOptions.push({
+            value: `${unit}:${first}:${second}`,
+            label: `Band ${unit + 1}: R${unit * 3 + first + 1} ↔ R${unit * 3 + second + 1}`,
+          });
+          columnOptions.push({
+            value: `${unit}:${first}:${second}`,
+            label: `Stack ${unit + 1}: C${unit * 3 + first + 1} ↔ C${unit * 3 + second + 1}`,
+          });
+        }
+      }
+      fillToySelect(toyRowSwapEl, rowOptions);
+      fillToySelect(toyColumnSwapEl, columnOptions);
+
+      const digitOptions = Array.from({ length: 9 }, (_, index) => ({
+        value: String(index + 1),
+        label: String(index + 1),
+      }));
+      fillToySelect(toyDigitAEl, digitOptions);
+      fillToySelect(toyDigitBEl, digitOptions);
+      toyDigitBEl.value = '2';
+    }
+
+    function toyTransformationMapper(kind) {
+      switch (kind) {
+        case 'transpose':
+        case 'diagonal-reflection':
+          return (row, col) => [col, row];
+        case 'horizontal-mirror':
+          return (row, col) => [8 - row, col];
+        case 'vertical-mirror':
+          return (row, col) => [row, 8 - col];
+        case 'anti-diagonal-reflection':
+          return (row, col) => [8 - col, 8 - row];
+        case 'pivot-left':
+          return (row, col) => [8 - col, row];
+        case 'pivot-right':
+          return (row, col) => [col, 8 - row];
+        case 'half-turn':
+          return (row, col) => [8 - row, 8 - col];
+        default:
+          return null;
+      }
+    }
+
+    function toyPermutations(values) {
+      const output = [];
+      const current = [];
+      const visit = remaining => {
+        if (!remaining.length) {
+          output.push([...current]);
+          return;
+        }
+        for (let index = 0; index < remaining.length; index++) {
+          current.push(remaining[index]);
+          visit(remaining.slice(0, index).concat(remaining.slice(index + 1)));
+          current.pop();
+        }
+      };
+      visit([...values]);
+      return output;
+    }
+
+    function toyIdentityOrder() {
+      return [0, 1, 2];
+    }
+
+    function toyOrderLabel(order) {
+      return order.map(value => value + 1).join('');
+    }
+
+    function toyComposePermutations(first, second) {
+      const composed = new Array(81);
+      for (let cell = 0; cell < 81; cell++) composed[cell] = second[first[cell]];
+      return composed;
+    }
+
+    function toyPermutationKey(permutation) {
+      return permutation.join(',');
+    }
+
+    function toyLayoutPermutation(bandOrder, rowOrders, stackOrder, columnOrders) {
+      return toyCellPermutation((row, col) => {
+        const band = Math.floor(row / 3);
+        const stack = Math.floor(col / 3);
+        const localRow = row % 3;
+        const localCol = col % 3;
+        const nextBand = bandOrder[band];
+        const nextStack = stackOrder[stack];
+        const nextLocalRow = rowOrders[band][localRow];
+        const nextLocalCol = columnOrders[stack][localCol];
+        return [nextBand * 3 + nextLocalRow, nextStack * 3 + nextLocalCol];
+      });
+    }
+
+    function toyFamilyRecords() {
+      if (toyAutomorphFamilyCache) return toyAutomorphFamilyCache;
+
+      // These are the named identity representatives from symetrical stuff.txt.
+      // The old implementation expanded thousands of arbitrary legal layouts;
+      // these compact maps are the actual identities, not a substitute search.
+      // Catalog row shape: type class (M), name, transformation applied (C),
+      // unique-grid population (N), L/F metadata, and solving-method
+      // applicability (S). L and F remain opaque until defined. The catalog
+      // is intentionally stored in one orientation: its row equivalent is
+      // supplied by the transformation, so named identities are not doubled.
+      const catalog = {
+        fixedBoxes: [
+          { name: 'Mini-Rows (MR)', sequence: 'C', M: 8, N: 107495424, L: 3, F: 0, methods: 'N', alias: 'Mini-Columns (MC)' },
+          { name: '2 MR, 1 MD', sequence: 'CR1', M: 7, N: 21233664, L: 3, F: 0, methods: 'Y' },
+          { name: '1 MR, 2 MD', sequence: 'CR1R2', M: 9, N: 4204224, L: 3, F: 0, methods: 'Y' },
+          { name: 'Mini-Diagonals (MD)', sequence: 'CR', M: 10, N: 2508084, L: 3, F: 0, methods: 'Y' },
+        ],
+        bands: [
+          { name: 'Jumping-Rows (JR)', sequence: 'S', M: 25, N: 14837760, L: 3, F: 0, methods: 'N' },
+          { name: '2 JR, 1 GR', sequence: 'SR1', M: 28, N: 2085120, L: 3, F: 0, methods: 'Y' },
+          { name: '1 JR, 2 GR', sequence: 'SR1R2', M: 30, N: 294912, L: 3, F: 0, methods: 'Y' },
+          { name: 'Gliding-Rows (GR)', sequence: 'SR', M: 32, N: 6342480, L: 3, F: 0, methods: 'Y' },
+          { name: 'Full-Rows (FR)', sequence: 'SC1', M: 27, N: 5184, L: 9, F: 0, methods: 'U' },
+          { name: '2 FR, 1 WR', sequence: 'SR1C1', M: 26, N: 2592, L: 9, F: 0, methods: 'U' },
+          { name: '1 FR, 2 WR', sequence: 'SR1R2C1', M: 29, N: 1296, L: 9, F: 0, methods: 'U' },
+          { name: 'Waving-Rows (WR)', sequence: 'SRC1', M: 31, N: 648, L: 9, F: 0, methods: 'U' },
+        ],
+        triangular: [
+          { name: 'Jumping-Diagonals (JD)', sequence: 'BS', M: 22, N: 323928, L: 3, F: 0, methods: 'Y', alias: 'Block symmetry' },
+          { name: 'Broken-Columns (BC)', sequence: 'BSR1', M: 24, N: 288, L: 9, F: 0, methods: 'U' },
+          { name: 'Full-Diagonals (FD)', sequence: 'BSR1C1', M: 23, N: 162, L: 9, F: 0, methods: 'U' },
+        ],
+        rotational: [
+          { name: 'Half-Turn (HT)', sequence: 'DD2', M: 79, N: 155492352, L: 2, F: 1, methods: 'Y', alias: '180-degree rotational symmetry' },
+          { name: 'Quarter-Turn (QT)', sequence: 'DBxRx', M: 86, N: 13056, L: 4, F: 1, methods: 'Y', alias: '90-degree rotational symmetry; includes HT' },
+        ],
+        diagonal: [
+          { name: 'Diagonal-Mirror (DM)', sequence: 'D', M: 37, N: 30258432, L: 2, F: 9, methods: 'Y', alias: 'Diagonal symmetry' },
+          { name: 'DM + JD', sequence: 'DBS', M: 43, N: 288, L: 6, F: 0, methods: 'Y' },
+          { name: 'DM + MD', sequence: 'DRC', M: 40, N: 1854, L: 6, F: 0, methods: 'Y' },
+        ],
+        sticks: [
+          { name: 'Column-Sticks (CS)', sequence: 'BxCx', M: 134, N: 449445888, L: 2, F: 9, methods: 'Y', alias: 'Sticks symmetry' },
+          { name: 'CS + MC', sequence: 'BxCxR', M: 135, N: 27648, L: 6, F: 0, methods: 'U' },
+          { name: 'CS + JR', sequence: 'BxCxS', M: 145, N: 13824, L: 6, F: 0, methods: 'U' },
+          { name: 'CS + GR/Band2, JR/Band3', sequence: 'BxCxSR2', M: 144, N: 3456, L: 6, F: 0, methods: 'U' },
+          { name: 'CS + GR', sequence: 'BxCxSR', M: 142, N: 6480, L: 6, F: 0, methods: 'U' },
+          { name: 'CS + JR/Band2, GR/Band3', sequence: 'BxCxSR1R3', M: 143, N: 1728, L: 6, F: 0, methods: 'U' },
+        ],
+      };
+
+      const identity = toyCellPermutation((row, col) => [row, col]);
+      const operationMaps = new Map([
+        ['B', toyLayoutPermutation([2, 0, 1], [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()], toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()])],
+        ['S', toyLayoutPermutation(toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()], [2, 0, 1], [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()])],
+        ['Bx', toyLayoutPermutation([2, 1, 0], [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()], toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()])],
+        ['Sx', toyLayoutPermutation(toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()], [2, 1, 0], [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()])],
+        ['R', toyLayoutPermutation(toyIdentityOrder(), [[2, 0, 1], [2, 0, 1], [2, 0, 1]], toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()])],
+        ['C', toyLayoutPermutation(toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()], toyIdentityOrder(), [[2, 0, 1], [2, 0, 1], [2, 0, 1]])],
+        ['Rx', toyLayoutPermutation(toyIdentityOrder(), [[2, 1, 0], [2, 1, 0], [2, 1, 0]], toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()])],
+        ['Cx', toyLayoutPermutation(toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()], toyIdentityOrder(), [[2, 1, 0], [2, 1, 0], [2, 1, 0]])],
+        ['R1', toyLayoutPermutation(toyIdentityOrder(), [[2, 0, 1], toyIdentityOrder(), toyIdentityOrder()], toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()])],
+        ['R2', toyLayoutPermutation(toyIdentityOrder(), [toyIdentityOrder(), [2, 0, 1], toyIdentityOrder()], toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()])],
+        ['R3', toyLayoutPermutation(toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), [2, 0, 1]], toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()])],
+        ['C1', toyLayoutPermutation(toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()], toyIdentityOrder(), [[2, 0, 1], toyIdentityOrder(), toyIdentityOrder()])],
+        ['C2', toyLayoutPermutation(toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()], toyIdentityOrder(), [toyIdentityOrder(), [2, 0, 1], toyIdentityOrder()])],
+        ['C3', toyLayoutPermutation(toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()], toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), [2, 0, 1]])],
+        ['D', toyCellPermutation((row, col) => [col, row])],
+        ['D2', toyCellPermutation((row, col) => [8 - col, 8 - row])],
+      ]);
+
+      const operationTokens = sequence => {
+        const tokens = [];
+        for (let index = 0; index < sequence.length;) {
+          const two = sequence.slice(index, index + 2);
+          if (operationMaps.has(two)) {
+            tokens.push(two);
+            index += 2;
+          } else {
+            tokens.push(sequence[index]);
+            index += 1;
+          }
+        }
+        return tokens;
+      };
+
+      // Transposition exchanges the row and column operations while keeping
+      // the class itself unchanged.  The numbered and mirror forms follow
+      // the same exchange: R1/C1, R2/C2, R3/C3, Rx/Cx, and B/S.
+      const transposeOperationToken = token => {
+        const swaps = {
+          B: 'S',
+          S: 'B',
+          Bx: 'Sx',
+          Sx: 'Bx',
+          R: 'C',
+          C: 'R',
+          Rx: 'Cx',
+          Cx: 'Rx',
+          R1: 'C1',
+          C1: 'R1',
+          R2: 'C2',
+          C2: 'R2',
+          R3: 'C3',
+          C3: 'R3',
+        };
+        return swaps[token] || token;
+      };
+
+      const operationLabels = sequence =>
+        sequence.match(/[A-Z](?:x|\d)?(?:\^\d+)?/g) || [];
+
+      const transposeOperationLabel = label => {
+        const marker = label.indexOf('^');
+        const token = marker < 0 ? label : label.slice(0, marker);
+        const exponent = marker < 0 ? '' : label.slice(marker);
+        return `${transposeOperationToken(token)}${exponent}`;
+      };
+
+      const transposePermutation = permutation => {
+        const transpose = toyCellPermutation((row, column) => [column, row]);
+        return toyComposePermutations(
+          toyComposePermutations(transpose, permutation),
+          transpose,
+        );
+      };
+
+      const permutationPower = (permutation, exponent) => {
+        let result = identity;
+        for (let power = 0; power < exponent; power++) {
+          result = toyComposePermutations(result, permutation);
+        }
+        return result;
+      };
+
+      const permutationOrder = permutation => {
+        let current = identity;
+        for (let order = 1; order <= 12; order++) {
+          current = toyComposePermutations(current, permutation);
+          if (toyIsIdentityPermutation(current)) return order;
+        }
+        return 1;
+      };
+
+      const sequenceVariants = sequence => {
+        const tokens = operationTokens(sequence);
+        const variants = [];
+        const visit = (index, current, labels) => {
+          if (index === tokens.length) {
+            variants.push({
+              sequence: labels.join(''),
+              permutation: current,
+            });
+            return;
+          }
+
+          const token = tokens[index];
+          const operation = operationMaps.get(token);
+          const order = permutationOrder(operation);
+          for (let exponent = 1; exponent < order; exponent++) {
+            visit(
+              index + 1,
+              toyComposePermutations(current, permutationPower(operation, exponent)),
+              [...labels, exponent === 1 ? token : `${token}^${exponent}`],
+            );
+          }
+        };
+        visit(0, identity, []);
+        return variants;
+      };
+
+      const records = Object.fromEntries(Object.keys(catalog).map(family => [family, []]));
+      for (const [family, entries] of Object.entries(catalog)) {
+        const unique = new Map();
+        for (const entry of entries) {
+          const { name, sequence } = entry;
+          const variants = sequenceVariants(sequence).map(variant => ({
+            ...entry,
+            label: `${name} (${variant.sequence})`,
+            testedSequence: variant.sequence,
+            permutation: variant.permutation,
+            transposed: false,
+          }));
+          const transposedVariants = variants.map(record => {
+            const labels = operationLabels(record.testedSequence)
+              .map(transposeOperationLabel);
+            return {
+              ...record,
+              label: `${name} (${labels.join('')})`,
+              testedSequence: labels.join(''),
+              permutation: transposePermutation(record.permutation),
+              transposed: true,
+            };
+          });
+          for (const record of [...variants, ...transposedVariants]) {
+            const key = toyPermutationKey(record.permutation);
+            if (!unique.has(key)) unique.set(key, record);
+          }
+        }
+        records[family] = [...unique.values()];
+      }
+
+      toyAutomorphFamilyCache = records;
+      return toyAutomorphFamilyCache;
+    }
+
+    function renderToyAutomorphCatalog() {
+      const familyLabels = {
+        fixedBoxes: 'Fixed Boxes',
+        bands: 'Boxes Move in Bands',
+        triangular: 'Boxes Move Triangular',
+        rotational: 'Rotational',
+        diagonal: 'Diagonal',
+        sticks: 'Sticks',
+      };
+      const familyDescriptions = {
+        fixedBoxes: 'Mini-row, mini-column, and mini-diagonal patterns while the box bands remain fixed.',
+        bands: 'Stack, row, glide, full-row, and waving-row movements across the bands.',
+        triangular: 'Triangular band/stack movements that produce diagonal and broken-column forms.',
+        rotational: 'Composite transformations that produce half-turn and quarter-turn symmetry.',
+        diagonal: 'Main-diagonal reflection and its diagonal composite forms.',
+        sticks: 'Reversal and stack/column composites that produce stick symmetry.',
+      };
+      const records = toyFamilyRecords();
+
+      for (const family of Object.keys(familyLabels)) {
+        const panel = document.getElementById(`toyAutomorphFamilyCatalog-${family}`);
+        if (!panel) continue;
+        panel.textContent = '';
+
+        const body = document.createElement('div');
+        body.className = 'toy-automorph-catalog-body';
+        const description = document.createElement('p');
+        description.className = 'toy-automorph-catalog-description';
+        description.textContent = familyDescriptions[family];
+        body.appendChild(description);
+
+        const list = document.createElement('ol');
+        for (const record of records[family]) {
+          if (record.testedSequence !== record.sequence) continue;
+          const item = document.createElement('li');
+          const name = document.createElement('strong');
+          name.textContent = record.name;
+          item.appendChild(name);
+          item.appendChild(document.createTextNode(` — `));
+          const code = document.createElement('code');
+          code.textContent = record.sequence;
+          item.appendChild(code);
+          list.appendChild(item);
+        }
+        body.appendChild(list);
+        panel.appendChild(body);
+      }
+
+      for (const toggle of document.querySelectorAll('[data-toy-automorph-family-toggle]')) {
+        if (toggle.dataset.bound === 'true') continue;
+        toggle.dataset.bound = 'true';
+        toggle.addEventListener('click', event => {
+          event.stopPropagation();
+          const panel = document.getElementById(toggle.getAttribute('aria-controls'));
+          if (!panel) return;
+          const open = panel.hidden;
+          panel.hidden = !open;
+          toggle.setAttribute('aria-expanded', String(open));
+          toggle.textContent = open ? '−' : '+';
+        });
+      }
+    }
+
+    function toyIsIdentityPermutation(permutation) {
+      return permutation.every((target, cell) => target === cell);
+    }
+
+    function toyCellDigits(value) {
+      if (Array.isArray(value)) return value.filter(digit => digit >= 1 && digit <= 9);
+      return value >= 1 && value <= 9 ? [value] : [];
+    }
+
+    function toyGridDigitMasks(grid) {
+      const sourceMasks = Array.from({ length: 10 }, () => 0n);
+      for (let cell = 0; cell < 81; cell++) {
+        const bit = 1n << BigInt(cell);
+        for (const digit of toyCellDigits(grid[cell])) sourceMasks[digit] |= bit;
+      }
+      return sourceMasks;
+    }
+
+    function toyTransformDigitMasks(sourceMasks, permutation) {
+      const transformed = Array.from({ length: 10 }, () => 0n);
+      for (let digit = 1; digit <= 9; digit++) {
+        for (let cell = 0; cell < 81; cell++) {
+          if (sourceMasks[digit] & (1n << BigInt(cell))) {
+            transformed[digit] |= 1n << BigInt(permutation[cell]);
+          }
+        }
+      }
+      return transformed;
+    }
+
+    function toyDigitPatternMapFromMasks(sourceMasks, targetMasks) {
+
+      const targetByPattern = new Map();
+      for (let digit = 1; digit <= 9; digit++) {
+        const pattern = targetMasks[digit].toString();
+        if (!targetByPattern.has(pattern)) targetByPattern.set(pattern, []);
+        targetByPattern.get(pattern).push(digit);
+      }
+
+      const mapping = new Array(10).fill(0);
+      for (let digit = 1; digit <= 9; digit++) {
+        const pattern = sourceMasks[digit].toString();
+        const matches = targetByPattern.get(pattern);
+        if (!matches) return null;
+        const sourceDigits = [];
+        for (let other = 1; other <= 9; other++) {
+          if (sourceMasks[other] === sourceMasks[digit]) sourceDigits.push(other);
+        }
+        const position = sourceDigits.indexOf(digit);
+        mapping[digit] = matches[position];
+      }
+
+      const used = new Set(mapping.slice(1));
+      if (used.size !== 9) return null;
+      return mapping;
+    }
+
+    function toyVerifyDigitMap(source, target, mapping) {
+      for (let cell = 0; cell < 81; cell++) {
+        const mapped = new Set(toyCellDigits(source[cell]).map(digit => mapping[digit]));
+        const expected = new Set(toyCellDigits(target[cell]));
+        if (mapped.size !== expected.size || [...mapped].some(digit => !expected.has(digit))) return false;
+      }
+      return true;
+    }
+
+    function toyDigitPatternMap(source, target) {
+      const mapping = toyDigitPatternMapFromMasks(toyGridDigitMasks(source), toyGridDigitMasks(target));
+      return mapping && toyVerifyDigitMap(source, target, mapping) ? mapping : null;
+    }
+
+    function toyAutomorphSource() {
+      return { source: originalPuzzle, target: originalPuzzle };
+    }
+
+    function toyDigitNormalizeDetails(values) {
+      // R1 is the anchor: scan row-major from r1c1 through r9c9 so the
+      // first-seen digit order is stable when a Mini-lex string is reloaded.
+      const mapping = new Array(10).fill(0);
+      const normalized = new Array(81).fill(0);
+      let nextDigit = 1;
+      for (let cell = 0; cell < 81; cell++) {
+        const digit = values[cell] || 0;
+        if (!digit) continue;
+        if (!mapping[digit]) mapping[digit] = nextDigit++;
+        normalized[cell] = mapping[digit];
+      }
+      return { normalized, mapping };
+    }
+
+    function toyDigitNormalize(values) {
+      return toyDigitNormalizeDetails(values).normalized;
+    }
+
+    function toyNormalizedValueKey(values) {
+      return toyDigitNormalize(values).join('');
+    }
+
+    function toyMiniLexLayoutMaps() {
+      if (toyMiniLexLayoutCache) return toyMiniLexLayoutCache;
+
+      const orders = toyPermutations([0, 1, 2]);
+      const rowMaps = [];
+      const columnMaps = [];
+
+      // Each map is source index -> target index. These are the complete
+      // 1,296 legal row and column permutations, not only the visible toys.
+      for (const bandOrder of orders) {
+        for (const firstRows of orders) {
+          for (const secondRows of orders) {
+            for (const thirdRows of orders) {
+              const local = [firstRows, secondRows, thirdRows];
+              const rowMap = new Array(9);
+              for (let index = 0; index < 9; index++) {
+                const group = Math.floor(index / 3);
+                rowMap[index] = bandOrder[group] * 3 + local[group][index % 3];
+              }
+              rowMaps.push(rowMap);
+            }
+          }
+        }
+      }
+
+      for (const stackOrder of orders) {
+        for (const firstColumns of orders) {
+          for (const secondColumns of orders) {
+            for (const thirdColumns of orders) {
+              const local = [firstColumns, secondColumns, thirdColumns];
+              const columnMap = new Array(9);
+              for (let index = 0; index < 9; index++) {
+                const group = Math.floor(index / 3);
+                columnMap[index] = stackOrder[group] * 3 + local[group][index % 3];
+              }
+              columnMaps.push(columnMap);
+            }
+          }
+        }
+      }
+
+      toyMiniLexLayoutCache = { rowMaps, columnMaps };
+      return toyMiniLexLayoutCache;
+    }
+
+    function toyStructuralTargetCell(sourceRow, sourceColumn, rowMap, columnMap, transposed) {
+      const targetRow = transposed ? columnMap[sourceColumn] : rowMap[sourceRow];
+      const targetColumn = transposed ? rowMap[sourceRow] : columnMap[sourceColumn];
+      return targetRow * 9 + targetColumn;
+    }
+
+    function toyStructuralPermutation(rowMap, columnMap, transposed) {
+      const permutation = new Array(81);
+      for (let sourceRow = 0; sourceRow < 9; sourceRow++) {
+        for (let sourceColumn = 0; sourceColumn < 9; sourceColumn++) {
+          const source = sourceRow * 9 + sourceColumn;
+          permutation[source] = toyStructuralTargetCell(
+            sourceRow,
+            sourceColumn,
+            rowMap,
+            columnMap,
+            transposed,
+          );
+        }
+      }
+      return permutation;
+    }
+
+    function toyStructuralDigitMap(values, rowMap, columnMap, transposed) {
+      const mapping = new Int8Array(10);
+      const reverse = new Int8Array(10);
+      for (let sourceRow = 0; sourceRow < 9; sourceRow++) {
+        for (let sourceColumn = 0; sourceColumn < 9; sourceColumn++) {
+          const source = sourceRow * 9 + sourceColumn;
+          const target = toyStructuralTargetCell(
+            sourceRow,
+            sourceColumn,
+            rowMap,
+            columnMap,
+            transposed,
+          );
+          const sourceDigits = toyCellDigits(values[source]);
+          const targetDigits = toyCellDigits(values[target]);
+          if (sourceDigits.length !== targetDigits.length) return null;
+          if (!sourceDigits.length) continue;
+
+          // Full solution grids use scalar cells. Candidate-aware fallback is
+          // retained so the automorphism tool remains correct on partial data.
+          if (sourceDigits.length === 1) {
+            const sourceDigit = sourceDigits[0];
+            const targetDigit = targetDigits[0];
+            if (
+              (mapping[sourceDigit] && mapping[sourceDigit] !== targetDigit)
+              || (reverse[targetDigit] && reverse[targetDigit] !== sourceDigit)
+            ) return null;
+            mapping[sourceDigit] = targetDigit;
+            reverse[targetDigit] = sourceDigit;
+            continue;
+          }
+
+          for (let index = 0; index < sourceDigits.length; index++) {
+            const sourceDigit = sourceDigits[index];
+            const targetDigit = targetDigits[index];
+            if (
+              (mapping[sourceDigit] && mapping[sourceDigit] !== targetDigit)
+              || (reverse[targetDigit] && reverse[targetDigit] !== sourceDigit)
+            ) return null;
+            mapping[sourceDigit] = targetDigit;
+            reverse[targetDigit] = sourceDigit;
+          }
+        }
+      }
+
+      return Array.from(mapping);
+    }
+
+    function toyCompleteAutomorphismSearch(values) {
+      const { rowMaps, columnMaps } = toyMiniLexLayoutMaps();
+      const records = [];
+      let tested = 0;
+      for (const transposed of [false, true]) {
+        for (const rowMap of rowMaps) {
+          for (const columnMap of columnMaps) {
+            tested++;
+            const mapping = toyStructuralDigitMap(values, rowMap, columnMap, transposed);
+            if (!mapping) continue;
+            records.push({
+              permutation: toyStructuralPermutation(rowMap, columnMap, transposed),
+              mapping,
+              transposed,
+              rowMap: [...rowMap],
+              columnMap: [...columnMap],
+            });
+          }
+        }
+      }
+      return { records, tested };
+    }
+
+    function toyStructuralOrderLabel(map) {
+      return map.map(value => value + 1).join('');
+    }
+
+    function toyCompleteAutomorphismLabel(record) {
+      const orientation = record.transposed ? 'transpose' : 'direct';
+      return `${orientation}; rows ${toyStructuralOrderLabel(record.rowMap)}; columns ${toyStructuralOrderLabel(record.columnMap)}`;
+    }
+
+    function toyMiniLexOrientedRows(values, transposed) {
+      const rows = Array.from({ length: 9 }, () => new Array(9).fill(0));
+      for (let row = 0; row < 9; row++) {
+        for (let col = 0; col < 9; col++) {
+          const source = transposed ? col * 9 + row : row * 9 + col;
+          rows[row][col] = values[source] || 0;
+        }
+      }
+      return rows;
+    }
+
+    function toyMiniLexRowMasks(rows, columnMap) {
+      return rows.map(row => {
+        let mask = 0;
+        for (let sourceColumn = 0; sourceColumn < 9; sourceColumn++) {
+          if (row[sourceColumn]) mask |= 1 << (8 - columnMap[sourceColumn]);
+        }
+        return mask;
+      });
+    }
+
+    function toyMiniLexPatternKey(pattern) {
+      return pattern.toString(2).padStart(81, '0');
+    }
+
+    function toyCompareNumberArrays(left, right) {
+      for (let index = 0; index < left.length; index++) {
+        if (left[index] !== right[index]) return left[index] - right[index];
+      }
+      return 0;
+    }
+
+    function toyMiniLexBestRowMaps(rowMasks) {
+      const orders = toyPermutations([0, 1, 2]);
+      const bandChoices = [];
+
+      // For a fixed column map, the clue pattern is minimized by sorting the
+      // three rows inside each band. Keep every tied order because tied clue
+      // patterns still need R1 digit normalization as a second comparison.
+      for (let band = 0; band < 3; band++) {
+        let bestRows = null;
+        const choices = [];
+        for (const order of orders) {
+          const rows = order.map(localRow => rowMasks[band * 3 + localRow]);
+          if (bestRows === null || toyCompareNumberArrays(rows, bestRows) < 0) {
+            bestRows = rows;
+            choices.length = 0;
+            choices.push(order);
+          } else if (toyCompareNumberArrays(rows, bestRows) === 0) {
+            choices.push(order);
+          }
+        }
+        bandChoices.push({ bestRows, choices });
+      }
+
+      let bestPatternRows = null;
+      const bandOrders = [];
+      for (const order of orders) {
+        const rows = [];
+        for (const sourceBand of order) rows.push(...bandChoices[sourceBand].bestRows);
+        if (bestPatternRows === null || toyCompareNumberArrays(rows, bestPatternRows) < 0) {
+          bestPatternRows = rows;
+          bandOrders.length = 0;
+          bandOrders.push(order);
+        } else if (toyCompareNumberArrays(rows, bestPatternRows) === 0) {
+          bandOrders.push(order);
+        }
+      }
+
+      const rowMaps = [];
+      const addLocalChoices = (bandOrder, targetBand, current) => {
+        if (targetBand === 3) {
+          const rowMap = new Array(9);
+          for (let outputBand = 0; outputBand < 3; outputBand++) {
+            const sourceBand = bandOrder[outputBand];
+            const localOrder = current[sourceBand];
+            for (let targetLocal = 0; targetLocal < 3; targetLocal++) {
+              rowMap[sourceBand * 3 + localOrder[targetLocal]] = outputBand * 3 + targetLocal;
+            }
+          }
+          rowMaps.push(rowMap);
+          return;
+        }
+
+        const sourceBand = bandOrder[targetBand];
+        for (const localOrder of bandChoices[sourceBand].choices) {
+          current[sourceBand] = localOrder;
+          addLocalChoices(bandOrder, targetBand + 1, current);
+        }
+      };
+
+      for (const bandOrder of bandOrders) addLocalChoices(bandOrder, 0, []);
+      let pattern = 0n;
+      for (let row = 0; row < bestPatternRows.length; row++) {
+        pattern |= BigInt(bestPatternRows[row]) << BigInt((8 - row) * 9);
+      }
+      return { pattern, rowMaps };
+    }
+
+    function clearToyMiniLex() {
+      toyMiniLexSummaryEl.textContent = 'No Mini-lex representation has been built.';
+      toyMiniLexStringEl.textContent = 'none';
+      toyMiniLexGridEl.textContent = '';
+    }
+
+    function buildToyMiniLex() {
+      const comparison = toyAutomorphSource();
+      const values = comparison.source;
+      const { columnMaps } = toyMiniLexLayoutMaps();
+      const orientedRows = [
+        toyMiniLexOrientedRows(values, false),
+        toyMiniLexOrientedRows(values, true),
+      ];
+      // Mini-lex for a puzzle is pattern-first: minimize the 0/1 clue mask,
+      // then minimize the R1-anchored digit labels within that mask. Both
+      // comparisons happen in this one pass; the previous version repeated
+      // the complete 3,359,232-layout search for the second comparison.
+      let bestPattern = null;
+      let bestKey = null;
+      let bestValues = null;
+      let bestOrientation = 0;
+
+      for (let orientation = 0; orientation < orientedRows.length; orientation++) {
+        const rows = orientedRows[orientation];
+        for (const columnMap of columnMaps) {
+          const rowMasks = toyMiniLexRowMasks(rows, columnMap);
+          const bestRows = toyMiniLexBestRowMaps(rowMasks);
+          if (bestPattern !== null && bestRows.pattern > bestPattern) continue;
+
+          for (const rowMap of bestRows.rowMaps) {
+            const pattern = bestRows.pattern;
+            const transformed = new Array(81).fill(0);
+            for (let sourceRow = 0; sourceRow < 9; sourceRow++) {
+              const targetRow = rowMap[sourceRow];
+              for (let sourceColumn = 0; sourceColumn < 9; sourceColumn++) {
+                const targetColumn = columnMap[sourceColumn];
+                transformed[targetRow * 9 + targetColumn] = rows[sourceRow][sourceColumn];
+              }
+            }
+            const normalizedDetails = toyDigitNormalizeDetails(transformed);
+            const normalized = normalizedDetails.normalized;
+            const key = normalized.join('');
+            if (
+              bestPattern === null
+              || pattern < bestPattern
+              || (pattern === bestPattern && (bestKey === null || key < bestKey))
+            ) {
+              bestPattern = pattern;
+              bestKey = key;
+              bestValues = normalized;
+              bestOrientation = orientation;
+            }
+          }
+        }
+      }
+      if (!bestValues) {
+        clearToyMiniLex();
+        return null;
+      }
+
+      const best = {
+        key: bestKey,
+        values: bestValues,
+        label: bestOrientation ? 'Transpose + full structural search' : 'Full structural search',
+      };
+      toyMiniLexSummaryEl.textContent = `${best.label}; R1 anchor; clue pattern first; 3,359,232 layouts.`;
+      toyMiniLexStringEl.textContent = best.key;
+      toyMiniLexGridEl.textContent = '';
+      for (const digit of best.values) {
+        const cell = document.createElement('span');
+        cell.className = 'toy-minilex-cell';
+        cell.textContent = digit ? String(digit) : '.';
+        toyMiniLexGridEl.appendChild(cell);
+      }
+      return best;
+    }
+
+    function toyFormatDigitMap(mapping) {
+      const changes = [];
+      for (let digit = 1; digit <= 9; digit++) {
+        if (!mapping[digit]) continue;
+        if (mapping[digit] !== digit) changes.push(`${digit}\u2192${mapping[digit]}`);
+      }
+      return changes.length ? changes.join(' ') : 'identity';
+    }
+
+    function clearToyAutomorphResults() {
+      toyAutomorphResultsEl.textContent = 'No automorphic identity search has been run.';
+    }
+
+    function appendToyAutomorphResult(list, entry, description) {
+      const item = document.createElement('li');
+      item.appendChild(document.createTextNode(description));
+      list.appendChild(item);
+    }
+
+    function runToyAutomorphSearch() {
+      if (busy) return;
+      const familyNames = [...document.querySelectorAll('[data-toy-automorph-family]:checked')]
+        .map(input => input.value);
+      if (!familyNames.length) {
+        toyAutomorphResultsEl.textContent = 'Select at least one symmetry family.';
+        return;
+      }
+
+      const comparison = toyAutomorphSource();
+      const occupied = comparison.source.some(value => toyCellDigits(value).length);
+      if (!occupied) {
+        toyAutomorphResultsEl.textContent = 'There is no given, solved, or candidate information to compare.';
+        setStatus('Automorphic search needs grid information.', 'warn');
+        return;
+      }
+      const miniLex = buildToyMiniLex();
+      if (!miniLex) {
+        toyAutomorphResultsEl.textContent = 'Mini-lex canonicalization could not be built for this source.';
+        setStatus('Automorphic search could not build the Mini-lex grid.', 'warn');
+        return;
+      }
+      // The exhaustive identity count uses the displayed canonical Mini-lex
+      // grid. Named classes must be checked in the loaded grid's coordinate
+      // frame, otherwise canonicalization conjugates the operation and hides
+      // its class name.
+      const searchSource = miniLex.values;
+      const searchTarget = miniLex.values;
+      const namedSource = comparison.source;
+      const namedTarget = comparison.target;
+
+      const familyLabels = {
+        fixedBoxes: 'Fixed Boxes',
+        bands: 'Boxes move in bands',
+        triangular: 'Boxes move triangular',
+        rotational: 'Rotational symmetries',
+        diagonal: 'Diagonal symmetries',
+        sticks: 'Sticks symmetries',
+      };
+      const records = toyFamilyRecords();
+      const normalizedTargetKey = toyNormalizedValueKey(namedTarget);
+      const matches = new Map();
+      let namedTested = 0;
+      for (const family of familyNames) {
+        const familyMatches = [];
+        for (const record of records[family]) {
+          if (toyIsIdentityPermutation(record.permutation)) continue;
+          namedTested++;
+          const transformed = toyMapValues(namedSource, record.permutation);
+          let mapping = null;
+          if (toyNormalizedValueKey(transformed) === normalizedTargetKey) {
+            mapping = toyDigitPatternMap(transformed, namedTarget);
+          }
+          if (mapping && toyVerifyDigitMap(transformed, searchTarget, mapping)) {
+            familyMatches.push({ ...record, mapping });
+          }
+        }
+        matches.set(family, familyMatches);
+      }
+
+      let tested = namedTested;
+      const fullFamilySearch = familyNames.length === Object.keys(familyLabels).length;
+      let completeMatches = [];
+      if (fullFamilySearch) {
+        const complete = toyCompleteAutomorphismSearch(searchSource);
+        tested = complete.tested;
+        completeMatches = complete.records;
+      }
+
+      toyAutomorphResultsEl.textContent = '';
+      const namedTotal = [...matches.values()].reduce((sum, entries) => sum + entries.length, 0);
+      const total = fullFamilySearch
+        ? completeMatches.length
+        : namedTotal;
+      const intro = document.createElement('p');
+      intro.textContent = fullFamilySearch
+        ? `Tested ${tested.toLocaleString()} legal transformations against the Mini-lex grid; found ${total} complete automorphisms.`
+        : `Tested ${tested} named family transformations against Mini-lex givens; found ${total} ${total === 1 ? 'identity' : 'identities'}.`;
+      toyAutomorphResultsEl.appendChild(intro);
+      if (fullFamilySearch) {
+        const shortcutSummary = document.createElement('p');
+        shortcutSummary.textContent = `Named shortcut checks found ${namedTotal} matching identity ${namedTotal === 1 ? 'class' : 'classes'} across ${Object.keys(familyLabels).length} symmetry families.`;
+        toyAutomorphResultsEl.appendChild(shortcutSummary);
+      }
+      if (!total) {
+        const none = document.createElement('p');
+        none.textContent = 'No digit-renamed automorphic identity was found in the selected families.';
+        toyAutomorphResultsEl.appendChild(none);
+      }
+
+      if (fullFamilySearch && total) {
+        const completePanel = document.createElement('details');
+        const completeSummary = document.createElement('summary');
+        completeSummary.textContent = total === 1
+          ? 'Asymmetric (identity only)'
+          : `Automorphisms (${total})`;
+        completePanel.appendChild(completeSummary);
+        const completeList = document.createElement('ol');
+        const limit = 200;
+        for (const entry of completeMatches.slice(0, limit)) {
+          appendToyAutomorphResult(
+            completeList,
+            entry,
+            `${toyCompleteAutomorphismLabel(entry)}; digit map ${toyFormatDigitMap(entry.mapping)}`,
+          );
+        }
+        if (completeMatches.length > limit) {
+          const more = document.createElement('li');
+          more.textContent = `Showing ${limit} of ${completeMatches.length} complete matches.`;
+          completeList.appendChild(more);
+        }
+        completePanel.appendChild(completeList);
+        toyAutomorphResultsEl.appendChild(completePanel);
+      }
+
+      for (const family of familyNames) {
+        const entries = matches.get(family);
+        if (!entries?.length) continue;
+        const panel = document.createElement('details');
+        const summary = document.createElement('summary');
+        summary.textContent = `${familyLabels[family]} (${entries.length})`;
+        panel.appendChild(summary);
+        const list = document.createElement('ol');
+        const limit = 200;
+        for (const entry of entries.slice(0, limit)) {
+          appendToyAutomorphResult(
+            list,
+            entry,
+            `${entry.label}; digit map ${toyFormatDigitMap(entry.mapping)}`,
+          );
+        }
+        if (entries.length > limit) {
+          const more = document.createElement('li');
+          more.textContent = `Showing ${limit} of ${entries.length} matches.`;
+          list.appendChild(more);
+        }
+        panel.appendChild(list);
+        toyAutomorphResultsEl.appendChild(panel);
+      }
+      setStatus(
+        total
+          ? `Automorphic search found ${total} digit-renamed ${total === 1 ? 'identity' : 'identities'}.`
+          : 'Automorphic search found no identities.',
+        total ? 'ok' : 'warn',
+      );
+    }
+
+    function commitPlayerEdit(mutator, successMessage, failureMessage = 'That player edit could not be applied.') {
+      if (busy) return false;
+      leaveHistoryPreview();
+      const before = snapshotState();
+      if (!mutator()) {
+        setStatus(failureMessage, 'warn');
+        renderBoard();
+        return false;
+      }
+
+      resetAnalysisAfterPlayerEdit();
+      undoStack.push(before);
+      redoStack = [];
+      setStatus(successMessage, 'ok');
+      render();
+      return true;
+    }
+
+    function showLogicSafeguardNote(message, note) {
+      const popup = `${message}\n\n${note}`;
+      setStatus(message, 'warn');
+      window.alert(popup);
+    }
+
+    function selectPlayerTarget(cell, digit = null) {
+      if (!Number.isInteger(cell) || cell < 0 || cell >= 81) return;
+      selectedPlayerCell = cell;
+      selectedPlayerDigit = Number.isInteger(digit) ? digit : selectedPlayerDigit;
+      renderBoard();
+      requestAnimationFrame(() => {
+        boardEl.querySelector(`[data-player-cell="${cell}"]`)?.focus?.({ preventScroll: true });
+      });
+    }
+
+    function addPlayerCandidate(cell, digit) {
+      if (!isPlayerEditableCell(cell) || puzzle[cell] || promotedValues[cell]) {
+        return commitPlayerEdit(() => false, '', 'Given or solved cells cannot receive pencilmarks.');
+      }
+      if (core.peersOf(cell).some(peer => puzzle[peer] === digit)) {
+        return commitPlayerEdit(() => false, '', `Candidate ${digit} conflicts with a solved peer.`);
+      }
+      const values = cand[cell] || [];
+      if (values.includes(digit)) return false;
+
+      selectedPlayerCell = cell;
+      selectedPlayerDigit = digit;
+      return commitPlayerEdit(() => {
+        cand[cell] = [...values, digit].sort((left, right) => left - right);
+        return true;
+      }, `Candidate ${digit} added to ${core.cellName(cell)}.`);
+    }
+
+    function solvePlayerCell(cell, digit) {
+      if (!isPlayerEditableCell(cell)) {
+        return commitPlayerEdit(() => false, '', 'Given cells cannot be changed.');
+      }
+      if (puzzle[cell] || promotedValues[cell]) {
+        return commitPlayerEdit(() => false, '', 'That cell is already solved.');
+      }
+      if (!(cand[cell] || []).includes(digit)) {
+        return commitPlayerEdit(() => false, '', `Candidate ${digit} is not present in ${core.cellName(cell)}.`);
+      }
+      if (!solution || solution[cell] !== digit) {
+        showLogicSafeguardNote(
+          solution
+            ? `${core.cellName(cell)} cannot be set to ${digit}: it is not the verified solution value.`
+            : 'This grid has no verified solution loaded, so a value cannot be promoted.',
+          'Sudoku is not a guessing game: use logic to assert why this can only be this value.',
+        );
+        return false;
+      }
+      if (core.peersOf(cell).some(peer => puzzle[peer] === digit)) {
+        return commitPlayerEdit(() => false, '', `Digit ${digit} conflicts with a solved peer.`);
+      }
+
+      selectedPlayerCell = cell;
+      selectedPlayerDigit = digit;
+      return commitPlayerEdit(() => {
+        const affected = [cell, ...core.peersOf(cell)]
+          .filter(other => !originalPuzzle[other] && !puzzle[other] && !promotedValues[other]);
+        const entries = affected.map(other => ({
+          cell: other,
+          puzzle: puzzle[other],
+          promoted: promotedValues[other],
+          cand: [...(cand[other] || [])],
+          afterPuzzle: 0,
+          afterPromoted: 0,
+          afterCand: [],
+        }));
+
+        puzzle[cell] = digit;
+        promotedValues[cell] = digit;
+        cand[cell] = [];
+        for (const peer of core.peersOf(cell)) {
+          if (puzzle[peer] || promotedValues[peer]) continue;
+          cand[peer] = (cand[peer] || []).filter(value => value !== digit);
+        }
+
+        for (const entry of entries) {
+          entry.afterPuzzle = puzzle[entry.cell];
+          entry.afterPromoted = promotedValues[entry.cell];
+          entry.afterCand = [...(cand[entry.cell] || [])];
+        }
+        playerSolveBackups.set(cell, { digit, entries });
+        return true;
+      }, `${core.cellName(cell)} set to ${digit}.`);
+    }
+
+    function clearPlayerSolvedCell(cell) {
+      if (!puzzle[cell]) return false;
+      if (solution?.[cell] === puzzle[cell]) {
+        showLogicSafeguardNote(
+          `${core.cellName(cell)} contains the verified solution value ${puzzle[cell]} and cannot be deleted.`,
+          'Your logic is flawed. Double-check it.',
+        );
+        return false;
+      }
+      if (!isPlayerEditableCell(cell)) {
+        showLogicSafeguardNote(
+          `${core.cellName(cell)} is a given value and cannot be deleted.`,
+          'Your logic is flawed. Double-check it.',
+        );
+        return false;
+      }
+      const solvedDigit = puzzle[cell];
+      return commitPlayerEdit(() => {
+        const backup = playerSolveBackups.get(cell);
+        puzzle[cell] = 0;
+        promotedValues[cell] = 0;
+
+        if (backup?.digit === solvedDigit) {
+          for (const entry of backup.entries) {
+            if (entry.cell === cell) {
+              cand[entry.cell] = [...entry.cand];
+              continue;
+            }
+            const unchangedSinceSolve = puzzle[entry.cell] === entry.afterPuzzle
+              && promotedValues[entry.cell] === entry.afterPromoted
+              && playerArraysEqual(cand[entry.cell] || [], entry.afterCand);
+            if (unchangedSinceSolve) cand[entry.cell] = [...entry.cand];
+          }
+        } else {
+          const rebuilt = core.allCandidates(puzzle);
+          cand[cell] = rebuilt[cell] || [];
+        }
+
+        playerSolveBackups.delete(cell);
+        selectedPlayerDigit = null;
+        return true;
+      }, `${core.cellName(cell)} cleared.`);
+    }
+
+    function removePlayerDigit(cell, digit) {
+      if (!isPlayerEditableCell(cell)) {
+        showLogicSafeguardNote(
+          `${core.cellName(cell)} is a fixed Sudoku value and cannot be deleted.`,
+          'Your logic is flawed. Double-check it.',
+        );
+        return false;
+      }
+      if (puzzle[cell]) return clearPlayerSolvedCell(cell);
+      if (promotedValues[cell]) return clearPlayerSolvedCell(cell);
+      const values = cand[cell] || [];
+      if (!values.includes(digit)) return false;
+      if (solution?.[cell] === digit) {
+        showLogicSafeguardNote(
+          `${core.cellName(cell)} must retain its verified solution candidate ${digit}.`,
+          'Your logic is flawed. Double-check it.',
+        );
+        return false;
+      }
+      if (values.length <= 1) {
+        return commitPlayerEdit(() => false, '', 'A cell must retain at least one candidate.');
+      }
+
+      selectedPlayerCell = cell;
+      selectedPlayerDigit = digit;
+      return commitPlayerEdit(() => {
+        cand[cell] = values.filter(value => value !== digit);
+        return true;
+      }, `Candidate ${digit} removed from ${core.cellName(cell)}.`);
+    }
+
+    function handlePlayerDigitClick(event, cell, digit, remove = false) {
+      event.preventDefault();
+      event.stopPropagation();
+      selectedPlayerCell = cell;
+      selectedPlayerDigit = digit;
+      if (!remove && event.detail === 2) {
+        playerPromotionMode = false;
+        solvePlayerCell(cell, digit);
+        return;
+      }
+      if (remove) {
+        removePlayerDigit(cell, digit);
+        playerPromotionMode = false;
+      } else if (playerPromotionMode) {
+        solvePlayerCell(cell, digit);
+        playerPromotionMode = false;
+      } else if (!cellHasCandidate(cell, digit)) {
+        addPlayerCandidate(cell, digit);
+      } else {
+        renderBoard();
+      }
+    }
+
+    function handlePlayerCellClick(event, cell) {
+      if (event.target.closest('.mark')) return;
+      selectPlayerTarget(cell);
+    }
+
+    function handlePlayerCellContextMenu(event, cell) {
+      event.preventDefault();
+      if (event.target.closest('.mark')) return;
+      selectPlayerTarget(cell);
+    }
+
+    function movePlayerSelection(rowDelta, colDelta) {
+      const current = selectedPlayerCell ?? 0;
+      const row = Math.floor(current / 9);
+      const col = current % 9;
+      const wrap = value => (value + 9) % 9;
+      const nextRow = wrap(row + rowDelta);
+      const nextCol = wrap(col + colDelta);
+      selectPlayerTarget(nextRow * 9 + nextCol);
+    }
+
+    function isPlayerTextEntryTarget(target) {
+      return target instanceof Element
+        && Boolean(target.closest('input, select, textarea, button, [contenteditable="true"]'));
+    }
+
+    function handlePlayerKeydown(event) {
+      if (busy || selectedPlayerCell === null || isPlayerTextEntryTarget(event.target)) return;
+
+      if (event.ctrlKey || event.metaKey) {
+        if (event.key.toLowerCase() === 'z') {
+          event.preventDefault();
+          undoCycle();
+        } else if (event.key.toLowerCase() === 'y' || (event.shiftKey && event.key.toLowerCase() === 'z')) {
+          event.preventDefault();
+          redoCycle();
+        }
+        return;
+      }
+
+      if (event.code === 'Space') {
+        event.preventDefault();
+        playerPromotionMode = true;
+        return;
+      }
+
+      const digitMatch = /^(?:Digit|Numpad)([1-9])$/.exec(event.code);
+      const digit = /^[1-9]$/.test(event.key)
+        ? Number(event.key)
+        : digitMatch ? Number(digitMatch[1]) : null;
+      if (digit !== null && !event.altKey) {
+        event.preventDefault();
+        if (playerPromotionMode) solvePlayerCell(selectedPlayerCell, digit);
+        else addPlayerCandidate(selectedPlayerCell, digit);
+        playerPromotionMode = false;
+        return;
+      }
+
+      if (event.key === 'Backspace' || event.key === 'Delete') {
+        event.preventDefault();
+        if (puzzle[selectedPlayerCell] || promotedValues[selectedPlayerCell]) {
+          clearPlayerSolvedCell(selectedPlayerCell);
+        } else if (selectedPlayerDigit !== null) {
+          removePlayerDigit(selectedPlayerCell, selectedPlayerDigit);
+        } else {
+          setStatus('Select a candidate before deleting it.', 'warn');
+        }
+        return;
+      }
+
+      if (event.key === 'Home') {
+        event.preventDefault();
+        selectPlayerTarget(0);
+      } else if (event.key === 'End') {
+        event.preventDefault();
+        selectPlayerTarget(80);
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        movePlayerSelection(-1, 0);
+      } else if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        movePlayerSelection(1, 0);
+      } else if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        movePlayerSelection(0, -1);
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        movePlayerSelection(0, 1);
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        selectedPlayerCell = null;
+        selectedPlayerDigit = null;
+        playerPromotionMode = false;
+        renderBoard();
+      }
+    }
+
+    function bindPlayerDigitElement(element, cell, digit) {
+      element.dataset.playerCell = String(cell);
+      element.dataset.playerDigit = String(digit);
+      element.classList.add('player-mark');
+      if (selectedPlayerCell === cell && selectedPlayerDigit === digit) {
+        element.classList.add('player-digit-selected');
+      }
+      element.addEventListener('click', event => handlePlayerDigitClick(event, cell, digit));
+      element.addEventListener('contextmenu', event => handlePlayerDigitClick(event, cell, digit, true));
+    }
+
+    function bindPlayerCellElement(element, cell) {
+      element.dataset.playerCell = String(cell);
+      element.tabIndex = selectedPlayerCell === cell ? 0 : -1;
+      element.setAttribute('role', 'gridcell');
+      if (isPlayerEditableCell(cell)) element.classList.add('player-editable');
+      if (selectedPlayerCell === cell) element.classList.add('player-selected');
+      element.addEventListener('click', event => handlePlayerCellClick(event, cell));
+      element.addEventListener('contextmenu', event => handlePlayerCellContextMenu(event, cell));
     }
 
     function chainSideAtoms(side, forcedDigit = null, existingOnly = false) {
@@ -5078,7 +7659,7 @@
       const isCellView = gridView === 'RC';
       const rowPrefix = isCellView ? '' : gridView.charAt(0).toUpperCase();
       gridViewSelector.value = gridView;
-      gridColumnTitleEl.textContent = isCellView ? 'Col' : 'Digits';
+      gridColumnTitleEl.textContent = isCellView ? 'Columns' : 'Digits';
       gridColumnNumbersEl.textContent = '';
       gridRowHeaderEl.textContent = '';
 
@@ -5112,6 +7693,13 @@
           for (let position = 0; position < 9; position++) {
             if (mask & (1 << position)) positions.add(position);
           }
+          if (showFixedInVantage) {
+            const digit = digitIndex + 1;
+            for (let position = 0; position < 9; position++) {
+              const cell = vantageCellFromSlot(view, sector, position);
+              if (puzzle[cell] === digit) positions.add(position);
+            }
+          }
           return positions;
         }));
     }
@@ -5141,6 +7729,7 @@
             const cell = vantageCellFromSlot(view, sector, position);
             const atom = atomKey(cell, digit);
             const positionActive = positions.has(position);
+            const isFixed = showFixedInVantage && puzzle[cell] === digit;
             const isDigitFocus = positionActive && digitHighlightIsVisible(cell, digit);
             const isCandidateSizeFilter = candidateSizeFilterDigitMatches(cell, digit);
             const isAlsDofElim = highlights.alsDofElimMarks.has(atom);
@@ -5186,6 +7775,7 @@
               && !isElim;
 
             if (positionActive) mark.classList.add('active');
+            if (isFixed) mark.classList.add('fixed');
             if (isDigitFocus) mark.classList.add('digit-focus', 'digit-focus-' + digit);
             if (isCandidateSizeFilter) {
               mark.classList.add('candidate-size-filter');
@@ -5211,6 +7801,9 @@
             if (isAlsRecord) applyAlsColorVars(mark, highlights.alsRecordColor);
             if (isAlsDof) applyAlsColorVars(mark, highlights.alsDofStyleByAtom.get(atom));
             if (isAhsRecord) applyAhsColorVars(mark, highlights.ahsRecordColor);
+
+            if (selectedPlayerCell === cell) mark.classList.add('player-cell-selected');
+            bindPlayerDigitElement(mark, cell, digit);
 
             const hasOverlay = isElim || isFishVertex || isFishFin || isFishEndofin
               || isSubsetDigit || isChain || isChainXorEntry || isChainXorExit
@@ -5249,7 +7842,7 @@
       for (let cell = 0; cell < 81; cell++) {
        const el = document.createElement('div');
        el.className = 'cell';
-       if (puzzle[cell]) el.classList.add('given');
+       if (originalPuzzle[cell]) el.classList.add('given');
        if (promotedValues[cell]) el.classList.add('solved');
        if (highlights.candidateSizeFilterCells.has(cell)) {
          el.classList.add('candidate-size-filter-cell');
@@ -5296,6 +7889,8 @@
         if (strongLinkPartition === 'active') el.classList.add('strong-link-partition-active');
         if (strongLinkPartition === 'linked') el.classList.add('strong-link-partition-linked');
         if (strongLinkPartition === 'empty') el.classList.add('strong-link-partition-empty');
+
+        bindPlayerCellElement(el, cell);
 
        if (puzzle[cell]) {
          el.textContent = String(puzzle[cell]);
@@ -5388,6 +7983,7 @@
             if (isStrongLinkStartDigit) mark.classList.add('strong-link-start-digit');
             if (isStrongLinkEndDigit) mark.classList.add('strong-link-end-digit');
             if (isElim) mark.classList.add('elim-digit');
+            bindPlayerDigitElement(mark, cell, digit);
             marks.appendChild(mark);
           }
 
@@ -5624,6 +8220,32 @@
       { category: 'Transcendent', min: 13, max: 14.999 },
     ]);
 
+    const RATING_CATEGORY_COLORS = Object.freeze({
+      Lulz: 'white',
+      'Extremely Easy': 'white',
+      'Very Easy': 'green',
+      'Modestly Easy': 'green',
+      Easy: 'blue',
+      Moderate: 'blue',
+      Tough: 'yellow',
+      Challenging: 'yellow',
+      Irritating: 'red',
+      Frustrating: 'red',
+      Hard: 'purple',
+      Demanding: 'purple',
+      Expert: 'violet',
+      Brutal: 'violet',
+      Nightmare: 'brown',
+      Abyssal: 'brown',
+      Transcendent: 'black',
+      Any: 'unknown',
+      Unknown: 'unknown',
+    });
+
+    function ratingCategoryColorClass(category) {
+      return `rating-category-${RATING_CATEGORY_COLORS[normalizeRatingCategory(category)] || 'unknown'}`;
+    }
+
     function normalizeRatingCategory(category) {
       const value = String(category ?? '').trim();
       if (!value || /^any$/i.test(value)) return 'Any';
@@ -5748,13 +8370,13 @@
       {
         category: 'MODESTLY EASY', score: '2.125 to 2.75', items: [
           ['Franken 2x2 Fish K0', '2.125'],
-          ['2x2+K1 Fish', '2.25'],
           ['Mutant 2x2 Fish K0', '2.25'],
           ['Skyscraper', '2.25'],
           ['2-String Kite', '2.25'],
           ['Empty Rectangle', '2.25'],
           ['Finned X-Wing', '2.25'],
           ['Sashimi X-Wing', '2.25'],
+          ['2x2+K1 Fish', '2.25'],
           ['Franken 2x2+K1 Fish', '2.375'],
           ['2x2+K2 Fish', '2.50'],
           ['Mutant 2x2+K1 Fish', '2.50'],
@@ -5799,10 +8421,10 @@
       {
         category: 'CHALLENGING', score: '4.125 to 4.75', items: [
           ['Franken 4x4 Fish K0', '4.125'],
-          ['4x4+K Fish K1', '4.25'],
           ['Mutant 4x4 Fish K0', '4.25'],
           ['4x ERI', '4.25'],
           ['X-Chain length 4, open', '4.25'],
+          ['4x4+K Fish K1', '4.25'],
           ['Franken 4x4+K1 Fish', '4.375'],
           ['4x4+K Fish K2', '4.50'],
           ['Mutant 4x4+K1 Fish', '4.50'],
@@ -5819,14 +8441,14 @@
           ['Hidden Quintuple', '5'],
           ['Naked Quintuple', '5'],
           ['Basic 5x5 Fish', '5'],
-          ['Franken/Mutant 5x5 Fish', '5.125+'],
           ['X-Chains above four nodes', '5'],
           ['ERI Chains above four nodes', '5'],
-          ['Remote Pair', '5'],
-          ['Hidden Remote Pair', '5'],
+          ['Remote Pair above four nodes', '5'],
+          ['Hidden Remote Pair above four nodes', '5'],
           ['XY-Chain above four nodes', '5'],
-          ['Hidden XY-Chain', '5'],
-          ['Ring forms', 'base +0.5'],
+          ['Hidden XY-Chain above four nodes', '5'],
+          ['Franken 5x5 Fish K0', '5.125'],
+          ['Mutant 5x5 Fish K0', '5.25'],
         ],
       },
       {
@@ -5834,16 +8456,16 @@
           ['Hidden Sextuple', '6'],
           ['Naked Sextuple', '6'],
           ['Basic 6x6 Fish', '6'],
-          ['Franken/Mutant 6x6 Fish', '6.125+'],
           ['L(2)-Wing/Ring', '6'],
           ['L(3)-Wing/Ring', '6'],
           ['W-Wing/Ring', '6'],
-          ['W Transport', '6.5'],
           ['S-Wing/Ring', '6'],
           ['M(2,3)-Wing/Ring', '6'],
           ['H(1,2,3)-Wing/Ring', '6'],
           ['B.A.R.N.S. WXYZ Transport', '6'],
-          ['Ring forms', '+0.5'],
+          ['Franken 6x6 Fish K0', '6.125'],
+          ['Mutant 6x6 Fish K0', '6.25'],
+          ['W Transport', '6.5'],
         ],
       },
       {
@@ -5851,9 +8473,9 @@
           ['Hidden Septuple', '7'],
           ['Naked Septuple', '7'],
           ['Basic 7x7 Fish', '7'],
-          ['Franken/Mutant 7x7 Fish', '7.125+'],
           ['ALS-XZ', '7'],
-          ['Ring forms', '+0.5'],
+          ['Franken 7x7 Fish K0', '7.125'],
+          ['Mutant 7x7 Fish K0', '7.25'],
         ],
       },
       {
@@ -5862,7 +8484,6 @@
           ['Naked Octuple', '8'],
           ['T-ALS-XZ', '8'],
           ['ALS-XY', '8'],
-          ['Ring forms', '+0.5'],
         ],
       },
       {
@@ -5871,19 +8492,16 @@
           ['Naked Nontuple', '9'],
           ['T-ALS-XY', '9'],
           ['ALS versions of named Wings/Rings', '9'],
-          ['Ring forms', '+0.5'],
         ],
       },
       {
         category: 'BRUTAL', score: '10 to 10.5', items: [
           ['ALS Chains', '10'],
-          ['Ring forms', '+0.5'],
         ],
       },
       {
         category: 'NIGHTMARE', score: '11 to 11.5', items: [
           ['AIC + ALS Chains', '11'],
-          ['Ring forms', '+0.5'],
         ],
       },
       {
@@ -5898,7 +8516,6 @@
           ['ALS-DOF / DDS / Almost DDS above 13', 'DOF-scaled'],
           ['DDS - Chain', '13'],
           ['ADDS - Chain', '13'],
-          ['Ring forms', '+0.5'],
         ],
       },
       {
@@ -6536,7 +9153,9 @@
       }
 
       ratingSummaryEl.hidden = false;
-      ratingCategoryEl.textContent = ratingReport.category || ratingCategoryForValue(ratingReport.value);
+      const ratingCategory = ratingReport.category || ratingCategoryForValue(ratingReport.value);
+      ratingCategoryEl.className = `rating-summary-category ${ratingCategoryColorClass(ratingCategory)}`;
+      ratingCategoryEl.textContent = ratingCategory;
       if (ratingReport.solved === false) {
         const partialScore = formatRatingValue(ratingReport.partialScore ?? ratingReport.score);
         ratingDetailEl.textContent = partialScore || '0';
@@ -8855,7 +11474,9 @@
 
       const requestedDepth = Math.min(8, Math.max(2, Number(chainDepthEl.value) || 8));
       const phases = chainSearchPhasePlan(requestedDepth, profile);
-      for (const phase of phases) {
+      let bestOverall = null;
+      for (let phaseIndex = 0; phaseIndex < phases.length; phaseIndex++) {
+        const phase = phases[phaseIndex];
         const phaseSearchProfile = phaseProfile(profile, phase);
         const search = chainSearchOptions(
           candidateGrid,
@@ -8893,12 +11514,20 @@
           search.maxDepth,
           profile,
         );
-        if (best) {
-          const { priority, ...result } = best;
-          return result;
-        }
+        if (best && isHigherPriorityMove(best, bestOverall)) bestOverall = best;
+
+        // All later ALS phases start at ALS-XZ (score 7). Once every pure
+        // strong-link phase has been checked, a lower-scoring AIC move cannot
+        // be beaten by those later phases, so avoid the expensive ALS walk.
+        const nextPhase = phases[phaseIndex + 1];
+        const finishedPureStrongPhases = phase.name.startsWith('strong-')
+          && (!nextPhase || !nextPhase.name.startsWith('strong-'));
+        const bestScore = Number(bestOverall?.step?.rating?.value);
+        if (finishedPureStrongPhases && Number.isFinite(bestScore) && bestScore < 7) break;
       }
-      return null;
+      if (!bestOverall) return null;
+      const { priority, ...result } = bestOverall;
+      return result;
     }
 
     function solverFishSizes(moveTypes = null, maxFishSize = 4) {
@@ -8967,7 +11596,9 @@
 
       const requestedDepth = Math.min(8, Math.max(2, Number(chainDepthEl.value) || 8));
       const phases = chainSearchPhasePlan(requestedDepth, profile);
-      for (const phase of phases) {
+      let bestOverall = null;
+      for (let phaseIndex = 0; phaseIndex < phases.length; phaseIndex++) {
+        const phase = phases[phaseIndex];
         const searchProfile = phaseProfile(profile, phase);
         const config = generatorWorkerConfig(
           candidateGrid,
@@ -8994,12 +11625,20 @@
           config.chain.maxDepth,
           profile,
         );
-        if (best) {
-          const { priority, ...resultMove } = best;
-          return resultMove;
-        }
+        if (best && isHigherPriorityMove(best, bestOverall)) bestOverall = best;
+
+        // All later ALS phases start at ALS-XZ (score 7). Once every pure
+        // strong-link phase has been checked, a lower-scoring AIC move cannot
+        // be beaten by those later phases, so avoid the expensive ALS walk.
+        const nextPhase = phases[phaseIndex + 1];
+        const finishedPureStrongPhases = phase.name.startsWith('strong-')
+          && (!nextPhase || !nextPhase.name.startsWith('strong-'));
+        const bestScore = Number(bestOverall?.step?.rating?.value);
+        if (finishedPureStrongPhases && Number.isFinite(bestScore) && bestScore < 7) break;
       }
-      return null;
+      if (!bestOverall) return null;
+      const { priority, ...resultMove } = bestOverall;
+      return resultMove;
     }
 
     async function chooseSolverStepInWorker(
@@ -9249,11 +11888,24 @@
       summary.textContent = `${chains.length} chains with eliminations.`;
       chainResultsEl.appendChild(summary);
 
-      const visible = chains.slice(0, 200);
+      // Keep the panel bounded, but do not let a large mixed ALS search hide
+      // an entire technique family behind the global first-200 slice.
+      const visibleIndexes = new Set(
+        Array.from({ length: Math.min(200, chains.length) }, (_, index) => index),
+      );
+      const firstFamilyIndexes = new Map();
+      for (let index = 0; index < chains.length; index++) {
+        for (const folder of chainFolderInfos(chains[index])) {
+          if (!firstFamilyIndexes.has(folder.family)) firstFamilyIndexes.set(folder.family, index);
+        }
+      }
+      for (const index of firstFamilyIndexes.values()) visibleIndexes.add(index);
+      const visible = [...visibleIndexes]
+        .sort((left, right) => left - right)
+        .map(index => ({ chain: chains[index], index }));
       const groups = new Map();
       const folderMemberships = new Map();
-      for (let index = 0; index < visible.length; index++) {
-        const chain = visible[index];
+      for (const { chain, index } of visible) {
         for (const folder of chainFolderInfos(chain)) {
           const path = chainFolderPath(folder);
           const folderKey = [folder.family, ...path]
@@ -9577,9 +12229,11 @@
 
     function snapshotVisualState() {
       return {
+        originalPuzzle: [...originalPuzzle],
         puzzle: [...puzzle],
         promotedValues: [...promotedValues],
         cand: core.cloneCandidates(cand),
+        solution: solution ? [...solution] : null,
         activeStep,
         lastRemoved: lastRemoved.map(item => ({ ...item })),
         promotionQueue: promotionQueue.map(item => ({ ...item })),
@@ -9615,6 +12269,10 @@
           selectedHiddenSubsetKey,
           selectedChainIndex,
           gridView,
+          showFixedInVantage,
+          selectedPlayerCell,
+          selectedPlayerDigit,
+          playerSolveBackups: clonePlayerSolveBackups(),
           solutionStepsPanelOpen: solutionStepsPanelEl?.open ?? false,
         },
       };
@@ -9630,9 +12288,11 @@
     }
 
     function restoreVisualState(state) {
+      originalPuzzle = [...(state.originalPuzzle || originalPuzzle)];
       puzzle = [...state.puzzle];
       promotedValues = [...state.promotedValues];
       cand = core.cloneCandidates(state.cand);
+      solution = Array.isArray(state.solution) ? [...state.solution] : null;
       activeStep = state.activeStep;
       lastRemoved = (state.lastRemoved || []).map(item => ({ ...item }));
       promotionQueue = (state.promotionQueue || []).map(item => ({ ...item }));
@@ -9671,6 +12331,11 @@
       selectedHiddenSubsetKey = visual.selectedHiddenSubsetKey ?? null;
       selectedChainIndex = visual.selectedChainIndex ?? null;
       gridView = visual.gridView || 'RC';
+      showFixedInVantage = Boolean(visual.showFixedInVantage);
+      showFixedInVantageEl.checked = showFixedInVantage;
+      selectedPlayerCell = visual.selectedPlayerCell ?? null;
+      selectedPlayerDigit = visual.selectedPlayerDigit ?? null;
+      restorePlayerSolveBackups(visual.playerSolveBackups);
       if (solutionStepsPanelEl) {
         solutionStepsPanelEl.open = Boolean(visual.solutionStepsPanelOpen);
       }
@@ -9715,6 +12380,9 @@
 
     function resetCandidates(message = 'Candidates reset from the current puzzle.', startingCandidates = null, nextRating = null) {
       leaveHistoryPreview();
+      clearToyAutomorphResults();
+      clearToyMiniLex();
+      puzzle = [...originalPuzzle];
       promotedValues = new Array(81).fill(0);
       cand = startingCandidates ? core.cloneCandidates(startingCandidates) : core.allCandidates(puzzle);
       cycle = 0;
@@ -9752,6 +12420,10 @@
       selectedHiddenSubsetKey = null;
       chainReport = null;
       if (solutionStepsPanelEl) solutionStepsPanelEl.open = false;
+      selectedPlayerCell = null;
+      selectedPlayerDigit = null;
+      playerPromotionMode = false;
+      playerSolveBackups = new Map();
       undoStack = [];
       redoStack = [];
       setStatus(message, 'ok');
@@ -10895,6 +13567,70 @@
       event.stopPropagation();
       runAlsDofChainBuild();
     });
+    for (const button of document.querySelectorAll('[data-toy-transform]')) {
+      button.addEventListener('click', () => {
+        const kind = button.dataset.toyTransform;
+        const mapper = toyTransformationMapper(kind);
+        if (mapper) applyToyCellTransform(button.textContent.trim(), mapper);
+      });
+    }
+    toyStackSwapButtonEl.addEventListener('click', () => {
+      const [first, second] = toyPairValue(toyStackSwapEl);
+      applyToyCellTransform(
+        `Stacks ${first + 1} and ${second + 1} swapped`,
+        toyBandStackSwapMapper('stack', first, second),
+      );
+    });
+    toyBandSwapButtonEl.addEventListener('click', () => {
+      const [first, second] = toyPairValue(toyBandSwapEl);
+      applyToyCellTransform(
+        `Bands ${first + 1} and ${second + 1} swapped`,
+        toyBandStackSwapMapper('band', first, second),
+      );
+    });
+    toyRowSwapButtonEl.addEventListener('click', () => {
+      const [unit, first, second] = String(toyRowSwapEl.value).split(':').map(Number);
+      applyToyCellTransform(
+        `Rows ${unit * 3 + first + 1} and ${unit * 3 + second + 1} swapped`,
+        toyLocalSwapMapper('row', unit, first, second),
+      );
+    });
+    toyColumnSwapButtonEl.addEventListener('click', () => {
+      const [unit, first, second] = String(toyColumnSwapEl.value).split(':').map(Number);
+      applyToyCellTransform(
+        `Columns ${unit * 3 + first + 1} and ${unit * 3 + second + 1} swapped`,
+        toyLocalSwapMapper('column', unit, first, second),
+      );
+    });
+    toyDigitSwapButtonEl.addEventListener('click', () => {
+      applyToyDigitExchange(Number(toyDigitAEl.value), Number(toyDigitBEl.value));
+    });
+    toyAutomorphSearchEl.addEventListener('click', event => {
+      event.stopPropagation();
+      runToyAutomorphSearch();
+    });
+    toyAutomorphClearEl.addEventListener('click', event => {
+      event.stopPropagation();
+      clearToyAutomorphResults();
+    });
+    toyAutomorphLegendEl.addEventListener('click', event => {
+      event.stopPropagation();
+      const open = toyAutomorphLegendPanelEl.hidden;
+      toyAutomorphLegendPanelEl.hidden = !open;
+      toyAutomorphLegendEl.setAttribute('aria-expanded', String(open));
+      toyAutomorphLegendSymbolEl.textContent = open ? '−' : '+';
+    });
+    toyAutomorphLegendCloseEl.addEventListener('click', event => {
+      event.stopPropagation();
+      toyAutomorphLegendPanelEl.hidden = true;
+      toyAutomorphLegendEl.setAttribute('aria-expanded', 'false');
+      toyAutomorphLegendSymbolEl.textContent = '+';
+    });
+    toyMiniLexBuildEl.addEventListener('click', event => {
+      event.stopPropagation();
+      buildToyMiniLex();
+      setStatus('Mini-lex representation built.', 'ok');
+    });
     nakedSubsetBuildEl.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -10937,6 +13673,11 @@
     }
     loadEl.addEventListener('click', loadPuzzle);
     importEl.addEventListener('click', importPuzzle);
+    showFixedInVantageEl.addEventListener('change', () => {
+      showFixedInVantage = showFixedInVantageEl.checked;
+      renderBoard();
+    });
+    document.addEventListener('keydown', handlePlayerKeydown);
     for (const button of document.querySelectorAll('[data-example-puzzle]')) {
       button.addEventListener('click', () => {
         inputEl.value = button.dataset.examplePuzzle;
@@ -10945,6 +13686,8 @@
     }
 
     initFishSettings();
+    initToyControls();
+    renderToyAutomorphCatalog();
     renderDigitFocusButtons();
     renderCandidateSizeFilterButtons();
     renderDifficultyTable();
