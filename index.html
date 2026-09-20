@@ -3401,7 +3401,7 @@
     <div class="header-brand">
       <h1>StormDoku: on-line | off-line</h1>
       <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo for regular Sudoku 9x9 grids.</p>
-      <p class="app-meta">Alpha v0.3.4 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <p class="app-meta">Alpha v0.3.5 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
     </div>
   </header>
 
@@ -11188,12 +11188,13 @@
       'naked-pair': 5,
       'x-wing': 6,
       'aic-x-wing': 7,
-      '2x2+k-fish-k1': 8,
-      skyscraper: 9,
-      '2-string-kite': 10,
-      'finned-x-wing': 11,
-      'sashimi-x-wing': 12,
-      'empty-rectangle': 13,
+      'x-chain-2': 7,
+      skyscraper: 8,
+      '2-string-kite': 9,
+      'finned-x-wing': 10,
+      'sashimi-x-wing': 11,
+      'empty-rectangle': 12,
+      '2x2+k-fish-k1': 13,
       '2x2+k-fish-k2': 14,
       'hidden-triple': 15,
       'naked-triple': 16,
@@ -11203,6 +11204,7 @@
       'dual-empty-rectangle': 20,
       'rect-kite': 21,
       'bridged-eri': 22,
+      'x-chain-3': 22.5,
       '3x3+k-fish-k1': 23,
       '3x3+k-fish-k2': 24,
       barns: 25,
@@ -11322,6 +11324,12 @@
       if (/^H(?:\(\d+\))?-Wing|^H(?:\(\d+\))?-Ring/i.test(name)) return 'h-wing';
 
       const length = Number(chain?.length || chain?.steps?.length || 0);
+      if (/^(?:X-Chain|AIC)(?:\s+\(Depth\s+\d+\))?$/i.test(name)) {
+        if (length <= 2) return 'x-chain-2';
+        if (length === 3) return 'x-chain-3';
+        if (length === 4) return 'x-chain-4';
+        return 'x-chain-long';
+      }
       if (length === 4) return 'x-chain-4';
       if (length > 4) return 'x-chain-long';
       return 'x-chain-long';
