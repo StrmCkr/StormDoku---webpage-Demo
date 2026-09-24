@@ -525,7 +525,7 @@
     if (includeAls) {
       alsList = alsList.length
         ? alsList
-        : core.alsConstructor?.(cand, { maxSizeDOF: 8, maxSizeFox: 7 }) || [];
+        : core.alsConstructor?.(cand) || [];
       alsSet = options.alsLinkSet || core.buildAlsLinks(cand, {
         alsList,
         strictSingleCommon: options.strictAlsSingleCommon ?? true,

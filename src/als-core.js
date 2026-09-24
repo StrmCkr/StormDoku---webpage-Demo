@@ -25,8 +25,10 @@
 
   function normaliseOptions(options = {}) {
     return {
-      maxSizeDOF: Number.isInteger(options.maxSizeDOF) ? Math.max(0, Math.min(8, options.maxSizeDOF)) : 8,
-      maxSizeFox: Number.isInteger(options.maxSizeFox) ? Math.max(0, Math.min(8, options.maxSizeFox)) : 7,
+      // Omitted sizes mean no caller-imposed search restriction. The legal
+      // range is derived from the active sector in alsConstructor.
+      maxSizeDOF: Number.isInteger(options.maxSizeDOF) ? Math.max(0, options.maxSizeDOF) : null,
+      maxSizeFox: Number.isInteger(options.maxSizeFox) ? Math.max(0, options.maxSizeFox) : null,
       searchLimit: options.searchLimit ?? false,
       sizeLimit: options.sizeLimit ?? false,
     };
@@ -75,8 +77,14 @@
       const activeCells = core.UNITS[sector].filter(cell => (cand[cell] || []).length >= 2);
       const sectorDigits = new Set(candidateDigits(cand, activeCells));
       if (!activeCells.length) continue;
+      const maxPositionSize = opts.maxSizeDOF == null
+        ? activeCells.length - 1
+        : opts.maxSizeDOF;
+      const maxFox = opts.maxSizeFox == null
+        ? sectorDigits.size - 1
+        : opts.maxSizeFox;
 
-      for (let positionSize = 0; positionSize <= opts.maxSizeDOF; positionSize++) {
+      for (let positionSize = 0; positionSize <= maxPositionSize; positionSize++) {
         const cellCount = positionSize + 1;
         if (cellCount > activeCells.length) continue;
 
@@ -85,7 +93,7 @@
           const powerSetIndex = powerSetIndexes.get(positions.join(','));
           if (powerSetIndex === undefined) continue;
 
-          for (let fox = positionSize; fox <= opts.maxSizeFox + 1; fox++) {
+          for (let fox = positionSize; fox <= maxFox + 1; fox++) {
             const dof = fox - positionSize;
             const digitCount = fox + 1;
             if (opts.searchLimit && dof !== 1) continue;

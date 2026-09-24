@@ -423,8 +423,7 @@
   // Closed rings lock every non-RCC value to its participating ALS. Evaluate
   // the whole ring as a constrained occupancy network so those locked values
   // produce their cumulative external eliminations, not only the common Z.
-  function ringEliminationRecords(cand, hub, auxiliary, reason = 'RING occupancy') {
-    const nodes = [hub, ...auxiliary.map(entry => entry.node)];
+  function ringEliminationRecordsForNodes(cand, nodes, reason = 'RING occupancy') {
     const assignmentResults = nodes.map(node => ringAssignments(cand, node));
     if (assignmentResults.some(item => item.truncated || !item.assignments.length)) return [];
     const assignments = assignmentResults.map(item => item.assignments);
@@ -448,14 +447,44 @@
     return records;
   }
 
+  function ringEliminationRecords(cand, hub, auxiliary, reason = 'RING occupancy') {
+    return ringEliminationRecordsForNodes(
+      cand,
+      [hub, ...auxiliary.map(entry => entry.node)],
+      reason,
+    );
+  }
+
+  function mergeEliminationRecords(...groups) {
+    const merged = new Map();
+    for (const group of groups) {
+      for (const item of group || []) {
+        const key = `${item.cell}:${item.digit}`;
+        const existing = merged.get(key) || {
+          ...item,
+          reasons: [],
+        };
+        for (const reason of item.reasons || []) {
+          if (!existing.reasons.includes(reason)) existing.reasons.push(reason);
+        }
+        for (const [name, value] of Object.entries(item)) {
+          if (name !== 'reasons' && value !== undefined) existing[name] = value;
+        }
+        merged.set(key, existing);
+      }
+    }
+    return [...merged.values()].sort((left, right) =>
+      left.cell - right.cell || left.digit - right.digit);
+  }
+
   function normaliseOptions(options = {}) {
     return {
       maxAuxiliary: Number.isInteger(options.maxAuxiliary)
         ? Math.max(1, Math.min(9, options.maxAuxiliary))
-        : 3,
+        : 9,
       maxDigits: Number.isInteger(options.maxDigits)
         ? Math.max(2, Math.min(9, options.maxDigits))
-        : 6,
+        : 9,
       maxResults: Number.isInteger(options.maxResults)
         ? Math.max(1, options.maxResults)
         : 5000,
@@ -580,7 +609,23 @@
               if (!seen.has(key)) {
                 seen.add(key);
                 stats.constructionCandidates += 1;
-                const eliminations = eliminationRecords(cand, primaryA, primaryC, selected, digit);
+                const baseline = eliminationRecords(
+                  cand,
+                  primaryA,
+                  primaryC,
+                  selected,
+                  digit,
+                );
+                const eliminations = ring
+                  ? mergeEliminationRecords(
+                    baseline,
+                    ringEliminationRecordsForNodes(
+                      cand,
+                      [primaryA, primaryC, ...selected.map(entry => entry.node)],
+                      'RING occupancy',
+                    ),
+                  )
+                  : baseline;
                 const record = {
                   tech: 'als-dof',
                   name: ring ? 'ALS DOF Ring' : 'ALS DOF Chain',
@@ -976,9 +1021,13 @@
           const entries = [{ node: auxiliaryEntry }];
           const collectionLocked = sameDigitSet(grouped, hub.digits);
           const hubLocked = grouped.length > freedom;
+          const baseline = hubEliminationRecords(cand, hub, entries, z);
           const eliminations = hubLocked || collectionLocked
-            ? ringEliminationRecords(cand, hub, entries)
-            : hubEliminationRecords(cand, hub, entries, z);
+            ? mergeEliminationRecords(
+              baseline,
+              ringEliminationRecords(cand, hub, entries),
+            )
+            : baseline;
           if (!eliminations.length) continue;
           const key = `${hub.id}|single-ring|${node.id}|${z}`;
           if (seen.has(key)) continue;
@@ -1046,9 +1095,13 @@
                 const rccUnion = sortedUnique(selected.flatMap(entry => entry.grouped));
                 const collectionLocked = sameDigitSet(rccUnion, hub.digits);
                 const hubLocked = rccUnion.length > freedom;
+                const baseline = hubEliminationRecords(cand, hub, auxiliaryEntries, z);
                 const eliminations = hubLocked || collectionLocked
-                  ? ringEliminationRecords(cand, hub, auxiliaryEntries)
-                  : hubEliminationRecords(cand, hub, auxiliaryEntries, z);
+                  ? mergeEliminationRecords(
+                    baseline,
+                    ringEliminationRecords(cand, hub, auxiliaryEntries),
+                  )
+                  : baseline;
                 if (!eliminations.length) return;
                 const key = [
                   hub.id,
@@ -1137,9 +1190,13 @@
             const collectionRcc = collectionRccDigits(cand, hub, selected);
             const isRing = hasHubRingClosure(cand, selected, digit)
               && ringCoverageIsValid(cand, hub, selected);
+            const baseline = hubEliminationRecords(cand, hub, selected, digit);
             const eliminations = isRing
-              ? ringEliminationRecords(cand, hub, selected)
-              : hubEliminationRecords(cand, hub, selected, digit);
+              ? mergeEliminationRecords(
+                baseline,
+                ringEliminationRecords(cand, hub, selected),
+              )
+              : baseline;
             if (!eliminations.length) return;
             stats.collections += 1;
             results.push({
@@ -1802,17 +1859,47 @@
       ...auxiliary.flatMap(node => node.cells || []),
       ...(result?.primaryC?.cells || []),
     ]);
-    const ringWitnesses = result?.mode === 'hub'
-      && result?.isRing
-      && result?.lockScope !== 'z'
-      ? new Set(ringEliminationRecords(
-        cand,
-        hub,
-        auxiliary.map(node => ({
-          node,
-          bridge: { digit: node.rccDigit },
-        })),
-      ).map(eliminationKey))
+    const ringWitnesses = result?.isRing
+      && ((result.mode === 'hub' && result?.lockScope !== 'z')
+        || result.mode === 'chain')
+      ? (() => {
+        const baseline = result.mode === 'chain'
+          ? eliminationRecords(
+            cand,
+            hub,
+            result.primaryC,
+            auxiliary.map(node => ({
+              node,
+              aBridges: node.aBridges || [],
+              cBridges: node.cBridges || [],
+            })),
+            result.z,
+          )
+          : hubEliminationRecords(
+            cand,
+            hub,
+            auxiliary.map(node => ({
+              node,
+              bridge: { digit: node.rccDigit },
+            })),
+            result.z,
+          );
+        const ring = result.mode === 'chain'
+          ? ringEliminationRecordsForNodes(
+            cand,
+            [hub, result.primaryC, ...auxiliary],
+            'RING occupancy',
+          )
+          : ringEliminationRecords(
+            cand,
+            hub,
+            auxiliary.map(node => ({
+              node,
+              bridge: { digit: node.rccDigit },
+            })),
+          );
+        return new Set(mergeEliminationRecords(baseline, ring).map(eliminationKey));
+      })()
       : null;
     const ddsWitnesses = (result?.mode === 'dds' || result?.mode === 'almost-dds')
       ? new Set((result.ringForm === 'compact-collection'
@@ -1826,11 +1913,11 @@
           })),
           alsPool,
         )
-        : ringEliminationRecords(
+        : cumulativeDdsEliminationRecords(
           cand,
           hub,
           auxiliary.map(node => ({ node })),
-          'DDS occupancy',
+          alsPool,
         )).map(eliminationKey))
       : null;
     const pathWitnesses = result?.chainForm === 'auxiliary-hub-path'
@@ -1842,6 +1929,7 @@
       ).map(eliminationKey))
       : null;
     const chainWitnesses = result?.mode === 'chain'
+      && !result?.isRing
       && result?.chainForm !== 'auxiliary-hub-path'
       ? new Set(eliminationRecords(
         cand,
@@ -2116,7 +2204,7 @@
         }
       }
       if (!errors.length) {
-        expectedEliminations = eliminationRecords(
+        const baseline = eliminationRecords(
           cand,
           hub,
           primaryC,
@@ -2127,6 +2215,16 @@
           })),
           z,
         );
+        expectedEliminations = result.isRing
+          ? mergeEliminationRecords(
+            baseline,
+            ringEliminationRecordsForNodes(
+              cand,
+              [hub, primaryC, ...auxiliary],
+              'RING occupancy',
+            ),
+          )
+          : baseline;
       }
     } else if (result.mode === 'hub') {
       if (hub.dof < 2) errors.push('hub net requires hub DOF >= 2');
@@ -2179,9 +2277,13 @@
           node,
           bridge: { digit: node.rccDigit },
         }));
+        const baseline = hubEliminationRecords(cand, hub, entries, z);
         expectedEliminations = result.isRing && result.lockScope !== 'z'
-          ? ringEliminationRecords(cand, hub, entries)
-          : hubEliminationRecords(cand, hub, entries, z);
+          ? mergeEliminationRecords(
+            baseline,
+            ringEliminationRecords(cand, hub, entries),
+          )
+          : baseline;
       }
     } else if (result.mode === 'dds' || result.mode === 'almost-dds') {
       const almostDds = result.mode === 'almost-dds';
@@ -2279,6 +2381,7 @@
   }
 
   function formatAlsDof(record) {
+    if (!record) return '?';
     const eliminations = (record.eliminations || [])
       .map(item => `${core.cellName?.(item.cell) || `c${item.cell + 1}`}<>${item.digit}`)
       .join(', ');

@@ -337,7 +337,7 @@
         ? options.maxTraversalLinks
         : undefined,
     };
-    const alsList = options.alsList || core.alsConstructor(cand, { maxSizeDOF: 8, maxSizeFox: 7 });
+    const alsList = options.alsList || core.alsConstructor(cand);
     const buckets = Array.from({ length: ALS_RCC + 1 }, () => []);
 
     if (opts.includePairedAls) {
@@ -354,7 +354,7 @@
         alsList,
         traversalLinks,
         traversalSeen,
-        opts.maxTraversalLinks ?? opts.maxLinks ?? 5000,
+        opts.maxTraversalLinks ?? opts.maxLinks,
       );
 
       const regularSeen = new Set();

@@ -7,18 +7,98 @@ importScripts(
   './browser-core.js',
   './set-tools-core.js',
   './pom-core.js',
-  './als-core.js?v=20260917-1',
-  './als-dof-core.js?v=20260918-15',
-  './als-link-core.js?v=20260918-2',
+  './als-core.js?v=20260923-1',
+  './als-dof-core.js?v=20260924-5',
+  './als-link-core.js?v=20260923-1',
   './ahs-core.js',
   './subset-report-core.js',
   './mini-sectors-core.js',
-  './strong-link-core.js?v=20260917-1',
-  './chain-core.js?v=20260918-3',
+  './strong-link-core.js?v=20260924-37',
+  './chain-core.js?v=20260923-1',
 );
 
 const core = globalThis.StormDoku;
 const cancelled = new Set();
+let chainInventoryCache = null;
+
+function candidateGridKey(candidateGrid) {
+  return (candidateGrid || []).map(cell => (cell || []).join('')).join('/');
+}
+
+function chainInventory(payload) {
+  const candidateGrid = payload.candidateGrid || [];
+  const inventoryKey = [
+    candidateGridKey(candidateGrid),
+    Boolean(payload.includeAls),
+    payload.alsMaxSizeDOF ?? '',
+    payload.alsMaxSizeFox ?? '',
+    payload.alsSearchLimit === true,
+    (payload.alsCellCounts || []).join(','),
+  ].join('::');
+
+  if (!chainInventoryCache || chainInventoryCache.key !== inventoryKey) {
+    chainInventoryCache = {
+      key: inventoryKey,
+      strongSet: core.buildStrongLinks(candidateGrid),
+      alsList: payload.includeAls
+        ? core.alsConstructor(candidateGrid, {
+            ...(Number.isInteger(payload.alsMaxSizeDOF)
+              ? { maxSizeDOF: payload.alsMaxSizeDOF }
+              : {}),
+            ...(Number.isInteger(payload.alsMaxSizeFox)
+              ? { maxSizeFox: payload.alsMaxSizeFox }
+              : {}),
+            searchLimit: payload.alsSearchLimit === true,
+          })
+        : null,
+      linkSets: new Map(),
+    };
+  }
+
+  if (!payload.includeAls) {
+    return { strongSet: chainInventoryCache.strongSet, alsList: null, alsLinkSet: null };
+  }
+
+  const requestedMaxLinks = Number(payload.limits?.maxAlsLinks);
+  const maxLinks = Number.isInteger(requestedMaxLinks) && requestedMaxLinks > 0
+    ? requestedMaxLinks
+    : undefined;
+  const requestedMaxDigits = Number(payload.alsMaxDigits);
+  const maxDigits = Number.isInteger(requestedMaxDigits) && requestedMaxDigits > 0
+    ? requestedMaxDigits
+    : null;
+  const cellCount = payload.alsCellCount == null ? '*' : payload.alsCellCount;
+  const cellCounts = Array.isArray(payload.alsCellCounts)
+    ? new Set(payload.alsCellCounts.map(Number))
+    : null;
+  const linkMode = payload.alsLinkMode || 'all';
+  const linkKey = `${cellCount}:${[...(cellCounts || [])].join(',')}:${linkMode}:${maxDigits}:${maxLinks}`;
+  let cachedLinks = chainInventoryCache.linkSets.get(linkKey);
+  if (!cachedLinks) {
+    const digitFilter = als => maxDigits == null
+      || (als.alsDigits || []).length <= maxDigits;
+    const alsList = cellCount === '*' && !cellCounts
+      ? chainInventoryCache.alsList.filter(digitFilter)
+      : chainInventoryCache.alsList.filter(als => (cellCounts
+        ? cellCounts.has((als.alsAllCells || []).length)
+        : (als.alsAllCells || []).length === cellCount)
+        && digitFilter(als));
+    const alsLinkSet = core.buildAlsLinks(candidateGrid, {
+      alsList,
+      strictSingleCommon: true,
+      xzOnly: linkMode === 'xz-only',
+      maxLinks,
+    });
+    cachedLinks = { alsList, alsLinkSet };
+    chainInventoryCache.linkSets.set(linkKey, cachedLinks);
+  }
+
+  return {
+    strongSet: chainInventoryCache.strongSet,
+    alsList: cachedLinks.alsList,
+    alsLinkSet: cachedLinks.alsLinkSet,
+  };
+}
 
 function reportError(id, error) {
   self.postMessage({
@@ -49,23 +129,10 @@ function runChains(payload) {
   const strongLinkTypes = payload.strongLinkTypes || [];
   const includeAls = Boolean(payload.includeAls);
   const limits = payload.limits || {};
-  const strongSet = core.buildStrongLinks(candidateGrid);
-  const alsList = includeAls
-    ? core.alsConstructor(candidateGrid, {
-        maxSizeDOF: payload.alsMaxSizeDOF || 4,
-        maxSizeFox: payload.alsMaxSizeFox || 5,
-        searchLimit: true,
-      }).filter(als => payload.alsCellCount == null
-        || (als.alsAllCells || []).length === payload.alsCellCount)
-    : null;
-  const alsLinkSet = includeAls
-    ? core.buildAlsLinks(candidateGrid, {
-        alsList,
-        strictSingleCommon: true,
-        xzOnly: payload.alsLinkMode === 'xz-only',
-        maxLinks: limits.maxAlsLinks || 750,
-      })
-    : null;
+  const inventory = chainInventory(payload);
+  const strongSet = inventory.strongSet;
+  const alsList = includeAls ? inventory.alsList : null;
+  const alsLinkSet = includeAls ? inventory.alsLinkSet : null;
   const filteredAlsLinkSet = payload.alsModuleKinds && alsLinkSet
     ? alsLinkSet.map(bucket => bucket.filter(link => payload.alsModuleKinds.includes(link.moduleKind)))
     : alsLinkSet;
@@ -96,8 +163,8 @@ function runChains(payload) {
 }
 
 function runAlsDof(payload) {
-  const maxDigits = Math.min(9, Math.max(2, Number(payload.maxDigits) || 6));
-  const maxAuxiliary = Math.min(9, Math.max(1, Number(payload.maxAuxiliary) || 3));
+  const maxDigits = Math.min(9, Math.max(2, Number(payload.maxDigits) || 9));
+  const maxAuxiliary = Math.min(9, Math.max(1, Number(payload.maxAuxiliary) || 9));
   const alsList = core.alsConstructor(payload.candidateGrid, {
     maxSizeDOF: maxDigits - 1,
     maxSizeFox: maxDigits - 1,
