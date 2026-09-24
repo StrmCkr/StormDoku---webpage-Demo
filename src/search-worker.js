@@ -13,7 +13,7 @@ importScripts(
   './ahs-core.js',
   './subset-report-core.js',
   './mini-sectors-core.js',
-  './strong-link-core.js?v=20260924-37',
+  './strong-link-core.js?v=20260924-38',
   './chain-core.js?v=20260923-1',
 );
 

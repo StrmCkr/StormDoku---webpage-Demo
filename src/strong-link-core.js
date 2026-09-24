@@ -1170,25 +1170,6 @@
           nandContradictionFound = true;
         }
 
-        // A candidate that sees both logical parities for this digit is
-        // impossible. This is a direct colouring rule; it does not require
-        // the outside candidate to be part of the NAND assumption graph.
-        let oppositeParityPeerTrigger = false;
-        for (let cell = 0; cell < cand.length; cell++) {
-          if (!(cand[cell] || []).includes(digit)) continue;
-          let seesParityZero = false;
-          let seesParityOne = false;
-          for (const record of atomRecords.values()) {
-            if (record.cell === cell || !core.peersOf(cell).includes(record.cell)) continue;
-            if (record.colors.has(0)) seesParityZero = true;
-            if (record.colors.has(1)) seesParityOne = true;
-            if (seesParityZero && seesParityOne) break;
-          }
-          if (!seesParityZero || !seesParityOne) continue;
-          eliminations.add(eliminationKey(cell, digit));
-          oppositeParityPeerTrigger = true;
-        }
-
         if (!eliminations.size) continue;
         const sortedNodes = [...componentNodes].sort((left, right) => left - right);
         const linkColours = sortedNodes.map((node, index) => {
@@ -1308,7 +1289,6 @@
           rules.push('sector-peer-union-contradiction');
         }
         if (nandContradictionFound) rules.push('grouped-opposite-parity-visibility');
-        if (oppositeParityPeerTrigger) rules.push('opposite-parity-peer');
         reports.push({
           family: 'Multi-colouring',
           tech: 'multi-colouring',
