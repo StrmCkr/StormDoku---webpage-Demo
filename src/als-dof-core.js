@@ -885,14 +885,14 @@
   }
 
   function findAlsDofChains(cand, options = {}) {
-    const maxResults = options.maxResults || 5000;
+    const normalised = normaliseOptions(options);
+    const maxResults = normalised.maxResults;
     const chainLimit = Math.max(1, Math.floor(maxResults / 2));
-    // The current chain evaluator is deliberately limited to the two ALS
-    // endpoints plus their auxiliary collection. The deeper A-S-C-S-B path
-    // remains available as a separate experimental finder, but is not part
-    // of this evaluated chain mode until its proof and verifier are settled.
+    // The evaluated chain form uses the two endpoint ALSs plus the number of
+    // auxiliary ALSs requested by the caller. The deeper A-S-C-S-B path
+    // remains separately opt-in until its proof and verifier are settled.
     const includePathChain = options.includePathChain === true;
-    const chainAuxiliaryCount = 1;
+    const chainAuxiliaryCount = normalised.maxAuxiliary;
     const chain = findAlsDofAuxiliary(cand, {
       ...options,
       requireAuxiliaryZ: true,
@@ -1704,30 +1704,21 @@
 
   function findAlsDofNets(cand, options = {}) {
     const maxResults = options.maxResults || 5000;
-    // The endpoint/auxiliary chain remains available, but is opt-in until
-    // its updated rules are ready for the normal ALS-DOF report.
     const chainLimit = Math.max(1, Math.floor(maxResults / 2));
-    const chain = options.includeChain === true ? findAlsDofAuxiliary(cand, {
+    // Use the same verified chain dispatcher as the dedicated chain panel.
+    // Its deeper auxiliary-hub path remains opt-in there and is intentionally
+    // not mixed into the normal rating/solver pass.
+    const chain = options.includeChain === true ? findAlsDofChains(cand, {
       ...options,
       alsList: options.alsList || undefined,
-      requireAuxiliaryZ: true,
+      includePathChain: false,
       maxResults: chainLimit,
-    }) : { results: [], stats: { alsRecords: options.alsList?.length || 0, truncated: false } };
-    const connectorChain = options.includeChain === true ? findAlsDofAuxiliary(cand, {
-      ...options,
-      alsList: options.alsList || undefined,
-      requireAuxiliaryZ: false,
-      maxResults: chainLimit,
-    }) : { results: [], stats: { alsRecords: chain.stats.alsRecords, truncated: false } };
-    const pathChain = options.includeChain === true ? findAlsDofAuxiliaryPaths(cand, {
-      ...options,
-      alsList: options.alsList || undefined,
-      maxResults: chainLimit,
-    }) : { results: [], stats: { alsRecords: chain.stats.alsRecords, truncated: false } };
+    }) : {
+      results: [],
+      stats: { alsRecords: options.alsList?.length || 0, truncated: false },
+    };
     const results = [
       ...chain.results,
-      ...connectorChain.results,
-      ...pathChain.results,
     ].slice(0, maxResults);
     let remaining = maxResults - results.length;
     const hub = remaining > 0 ? findAlsDofHubNets(cand, {
@@ -1755,24 +1746,21 @@
       stats: {
         alsRecords: Math.max(
           chain.stats.alsRecords,
-          pathChain.stats.alsRecords,
           hub.stats.alsRecords,
           dds.stats.alsRecords,
           almostDds.stats.alsRecords,
         ),
-        chainNets: chain.results.length + connectorChain.results.length
-          + pathChain.results.length,
+        chainNets: chain.results.length,
         hubNets: hub.results.length,
         ddsNets: dds.results.length,
         almostDdsNets: almostDds.results.length,
-        truncated: chain.stats.truncated || connectorChain.stats.truncated
-          || pathChain.stats.truncated
+        truncated: chain.stats.truncated
           || hub.stats.truncated || dds.stats.truncated
           || almostDds.stats.truncated
-          || chain.results.length + connectorChain.results.length + pathChain.results.length
+          || chain.results.length
             + hub.results.length + dds.results.length + almostDds.results.length > maxResults,
       },
-      options: hub.options,
+      options: hub.options || chain.options || normaliseOptions(options),
     };
   }
 

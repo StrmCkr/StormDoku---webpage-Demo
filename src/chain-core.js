@@ -196,21 +196,33 @@
   function orientedModule(view) {
     const link = view.node.raw;
     const isAls = view.node.family === 'ALS' && view.node.linkTypeName === 'ALS_RCC' && link.LS_L && link.LS_R;
-    if (!isAls) return null;
+    const isAhs = view.node.family === 'AHS' && view.node.linkTypeName === 'AHS_RCC' && link.HS_L && link.HS_R;
+    if (!isAls && !isAhs) return null;
 
-    const subsetKind = 'LS';
-    const leftSubset = link.LS_L;
-    const rightSubset = link.LS_R;
+    const subsetKind = isAhs ? 'HS' : 'LS';
+    const leftSubset = isAhs ? link.HS_L : link.LS_L;
+    const rightSubset = isAhs ? link.HS_R : link.LS_R;
     const entrySubset = view.forward ? rightSubset : leftSubset;
     const exitSubset = view.forward ? leftSubset : rightSubset;
     const entrySideSubset = view.forward ? leftSubset : rightSubset;
     const exitSideSubset = view.forward ? rightSubset : leftSubset;
+    const entrySideRccDigitsByCell = view.forward
+      ? (link.rccStartDigitsByCell || {})
+      : (link.rccLinkedDigitsByCell || {});
+    const exitSideRccDigitsByCell = view.forward
+      ? (link.rccLinkedDigitsByCell || {})
+      : (link.rccStartDigitsByCell || {});
+    const common = publicBridge(link.C);
+    if (common) {
+      common.entrySideRccDigitsByCell = entrySideRccDigitsByCell;
+      common.exitSideRccDigitsByCell = exitSideRccDigitsByCell;
+    }
     const module = {
-      family: 'ALS',
+      family: isAhs ? 'AHS' : 'ALS',
       subsetKind,
       entryRcc: view.forward ? 'RCC_L' : 'RCC_R',
       entrySubset: publicSubsetNode(subsetKind, entrySubset),
-      common: publicBridge(link.C),
+      common,
       exitSubset: publicSubsetNode(subsetKind, exitSubset),
       exitRcc: view.forward ? 'RCC_R' : 'RCC_L',
       entrySideSubset: publicSubsetNode(subsetKind, entrySideSubset),
@@ -219,9 +231,25 @@
       exitLs: publicSubsetNode('LS', exitSubset),
       entrySideLs: publicSubsetNode('LS', entrySideSubset),
       exitSideLs: publicSubsetNode('LS', exitSideSubset),
+      entryHs: isAhs ? publicSubsetNode('HS', entrySubset) : null,
+      exitHs: isAhs ? publicSubsetNode('HS', exitSubset) : null,
+      entrySideHs: isAhs ? publicSubsetNode('HS', entrySideSubset) : null,
+      exitSideHs: isAhs ? publicSubsetNode('HS', exitSideSubset) : null,
       moduleKind: link.moduleKind,
       displayLeftRcc: link.displayLeftRcc ?? null,
       displayRightRcc: link.displayRightRcc ?? null,
+      rccBridgeCells: asNumbers(
+        link.C?.leftCells?.length
+          ? link.C.leftCells
+          : link.xzBridgeCell != null
+          ? [link.xzBridgeCell]
+          : (link.ringRccCells || intersection(
+            link.rccStartCells || [],
+            link.rccLinkedCells || [],
+          )),
+      ),
+      entrySideRccDigitsByCell,
+      exitSideRccDigitsByCell,
     };
 
     module.label = [module.entrySubset?.label, module.common?.label, module.exitSubset?.label]
@@ -430,6 +458,10 @@
       return `${subsetNodeLabel('LS', link.LS_L)} / ${bridgeLabel(link.C)} / ${subsetNodeLabel('LS', link.LS_R)}`;
     }
 
+    if (family === 'AHS' && link.HS_L && link.HS_R) {
+      return `${subsetNodeLabel('HS', link.HS_L)} / ${bridgeLabel(link.C)} / ${subsetNodeLabel('HS', link.HS_R)}`;
+    }
+
     return '';
   }
 
@@ -513,6 +545,7 @@
   function buildLinkInventory(cand, options) {
     const includeStrong = options.includeStrong !== false;
     const includeAls = options.includeAls === true;
+    const includeAhs = options.includeAhs === true;
     const strongSet = includeStrong
       ? (options.strongLinkSet || core.buildStrongLinks(cand))
       : [];
@@ -533,17 +566,35 @@
       });
     }
     const alsLinks = flattenLinkSet(alsSet, core.flattenAlsLinks);
+    let ahsSet = [];
+    let ahsList = options.ahsList || [];
+    if (includeAhs && typeof core.buildAhsLinks === 'function') {
+      ahsList = ahsList.length
+        ? ahsList
+        : core.ahsConstructor?.(cand, { maxSize: 8, maxSizeFox: 7 }) || [];
+      ahsSet = options.ahsLinkSet || core.buildAhsLinks(cand, {
+        ahsList,
+        strongLinkSet: includeStrong ? strongSet : undefined,
+        minDof: options.minAhsDof ?? 1,
+        maxDof: options.maxAhsDof ?? 3,
+        strictSingleCommon: options.strictAhsSingleCommon ?? false,
+        maxLinks: options.maxAhsLinks,
+      });
+    }
+    const ahsLinks = flattenLinkSet(ahsSet, core.flattenAhsLinks);
 
     return {
       links: [
         ...strongLinks.map((link, index) => normaliseLink(link, 'SL', index)),
         ...alsLinks.map((link, index) => normaliseLink(link, 'ALS', index)),
+        ...ahsLinks.map((link, index) => normaliseLink(link, 'AHS', index)),
       ],
       counts: {
         strong: strongLinks.length,
         als: alsLinks.length,
+        ahs: ahsLinks.length,
       },
-      source: { strongSet, alsSet, alsList },
+      source: { strongSet, alsSet, ahsSet, alsList, ahsList },
     };
   }
 
@@ -591,8 +642,20 @@
   function localConnection(fromView, toView) {
     const exit = fromView.exit;
     const entry = toView.entry;
-    if (exit.cells.length !== 1 || entry.cells.length !== 1) return null;
     if (exit.cellKey !== entry.cellKey) return null;
+    // AHS_RCC endpoints convey a hidden-single cell set. Their local weak
+    // connection is cellular: the same reduced HS side may be entered from
+    // either direction without requiring a digit swap on a single cell.
+    if (exit.conveyance === 'CELLS' || entry.conveyance === 'CELLS') {
+      return {
+        weakType: LOCAL_WEAK,
+        weakTypeName: WEAK_TYPE_NAMES[LOCAL_WEAK],
+        digit: null,
+        cells: [...exit.cells],
+        sectors: [],
+      };
+    }
+    if (exit.cells.length !== 1 || entry.cells.length !== 1) return null;
     if (!hasIntersection(exit.digits, entry.swapDigits)) return null;
     if (!hasIntersection(entry.digits, exit.swapDigits)) return null;
 
@@ -600,6 +663,11 @@
     // so the renderer can mark the complete (a-b) inference.
     const fromDigit = exit.digits.find(value => entry.swapDigits.includes(value)) ?? null;
     const toDigit = entry.digits.find(value => exit.swapDigits.includes(value)) ?? null;
+
+    // A local weak inference must switch the candidate state. Reusing the
+    // same digit on the same cell is a self-edge, not a NAND connection;
+    // accepting it creates bogus output such as `(5-5)r1c6`.
+    if (fromDigit == null || toDigit == null || fromDigit === toDigit) return null;
 
     return {
       weakType: LOCAL_WEAK,
@@ -618,6 +686,9 @@
     const aSide = fromView.exit;
     const bSide = toView.entry;
 
+    // AHS links use cell conveyance; they cannot be matched as ordinary
+    // digit-in-sector links.
+    if (aSide.conveyance === 'CELLS' || bSide.conveyance === 'CELLS') return null;
     if (alsModulesOverlap(fromView, toView)) return null;
     if (hasIntersection(aNode.allCells, bNode.allCells)) return null;
     if (hasIntersection(aSide.cells, bSide.cells)) return null;
@@ -662,7 +733,15 @@
   function alsSubsetForSide(view, side) {
     const raw = view.node.raw;
     const isLeft = side === 'entry' ? view.forward : !view.forward;
+    if (view.node.family === 'AHS') return isLeft ? raw.HS_L : raw.HS_R;
     return isLeft ? raw.LS_L : raw.LS_R;
+  }
+
+  function ahsRccForSide(view, side) {
+    const raw = view.node.raw;
+    if (view.node.family !== 'AHS') return null;
+    const isLeft = side === 'entry' ? view.forward : !view.forward;
+    return isLeft ? raw.RCC_Left : raw.RCC_Right;
   }
 
   function alsSubsetKey(subset) {
@@ -690,8 +769,38 @@
   }
 
   function alsModuleConnection(fromView, toView) {
-    if (fromView.node.family !== 'ALS' || toView.node.family !== 'ALS') return null;
-    if (fromView.node.linkTypeName !== 'ALS_RCC' || toView.node.linkTypeName !== 'ALS_RCC') return null;
+    if (fromView.node.family !== toView.node.family) return null;
+    if (!['ALS', 'AHS'].includes(fromView.node.family)) return null;
+    const expectedType = fromView.node.family === 'AHS' ? 'AHS_RCC' : 'ALS_RCC';
+    if (fromView.node.linkTypeName !== expectedType || toView.node.linkTypeName !== expectedType) return null;
+
+    if (fromView.node.family === 'AHS') {
+      const fromSubset = alsSubsetForSide(fromView, 'exit');
+      const toSubset = alsSubsetForSide(toView, 'entry');
+      if (!alsModuleCompatible(fromSubset, toSubset)) return null;
+
+      const fromRcc = ahsRccForSide(fromView, 'exit');
+      const toRcc = ahsRccForSide(toView, 'entry');
+      const fromDigit = fromRcc?.hiddenDigits?.length === 1 ? fromRcc.hiddenDigits[0] : null;
+      const toDigit = toRcc?.hiddenDigits?.length === 1 ? toRcc.hiddenDigits[0] : null;
+      const fromCell = fromRcc?.hiddenCell;
+      const toCell = toRcc?.hiddenCell;
+      if (fromDigit == null || toDigit == null || fromDigit === toDigit) return null;
+      if (fromCell == null || toCell == null || fromCell === toCell) return null;
+      if (!core.peersOf(fromCell).includes(toCell)) return null;
+
+      return {
+        weakType: LOCAL_WEAK,
+        weakTypeName: WEAK_TYPE_NAMES[LOCAL_WEAK],
+        digit: null,
+        fromDigit,
+        toDigit,
+        cells: [fromCell, toCell],
+        sectors: [],
+        modular: true,
+        modularFamily: 'AHS',
+      };
+    }
 
     const fromSubset = alsSubsetForSide(fromView, 'exit');
     const toSubset = alsSubsetForSide(toView, 'entry');
@@ -1032,6 +1141,11 @@
     const seen = new Set();
     const add = (target, weak) => {
       if (!weak || target.key === view.key) return;
+      if (weak.weakType === LOCAL_WEAK
+        && !weak.modular
+        && (weak.fromDigit == null
+          || weak.toDigit == null
+          || weak.fromDigit === weak.toDigit)) return;
       if (view.exit.conveyance !== 'CELLS'
         && target.exit.conveyance !== 'CELLS'
         && sidesShareAtom(view.exit, target.exit)) return;
@@ -1048,7 +1162,9 @@
       if (out.length >= options.maxBranching) return out;
     }
 
-    if (view.exit.conveyance === 'CELLS') return out;
+    // AHS edges convey cells, but may still continue through their shared
+    // parent AHS module. Ordinary cellular links stop here.
+    if (view.exit.conveyance === 'CELLS' && view.node.family !== 'AHS') return out;
 
     const exitSubset = alsSubsetForSide(view, 'exit');
     if (exitSubset) {
@@ -1597,6 +1713,10 @@
     return step.family === 'ALS' && step.linkTypeName === 'ALS_RCC';
   }
 
+  function isAhsRccStep(step) {
+    return step.family === 'AHS' && step.linkTypeName === 'AHS_RCC';
+  }
+
   function isAlsNodeStep(step) {
     return isBivalveStep(step) || isAlsRccStep(step);
   }
@@ -1761,6 +1881,36 @@
     return nodeCount > 3 ? 'ALS - Chain' : null;
   }
 
+  // AHS modules use the same three-node progression as ALS-XY, but their
+  // conveyance is cellular hidden-set reduction rather than ALS digit
+  // conveyance. Keep the classifier separate so an AHS chain can never be
+  // mislabeled as an ALS result.
+  function ahsOnlyStructureName(steps, isRing = false) {
+    if (!steps.length || !steps.every(step => isAhsRccStep(step))) return null;
+
+    const seen = new Set();
+    let nodeCount = 0;
+    for (const step of steps) {
+      const module = step.module;
+      if (!module?.entrySubset || !module?.exitSubset) return null;
+      for (const subset of [module.entrySubset, module.exitSubset]) {
+        const key = [
+          subset.id ?? '',
+          (subset.cells || []).join(','),
+          (subset.digits || []).join(''),
+        ].join('|');
+        if (!seen.has(key)) {
+          seen.add(key);
+          nodeCount += 1;
+        }
+      }
+    }
+
+    if (nodeCount === 2) return isRing ? 'AHS - XZ Ring' : 'AHS - XZ';
+    if (nodeCount === 3) return isRing ? 'AHS - XY Ring' : 'AHS - XY';
+    return nodeCount > 3 ? (isRing ? 'AHS - Chain Ring' : 'AHS - Chain') : null;
+  }
+
   function prefixedStructureName(name, steps) {
     const prefix = structurePrefix(steps);
     return prefix ? `${prefix} - ${name}` : name;
@@ -1797,6 +1947,15 @@
   }
 
   function classifyChain(steps, isRing, ringWeakDigit = null) {
+    if (steps.length === 1 && steps[0].module?.moduleKind) {
+      const moduleKind = steps[0].module.moduleKind;
+      if (moduleKind === 'AHS_XZ'
+        || moduleKind === 'AHS_XZ_RING') {
+        return 'AHS - XZ';
+      }
+    }
+    const ahsStructureName = ahsOnlyStructureName(steps, isRing);
+    if (ahsStructureName) return ahsStructureName;
     const alsStructureName = alsOnlyStructureName(steps);
     if (alsStructureName) return alsStructureName;
 
@@ -2080,12 +2239,17 @@
     return {
       includeStrong: options.includeStrong ?? true,
       includeAls: options.includeAls ?? true,
+      includeAhs: options.includeAhs ?? false,
       strictAlsSingleCommon: options.strictAlsSingleCommon ?? true,
       strongLinkTypes: [...new Set(
         (options.strongLinkTypes ?? [0, 1, 2, 3, 4])
           .filter(type => Number.isInteger(type) && type >= 0 && type <= 4),
       )].sort((a, b) => a - b),
       maxAlsLinks: Number.isInteger(options.maxAlsLinks) ? options.maxAlsLinks : 5000,
+      maxAhsLinks: Number.isInteger(options.maxAhsLinks) ? options.maxAhsLinks : 5000,
+      minAhsDof: Number.isInteger(options.minAhsDof) ? Math.max(1, options.minAhsDof) : 1,
+      maxAhsDof: Number.isInteger(options.maxAhsDof) ? Math.max(1, Math.min(3, options.maxAhsDof)) : 3,
+      strictAhsSingleCommon: options.strictAhsSingleCommon ?? false,
       maxDepth: Number.isInteger(options.maxDepth) ? Math.max(1, options.maxDepth) : 6,
       maxChains: Number.isInteger(options.maxChains) ? Math.max(1, options.maxChains) : 200,
       maxResultAttempts: Number.isInteger(options.maxResultAttempts)
@@ -2103,6 +2267,8 @@
       strongLinkSet: options.strongLinkSet,
       alsLinkSet: options.alsLinkSet,
       alsList: options.alsList,
+      ahsLinkSet: options.ahsLinkSet,
+      ahsList: options.ahsList,
     };
   }
 
@@ -2114,6 +2280,7 @@
     const stats = {
       strongLinks: inventory.counts.strong,
       alsLinks: inventory.counts.als,
+      ahsLinks: inventory.counts.ahs,
       graphLinks: inventory.links.length,
       directedViews: graph.views.length,
       startViews: 0,
@@ -2426,7 +2593,9 @@
 
   function rccSubsetEurekaUnits(step) {
     const module = step.module;
-    if (step.family !== 'ALS' || !step.linkTypeName.endsWith('_RCC') || !module?.common) return null;
+    if (step.family !== 'ALS'
+      || !step.linkTypeName.endsWith('_RCC')
+      || !module?.common) return null;
 
     const entrySubset = module.entrySideSubset
       || module.entrySideLs
@@ -2470,6 +2639,58 @@
     ];
   }
 
+  function ahsXzEurekaUnits(step) {
+    const module = step.module;
+    if (step.family !== 'AHS'
+      || !['AHS_XZ', 'AHS_XZ_RING'].includes(module?.moduleKind)) return null;
+
+    let entrySubset = module.entrySideSubset || module.entrySubset;
+    let exitSubset = module.exitSideSubset || module.exitSubset;
+    let leftRcc = module.displayLeftRcc;
+    let rightRcc = module.displayRightRcc;
+    const bridgeCells = module.rccBridgeCells || [];
+    let leftRccByCell = module.entrySideRccDigitsByCell || {};
+    let rightRccByCell = module.exitSideRccDigitsByCell || {};
+    if (entrySubset?.sector > exitSubset?.sector) {
+      [entrySubset, exitSubset] = [exitSubset, entrySubset];
+      [leftRcc, rightRcc] = [rightRcc, leftRcc];
+      [leftRccByCell, rightRccByCell] = [rightRccByCell, leftRccByCell];
+    }
+    if (!entrySubset || !exitSubset || !bridgeCells.length
+      || leftRcc == null || rightRcc == null) return null;
+
+    const rccDigits = value => Array.isArray(value)
+      ? value.flatMap(item => String(item).match(/[1-9]/g) || []).map(Number)
+      : String(value).match(/[1-9]/g)?.map(Number) || [];
+    const leftRccDigits = rccDigits(leftRcc);
+    const rightRccDigits = rccDigits(rightRcc);
+    if (!leftRccDigits.length || !rightRccDigits.length) return null;
+    const bridgeLabel = core.cellGroupName(bridgeCells);
+
+    if (module.moduleKind === 'AHS_XZ_RING' && bridgeCells.length >= 2) {
+      const firstBridge = core.cellName(bridgeCells[0]);
+      const bridgeDigits = (map, cell, fallback) => {
+        const values = map?.[String(cell)] || map?.[cell];
+        return values?.length ? values : fallback;
+      };
+      const leftFirst = bridgeDigits(leftRccByCell, bridgeCells[0], leftRccDigits);
+      const rightFirst = bridgeDigits(rightRccByCell, bridgeCells[0], rightRccDigits);
+      return [
+        { text: `(${eurekaDigitsText(entrySubset.digits)})${core.cellGroupName(entrySubset.cells)}` },
+        { text: `(${eurekaDigitsText(leftFirst)})${firstBridge}` },
+        { text: `(${eurekaDigitsText(rightFirst)})${firstBridge}` },
+        { text: `(${eurekaDigitsText(exitSubset.digits)})${core.cellGroupName(exitSubset.cells)}` },
+      ];
+    }
+
+    return [
+      { text: `(${eurekaDigitsText(entrySubset.digits)})${core.cellGroupName(entrySubset.cells)}` },
+      { text: `(${eurekaDigitsText(leftRccDigits)})${bridgeLabel}` },
+      { text: `(${eurekaDigitsText(rightRccDigits)})${bridgeLabel}` },
+      { text: `(${eurekaDigitsText(exitSubset.digits)})${core.cellGroupName(exitSubset.cells)}` },
+    ];
+  }
+
   function compactEurekaUnits(nodes, connectors) {
     const units = [];
 
@@ -2500,8 +2721,17 @@
   }
 
   function appendStepEureka(nodes, connectors, step, index) {
+    const ahsXz = ahsXzEurekaUnits(step);
     const expandedSubset = rccSubsetEurekaUnits(step);
     const weakConnector = index === 0 ? null : '-';
+
+    if (ahsXz) {
+      pushEurekaUnit(nodes, connectors, ahsXz[0], weakConnector);
+      pushEurekaUnit(nodes, connectors, ahsXz[1], '=');
+      pushEurekaUnit(nodes, connectors, ahsXz[2], '-');
+      pushEurekaUnit(nodes, connectors, ahsXz[3], '=');
+      return;
+    }
 
     if (expandedSubset) {
       pushEurekaUnit(nodes, connectors, expandedSubset[0], weakConnector);
@@ -2560,7 +2790,10 @@
   function formatChainEureka(chain) {
     const nodes = [];
     const connectors = [];
-    const ringMarker = chain.isRing && chain.steps.length > 0;
+    const ringMarker = chain.steps.length > 0 && (
+      chain.isRing
+      || chain.steps.some(step => step.module?.moduleKind === 'AHS_XZ_RING')
+    );
     const modularRing = chain.isRing && chain.steps.length === 1
       ? modularRingEurekaUnits(chain.steps[0], chain.ringClosureDigit)
       : null;

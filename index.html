@@ -2013,6 +2013,7 @@
       stroke-linejoin: round;
     }
 
+
     .multi-colouring-cell-blue,
     .multi-colouring-cell-purple,
     .multi-colouring-cell-yellow,
@@ -2780,7 +2781,7 @@
     .pom-panel summary {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: flex-start;
       gap: 10px;
       min-height: 42px;
       padding: 10px 12px;
@@ -2822,6 +2823,15 @@
     .pom-panel h2 {
       margin: 0;
       font-size: 16px;
+      flex: 0 0 178px;
+    }
+
+    .pom-panel summary .als-search-buttons {
+      flex: 1 1 auto;
+      min-width: 0;
+      margin-left: 0;
+      justify-content: flex-start;
+      gap: 6px;
     }
 
     .pom-panel summary .search-action {
@@ -2921,10 +2931,6 @@
       padding: 5px 7px;
       font-size: 12px;
       line-height: 1.1;
-    }
-
-    .pom-panel summary .als-search-buttons {
-      margin-left: auto;
     }
 
     .pom-results {
@@ -3750,7 +3756,7 @@
     <div class="header-brand">
       <h1>StormDoku: on-line | off-line</h1>
       <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo for regular Sudoku 9x9 grids.</p>
-      <p class="app-meta">Alpha v0.3.7 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <p class="app-meta">Alpha v0.4.8 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
     </div>
   </header>
 
@@ -3879,6 +3885,18 @@
               <button class="secondary example-load" type="button" data-example-puzzle=".5.3.....8...193............8...4.2.5.....79.26.9..4.1.436.7.....5...........32.6">L(1)-Wing</button>
               <code class="example-puzzle">.5.3.....8...193............8...4.2.5.....79.26.9..4.1.436.7.....5...........32.6</code>
             </div>
+            <div class="example-row">
+              <button class="secondary example-load" type="button" data-example-puzzle="5..1..3.........6.98...2........3..52...9.....9...428.14.9.....7..5....4..3...92.">L(2)-Wing</button>
+              <code class="example-puzzle">5..1..3.........6.98...2........3..52...9.....9...428.14.9.....7..5....4..3...92.</code>
+            </div>
+            <div class="example-row">
+              <button class="secondary example-load" type="button" data-example-puzzle="4.8.963..2...3..5....1.2.6..7......6...71.........8.9...4..1....8.674.12..5......">L(3)-Wing</button>
+              <code class="example-puzzle">4.8.963..2...3..5....1.2.6..7......6...71.........8.9...4..1....8.674.12..5......</code>
+            </div>
+            <div class="example-row">
+              <button class="secondary example-load" type="button" data-example-puzzle="26...7....1....37....356......5.4....7.96......9...62.....9..35.2..4.81...8..3...">H(3)-Wing</button>
+              <code class="example-puzzle">26...7....1....37....356......5.4....7.96......9...62.....9..35.2..4.81...8..3...</code>
+            </div>
             <div class="example-item">
               <button class="secondary example-load" type="button" data-example-puzzle="1..4.69.....1...24...2......82.4.7..5....8....9....3..2.78..5...68.752....592.68.">XY-Wing</button>
               <code class="example-puzzle">1..4.69.....1...24...2......82.4.7..5....8....9....3..2.78..5...68.752....592.68.</code>
@@ -3942,6 +3960,10 @@
             popovertarget="alsDofSettingsPopover" popovertargetaction="toggle">
             ALS-DOF
           </button>
+          <button id="ahsDofSettingsButton" class="secondary" type="button"
+            popovertarget="ahsDofSettingsPopover" popovertargetaction="toggle">
+            AHS-DOF
+          </button>
           <button id="difficultySettingsButton" class="secondary" type="button"
             popovertarget="difficultySettingsPopover" popovertargetaction="toggle">
             Difficulty
@@ -3958,6 +3980,7 @@
             <div class="overlay-key-item"><kbd>Left click candidate</kbd><span>Add candidate</span></div>
             <div class="overlay-key-item"><kbd>Double-left-click candidate</kbd><span>Promote candidate to solved</span></div>
             <div class="overlay-key-item"><kbd>Right click candidate</kbd><span>Remove candidate</span></div>
+            <div class="overlay-key-item"><kbd>Long press candidate</kbd><span>Remove candidate digit</span></div>
             <div class="overlay-key-item"><kbd>1-9 / Numpad</kbd><span>Add candidate</span></div>
             <div class="overlay-key-item"><kbd>Spacebar + digit</kbd><span>Set solved value</span></div>
             <div class="overlay-key-item"><kbd>Spacebar + left click</kbd><span>Set clicked candidate solved</span></div>
@@ -3989,27 +4012,36 @@
                   <li><strong>6b. Moderate ALS-XZ.</strong> <span>Depth 2 only: ALS size 2 with ALS_RCC plus strong-link type 4; XYZ Wing/Ring forms.</span></li>
                   <li><strong>6c. Moderate fish.</strong> <span>Franken and Mutant 3x3+K, K=0, 1, 2.</span></li>
                   <li><strong>7. Tough.</strong> <span>Hidden Quad, Naked Quad, then basic Jellyfish.</span></li>
-                  <li><strong>8. Challenging chains.</strong> <span>Depth 4 only, strong-link types 0-3.</span></li>
-                  <li><strong>9. Challenging transport.</strong> <span>Depth 3, types 0-4, ALS size 2; XYZ Transport.</span></li>
-                  <li><strong>10. Challenging ALS-XZ.</strong> <span>Depth 2 only, ALS sizes 2-3, ALS_RCC/type 5; WXYZ Wing/Ring forms.</span></li>
-                  <li><strong>11. Challenging fish.</strong> <span>Franken and Mutant 4x4+K, K=0, 1, 2.</span></li>
-                  <li><strong>12. ALS-DOF family.</strong> <span>ALS-DOF, DDS, and Almost DDS nets are searched last; ALS-DOF chain remains disabled.</span></li>
+                  <li><strong>8. Challenging.</strong> <span>Depth 4 chains, transport chains, WXYZ ALS-XZ, and 4x4 Franken/Mutant fish.</span></li>
+                  <li><strong>9. Irritating.</strong> <span>Depth 5+ single-digit X-Chains and ALS-Chains; size-5 subsets and 5x5 fish are available but off by default.</span></li>
+                  <li><strong>10. Frustrating.</strong> <span>Named ALS Wings/Rings, WXYZ transport, W-transport, and size-6 subsets/fish, with the requested depth/type limits.</span></li>
+                  <li><strong>11. Hard.</strong> <span>Full ALS-XZ and AHS-XZ at depth 2; size-7 subsets and fish remain off by default.</span></li>
+                  <li><strong>12. Demanding.</strong> <span>Named ALS/AHS Wings and Rings first via their transport engines at AIC depth 3, then Transport ALS-XZ, then ALS-XY and AHS-XY at depth 3.</span></li>
+                  <li><strong>13. Expert.</strong> <span>Generic multi-digit AIC depth 5+ with strong-link types 0-4, followed by Transport ALS-XY; size-9 subsets remain off by default.</span></li>
+                  <li><strong>14. Brutal.</strong> <span>Full-scope ALS-Chains and AHS-Chains beyond depth 3.</span></li>
+                  <li><strong>15. Nightmare.</strong> <span>Full AIC with all available link types beyond depth 3.</span></li>
+                  <li><strong>16. Abyssal.</strong> <span>ALS-DOF, then DDS, then ADDS with progressive DOF and digit scaling.</span></li>
+                  <li><strong>17. Transcendent.</strong> <span>Highest-scope ALS-Chaining with progressive depth, digit, DOF, and runtime scaling.</span></li>
                 </ol>
                 <div class="difficulty-flow-rule"><strong>Selection rule:</strong> stop at the first phase with a valid move. Within that phase, choose the lowest final score, then the named tie order. A later phase never outranks an earlier phase.</div>
-                <div class="difficulty-flow-rule"><strong>Score rule:</strong> base technique score + link modifiers + ALS_RCC digit modifiers. Strong-link modifiers are type 0=0.01, type 1=0.03, type 2=0.04, type 3=0.05, and type 4=0.06; ALS_RCC adds 0.01 per distinct digit in each ALS set.</div>
+                <div class="difficulty-flow-rule"><strong>Score rule:</strong> base technique score + link modifiers + ALS_RCC digit modifiers + AHS_RCC cell modifiers. Strong-link modifiers are type 0=0.01, type 1=0.03, type 2=0.04, type 3=0.05, and type 4=0.06; ALS_RCC adds 0.01 per distinct digit in each ALS set, while AHS_RCC adds 0.01 per cell in each unique AHS set.</div>
               </div>
             </details>
             <h2 id="difficultyMathHeading">Search Flow / Score Math</h2>
           </div>
           <div class="difficulty-math-grid">
             <strong>Final move score</strong>
-            <span>major technique score + link modifiers + ALS_RCC digit modifiers + shape/form modifiers</span>
+            <span>major technique score + link modifiers + ALS_RCC digit modifiers + AHS_RCC cell modifiers + shape/form modifiers</span>
             <strong>Ordinary links</strong>
             <span>Type 0 +0.01; Type 1 +0.03; Type 2 +0.04; Type 3 +0.05; Type 4 +0.06</span>
             <strong>ALS_RCC</strong>
             <span>+0.01 per digit in each unique set; 2 digits = +0.02, 3 digits = +0.03, and so on</span>
             <strong>ALS_RCC passes</strong>
             <span>2 digits → 3 → 4 → ... → configured maximum; larger passes are skipped when they cannot win</span>
+            <strong>AHS_RCC</strong>
+            <span>+0.01 per cell in each unique set; 2 cells = +0.02, 3 cells = +0.03, and so on</span>
+            <strong>AHS_RCC passes</strong>
+            <span>2 cells → 3 → 4 → ... → configured maximum; larger passes are skipped when they cannot win</span>
             <strong>Fish</strong>
             <span>n + (0.25 * K) + Franken 0.125 or Mutant 0.25</span>
             <strong>Chain / ALS</strong>
@@ -4071,6 +4103,10 @@
                 <input id="chainAlsRcc" type="checkbox" checked>
                 ALS
               </label>
+              <label class="check" title="Include AHS hidden-single links in the chain walk">
+                <input id="chainAhs" type="checkbox" checked>
+                AHS
+              </label>
             </div>
           </fieldset>
         </div>
@@ -4104,17 +4140,34 @@
                 <label class="check"><input id="moveNakedTriple" type="checkbox" checked> Naked Triple</label>
                 <label class="check"><input id="moveHiddenQuad" type="checkbox" checked> Hidden Quad</label>
                 <label class="check"><input id="moveNakedQuad" type="checkbox" checked> Naked Quad</label>
+                <label class="check"><input id="moveHiddenQuintuple" type="checkbox"> Hidden Quintuple</label>
+                <label class="check"><input id="moveNakedQuintuple" type="checkbox"> Naked Quintuple</label>
+                <label class="check"><input id="moveHiddenSextuple" type="checkbox"> Hidden Sextuple</label>
+                <label class="check"><input id="moveNakedSextuple" type="checkbox"> Naked Sextuple</label>
+                <label class="check"><input id="moveHiddenSeptuple" type="checkbox"> Hidden Septuple</label>
+                <label class="check"><input id="moveNakedSeptuple" type="checkbox"> Naked Septuple</label>
+                <label class="check"><input id="moveHiddenOctuple" type="checkbox"> Hidden Octuple</label>
+                <label class="check"><input id="moveNakedOctuple" type="checkbox"> Naked Octuple</label>
+                <label class="check"><input id="moveHiddenNontuple" type="checkbox"> Hidden Nontuple</label>
+                <label class="check"><input id="moveNakedNontuple" type="checkbox"> Naked Nontuple</label>
               </div>
             </details>
             <details class="move-type-group">
               <summary>Fish</summary>
               <div class="move-type-group-options">
+                <label class="check"><input id="moveCyclops" type="checkbox"> Cyclops</label>
                 <label class="check"><input id="moveXWing" type="checkbox" checked> X-Wing</label>
                 <label class="check"><input id="moveExtendedFish2" type="checkbox" checked> 2x2+K Fish</label>
                 <label class="check"><input id="moveSwordfish" type="checkbox" checked> SwordFish</label>
                 <label class="check"><input id="moveExtendedFish3" type="checkbox" checked> 3x3+K Fish</label>
                 <label class="check"><input id="moveJellyfish" type="checkbox" checked> JellyFish</label>
                 <label class="check"><input id="moveExtendedFish4" type="checkbox" checked> 4x4+K Fish</label>
+                <label class="check"><input id="moveSquirmbag" type="checkbox"> Squirmbag</label>
+                <label class="check"><input id="moveExtendedFish5" type="checkbox"> 5x5+K Fish</label>
+                <label class="check"><input id="moveWhale" type="checkbox"> Whale</label>
+                <label class="check"><input id="moveExtendedFish6" type="checkbox"> 6x6+K Fish</label>
+                <label class="check"><input id="moveLeviathan" type="checkbox"> Leviathan</label>
+                <label class="check"><input id="moveExtendedFish7" type="checkbox"> 7x7+K Fish</label>
               </div>
             </details>
             <details class="move-type-group" open>
@@ -4196,11 +4249,39 @@
             <div class="chain-settings-row">
               <label title="Maximum number of candidate digits allowed in each ALS. Larger values increase search cost.">
                 Maximum ALS Size / Digits
-                <input id="alsDofMaxDigits" type="number" min="2" max="9" step="1" value="9">
+                <input id="alsDofMaxDigits" type="number" min="2" max="9" step="1" value="4">
               </label>
               <label title="Maximum number of auxiliary ALSs in one ALS-DOF collection.">
                 Maximum Auxiliary ALSs
-                <input id="alsDofMaxAuxiliary" type="number" min="1" max="9" step="1" value="9">
+                <input id="alsDofMaxAuxiliary" type="number" min="1" max="9" step="1" value="1">
+              </label>
+            </div>
+          </fieldset>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-popover-holder">
+      <div id="ahsDofSettingsPopover" class="chain-settings-popover" popover>
+        <div class="chain-settings-grid">
+          <fieldset>
+            <legend>AHS DOF Search Range</legend>
+            <div class="chain-settings-row">
+              <label title="Maximum AHS degree of freedom used as the hub.">
+                Maximum DOF
+                <input id="ahsDofMaxDof" type="number" min="2" max="3" step="1" value="2">
+              </label>
+              <label title="Maximum cells allowed in each AHS node.">
+                Maximum AHS Cells
+                <input id="ahsDofMaxCells" type="number" min="2" max="9" step="1" value="6">
+              </label>
+              <label title="Maximum DOF-1 auxiliary AHS nodes in one collection.">
+                Maximum Auxiliary AHSs
+                <input id="ahsDofMaxAuxiliary" type="number" min="1" max="3" step="1" value="2">
+              </label>
+              <label title="Maximum verified results returned by one search.">
+                Maximum Results
+                <input id="ahsDofMaxResults" type="number" min="1" max="5000" step="1" value="500">
               </label>
             </div>
           </fieldset>
@@ -4378,6 +4459,13 @@
               <button id="ahsBuild" class="secondary storage-action" type="button">Build HS / AHS</button>
               <small class="input-note">DOF = Degrees of Freedom. FOX = Fixed Over X.</small>
               <div id="ahsResults" class="pom-results">No HS / AHS build has been run.</div>
+            </div>
+          </details>
+          <details class="pom-panel" id="ahsLinkPanel">
+            <summary><h2>AHS Links</h2></summary>
+            <div class="pom-body">
+              <button id="ahsLinkBuild" class="secondary storage-action" type="button">Build AHS Links</button>
+              <div id="ahsLinkResults" class="pom-results">No AHS link build has been run.</div>
             </div>
           </details>
           <details class="pom-panel" id="strongLinkPanel">
@@ -4603,21 +4691,40 @@
             <h2>Almost Locked Sets</h2>
             <div class="als-search-buttons" aria-label="Almost Locked Set searches">
               <button id="alsXzBuild" class="secondary" type="button"
-                title="Search ALS-XZ using ALS_RCC and type 5 links only">ALS-XZ</button>
+                title="Search ALS-XZ using ALS_RCC and type 5 links only">ALS - XZ</button>
               <button id="alsXyBuild" class="secondary" type="button"
-                title="Search ALS-XY using bivalent type 4 and ALS_RCC type 5 links">ALS-XY</button>
+                title="Search ALS-XY using bivalent type 4 and ALS_RCC type 5 links">ALS - XY</button>
               <button id="alsChainBuild" class="secondary" type="button"
-                title="Search ALS chains using ALS_RCC and type 5 links only">ALS-Chain</button>
+                title="Search ALS chains using ALS_RCC and type 5 links only">ALS - Chain</button>
               <button id="alsDofBuild" class="secondary" type="button"
                 title="Search ALS-DOF hub, DDS, and Almost-DDS nets">ALS - DOF</button>
               <button id="alsDofChainBuild" class="secondary" type="button"
-                title="Search bridged ALS-DOF chains">ALS-DOF Chain</button>
+                title="Search bridged ALS-DOF chains">ALS - DOF Chain</button>
             </div>
           </summary>
           <div class="pom-body">
             <div id="alsSearchResults" class="pom-results">No ALS search has been run.</div>
             <div id="alsDofResults" class="pom-results">No ALS-DOF net search has been run.</div>
             <div id="alsDofChainResults" class="pom-results">No ALS-DOF chain search has been run.</div>
+          </div>
+        </details>
+        <details class="pom-panel" id="ahsSearchPanel">
+          <summary>
+            <h2>Almost Hidden Sets</h2>
+            <div class="als-search-buttons" aria-label="Almost Hidden Set searches">
+              <button id="ahsXzBuild" class="secondary" type="button"
+                title="Search Almost Hidden Set XZ with strong-link types 0 and 1">AHS - XZ</button>
+              <button id="ahsXyBuild" class="secondary" type="button"
+                title="Search AHS-XY using AHS cellular links">AHS - XY</button>
+              <button id="ahsChainBuild" class="secondary" type="button"
+                title="Search AHS chains using AHS_RCC links and strong-link types 0 and 1">AHS - Chain</button>
+              <button id="ahsDofBuild" class="secondary" type="button"
+                title="Search AHS degree-of-freedom modular links">AHS - DOF</button>
+            </div>
+          </summary>
+          <div class="pom-body">
+            <div id="ahsSearchResults" class="pom-results">No AHS search has been run.</div>
+            <div id="ahsDofResults" class="pom-results">No AHS-DOF search has been run.</div>
           </div>
         </details>
         <details class="pom-panel" id="chainPanel">
@@ -4740,17 +4847,20 @@
     </section>
   </main>
 
-  <script src="./src/browser-core.js"></script>
-  <script src="./src/set-tools-core.js"></script>
-  <script src="./src/pom-core.js"></script>
-  <script src="./src/als-core.js?v=20260923-1"></script>
-  <script src="./src/als-link-core.js?v=20260923-1"></script>
-  <script src="./src/als-dof-core.js?v=20260924-5"></script>
-  <script src="./src/ahs-core.js?v=20260912-5"></script>
-  <script src="./src/subset-report-core.js"></script>
-  <script src="./src/mini-sectors-core.js"></script>
-    <script src="./src/strong-link-core.js?v=20260924-38"></script>
-    <script src="./src/chain-core.js?v=20260923-1"></script>
+  <script src="./src/browser-core.js?v=20260928-2"></script>
+  <script src="./src/set-tools-core.js?v=20260928-1"></script>
+  <script src="./src/pom-core.js?v=20260928-2"></script>
+  <script src="./src/als-core.js?v=20260928-1"></script>
+  <script src="./src/als-link-core.js?v=20260928-1"></script>
+  <script src="./src/als-dof-core.js?v=20260928-1"></script>
+  <script src="./src/ahs-core.js?v=20260928-2"></script>
+  <script src="./src/ahs-link-core.js?v=20260929-11"></script>
+  <script src="./src/subset-report-core.js?v=20260928-2"></script>
+  <script src="./src/mini-sectors-core.js?v=20260928-1"></script>
+  <script src="./src/strong-link-core.js?v=20260928-1"></script>
+  <script src="./src/chain-core.js?v=20260929-7"></script>
+  <script src="./src/ahs-xy-core.js?v=20260928-2"></script>
+  <script src="./src/ahs-dof-core.js?v=20260929-2"></script>
   <script>
     const core = window.StormDoku;
     const boardEl = document.getElementById('board');
@@ -4824,6 +4934,9 @@
     const nakedSubsetResultsEl = document.getElementById('nakedSubsetResults');
     const hiddenSubsetResultsEl = document.getElementById('hiddenSubsetResults');
     const alsSearchResultsEl = document.getElementById('alsSearchResults');
+    const ahsSearchResultsEl = document.getElementById('ahsSearchResults');
+    const ahsLinkResultsEl = document.getElementById('ahsLinkResults');
+    const ahsDofResultsEl = document.getElementById('ahsDofResults');
     const chainResultsEl = document.getElementById('chainResults');
     const alsDofResultsEl = document.getElementById('alsDofResults');
     const alsDofChainResultsEl = document.getElementById('alsDofChainResults');
@@ -4847,14 +4960,24 @@
     const nakedSubsetBuildEl = document.getElementById('nakedSubsetBuild');
     const hiddenSubsetBuildEl = document.getElementById('hiddenSubsetBuild');
     const alsXzBuildEl = document.getElementById('alsXzBuild');
+    const ahsXzBuildEl = document.getElementById('ahsXzBuild');
+    const ahsXyBuildEl = document.getElementById('ahsXyBuild');
+    const ahsChainBuildEl = document.getElementById('ahsChainBuild');
+    const ahsLinkBuildEl = document.getElementById('ahsLinkBuild');
+    const ahsDofBuildEl = document.getElementById('ahsDofBuild');
     const alsXyBuildEl = document.getElementById('alsXyBuild');
     const alsChainBuildEl = document.getElementById('alsChainBuild');
     const alsDofBuildEl = document.getElementById('alsDofBuild');
     const alsDofChainBuildEl = document.getElementById('alsDofChainBuild');
     const alsDofMaxDigitsEl = document.getElementById('alsDofMaxDigits');
     const alsDofMaxAuxiliaryEl = document.getElementById('alsDofMaxAuxiliary');
+    const ahsDofMaxDofEl = document.getElementById('ahsDofMaxDof');
+    const ahsDofMaxCellsEl = document.getElementById('ahsDofMaxCells');
+    const ahsDofMaxAuxiliaryEl = document.getElementById('ahsDofMaxAuxiliary');
+    const ahsDofMaxResultsEl = document.getElementById('ahsDofMaxResults');
     const chainDepthEl = document.getElementById('chainDepth');
     const chainAlsRccEl = document.getElementById('chainAlsRcc');
+    const chainAhsEl = document.getElementById('chainAhs');
     const chainStrongTypeEls = Array.from({ length: 5 }, (_, index) =>
       document.getElementById(`chainStrongType${index}`));
     const solverMoveTypeEls = new Map([
@@ -4862,6 +4985,7 @@
       ['hidden-single', document.getElementById('moveHiddenSingle')],
       ['naked-single', document.getElementById('moveNakedSingle')],
       ['box-line', document.getElementById('moveBoxLine')],
+      ['1x1-fish', document.getElementById('moveCyclops')],
       ['hidden-pair', document.getElementById('moveHiddenPair')],
       ['naked-pair', document.getElementById('moveNakedPair')],
       ['x-wing', document.getElementById('moveXWing')],
@@ -4872,8 +4996,24 @@
       ['3x3+k-fish', document.getElementById('moveExtendedFish3')],
       ['hidden-quad', document.getElementById('moveHiddenQuad')],
       ['naked-quad', document.getElementById('moveNakedQuad')],
+      ['hidden-quintuple', document.getElementById('moveHiddenQuintuple')],
+      ['naked-quintuple', document.getElementById('moveNakedQuintuple')],
+      ['hidden-sextuple', document.getElementById('moveHiddenSextuple')],
+      ['naked-sextuple', document.getElementById('moveNakedSextuple')],
+      ['hidden-septuple', document.getElementById('moveHiddenSeptuple')],
+      ['naked-septuple', document.getElementById('moveNakedSeptuple')],
+      ['hidden-octuple', document.getElementById('moveHiddenOctuple')],
+      ['naked-octuple', document.getElementById('moveNakedOctuple')],
+      ['hidden-nontuple', document.getElementById('moveHiddenNontuple')],
+      ['naked-nontuple', document.getElementById('moveNakedNontuple')],
       ['jellyfish', document.getElementById('moveJellyfish')],
       ['4x4+k-fish', document.getElementById('moveExtendedFish4')],
+      ['5x5-fish', document.getElementById('moveSquirmbag')],
+      ['5x5+k-fish', document.getElementById('moveExtendedFish5')],
+      ['6x6-fish', document.getElementById('moveWhale')],
+      ['6x6+k-fish', document.getElementById('moveExtendedFish6')],
+      ['7x7-fish', document.getElementById('moveLeviathan')],
+      ['7x7+k-fish', document.getElementById('moveExtendedFish7')],
       ['chains', document.getElementById('moveChains')],
       ['x-chain', document.getElementById('moveXChain')],
       ['empty-rectangle', document.getElementById('moveEmptyRectangle')],
@@ -4945,6 +5085,7 @@
     let alsDofReport = null;
     let alsDofChainReport = null;
     let ahsReport = null;
+    let ahsLinkReport = null;
     let selectedAlsDof = null;
     let selectedAlsDofIndex = null;
     let selectedAlsDofSource = 'net';
@@ -4985,6 +5126,7 @@
     let selectedHiddenSubsetKey = null;
     let chainReport = null;
     let alsSearchFamily = null;
+    let ahsSearchFamily = null;
     let selectedChainIndex = null;
     let ratingReport = null;
     let gridView = 'RC';
@@ -5029,7 +5171,14 @@
       }
 
       try {
-        searchWorker = new Worker(new URL('./src/search-worker.js?v=20260924-3', document.baseURI));
+        // Keep the URL relative for file:// copies. Chrome can reject a
+        // file-origin URL object even though the same classic worker loads
+        // correctly from the local server.
+        const workerPath = './src/search-worker.js?v=20260929-3';
+        const workerUrl = document.baseURI.startsWith('file:')
+          ? workerPath
+          : new URL(workerPath, document.baseURI);
+        searchWorker = new Worker(workerUrl, { type: 'classic' });
         searchWorker.onmessage = event => {
           const { id, result, error } = event.data || {};
           const job = searchWorkerJobs.get(id);
@@ -5039,7 +5188,15 @@
           else job.resolve(result);
         };
         searchWorker.onerror = event => {
-          disableSearchWorker(new Error(event.message || 'Search worker failed.'));
+          const details = [event.message, event.filename && `(${event.filename})`, event.lineno && `line ${event.lineno}`]
+            .filter(Boolean)
+            .join(' ');
+          const error = new Error(details || 'Search worker failed.');
+          const failedWorker = searchWorker;
+          searchWorker = null;
+          if (failedWorker) failedWorker.terminate();
+          for (const job of searchWorkerJobs.values()) job.reject(error);
+          searchWorkerJobs.clear();
         };
         return searchWorker;
       } catch (error) {
@@ -5525,6 +5682,7 @@
       hiddenSubsetReport = null;
       chainReport = null;
       alsSearchFamily = null;
+      ahsSearchFamily = null;
       selectedAlsDof = null;
       selectedAlsDofIndex = null;
       selectedAlsDofSource = 'net';
@@ -7655,6 +7813,28 @@
       svg.setAttribute('viewBox', '0 0 100 100');
       svg.setAttribute('aria-hidden', 'true');
 
+      if (chain.ahsXy) {
+        for (const [index, step] of chain.steps.entries()) {
+          const boxClass = index % 2
+            ? 'strong-link-side-box strong-link-end-box'
+            : 'strong-link-side-box strong-link-start-box';
+          drawSideDigitBoxes(svg, step.entry, boxClass);
+        }
+        for (const bridge of chain.ahsXy.bridges || []) {
+          if (bridge?.kind !== 'Position') continue;
+          for (const pair of bridge.pairs || []) {
+            if (!Array.isArray(pair) || pair.length < 2) continue;
+            drawWeakConnection(
+              svg,
+              { cells: [pair[0]], digits: [bridge.digit] },
+              { cells: [pair[1]], digits: [bridge.digit] },
+            );
+          }
+        }
+        boardEl.appendChild(svg);
+        return;
+      }
+
       for (let index = 0; index < chain.steps.length; index++) {
         const step = chain.steps[index];
         if (index > 0) {
@@ -9671,7 +9851,7 @@
       renderAlsDofReport();
       renderNakedSubsetReport();
       renderHiddenSubsetReport();
-      renderChainReport();
+       renderChainReport();
       updateHistoryButtons();
     }
 
@@ -9791,11 +9971,10 @@
         'h1-wing', 'h2-wing', 'h3-wing', 'w-wing', 'strong-wing', 'inversion',
         'barns-transport');
       addAt(100, 'als-xz');
-      addAt(110, 't-als-xz', 'als-xy');
+      addAt(110, 'als-named', 't-als-xz', 'als-xy');
       addAt(120, 't-als-xy', 'aic-als');
       addAt(130, 'als-chain');
       addAt(150, 'als-dof', 'dds', 'adds');
-      addAt(160, 'dds-chain', 'adds-chain');
 
       const strongLinkTypes = maxRank >= 50
         ? [0, 1, 2, 3, 4]
@@ -9806,15 +9985,33 @@
             : [];
 
       const maxDepth = maxRank <= 30 ? 2 : maxRank <= 50 ? 3 : maxRank <= 70 ? 4 : 8;
-      const maxFishSize = maxRank < 40 ? 2 : maxRank < 60 ? 3 : 4;
+      const maxFishSize = maxRank < 80 ? 4 : maxRank < 90 ? 5 : maxRank < 100 ? 6 : maxRank < 110 ? 7 : maxRank < 120 ? 8 : 9;
+      const subsetSizes = maxRank >= 120 ? [5, 6, 7, 8, 9]
+        : maxRank >= 110 ? [5, 6, 7, 8]
+          : maxRank >= 100 ? [5, 6, 7]
+            : maxRank >= 90 ? [5, 6]
+              : maxRank >= 80 ? [5] : [];
+      const basicFishSizes = maxRank >= 120 ? [5, 6, 7, 8, 9]
+        : maxRank >= 110 ? [5, 6, 7, 8]
+          : maxRank >= 100 ? [5, 6, 7]
+            : maxRank >= 90 ? [5, 6]
+              : maxRank >= 80 ? [5] : [];
 
       return {
         moveTypes,
         maxRank,
         maxDepth,
         maxFishSize,
+        subsetSizes,
+        basicFishSizes,
         strongLinkTypes,
         includeAlsRcc: maxRank >= 50,
+        alsMaxDigits: maxRank >= 160 ? 9 : maxRank >= 150 ? 5 : null,
+        alsMaxSizeDOF: maxRank >= 150 ? Math.min(8, Math.max(1, Math.floor((maxRank - 140) / 2))) : null,
+        alsMaxSizeFox: maxRank >= 150 ? Math.min(8, Math.max(2, Math.floor((maxRank - 140) / 2) + 1)) : null,
+        alsMaxAuxiliary: maxRank >= 160 ? 8 : maxRank >= 150 ? 2 : null,
+        alsSearchLimit: maxRank >= 150,
+        scalingTier: Math.max(0, Math.floor(maxRank / 10)),
       };
     }
 
@@ -9933,9 +10130,9 @@
       },
       {
         category: 'IRRITATING', score: '5 to 5.75', items: [
-          ['Hidden Quintuple', '5'],
-          ['Naked Quintuple', '5'],
-          ['Basic 5x5 Fish', '5'],
+          ['Hidden Quintuple (off by default)', '5'],
+          ['Naked Quintuple (off by default)', '5'],
+          ['Basic 5x5 Fish (off by default)', '5'],
           ['X-Chains above four nodes', '5'],
           ['ERI Chains above four nodes', '5'],
           ['Remote Pair above four nodes', '5'],
@@ -9948,69 +10145,72 @@
       },
       {
         category: 'FRUSTRATING', score: '6 to 6.75', items: [
-          ['Hidden Sextuple', '6'],
-          ['Naked Sextuple', '6'],
-          ['Basic 6x6 Fish', '6'],
+          ['Hidden Sextuple (off by default)', '6'],
+          ['Naked Sextuple (off by default)', '6'],
+          ['Basic 6x6 Fish (off by default)', '6'],
           ['L(2)-Wing/Ring', '6'],
           ['L(3)-Wing/Ring', '6'],
           ['W-Wing/Ring', '6'],
           ['S-Wing/Ring', '6'],
           ['M(2,3)-Wing/Ring', '6'],
           ['H(1,2,3)-Wing/Ring', '6'],
-          ['B.A.R.N.S. WXYZ Transport', '6'],
+          ['Transport ALS-XZ: WXYZ Wings/Rings', '6'],
           ['Franken 6x6 Fish K0', '6.125'],
           ['Mutant 6x6 Fish K0', '6.25'],
-          ['W Transport', '6.5'],
+          ['Transport W-Wing/Ring, AIC depth 4', '6.5'],
         ],
       },
       {
         category: 'HARD', score: '7 to 7.75', items: [
-          ['Hidden Septuple', '7'],
-          ['Naked Septuple', '7'],
-          ['Basic 7x7 Fish', '7'],
-          ['ALS-XZ', '7 + link / ALS_RCC modifiers'],
+          ['Hidden Septuple (off by default)', '7'],
+          ['Naked Septuple (off by default)', '7'],
+          ['Basic 7x7 Fish (off by default)', '7'],
+          ['ALS-XZ, full engine, depth 2', '7 + link / ALS_RCC modifiers'],
+          ['AHS-XZ, full engine, depth 2', '7 + link / AHS_RCC modifiers'],
           ['Franken 7x7 Fish K0', '7.125'],
           ['Mutant 7x7 Fish K0', '7.25'],
         ],
       },
       {
         category: 'DEMANDING', score: '8 to 8.5', items: [
-          ['Hidden Octuple', '8'],
-          ['Naked Octuple', '8'],
-          ['T-ALS-XZ', '8 + link / ALS_RCC modifiers'],
-          ['ALS-XY', '8 + link / ALS_RCC modifiers'],
+          ['Hidden Octuple (off by default)', '8'],
+          ['Naked Octuple (off by default)', '8'],
+          ['Named ALS Wings/Rings, ALS transport, AIC depth 3, types 0-5', '8 + link / ALS_RCC modifiers'],
+          ['Named AHS Wings/Rings, AHS transport, AIC depth 3, types 0-4', '8 + link / AHS_RCC modifiers'],
+          ['Transport ALS-XZ', '8 + link / ALS_RCC modifiers'],
+          ['ALS-XY, unrestricted, depth 3', '8 + link / ALS_RCC modifiers'],
+          ['AHS-XY, depth 3', '8 + link / AHS_RCC modifiers'],
         ],
       },
       {
         category: 'EXPERT', score: '9 to 9.5', items: [
-          ['Hidden Nontuple', '9'],
-          ['Naked Nontuple', '9'],
-          ['T-ALS-XY', '9 + link / ALS_RCC modifiers'],
-          ['ALS versions of named Wings/Rings', '9 + link / ALS_RCC modifiers'],
+          ['Hidden Nontuple (off by default)', '9'],
+          ['Naked Nontuple (off by default)', '9'],
+          ['Generic AIC, strong-link types 0-4, depth > 4', '9 + link modifiers'],
+          ['Transport ALS-XY', '9 + link / ALS_RCC modifiers'],
         ],
       },
       {
         category: 'BRUTAL', score: '10 to 10.5', items: [
-          ['ALS Chains', '10 + link / ALS_RCC modifiers'],
+          ['ALS Chains, full scope beyond depth 3', '10 + link / ALS_RCC modifiers'],
+          ['AHS Chains, full scope beyond depth 3', '10 + link / AHS_RCC modifiers'],
         ],
       },
       {
         category: 'NIGHTMARE', score: '11 to 11.5', items: [
-          ['AIC + ALS Chains', '11 + link / ALS_RCC modifiers'],
+          ['Full AIC, all link types, beyond depth 3', '11 + link / ALS_RCC modifiers'],
         ],
       },
       {
         category: 'ABYSSAL', score: '12 to 12.999', items: [
-          ['ALS - DOF (DOF 1-8)', '12 + 0.25 * (DOF - 1)'],
-          ['DDS ring (DOF 1-8)', 'ALS-DOF + 0.5'],
-          ['Almost DDS (DOF 1-8)', 'DDS + 0.25'],
+          ['ALS-DOF, progressively scaled DOF/digits', '12 + 0.25 * (DOF - 1)'],
+          ['DDS ring, progressively scaled DOF/digits', 'ALS-DOF + 0.5'],
+          ['ADDS, progressively scaled DOF/digits', 'DDS + 0.25'],
         ],
       },
       {
         category: 'TRANSCENDENT', score: '13 to 14.5', items: [
-          ['ALS-DOF / DDS / Almost DDS above 13', 'DOF-scaled'],
-          ['DDS - Chain', '13'],
-          ['ADDS - Chain', '13'],
+          ['ALS-Chaining, progressively scaled depth/digits/DOF', '13+'],
         ],
       },
       {
@@ -10114,6 +10314,18 @@
       return Number(chain?.length || chain?.steps?.length || 0);
     }
 
+    function chainUniqueDigitCount(chain) {
+      const digits = new Set();
+      for (const step of chain?.steps || []) {
+        for (const digit of step.entry?.digits || []) digits.add(Number(digit));
+        for (const digit of step.exit?.digits || []) digits.add(Number(digit));
+        if (step.weakDigit != null) digits.add(Number(step.weakDigit));
+        if (step.weakFromDigit != null) digits.add(Number(step.weakFromDigit));
+        if (step.weakToDigit != null) digits.add(Number(step.weakToDigit));
+      }
+      return [...digits].filter(Number.isFinite).length;
+    }
+
     function chainMathScore(baseScore, chain, canonicalLength = baseScore, canonicalDigits = baseScore) {
       const length = chainLengthOf(chain);
       const actualDigits = Array.isArray(chain?.uniqueDigits)
@@ -10160,8 +10372,33 @@
       return modifier;
     }
 
+    function chainAhsRccCellModifier(chain) {
+      const seen = new Set();
+      let modifier = 0;
+      for (const step of chain?.steps || []) {
+        if (step.family !== 'AHS'
+          || String(step.linkTypeName || '').toUpperCase() !== 'AHS_RCC') continue;
+        for (const subset of [step.module?.entrySubset, step.module?.exitSubset]) {
+          if (!subset) continue;
+          const cells = [...new Set((subset.cells || []).map(Number).filter(Number.isFinite))]
+            .sort((left, right) => left - right);
+          const digits = [...new Set((subset.digits || []).map(Number).filter(Number.isFinite))]
+            .sort((left, right) => left - right);
+          const key = [
+            subset.id ?? '',
+            cells.join(','),
+            digits.join(''),
+          ].join('|');
+          if (seen.has(key)) continue;
+          seen.add(key);
+          modifier += 0.01 * cells.length;
+        }
+      }
+      return modifier;
+    }
+
     function chainLinkScoreModifier(chain) {
-      let modifier = chainAlsRccDigitModifier(chain);
+      let modifier = chainAlsRccDigitModifier(chain) + chainAhsRccCellModifier(chain);
       for (const step of chain?.steps || []) {
         if (step.family !== 'SL') continue;
         const linkModifier = CHAIN_LINK_SCORE_MODIFIERS[Number(step.linkType)];
@@ -10309,6 +10546,9 @@
 
       const length = chainLengthOf(chain);
       if (length >= 2) {
+        if (chainUniqueDigitCount(chain) !== 1) {
+          return define('Expert', 9 + ringBonus, `AIC (Depth ${length})${ringSuffix}`);
+        }
         const base = length > 4 ? 5 : length;
         const value = chainMathScore(base, chain, length > 4 ? 5 : length, length);
         return define(ratingCategoryForValue(value), value,
@@ -10365,16 +10605,13 @@
       const tech = String(step?.tech || '');
       if (tech === 'chain') return ratingForChain(step.chain || step, step);
       if (tech === 'als-dof') {
-        const isChain = step.mode === 'chain' || !!step.chainForm;
-        const score = isChain ? 13 + (step.isRing ? 0.5 : 0) : alsDofScore(step);
-        const category = isChain ? 'Transcendent' : ratingCategoryForValue(score);
-        const label = isChain
-          ? (step.mode === 'almost-dds' ? 'ADDS - Chain' : 'DDS - Chain')
-          : step.mode === 'almost-dds'
-            ? 'Almost DDS'
-            : step.mode === 'dds'
-              ? 'DDS'
-              : 'ALS - DOF';
+        const score = alsDofScore(step);
+        const category = ratingCategoryForValue(score);
+        const label = step.mode === 'almost-dds'
+          ? 'Almost DDS'
+          : step.mode === 'dds'
+            ? 'DDS'
+            : 'ALS - DOF';
         return {
           ...ratingDefinition(category, score, `${label}${step.isRing ? ' Ring' : ''}`),
           hardestMove: step.desc || '',
@@ -10720,7 +10957,7 @@
         /^AIC\s*\+\s*ALS\s*-\s*/i,
         'ALS - ',
       );
-      const isGenericName = value => /^(?:AIC|AIC\s*\+\s*ALS(?:\s+Chain)?|ALS\s*-\s*(?:XZ|XY|Chain)(?:\s+Ring)?|X-Chain\s+\(Depth\s+\d+\)(?:\s+Ring)?)$/i.test(value);
+      const isGenericName = value => /^(?:AIC|AIC\s*\+\s*ALS(?:\s+Chain)?|ALS\s*-\s*(?:XZ|XY|Chain)(?:\s+Ring)?|AHS\s*-\s*(?:XZ|XY|Chain)(?:\s+Ring)?|X-Chain\s+\(Depth\s+\d+\)(?:\s+Ring)?)$/i.test(value);
       if (namedStructure !== structureName && !isGenericName(ratedName)) {
         return ratedName || namedStructure;
       }
@@ -10747,6 +10984,10 @@
       // Save the board after this move, including the exact drawing inputs,
       // without recursively snapshotting the complete solution log.
       entry.displayState = snapshotVisualState();
+      // Keep the visible score synchronized with the complete solution log,
+      // rather than allowing a later search pass to replace it with only its
+      // newest move.
+      ratingReport = ratingFromLog(logEntries, candidateGridIsSolved(cand, puzzle));
     }
 
     function displayedStepDescription(entry) {
@@ -11143,6 +11384,150 @@
         }
         sizePanel.appendChild(list);
         ahsResultsEl.appendChild(sizePanel);
+      }
+    }
+
+    function renderAhsLinkReport() {
+      ahsLinkResultsEl.textContent = '';
+      if (!ahsLinkReport) {
+        ahsLinkResultsEl.textContent = 'No AHS link build has been run.';
+        return;
+      }
+      const links = core.flattenAhsLinks(ahsLinkReport);
+      const summary = document.createElement('p');
+      summary.textContent = `${links.length} AHS graph link${links.length === 1 ? '' : 's'} built.`;
+      ahsLinkResultsEl.appendChild(summary);
+      const list = document.createElement('ul');
+      for (const link of links.slice(0, 200)) {
+        const item = document.createElement('li');
+        const cells = value => core.cellGroupName(value || []);
+        item.textContent = `${link.moduleKind || link.linkTypeName}: RCC_L ${cells(link.RCC_Left?.rccCells || link.RCC_Left?.cells)} / `
+          + `HS_L ${cells(link.HS_L?.cells)} / C ${cells(link.C?.leftCells || link.C?.cells)} / `
+          + `HS_R ${cells(link.HS_R?.cells)} / RCC_R ${cells(link.RCC_Right?.rccCells || link.RCC_Right?.cells)}`;
+        list.appendChild(item);
+      }
+      if (links.length > 200) {
+        const more = document.createElement('li');
+        more.textContent = `Showing 200 of ${links.length} records.`;
+        list.appendChild(more);
+      }
+      ahsLinkResultsEl.appendChild(list);
+    }
+
+    function runAhsLinkBuild() {
+      setBusy(true);
+      setStatus('Building AHS links...');
+      setTimeout(() => {
+        try {
+          const ahsList = ahsReport || core.ahsConstructor(cand, { maxSize: 8, maxSizeFox: 7 });
+          ahsLinkReport = core.buildAhsLinks(cand, {
+            ahsList,
+            strongLinkSet: core.buildStrongLinks(cand),
+            minDof: 1,
+            maxDof: 3,
+            maxLinks: 5000,
+          });
+          renderAhsLinkReport();
+          openReportPanel(ahsLinkResultsEl);
+          const count = core.flattenAhsLinks(ahsLinkReport).length;
+          setStatus(`AHS link build complete. ${count} link${count === 1 ? '' : 's'} built.`, count ? 'ok' : 'warn');
+        } catch (error) {
+          ahsLinkReport = null;
+          renderAhsLinkReport();
+          setStatus(`Could not build AHS links: ${error.message || error}`, 'warn');
+        } finally {
+          setBusy(false);
+        }
+      }, 20);
+    }
+
+    function renderAhsDofResults(report) {
+      ahsDofResultsEl.textContent = '';
+      if (!report) {
+        ahsDofResultsEl.textContent = 'No AHS-DOF search has been run.';
+        return;
+      }
+      const results = report.results || report.links || [];
+      const summary = document.createElement('p');
+      const rejected = report.rejectedResults?.length || 0;
+      summary.textContent = `${results.length} verified AHS-DOF net${results.length === 1 ? '' : 's'} found.`
+        + (rejected ? ` ${rejected} rejected by verification.` : '');
+      ahsDofResultsEl.appendChild(summary);
+      if (!results.length) return;
+      const list = document.createElement('ol');
+      list.className = 'chain-list';
+      results.slice(0, 200).forEach((link, index) => {
+        const item = document.createElement('li');
+        item.textContent = `${index + 1}. AHS-DOF: ${core.formatAhsDofNet(link)}`;
+        list.appendChild(item);
+      });
+      ahsDofResultsEl.appendChild(list);
+    }
+
+    async function runAhsDofBuild() {
+      setBusy(true);
+      const maxDof = Math.max(2, Math.min(3, Number(ahsDofMaxDofEl.value) || 2));
+      const maxCells = Math.max(2, Math.min(9, Number(ahsDofMaxCellsEl.value) || 6));
+      const maxAuxiliary = Math.max(1, Math.min(3, Number(ahsDofMaxAuxiliaryEl.value) || 2));
+      const maxResults = Math.max(1, Math.min(5000, Number(ahsDofMaxResultsEl.value) || 500));
+      ahsDofMaxDofEl.value = String(maxDof);
+      ahsDofMaxCellsEl.value = String(maxCells);
+      ahsDofMaxAuxiliaryEl.value = String(maxAuxiliary);
+      ahsDofMaxResultsEl.value = String(maxResults);
+      setStatus('Searching verified AHS-DOF cell nets...');
+      try {
+        let report;
+        try {
+          report = await runSearchWorker('ahs-dof', {
+            candidateGrid: cand,
+            minDof: 2,
+            maxDof,
+            maxAhsSize: 8,
+            maxAhsFox: 7,
+            maxCells,
+            maxAuxiliary,
+            maxResults,
+          });
+        } catch (workerError) {
+          const ahsList = core.ahsConstructor(cand, { maxSize: 8, maxSizeFox: 7 });
+          const raw = core.findAhsDofNets(cand, {
+            ahsList,
+            minDof: 2,
+            maxDof,
+            maxAhsSize: 8,
+            maxAhsFox: 7,
+            maxCells,
+            maxAuxiliary,
+            maxResults,
+          });
+          const accepted = [];
+          const rejectedResults = [];
+          for (const result of raw.results || []) {
+            const verification = core.verifyAhsDofNet(cand, result);
+            if (verification.ok) accepted.push({ ...result, verification });
+            else rejectedResults.push({ result, verification });
+          }
+          report = {
+            ...raw,
+            results: accepted,
+            rejectedResults,
+            stats: {
+              ...(raw.stats || {}),
+              verifierChecked: (raw.results || []).length,
+              verifierRejected: rejectedResults.length,
+              workerFallback: workerError.message || String(workerError),
+            },
+          };
+        }
+        renderAhsDofResults(report);
+        openReportPanel(ahsDofResultsEl);
+        const count = (report.results || report.links || []).length;
+        setStatus(`AHS-DOF search complete. ${count} verified net${count === 1 ? '' : 's'} found.`, count ? 'ok' : 'warn');
+      } catch (error) {
+        renderAhsDofResults(null);
+        setStatus(`Could not search AHS-DOF: ${error.message || error}`, 'warn');
+      } finally {
+        setBusy(false);
       }
     }
 
@@ -12347,6 +12732,9 @@
     }
 
     function chainText(chain, verbose = false) {
+      if (chain.ahsXy) {
+        return core.formatChainEureka(chain);
+      }
       const displayChain = displayChainForUi(chain);
       const text = verbose && core.formatChainVerbose
         ? core.formatChainVerbose(displayChain)
@@ -12652,6 +13040,29 @@
       };
     }
 
+    function ahsXzChainInfo(chain) {
+      const steps = chain.steps || [];
+      if (steps.length !== 1) return null;
+      const step = steps[0];
+      if (step.family !== 'AHS'
+        || String(step.linkTypeName || '').toUpperCase() !== 'AHS_RCC') {
+        return null;
+      }
+
+      const moduleKind = String(step.module?.moduleKind || '').toUpperCase();
+      if (!['AHS_XZ', 'AHS_XZ_RING'].includes(moduleKind)) return null;
+
+      const doubleRcc = moduleKind === 'AHS_XZ_RING'
+        || (step.module?.ringRccCells || []).length === 2;
+      return {
+        category: 'AHS - XZ rule',
+        subcategory: doubleRcc
+          ? '{2} RCC Rule - Double Linked Rule'
+          : '(1) RCC Rule',
+        subclass: doubleRcc ? '2 RCC' : null,
+      };
+    }
+
     function barnsSizeName(size) {
       if (!Number.isInteger(size) || size < 1 || size > 26) return null;
       return 'abcdefghijklmnopqrstuvwxyz'.slice(-size);
@@ -12836,6 +13247,16 @@
           wing: alsInfo.category,
           rank: alsInfo.subcategory,
           subclass: alsInfo.subclass,
+        });
+      }
+
+      const ahsInfo = ahsXzChainInfo(chain);
+      if (ahsInfo) {
+        locations.push({
+          family: 'Almost Hidden Sets',
+          wing: ahsInfo.category,
+          rank: ahsInfo.subcategory,
+          subclass: ahsInfo.subclass,
         });
       }
 
@@ -13151,22 +13572,30 @@
       phase = null,
     ) {
       const includeAlsRcc = profile?.includeAlsRcc ?? chainAlsRccEl.checked;
+      const includeAhs = profile?.includeAhs ?? chainAhsEl.checked;
       const generator = budget === 'generator';
       const strongLinkTypes = profile?.strongLinkTypes
         || chainStrongTypeEls
           .map((element, index) => element.checked ? index : null)
           .filter(index => index !== null);
+      const rank = Number(profile?.maxRank);
+      const generatorScale = !Number.isFinite(rank) || rank <= 30
+        ? { maxChains: 40, maxResultAttempts: 300, maxResultAttemptsPerStart: 25, maxStates: 2500, maxQueue: 2500, maxBranching: 50, maxStartViews: 100, maxAlsLinks: 250 }
+        : rank <= 50
+          ? { maxChains: 75, maxResultAttempts: 750, maxResultAttemptsPerStart: 50, maxStates: 8000, maxQueue: 8000, maxBranching: 100, maxStartViews: 250, maxAlsLinks: 750 }
+          : rank <= 70
+            ? { maxChains: 150, maxResultAttempts: 1500, maxResultAttemptsPerStart: 75, maxStates: 16000, maxQueue: 16000, maxBranching: 150, maxStartViews: 400, maxAlsLinks: 1500 }
+            : rank <= 90
+              ? { maxChains: 250, maxResultAttempts: 3500, maxResultAttemptsPerStart: 100, maxStates: 30000, maxQueue: 30000, maxBranching: 250, maxStartViews: 600, maxAlsLinks: 3000 }
+              : rank <= 110
+                ? { maxChains: 350, maxResultAttempts: 6000, maxResultAttemptsPerStart: 125, maxStates: 45000, maxQueue: 45000, maxBranching: 300, maxStartViews: 750, maxAlsLinks: 4500 }
+                : rank <= 130
+                  ? { maxChains: 500, maxResultAttempts: 10000, maxResultAttemptsPerStart: 150, maxStates: 65000, maxQueue: 65000, maxBranching: 350, maxStartViews: 900, maxAlsLinks: 6000 }
+                  : rank <= 150
+                    ? { maxChains: 700, maxResultAttempts: 16000, maxResultAttemptsPerStart: 200, maxStates: 90000, maxQueue: 90000, maxBranching: 400, maxStartViews: 1100, maxAlsLinks: 8000 }
+                    : { maxChains: 1000, maxResultAttempts: 24000, maxResultAttemptsPerStart: 250, maxStates: 120000, maxQueue: 120000, maxBranching: 450, maxStartViews: 1400, maxAlsLinks: 10000 };
       const limits = budget === 'generator'
-        ? {
-            maxChains: profile?.maxRank <= 30 ? 40 : profile?.maxRank <= 50 ? 75 : profile?.maxRank <= 70 ? 150 : 250,
-            maxResultAttempts: profile?.maxRank <= 30 ? 300 : profile?.maxRank <= 50 ? 750 : profile?.maxRank <= 70 ? 1500 : 3000,
-            maxResultAttemptsPerStart: profile?.maxRank <= 30 ? 25 : profile?.maxRank <= 50 ? 50 : profile?.maxRank <= 70 ? 75 : 100,
-            maxStates: profile?.maxRank <= 30 ? 2500 : profile?.maxRank <= 50 ? 8000 : profile?.maxRank <= 70 ? 16000 : 30000,
-            maxQueue: profile?.maxRank <= 30 ? 2500 : profile?.maxRank <= 50 ? 8000 : profile?.maxRank <= 70 ? 16000 : 30000,
-            maxBranching: profile?.maxRank <= 30 ? 50 : profile?.maxRank <= 50 ? 100 : profile?.maxRank <= 70 ? 150 : 250,
-            maxStartViews: profile?.maxRank <= 30 ? 100 : profile?.maxRank <= 50 ? 250 : profile?.maxRank <= 70 ? 400 : 600,
-            maxAlsLinks: profile?.maxRank <= 30 ? 250 : profile?.maxRank <= 50 ? 750 : profile?.maxRank <= 70 ? 1500 : 3000,
-          }
+        ? generatorScale
         : {
             maxChains: 5000,
             maxResultAttempts: 100000,
@@ -13222,12 +13651,30 @@
       const filteredAlsLinkSet = phase?.alsModuleKinds && alsLinkSet
         ? alsLinkSet.map(bucket => bucket.filter(link => phase.alsModuleKinds.includes(link.moduleKind)))
         : alsLinkSet;
+      const ahsList = buildSets && includeAhs ? core.ahsConstructor(candidateGrid, {
+        maxSize: 8,
+        maxSizeFox: 7,
+        searchLimit: alsSearchLimit,
+      }).filter(ahs => phase?.ahsMaxCells == null
+        || (ahs.ahsAllCells || []).length <= Number(phase.ahsMaxCells)) : null;
+      const ahsLinkSet = buildSets && includeAhs ? core.buildAhsLinks(candidateGrid, {
+        ahsList,
+        strongLinkSet: strongSet,
+        minDof: 1,
+        maxDof: 3,
+        strictSingleCommon: false,
+        maxLinks: limits.maxAlsLinks,
+      }) : null;
 
       return {
         strongSet,
         alsList,
         alsLinkSet: filteredAlsLinkSet,
+        ahsList,
+        ahsLinkSet,
         includeAlsRcc,
+        includeAhs,
+        ahsMaxCells: phase?.ahsMaxCells ?? null,
         strongLinkTypes,
         maxDepth: profile?.maxDepth == null ? maxDepth : Math.min(maxDepth, profile.maxDepth),
         alsMaxDigits,
@@ -13460,6 +13907,10 @@
       const alsSteps = (chain?.steps || []).filter(step => step.family === 'ALS');
       if (phase.requireAls && !alsSteps.length) return false;
       if (phase.minDepth != null && Number(chain?.length) < phase.minDepth) return false;
+      if (phase.singleDigitOnly && chainUniqueDigitCount(chain) !== 1) return false;
+      if (phase.genericAicOnly
+        && (!/^AIC$/i.test(String(chain?.structureName || '').trim())
+          || chainUniqueDigitCount(chain) <= 1)) return false;
       if (phase.requireMixed
         && (!alsSteps.length || !(chain?.steps || []).some(step => step.family === 'SL'))) return false;
       if (phase.alsCellCount != null || Array.isArray(phase.alsCellCounts)) {
@@ -13489,8 +13940,9 @@
       if (phase.family === 'barns-transport') return keys.has('barns-transport');
       if (phase.family === 'als-xz') {
         return keys.has('als-xz') || keys.has('t-als-xz')
-          || keys.has('barns') || alsNodeCount === 2;
+          || keys.has('als-named') || keys.has('barns') || alsNodeCount === 2;
       }
+      if (phase.family === 'ahs-xz') return keys.has('ahs-xz');
       if (phase.family === 'als-xy') {
         // A pure ALS-XY wing can be made from three size-1 ALSs: the
         // ordinary bivalent XY-Wing. Those nodes arrive as type-4 cell ALS
@@ -13502,8 +13954,10 @@
           || alsNodeCount === 3
           || sizeOne?.breakdown === 'XY-Wing';
       }
+      if (phase.family === 'ahs-xy') return keys.has('ahs-xy');
       if (phase.family === 'als-chain') return keys.has('als-chain') || alsNodeCount > 3;
-      if (phase.family === 'aic-als') return keys.has('aic-als');
+      if (phase.family === 'ahs-chain') return keys.has('ahs-chain');
+      if (phase.family === 'aic-als') return keys.has('aic-als') || keys.has('als-named') || keys.has('w-transport');
       return true;
     }
 
@@ -13511,6 +13965,8 @@
       return {
         ...(profile || {}),
         includeAlsRcc: phase.includeAls,
+        includeAhs: phase.includeAhs === true,
+        ahsMaxCells: phase.ahsMaxCells ?? profile?.ahsMaxCells ?? null,
         strongLinkTypes: phase.strongLinkTypes,
         maxDepth: phase.maxDepth,
       };
@@ -13587,7 +14043,10 @@
         .trim();
       const keys = new Set();
 
-      if (/^(?:X-Chain|AIC)$/i.test(name)) keys.add('x-chain');
+      if (/^(?:X-Chain|AIC)$/i.test(name)) {
+        if (chainUniqueDigitCount(chain) === 1) keys.add('x-chain');
+        else keys.add('aic-generic');
+      }
       if (/^Empty Rectangle$/i.test(name)) keys.add('empty-rectangle');
       if (/^Dual Empty Rectangle$/i.test(name)) keys.add('dual-empty-rectangle');
       if (/^Rec'T Kite$/i.test(name)) keys.add('rect-kite');
@@ -13621,6 +14080,9 @@
       if (/^ALS\s*-\s*XZ$/i.test(fullName)) keys.add('als-xz');
       if (/^T\s*-\s*ALS\s*-\s*XZ$/i.test(fullName)) keys.add('t-als-xz');
       if (/^ALS\s*-\s*XY$/i.test(fullName)) keys.add('als-xy');
+      if (/^AHS\s*-\s*XZ(?:\s+Ring)?$/i.test(fullName)) keys.add('ahs-xz');
+      if (/^AHS\s*-\s*XY(?:\s+Ring)?$/i.test(fullName)) keys.add('ahs-xy');
+      if (/^AHS\s*-\s*Chain(?:\s+Ring)?$/i.test(fullName)) keys.add('ahs-chain');
       if (/^T\s*-\s*ALS\s*-\s*XY$/i.test(fullName)) keys.add('t-als-xy');
       if (/^ALS\s*-\s*Chain$/i.test(fullName)) keys.add('als-chain');
       if (/AIC\s*\+\s*ALS/i.test(fullName)) keys.add('aic-als');
@@ -13717,6 +14179,7 @@
       'als-named': 55,
       'als-chain': 56,
       'aic-als': 57,
+      'aic-generic': 58,
       'als-dof': 58,
       dds: 59,
       adds: 60,
@@ -13767,6 +14230,7 @@
       if (/^ALS\s*-\s*XZ$/i.test(fullName)) return 'als-xz';
       if (/^T\s*-\s*ALS\s*-\s*XZ$/i.test(fullName)) return 't-als-xz';
       if (/^ALS\s*-\s*XY$/i.test(fullName)) return 'als-xy';
+      if (/^AHS\s*-\s*XY(?:\s+Ring)?$/i.test(fullName)) return 'ahs-xy';
       if (/^T\s*-\s*ALS\s*-\s*XY$/i.test(fullName)) return 't-als-xy';
       if (/^ALS\s*-\s*Chain$/i.test(fullName)) return 'als-chain';
       if (/^ALS\s*-/i.test(fullName) && /(?:Wing|Ring)$/i.test(name)) return 'als-named';
@@ -13911,10 +14375,16 @@
       const enabledTypes = currentSolverMoveTypes(profile?.moveTypes);
       if (!['als-dof', 'dds', 'adds'].some(type => enabledTypes.has(type))) return null;
 
+      const configuredDigits = Number(profile?.alsMaxDigits);
+      const configuredAuxiliary = Number(profile?.alsMaxAuxiliary);
       const maxDigits = Math.min(9, Math.max(2,
-        Number(alsDofMaxDigitsEl.value) || 9));
+        Number.isInteger(configuredDigits) && configuredDigits > 0
+          ? configuredDigits
+          : (Number(alsDofMaxDigitsEl.value) || 9)));
       const maxAuxiliary = Math.min(9, Math.max(1,
-        Number(alsDofMaxAuxiliaryEl.value) || 9));
+        Number.isInteger(configuredAuxiliary) && configuredAuxiliary > 0
+          ? configuredAuxiliary
+          : (Number(alsDofMaxAuxiliaryEl.value) || 9)));
       const sourceAls = core.alsConstructor(candidateGrid, {
         maxSizeDOF: maxDigits - 1,
         maxSizeFox: maxDigits - 1,
@@ -13924,7 +14394,7 @@
         maxAuxiliary,
         maxDigits,
         maxResults: budget === 'generator' ? 2500 : 5000,
-        includeChain: false,
+        includeChain: true,
       });
       const accepted = [];
       const rejected = [];
@@ -13974,6 +14444,21 @@
       return Array.from({ length: maxDigits - 1 }, (_, index) => index + 2);
     }
 
+    function solverAhsMaxCells(phase, profile = null) {
+      if (!phase?.includeAhs) return null;
+      const configured = Number(profile?.ahsMaxCells);
+      const phaseLimit = Number(phase?.ahsMaxCells);
+      if (Number.isInteger(configured) && configured >= 2) return Math.min(9, configured);
+      if (Number.isInteger(phaseLimit) && phaseLimit >= 2) return Math.min(9, phaseLimit);
+      return null;
+    }
+
+    function solverAhsCellPasses(phase, profile = null) {
+      const maxCells = solverAhsMaxCells(phase, profile);
+      if (maxCells == null) return [null];
+      return Array.from({ length: maxCells - 1 }, (_, index) => index + 2);
+    }
+
     function solverAlsMinimumNodeCount(phase) {
       if (phase?.family === 'als-xy') return 3;
       if (phase?.family === 'als-chain') return 4;
@@ -13991,6 +14476,14 @@
       // priority comparison rather than being discarded early.
       const lowerBound = chainPhaseMinimumRating(phase)
         + (solverAlsMinimumNodeCount(phase) * 0.02);
+      return bestScore < lowerBound - 1e-9;
+    }
+
+    function solverAhsPassCanStop(phase, best, cellLimit, maxCells) {
+      if (!best || cellLimit == null || cellLimit >= maxCells) return false;
+      const bestScore = Number(best.step?.rating?.value);
+      if (!Number.isFinite(bestScore)) return false;
+      const lowerBound = chainPhaseMinimumRating(phase) + (cellLimit * 0.02);
       return bestScore < lowerBound - 1e-9;
     }
 
@@ -14030,7 +14523,10 @@
         const phase = phases[phaseIndex];
         let stopAllPhases = false;
         const digitPasses = solverAlsDigitPasses(phase, profile, budget);
-        for (const alsMaxDigits of digitPasses) {
+        const ahsCellPasses = solverAhsCellPasses(phase, profile);
+        const searchPasses = digitPasses.flatMap(alsMaxDigits =>
+          ahsCellPasses.map(ahsMaxCells => ({ alsMaxDigits, ahsMaxCells })));
+        for (const { alsMaxDigits, ahsMaxCells } of searchPasses) {
           const phaseFloor = chainPhaseMinimumRating(phase);
           const currentCeiling = Number.isFinite(Number(bestOverall?.step?.rating?.value))
             ? Number(bestOverall.step.rating.value)
@@ -14039,6 +14535,7 @@
           const searchPhase = {
             ...phase,
             ...(alsMaxDigits == null ? {} : { alsMaxDigits }),
+            ...(ahsMaxCells == null ? {} : { ahsMaxCells }),
             maxDepth: chainPhaseDepthForCeiling(phase, currentCeiling),
           };
           const phaseSearchProfile = phaseProfile(profile, searchPhase);
@@ -14056,7 +14553,10 @@
             strongLinkSet: search.strongSet,
             alsList: search.alsList,
             alsLinkSet: search.alsLinkSet,
+            ahsList: search.ahsList,
+            ahsLinkSet: search.ahsLinkSet,
             includeAls: search.includeAlsRcc,
+            includeAhs: search.includeAhs,
             strongLinkTypes: search.strongLinkTypes,
             maxDepth: search.maxDepth,
             maxChains: search.maxChains,
@@ -14079,6 +14579,13 @@
             profile,
           );
           if (best && isHigherPriorityMove(best, bestOverall)) bestOverall = best;
+
+          if (solverAhsPassCanStop(
+            phase,
+            bestOverall,
+            ahsMaxCells,
+            solverAhsMaxCells(phase, profile),
+          )) break;
 
           if (solverAlsPassCanStop(
             phase,
@@ -14106,11 +14613,17 @@
 
     function solverFishSizes(moveTypes = null, maxFishSize = 4) {
       const enabledTypes = currentSolverMoveTypes(moveTypes);
-      return [2, 3, 4].filter(size => size <= maxFishSize).filter(size => {
-        if (size === 2) return enabledTypes.has('x-wing') || enabledTypes.has('2x2+k-fish');
-        if (size === 3) return enabledTypes.has('swordfish') || enabledTypes.has('3x3+k-fish');
-        return enabledTypes.has('jellyfish') || enabledTypes.has('4x4+k-fish');
-      });
+      return Array.from({ length: 8 }, (_, index) => index + 2)
+        .filter(size => size <= maxFishSize).filter(size => {
+          const basic = size === 2 ? 'x-wing' : size === 3 ? 'swordfish'
+            : size === 4 ? 'jellyfish' : `${size}x${size}-fish`;
+          return enabledTypes.has(basic) || enabledTypes.has(`${size}x${size}+k-fish`);
+        });
+    }
+
+    function basicFishMoveType(size) {
+      return size === 2 ? 'x-wing' : size === 3 ? 'swordfish'
+        : size === 4 ? 'jellyfish' : `${size}x${size}-fish`;
     }
 
     function solverFishOptions(candidateGrid, fixedGrid, moveTypes = null, profile = null) {
@@ -14139,6 +14652,7 @@
         chain: {
           maxDepth: search.maxDepth,
           includeAls: search.includeAlsRcc,
+          includeAhs: search.includeAhs,
           strongLinkTypes: search.strongLinkTypes,
           alsCellCount: phase?.alsCellCount ?? null,
           alsCellCounts: phase?.alsCellCounts ?? null,
@@ -14148,6 +14662,9 @@
           alsMaxSizeDOF: search.alsMaxSizeDOF,
           alsMaxSizeFox: search.alsMaxSizeFox,
           alsSearchLimit: search.alsSearchLimit,
+          ahsMaxDof: 3,
+          ahsMaxCells: search.ahsMaxCells,
+          ahsMaxLinks: search.maxAlsLinks,
           limits: {
             maxChains: search.maxChains,
             maxResultAttempts: search.maxResultAttempts,
@@ -14275,10 +14792,12 @@
         { type: 'naked-single' },
         { type: 'box-line' },
       ]);
-      addDirect('modestly-easy-subsets', [
+      addDirect('very-easy-subsets', [
         { type: 'hidden-pair' },
         { type: 'naked-pair' },
-        { type: 'x-wing' },
+      ]);
+      addDirect('very-easy-fish', [
+        { kind: 'fish', size: 2, k: [0], categories: ['Basic'] },
       ]);
       addChain('modestly-easy-chains', {
         name: 'strong-depth-2-0-3',
@@ -14296,7 +14815,9 @@
       addDirect('easy-subsets', [
         { type: 'hidden-triple' },
         { type: 'naked-triple' },
-        { type: 'swordfish' },
+      ]);
+      addDirect('easy-fish', [
+        { kind: 'fish', size: 3, k: [0], categories: ['Basic'] },
       ]);
       addChain('moderate-chains', {
         name: 'strong-depth-3-0-4',
@@ -14325,10 +14846,245 @@
         { kind: 'fish', size: 3, k: [0, 1, 2], categories: ['Franken', 'Mutant'] },
       ]);
       addDirect('tough-subsets', [
-        { type: 'hidden-triple' },
-        { type: 'naked-triple' },
-        { type: 'jellyfish' },
+        { type: 'hidden-quad' },
+        { type: 'naked-quad' },
       ]);
+      addDirect('tough-fish', [
+        { kind: 'fish', size: 4, k: [0], categories: ['Basic'] },
+      ]);
+      addDirect('advanced-subsets', Array.from({ length: 5 }, (_, index) => ({
+        type: ['quintuple', 'sextuple', 'septuple', 'octuple', 'nontuple'][index],
+        hiddenType: `hidden-${['quintuple', 'sextuple', 'septuple', 'octuple', 'nontuple'][index]}`,
+        nakedType: `naked-${['quintuple', 'sextuple', 'septuple', 'octuple', 'nontuple'][index]}`,
+      })).flatMap(spec => [
+        { type: spec.hiddenType },
+        { type: spec.nakedType },
+      ]));
+      addDirect('advanced-basic-fish', Array.from({ length: 5 }, (_, index) => ({
+        kind: 'fish',
+        size: index + 5,
+        k: [0],
+        categories: ['Basic'],
+      })));
+
+      if (profile?.maxRank >= 80) {
+        addChain('irritating-long-xchains', {
+          name: 'strong-depth-5-plus',
+          includeAls: false,
+          strongLinkTypes: [0, 1, 2, 3, 4],
+          maxDepth: 8,
+          minDepth: 5,
+          singleDigitOnly: true,
+          requireAls: false,
+          requireMixed: false,
+          family: null,
+        });
+        addChain('irritating-als-chain', {
+          name: 'als-chain-depth-5-plus',
+          includeAls: true,
+          strongLinkTypes: [],
+          maxDepth: 8,
+          minDepth: 5,
+          requireAls: true,
+          requireMixed: false,
+          family: 'als-chain',
+          requiredTypes: ['chains', 'als-chain'],
+        });
+      }
+      if (profile?.maxRank >= 90) {
+        addChain('frustrating-named-als', {
+          name: 'named-als-wings-rings',
+          includeAls: true,
+          strongLinkTypes: [0, 1, 2, 3, 4],
+          maxDepth: 3,
+          minDepth: 3,
+          requireAls: true,
+          requireMixed: true,
+          family: 'als-xz',
+          requiredTypes: ['chains', 'als-named'],
+        });
+        addChain('frustrating-transport-wxyz', {
+          name: 'barns-transport-wxyz',
+          includeAls: true,
+          strongLinkTypes: [0, 1, 2, 3, 4],
+          maxDepth: 3,
+          minDepth: 3,
+          requireAls: true,
+          requireMixed: true,
+          barnsSize: 4,
+          family: 'barns-transport',
+          requiredTypes: ['chains', 'barns-transport'],
+        });
+        addChain('frustrating-transport-w-wing', {
+          name: 'w-transport-depth-4',
+          includeAls: true,
+          strongLinkTypes: [0, 1, 2, 3, 4],
+          maxDepth: 4,
+          minDepth: 4,
+          requireAls: true,
+          requireMixed: true,
+          family: 'aic-als',
+          requiredTypes: ['chains', 'als-named'],
+        });
+      }
+      if (profile?.maxRank >= 100) {
+        addChain('hard-als-xz', {
+          name: 'als-xz-full-depth-2',
+          includeAls: true,
+          strongLinkTypes: [0, 1, 2, 3, 4],
+          maxDepth: 2,
+          minDepth: 2,
+          requireAls: true,
+          requireMixed: false,
+          alsLinkMode: 'xz-only',
+          alsModuleKinds: ['ALS_XZ'],
+          family: 'als-xz',
+          requiredTypes: ['chains', 'als-xz'],
+        });
+        addChain('hard-ahs-xz', {
+          name: 'ahs-xz-full-depth-2',
+          includeAls: false,
+          includeAhs: true,
+          ahsMaxCells: 9,
+          strongLinkTypes: [0, 1, 2, 3, 4],
+          maxDepth: 2,
+          minDepth: 2,
+          requireAls: false,
+          requireMixed: false,
+          family: 'ahs-xz',
+          requiredTypes: ['chains', 'ahs-xz'],
+        });
+      }
+      if (profile?.maxRank >= 110) {
+        addChain('demanding-named-als', {
+          name: 'named-als-wings-rings-depth-3',
+          includeAls: true,
+          strongLinkTypes: [0, 1, 2, 3, 4],
+          maxDepth: 3,
+          minDepth: 3,
+          requireAls: true,
+          requireMixed: true,
+          // Named ALS forms use the full ALS transport link set here:
+          // ordinary strong links 0-4 plus ALS_RCC/type 5.
+          alsLinkMode: 'all',
+          family: 'als-xz',
+          requiredTypes: ['chains', 'als-named'],
+        });
+        addChain('demanding-ahs-named', {
+          name: 'named-ahs-wings-rings-depth-3',
+          includeAls: false,
+          includeAhs: true,
+          ahsMaxCells: 9,
+          strongLinkTypes: [0, 1, 2, 3, 4],
+          maxDepth: 3,
+          minDepth: 3,
+          requireAls: false,
+          requireMixed: false,
+          family: 'ahs-xy',
+          requiredTypes: ['chains', 'ahs-xy'],
+        });
+        addChain('demanding-transport-als-xz', {
+          name: 'transport-als-xz',
+          includeAls: true,
+          strongLinkTypes: [0, 1, 2, 3, 4],
+          maxDepth: 3,
+          minDepth: 3,
+          requireAls: true,
+          requireMixed: true,
+          family: 'barns-transport',
+          requiredTypes: ['chains', 'barns-transport'],
+        });
+        addChain('demanding-als-xy', {
+          name: 'als-xy-depth-3',
+          includeAls: true,
+          // ALS-XY is allowed to use its complete ALS link engine here;
+          // ordinary strong-link types are intentionally unrestricted.
+          strongLinkTypes: [],
+          maxDepth: 3,
+          minDepth: 3,
+          requireAls: true,
+          requireMixed: false,
+          family: 'als-xy',
+          requiredTypes: ['chains', 'als-xy'],
+        });
+        addChain('demanding-ahs-xy', {
+          name: 'ahs-xy-depth-3',
+          includeAls: false,
+          includeAhs: true,
+          ahsMaxCells: 9,
+          strongLinkTypes: [],
+          maxDepth: 3,
+          minDepth: 3,
+          requireAls: false,
+          requireMixed: false,
+          family: 'ahs-xy',
+          requiredTypes: ['chains', 'ahs-xy'],
+        });
+      }
+      if (profile?.maxRank >= 120) {
+        addChain('expert-generic-aic', {
+          name: 'generic-aic-depth-5-plus',
+          includeAls: false,
+          includeAhs: false,
+          strongLinkTypes: [0, 1, 2, 3, 4],
+          maxDepth: 8,
+          minDepth: 5,
+          genericAicOnly: true,
+          requireAls: false,
+          requireMixed: false,
+          family: null,
+          requiredTypes: ['chains'],
+        });
+        addChain('expert-transport-als-xy', {
+          name: 'transport-als-xy',
+          includeAls: true,
+          strongLinkTypes: [0, 1, 2, 3, 4],
+          maxDepth: 3,
+          minDepth: 3,
+          requireAls: true,
+          requireMixed: true,
+          family: 'als-xy',
+          requiredTypes: ['chains', 't-als-xy'],
+        });
+      }
+      if (profile?.maxRank >= 130) {
+        addChain('brutal-als-chain', {
+          name: 'als-chain-full-depth',
+          includeAls: true,
+          strongLinkTypes: [0, 1, 2, 3, 4],
+          maxDepth: 8,
+          minDepth: 4,
+          requireAls: true,
+          requireMixed: false,
+          family: 'als-chain',
+          requiredTypes: ['chains', 'als-chain'],
+        });
+        addChain('brutal-ahs-chain', {
+          name: 'ahs-chain-full-depth',
+          includeAls: false,
+          includeAhs: true,
+          ahsMaxCells: 9,
+          strongLinkTypes: [0, 1, 2, 3, 4],
+          maxDepth: 8,
+          minDepth: 4,
+          requireAls: false,
+          requireMixed: false,
+          family: 'ahs-chain',
+          requiredTypes: ['chains', 'ahs-chain'],
+        });
+      }
+      if (profile?.maxRank >= 140) {
+        addChain('nightmare-full-aic', {
+          name: 'aic-full-depth',
+          includeAls: true,
+          strongLinkTypes: [0, 1, 2, 3, 4],
+          maxDepth: 8,
+          minDepth: 4,
+          requireAls: false,
+          requireMixed: false,
+          family: null,
+        });
+      }
       addChain('challenging-chains', {
         name: 'strong-depth-4-0-3',
         includeAls: false,
@@ -14386,9 +15142,9 @@
             && enabledTypes.has('chains'));
       }
       if (spec?.kind === 'fish') {
-        const fishType = `${spec.size}x${spec.size}+k-fish`;
-        return enabledTypes.has(fishType)
-          || (spec.k.includes(0) && enabledTypes.has(({ 2: 'x-wing', 3: 'swordfish', 4: 'jellyfish' })[spec.size]));
+        return (spec.k || [0]).some(k => enabledTypes.has(
+          k === 0 ? basicFishMoveType(spec.size) : `${spec.size}x${spec.size}+k-fish`,
+        ));
       }
       return enabledTypes.has(spec?.type);
     }
@@ -14398,9 +15154,7 @@
       const categories = spec.categories || ['Basic'];
       for (const k of spec.k || [0]) {
         for (const category of categories) {
-          const fishType = k === 0
-            ? ({ 2: 'x-wing', 3: 'swordfish', 4: 'jellyfish' })[spec.size]
-            : `${spec.size}x${spec.size}+k-fish`;
+          const fishType = k === 0 ? basicFishMoveType(spec.size) : `${spec.size}x${spec.size}+k-fish`;
           if (!enabledTypes.has(fishType)) continue;
           const fishOptions = {
             ...solverFishOptions(candidateGrid, fixedGrid, enabledTypes, profile),
@@ -14436,10 +15190,8 @@
         const step = spec.kind === 'fish'
           ? fishPhaseStep(candidateGrid, fixedGrid, spec, enabledTypes, profile)?.step
           : core.subsetOrFishStep(candidateGrid, {
-              ...solverFishOptions(candidateGrid, fixedGrid, enabledTypes, profile),
-              enabledTechniques: new Set([spec.type]),
-              fishSizes: [],
-            });
+                enabledTechniques: new Set([spec.type]),
+              });
         if (!step) continue;
         step.rating = ratingForStep(step);
         if (profile?.maxRank !== undefined && step.rating.rank > profile.maxRank) continue;
@@ -14465,9 +15217,7 @@
         if (spec.kind === 'fish') {
           for (const k of spec.k || [0]) {
             for (const category of spec.categories || ['Basic']) {
-              const fishType = k === 0
-                ? ({ 2: 'x-wing', 3: 'swordfish', 4: 'jellyfish' })[spec.size]
-                : `${spec.size}x${spec.size}+k-fish`;
+              const fishType = k === 0 ? basicFishMoveType(spec.size) : `${spec.size}x${spec.size}+k-fish`;
               if (!enabledTypes.has(fishType)) continue;
               const fishOptions = {
                 ...solverFishOptions(candidateGrid, fixedGrid, enabledTypes, profile),
@@ -14501,11 +15251,7 @@
           candidateGrid,
           fixedGrid: [...fixedGrid],
           moveTypes: [spec.type],
-          fishOptions: {
-            ...solverFishOptions(candidateGrid, fixedGrid, enabledTypes, profile),
-            enabledTechniques: new Set([spec.type]),
-            fishSizes: [],
-          },
+          subsetOnly: true,
         });
         step = result;
         if (!step) continue;
@@ -14567,10 +15313,16 @@
       for (const phase of phases) {
         if (phase.kind === 'als-dof') {
           if (!solverPhaseAllowsType(phase, enabledTypes)) continue;
+          const configuredDigits = Number(profile?.alsMaxDigits);
+          const configuredAuxiliary = Number(profile?.alsMaxAuxiliary);
           const alsDofReport = await runSearchWorker('als-dof', {
             candidateGrid,
-            maxDigits: Math.min(9, Math.max(2, Number(alsDofMaxDigitsEl.value) || 9)),
-            maxAuxiliary: Math.min(9, Math.max(1, Number(alsDofMaxAuxiliaryEl.value) || 9)),
+            maxDigits: Math.min(9, Math.max(2,
+              Number.isInteger(configuredDigits) && configuredDigits > 0
+                ? configuredDigits : (Number(alsDofMaxDigitsEl.value) || 9))),
+            maxAuxiliary: Math.min(9, Math.max(1,
+              Number.isInteger(configuredAuxiliary) && configuredAuxiliary > 0
+                ? configuredAuxiliary : (Number(alsDofMaxAuxiliaryEl.value) || 9))),
             maxResults: budget === 'generator' ? 2500 : 5000,
           });
           const alsDof = bestAlsDofMoveFromReport(
@@ -14758,6 +15510,7 @@
       renderHiddenSubsetReport();
       renderChainReport();
       if (alsSearchFamily) renderAlsSearchResults();
+      if (ahsSearchFamily) renderAhsSearchResults();
       setStatus(`Chain ${index + 1} selected.`, 'ok');
       focusMap();
     }
@@ -14899,6 +15652,42 @@
         moreText.textContent = `Showing 200 of ${chainReport.chains.length} records.`;
         alsSearchResultsEl.appendChild(moreText);
       }
+    }
+
+    function renderAhsSearchResults() {
+      ahsSearchResultsEl.textContent = '';
+      if (!ahsSearchFamily || !chainReport) {
+        ahsSearchResultsEl.textContent = 'No AHS search has been run.';
+        return;
+      }
+
+      const summary = document.createElement('p');
+      const label = ahsSearchFamily === 'ahs-xy'
+        ? 'AHS-XY'
+        : ahsSearchFamily === 'ahs-chain' ? 'AHS-Chain' : 'AHS-XZ';
+      summary.textContent = `${chainReport.chains.length} ${label} result${chainReport.chains.length === 1 ? '' : 's'} found.`;
+      if (ahsSearchFamily === 'ahs-xy' && chainReport.stats?.truncated) {
+        summary.textContent += ` Checked ${chainReport.stats.triplesChecked.toLocaleString()} three-set paths; search limit reached.`;
+      }
+      ahsSearchResultsEl.appendChild(summary);
+      if (!chainReport.chains.length) return;
+
+      const list = document.createElement('ul');
+      list.className = 'chain-list';
+      chainReport.chains.slice(0, 200).forEach((chain, index) => {
+        const item = document.createElement('li');
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `chain-result${index === selectedChainIndex ? ' selected' : ''}`;
+        button.textContent = `${index + 1}. ${chainText(chain)}`;
+        button.addEventListener('click', () => {
+          selectChain(index);
+          openReportPanel(chainResultsEl);
+        });
+        item.appendChild(button);
+        list.appendChild(item);
+      });
+      ahsSearchResultsEl.appendChild(list);
     }
 
     function alsDofTechniqueInfo(result) {
@@ -15527,19 +16316,55 @@
       return true;
     }
 
+    function interactiveTechniqueProfile() {
+      const profile = generationTechniqueProfile('Transcendent') || {};
+      const configuredDigits = Number(alsDofMaxDigitsEl.value);
+      const configuredAuxiliary = Number(alsDofMaxAuxiliaryEl.value);
+      return {
+        ...profile,
+        // Run All/Next use the same hierarchy as rating, while the checkboxes
+        // still control which techniques are actually enabled interactively.
+        moveTypes: [...currentSolverMoveTypes()],
+        alsMaxDigits: Number.isInteger(configuredDigits)
+          ? Math.min(9, Math.max(2, configuredDigits))
+          : 4,
+        alsMaxAuxiliary: Number.isInteger(configuredAuxiliary)
+          ? Math.min(9, Math.max(1, configuredAuxiliary))
+          : 1,
+      };
+    }
+
     function applyNextCycle() {
       const before = snapshotState();
       const promoted = applyQueuedPromotions();
-      const choice = chooseSolverStep(cand, puzzle, 'interactive');
+      const choice = chooseSolverStep(
+        cand,
+        puzzle,
+        'interactive',
+        solution,
+        interactiveTechniqueProfile(),
+      );
       return applyCycleChoice(before, promoted, choice);
     }
 
     async function chooseInteractiveStep() {
       try {
-        return await chooseSolverStepInWorker(cand, puzzle, solution, null, 'interactive');
+        return await chooseSolverStepInWorker(
+          cand,
+          puzzle,
+          solution,
+          interactiveTechniqueProfile(),
+          'interactive',
+        );
       } catch (error) {
         // Keep file:// pages and browsers without worker support usable.
-        return chooseSolverStep(cand, puzzle, 'interactive');
+        return chooseSolverStep(
+          cand,
+          puzzle,
+          'interactive',
+          solution,
+          interactiveTechniqueProfile(),
+        );
       }
     }
 
@@ -15627,7 +16452,7 @@
         setBusy(false);
       }
 
-      if (applied > 0) {
+      if (logEntries.length) {
         ratingReport = ratingFromLog(logEntries, candidateGridIsSolved(cand, puzzle));
       }
       if (applied === maxSteps) {
@@ -15657,7 +16482,7 @@
       } finally {
         setBusy(false);
       }
-      if (ran > 0) {
+      if (logEntries.length) {
         ratingReport = ratingFromLog(logEntries, candidateGridIsSolved(cand, puzzle));
       }
       if (solution && !candidateGridIsSolved(cand, puzzle)) {
@@ -16165,7 +16990,7 @@
             maxAuxiliary,
             maxDigits,
             maxResults: 5000,
-            includeChain: false,
+            includeChain: true,
           });
           const verifiedResults = raw.results.map(result => ({
             ...result,
@@ -16211,44 +17036,54 @@
       setBusy(true);
       setStatus('Searching ALS-DOF chains...');
 
-      setTimeout(() => {
+      setTimeout(async () => {
         try {
-          const maxDigits = Math.min(9, Math.max(2,
-            Number(alsDofMaxDigitsEl.value) || 9));
-          const maxAuxiliary = Math.min(9, Math.max(1,
-            Number(alsDofMaxAuxiliaryEl.value) || 9));
+          // Keep the dedicated chain search bounded while the broader
+          // ALS-DOF work remains available through its separate controls.
+          const maxDigits = Math.min(4, Math.max(2,
+            Number(alsDofMaxDigitsEl.value) || 4));
+          const maxAuxiliary = 1;
           alsDofMaxDigitsEl.value = String(maxDigits);
           alsDofMaxAuxiliaryEl.value = String(maxAuxiliary);
-          const sourceAls = core.alsConstructor(cand, {
-            maxSizeDOF: maxDigits - 1,
-            maxSizeFox: maxDigits - 1,
-          });
-          alsReport = sourceAls;
-          const rawChainReport = core.findAlsDofChains(cand, {
-            alsList: sourceAls,
-            // Chain mode is exactly Hub-Auxiliary-Hub. This is the number of
-            // auxiliary ALS nodes, not a cap on the auxiliary's digit/DOF
-            // size; maxDigits remains the user's ALS-DOF digit limit.
-            maxAuxiliary: 1,
-            maxDigits,
-            maxResults: 5000,
-            includePathChain: false,
-          });
-          const verifiedResults = rawChainReport.results.map(result => ({
-            ...result,
-            verification: core.verifyAlsDofNet(cand, result, { alsList: sourceAls }),
-          }));
-          const acceptedResults = verifiedResults.filter(result => result.verification.ok);
-          alsDofChainReport = {
-            ...rawChainReport,
-            results: acceptedResults,
-            rejectedResults: verifiedResults.filter(result => !result.verification.ok),
-            stats: {
-              ...rawChainReport.stats,
-              verifierChecked: verifiedResults.length,
-              verifierRejected: verifiedResults.length - acceptedResults.length,
-            },
-          };
+          try {
+            alsDofChainReport = await runSearchWorker('als-dof-chain', {
+              candidateGrid: cand,
+              maxDigits,
+              maxAuxiliary,
+              maxResults: 5000,
+            });
+          } catch (workerError) {
+            // Workers can be blocked when the app is opened directly from
+            // file://. Keep the chain search usable with the same verified
+            // in-page implementation used by the other ALS-DOF search.
+            const sourceAls = core.alsConstructor(cand, {
+              maxSizeDOF: maxDigits - 1,
+              maxSizeFox: maxDigits - 1,
+            });
+            const raw = core.findAlsDofChains(cand, {
+              alsList: sourceAls,
+              maxAuxiliary,
+              maxDigits,
+              maxResults: 5000,
+              includePathChain: false,
+            });
+            const verifiedResults = raw.results.map(result => ({
+              ...result,
+              verification: core.verifyAlsDofNet(cand, result, { alsList: sourceAls }),
+            }));
+            const acceptedResults = verifiedResults.filter(result => result.verification.ok);
+            alsDofChainReport = {
+              ...raw,
+              results: acceptedResults,
+              rejectedResults: verifiedResults.filter(result => !result.verification.ok),
+              stats: {
+                ...raw.stats,
+                verifierChecked: verifiedResults.length,
+                verifierRejected: verifiedResults.length - acceptedResults.length,
+                workerFallback: workerError.message || String(workerError),
+              },
+            };
+          }
           selectedAlsDof = null;
           selectedAlsDofIndex = null;
           selectedAlsDofSource = 'chain';
@@ -16263,7 +17098,7 @@
         } catch (error) {
           alsDofChainReport = null;
           renderAlsDofReport();
-          setStatus('Could not search ALS-DOF chains.', 'warn');
+          setStatus(`Could not search ALS-DOF chains: ${error.message || error}`, 'warn');
         } finally {
           setBusy(false);
         }
@@ -16323,6 +17158,7 @@
             alsList: search.alsList,
             alsLinkSet: search.alsLinkSet,
             includeAls: search.includeAlsRcc,
+          includeAhs: search.includeAhs,
             strongLinkTypes: search.strongLinkTypes,
             maxDepth: search.maxDepth,
             maxChains: search.maxChains,
@@ -16374,6 +17210,152 @@
       }, 20);
     }
 
+    function runAhsSearch(family = 'ahs-xz') {
+      const isXy = family === 'ahs-xy';
+      const isChain = family === 'ahs-chain';
+      const label = isXy ? 'AHS-XY' : isChain ? 'AHS-Chain' : 'AHS-XZ';
+      setBusy(true);
+      setStatus(`Searching ${label}...`);
+
+      setTimeout(async () => {
+        try {
+          let strongLinkSet = null;
+          let ahsList = null;
+          let ahsLinkSet = null;
+          let rawReport;
+          if (isXy) {
+            // The XY search walks parent AHS cells directly; generic AIC
+            // endpoint eliminations do not preserve AHS assignments.
+            const ahsXyOptions = {
+              ahsMode: 'xy',
+              ahsMaxDof: 1,
+              ahsMaxSize: 4,
+              ahsMaxFox: 4,
+              ahsMaxNodes: 800,
+              ahsSearchLimit: true,
+              maxDepth: 3,
+              maxTriples: 300000,
+              strongLinkTypes: [],
+              limits: {
+                maxChains: 500,
+                maxResultAttempts: 3000,
+                maxResultAttemptsPerStart: 150,
+                maxStates: 20000,
+                maxQueue: 20000,
+                maxBranching: 100,
+                maxStartViews: 1000,
+                maxAhsLinks: 800,
+              },
+            };
+            if (document.baseURI.startsWith('file:')) {
+              // Chrome may block classic workers for file:// pages. Keep the
+              // same bounded AHS-XY search available in local copies by
+              // running the worker payload through the page cores directly.
+              ahsList = core.ahsConstructor(cand, {
+                maxSize: ahsXyOptions.ahsMaxSize,
+                maxSizeFox: ahsXyOptions.ahsMaxFox,
+                searchLimit: ahsXyOptions.ahsSearchLimit,
+                maxResults: ahsXyOptions.ahsMaxNodes,
+              });
+              rawReport = core.findAhsXyChains(cand, {
+                ahsList,
+                maxTriples: ahsXyOptions.maxTriples,
+                maxChains: ahsXyOptions.limits.maxChains,
+              });
+            } else {
+              rawReport = await runSearchWorker('chains', {
+                candidateGrid: cand,
+                includeStrong: false,
+                includeAls: false,
+                includeAhs: true,
+                ...ahsXyOptions,
+              });
+            }
+          } else {
+            strongLinkSet = core.buildStrongLinks(cand);
+            ahsList = core.ahsConstructor(cand, { maxSize: 8, maxSizeFox: 7 });
+            const ahsBuilderStrongLinks = isChain
+              ? core.flattenStrongLinks(strongLinkSet).filter(link => [0, 1].includes(Number(link.linkType)))
+              : strongLinkSet;
+            ahsLinkSet = core.buildAhsLinks(cand, {
+              ahsList,
+              strongLinkSet: ahsBuilderStrongLinks,
+              minDof: 1,
+              maxDof: 3,
+              maxLinks: 5000,
+            });
+            rawReport = core.findAicChains(cand, {
+              strongLinkSet,
+              strongLinkTypes: [0, 1],
+              includeStrong: true,
+              includeAls: false,
+              includeAhs: true,
+              ahsList,
+              ahsLinkSet,
+              maxDepth: isChain ? 8 : 2,
+              maxChains: 5000,
+              maxResultAttempts: 100000,
+              maxResultAttemptsPerStart: 5000,
+              maxStates: 300000,
+              maxQueue: 300000,
+              maxBranching: 500,
+              maxAhsLinks: 5000,
+            });
+          }
+          const chains = rawReport.chains.filter(chain => {
+            const steps = chain.steps || [];
+            if (isChain) {
+              return (chain.structureName === 'AHS - Chain'
+                || chain.structureName === 'AHS - Chain Ring')
+                && steps.length > 3
+                && steps.every(step => step.family === 'AHS');
+            }
+            if (!isXy) {
+              return steps.some(step =>
+                step.family === 'AHS'
+                && ['AHS_XZ', 'AHS_XZ_RING'].includes(String(step.module?.moduleKind || '')));
+            }
+            return (chain.structureName === 'AHS - XY'
+              || chain.structureName === 'AHS - XY Ring')
+              && steps.length === 3
+              && steps.every(step => step.family === 'AHS');
+          });
+
+          chainReport = { ...rawReport, chains };
+          ahsSearchFamily = family;
+          alsSearchFamily = null;
+          selectedChainIndex = chains.length ? 0 : null;
+          activeStep = null;
+          lastRemoved = [];
+          strongLinkReport = strongLinkSet;
+          ahsReport = ahsList;
+          selectedAhsId = null;
+          renderAlsReport();
+          renderChainReport();
+          renderAhsSearchResults();
+          renderBoard();
+          openReportPanel(ahsSearchResultsEl);
+          setStatus(
+            `${label} search complete ${isXy
+              ? 'using AHS cellular links'
+              : isChain ? 'using AHS links with strong-link types 0 and 1'
+                : 'using strong-link types 0 and 1'}. `
+              + `${chains.length} result${chains.length === 1 ? '' : 's'} found.`,
+            chains.length ? 'ok' : 'warn',
+          );
+        } catch (error) {
+          ahsSearchFamily = null;
+          chainReport = null;
+          selectedChainIndex = null;
+          renderAhsSearchResults();
+          setStatus(`Could not search ${label}: ${error.message || error}`, 'warn');
+        } finally {
+          setBusy(false);
+        }
+      }, 20);
+    }
+
+
     function runChainBuild() {
       setBusy(true);
       setStatus('Walking chains...');
@@ -16381,6 +17363,7 @@
       setTimeout(() => {
         try {
           const includeAlsRcc = chainAlsRccEl.checked;
+          const includeAhs = chainAhsEl.checked;
           const strongLinkTypes = chainStrongTypeEls
             .map((element, index) => element.checked ? index : null)
             .filter(index => index !== null);
@@ -16391,6 +17374,16 @@
               strictSingleCommon: true,
               maxLinks: 5000,
             }) : null;
+          const ahsList = includeAhs ? core.ahsConstructor(cand, { maxSize: 8, maxSizeFox: 7 }) : null;
+          ahsReport = ahsList;
+          const ahsLinkSet = includeAhs ? core.buildAhsLinks(cand, {
+            ahsList,
+            strongLinkSet: strongLinkReport,
+            minDof: 1,
+            maxDof: 3,
+            strictSingleCommon: false,
+            maxLinks: 5000,
+          }) : null;
           selectedAhsId = null;
           renderAlsReport();
           renderAlsLinkReport();
@@ -16399,6 +17392,8 @@
             strongLinkSet: strongLinkReport,
             alsList: alsReport,
             alsLinkSet: alsLinkReport,
+            ahsLinkSet,
+            includeAhs,
             includeAls: includeAlsRcc,
             strongLinkTypes,
             maxDepth: Number(chainDepthEl.value) || 6,
@@ -16441,7 +17436,8 @@
 
     function generatePuzzle() {
       leaveHistoryPreview();
-      const givens = Number(givensEl.value) || 21;
+      const givens = Math.min(81, Math.max(17, Number(givensEl.value) || 21));
+      givensEl.value = String(givens);
       const targetCategory = generationDifficultyEl.value;
       const isAnyTarget = normalizeRatingCategory(targetCategory) === 'Any';
       const requestToken = ++generationToken;
@@ -16471,7 +17467,8 @@
             solution = result.solution;
             hideSolution();
             resetCandidates('Generated a unique puzzle.', null, null);
-            setStatus('Generated a unique puzzle.', 'ok');
+            const actualGivens = result.puzzle.filter(Boolean).length;
+            setStatus(`Generated a unique puzzle with ${actualGivens} givens.`, 'ok');
             setBusy(false);
             return;
           }
@@ -16543,7 +17540,8 @@
           inputEl.value = core.encode(originalPuzzle);
           solution = result.solution;
           hideSolution();
-          resetCandidates('Generated a unique puzzle and rebuilt candidates.', null, rating);
+          const actualGivens = result.puzzle.filter(Boolean).length;
+          resetCandidates(`Generated a unique puzzle with ${actualGivens} givens and rebuilt candidates.`, null, rating);
           if (!isAnyTarget) {
             setStatus(`Generated a ${targetCategory} puzzle after ${attempts} attempt${attempts === 1 ? '' : 's'}.`, 'ok');
           } else if (!rating.solved) {
@@ -16689,6 +17687,31 @@
       event.preventDefault();
       event.stopPropagation();
       runAlsSearch('als-xz');
+    });
+    ahsXzBuildEl.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      runAhsSearch('ahs-xz');
+    });
+    ahsXyBuildEl.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      runAhsSearch('ahs-xy');
+    });
+    ahsChainBuildEl.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      runAhsSearch('ahs-chain');
+    });
+    ahsDofBuildEl.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      runAhsDofBuild();
+    });
+    ahsLinkBuildEl.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      runAhsLinkBuild();
     });
     alsXyBuildEl.addEventListener('click', (event) => {
       event.preventDefault();

@@ -323,7 +323,7 @@ export function solveFully(grid: Grid): Grid | null {
 }
 
 export function generate(givens = 30): { puzzle: Grid; solution: Grid } {
-  const targetGivens = Math.max(0, Math.min(81, Math.floor(givens)));
+  const targetGivens = Math.max(17, Math.min(81, Math.floor(givens)));
   const grid = new Array(81).fill(0);
 
   const fill = (cell: number): boolean => {

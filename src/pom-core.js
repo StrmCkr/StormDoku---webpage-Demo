@@ -145,6 +145,8 @@
     5: 'StarFish {Squirmbag}',
     6: 'Whale',
     7: 'Leviathan',
+    8: 'Kraken',
+    9: 'Colossus',
   };
 
   function uniqueSorted(values) {
@@ -342,7 +344,7 @@
     const size = Number(fish?.size);
     const k = Number(fish?.k || 0);
     if (k > 0) return `${size}x${size}+k-fish`;
-    return ({ 2: 'x-wing', 3: 'swordfish', 4: 'jellyfish' })[size] || null;
+    return ({ 2: 'x-wing', 3: 'swordfish', 4: 'jellyfish' })[size] || `${size}x${size}-fish`;
   }
 
   function fishReportEnabled(fish, options) {
@@ -987,7 +989,7 @@
       const size = Number(report?.size);
       const k = Number(report?.k || 0);
       if (k > 0) return `${size}x${size}+k-fish`;
-      return ({ 2: 'x-wing', 3: 'swordfish', 4: 'jellyfish' })[size] || null;
+      return ({ 2: 'x-wing', 3: 'swordfish', 4: 'jellyfish' })[size] || `${size}x${size}-fish`;
     };
     const isEnabled = type => !enabledTypes
       || (typeof enabledTypes.has === 'function' ? enabledTypes.has(type) : enabledTypes.includes(type));

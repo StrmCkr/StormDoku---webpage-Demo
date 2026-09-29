@@ -71,10 +71,14 @@
   const IDX = new Int8Array(512);
   for (let i = 0; i < 9; i++) IDX[1 << i] = i;
 
-  const NAKED_TECH = { 1: 'naked-single', 2: 'naked-pair', 3: 'naked-triple', 4: 'naked-quad' };
-  const HIDDEN_TECH = { 1: 'hidden-single', 2: 'hidden-pair', 3: 'hidden-triple', 4: 'hidden-quad' };
-  const FISH_NAME = { 2: 'X-Wing', 3: 'SwordFish', 4: 'JellyFish' };
-  const COMBOS = { 1: combosIdx(1), 2: combosIdx(2), 3: combosIdx(3), 4: combosIdx(4) };
+  const SUBSET_NAMES = ['single', 'pair', 'triple', 'quad', 'quintuple', 'sextuple', 'septuple', 'octuple', 'nontuple'];
+  const NAKED_TECH = Object.fromEntries(SUBSET_NAMES.map((name, index) => [index + 1, `naked-${name}`]));
+  const HIDDEN_TECH = Object.fromEntries(SUBSET_NAMES.map((name, index) => [index + 1, `hidden-${name}`]));
+  const FISH_NAME = {
+    2: 'X-Wing', 3: 'SwordFish', 4: 'JellyFish', 5: 'StarFish {Squirmbag}',
+    6: 'Whale', 7: 'Leviathan', 8: 'Kraken', 9: 'Colossus',
+  };
+  const COMBOS = Object.fromEntries(Array.from({ length: 9 }, (_, index) => [index + 1, combosIdx(index + 1)]));
   const TECH_NAME = {
     'last-man-standing': 'Last Man Standing',
     'naked-single': 'Naked Single',
@@ -322,7 +326,7 @@
   }
 
   function generate(givens = 30) {
-    const targetGivens = Math.max(0, Math.min(81, Math.floor(givens)));
+    const targetGivens = Math.max(17, Math.min(81, Math.floor(givens)));
     const grid = new Array(81).fill(0);
 
     const fill = cell => {
@@ -914,7 +918,7 @@
     const size = Number(step?.size);
     const k = Number(step?.k || 0);
     if (k > 0) return `${size}x${size}+k-fish`;
-    return ({ 2: 'x-wing', 3: 'swordfish', 4: 'jellyfish' })[size] || null;
+    return ({ 2: 'x-wing', 3: 'swordfish', 4: 'jellyfish' })[size] || `${size}x${size}-fish`;
   }
 
   function fishStepAllowed(step, enabledTypes) {
@@ -1067,7 +1071,7 @@
   }
 
   function subsetStep(cand, options = {}) {
-    return subsetStepForSizes(cand, [1, 2, 3, 4], options.enabledTechniques);
+    return subsetStepForSizes(cand, [1, 2, 3, 4, 5, 6, 7, 8, 9], options.enabledTechniques);
   }
 
   function subsetOrFishStep(cand, fishOptions = {}) {
@@ -1086,7 +1090,7 @@
 
     const fishSizes = Array.isArray(fishOptions.fishSizes)
       ? fishOptions.fishSizes
-      : [2, 3, 4];
+      : [2, 3, 4, 5, 6, 7, 8, 9];
     for (const size of fishSizes) {
       const subset = subsetStepForSizes(cand, [size], enabledTypes);
       if (subset) return subset;

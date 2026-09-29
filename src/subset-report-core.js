@@ -128,8 +128,9 @@
     const minSize = Number.isInteger(options.minSize) ? Math.max(1, options.minSize) : 1;
     const maxSize = Number.isInteger(options.maxSize) ? Math.min(9, options.maxSize) : 9;
     const maxSizeDOF = Number.isInteger(options.maxSizeDOF) ? Math.max(0, Math.min(8, options.maxSizeDOF)) : 8;
-    const maxSizeFox = Number.isInteger(options.maxSizeFox) ? Math.max(0, Math.min(8, options.maxSizeFox)) : 7;
-    const maxAhsSize = Number.isInteger(options.maxAhsSize) ? Math.max(0, Math.min(8, options.maxAhsSize)) : 8;
+    // Fox size is zero-based: 8 represents a 9-digit set.
+    const maxSizeFox = Number.isInteger(options.maxSizeFox) ? Math.max(0, Math.min(8, options.maxSizeFox)) : 8;
+    const maxAhsSize = Number.isInteger(options.maxAhsSize) ? Math.max(0, Math.min(9, options.maxAhsSize)) : 9;
     const records = kind === 'naked'
       ? (options.alsList || core.alsConstructor(cand, { maxSizeDOF, maxSizeFox }))
       : (options.ahsList || core.ahsConstructor(cand, { maxSize: maxAhsSize, maxSizeFox }));
@@ -155,7 +156,7 @@
       ...options,
       kind,
       minSize: options.size || 1,
-      maxSize: options.size || 8,
+      maxSize: options.size || 9,
       maxSizeDOF: options.size ? options.size - 1 : options.maxSizeDOF,
       maxAhsSize: options.size ? options.size - 1 : options.maxAhsSize,
       maxSizeFox: options.size ? options.size - 1 : options.maxSizeFox,

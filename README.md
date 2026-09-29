@@ -159,8 +159,10 @@ The ERI and mini-sector constructions retain their geometry data for display.
 `Find Chains` performs a breadth-first chain walk over directed link views.
 The `Chain Depth` selector controls the logical search depth. The usable-link
 controls independently enable the five strong-link buckets above, and the
-separate `ALS` switch enables ALS_RCC records. AHS_RCC is currently disabled
-from this walk.
+separate `ALS` and `AHS` switches enable ALS_RCC and AHS_RCC records. AHS
+links use hidden-single endpoints produced by reducing an AHS through either
+an external sector digit or an external cell digit, then connect those
+cellular endpoints through the same breadth-first chain walker.
 
 Chain reports include:
 
