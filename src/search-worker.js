@@ -4,19 +4,19 @@
  * the page and returns structured-cloneable search results to the UI thread.
  */
 importScripts(
-  './browser-core.js?v=20260928-2',
+  './browser-core.js?v=20260929-1',
   './set-tools-core.js?v=20260928-1',
   './pom-core.js?v=20260928-2',
   './als-core.js?v=20260928-1',
   './als-dof-core.js?v=20260928-1',
   './als-link-core.js?v=20260928-1',
   './ahs-core.js?v=20260928-2',
-  './ahs-link-core.js?v=20260929-11',
+  './ahs-link-core.js?v=20260929-12',
   './subset-report-core.js?v=20260928-2',
   './mini-sectors-core.js?v=20260928-1',
   './strong-link-core.js?v=20260928-1',
-  './chain-core.js?v=20260929-7',
-  './ahs-xy-core.js?v=20260928-2',
+  './chain-core.js?v=20260929-8',
+  './ahs-xy-core.js?v=20260929-3',
   './ahs-dof-core.js?v=20260929-2',
 );
 

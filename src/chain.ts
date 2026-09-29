@@ -2965,8 +2965,12 @@ export function formatChainEureka(chain: ChainResult): string {
     pushEurekaUnit(nodes, connectors, modularRing[1], '-');
     pushEurekaUnit(nodes, connectors, modularRing[2], '-');
   } else {
-    for (let index = 0; index < chain.steps.length; index++) {
-      appendStepEureka(nodes, connectors, chain.steps[index], index);
+    // A ring's final step is the closing link back to its start. Eureka
+    // already represents that closure with the trailing `ring` marker;
+    // serialising the last step repeats the closing link in the proof.
+    const visibleSteps = chain.isRing ? chain.steps.slice(0, -1) : chain.steps;
+    for (let index = 0; index < visibleSteps.length; index++) {
+      appendStepEureka(nodes, connectors, visibleSteps[index], index);
     }
   }
 

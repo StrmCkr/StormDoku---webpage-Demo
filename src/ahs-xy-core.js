@@ -104,6 +104,10 @@
           const first = neighbours[i];
           const last = neighbours[j];
           const sets = [ahsList[first], ahsList[middle], ahsList[last]];
+          // An AHS-XY walk must pass through three independent sectors.
+          // bridgeBetween() rejects same-sector bridges, but an open chain
+          // has no closing bridge to perform that check for its endpoints.
+          if (new Set(sets.map(ahs => ahs.ahsSector)).size !== sets.length) continue;
           if (!hasPlacement(cand, sets)) continue;
           const closingBridge = bridgeOf(first, last);
           const isRing = Boolean(closingBridge);

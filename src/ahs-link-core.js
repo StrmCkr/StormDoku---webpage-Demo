@@ -582,9 +582,14 @@
           };
 
           const branchEliminations = bridgeDigit => {
+            const leftAssignments = forcedAssignments(left, bridgeDigit);
+            const rightAssignments = forcedAssignments(right, bridgeDigit);
+            // This RCC branch is impossible for at least one parent AHS. It
+            // is not a worker error and must not be spread as an array.
+            if (!leftAssignments || !rightAssignments) return null;
             const assignments = [
-              ...forcedAssignments(left, bridgeDigit),
-              ...forcedAssignments(right, bridgeDigit),
+              ...leftAssignments,
+              ...rightAssignments,
             ];
             if (!assignments.length) return new Set();
             const result = new Set();
@@ -613,7 +618,10 @@
           };
 
           const branchValues = sortedUnique([leftBridge[0], rightBridge[0]]);
-          const branchSets = branchValues.map(branchEliminations);
+          const branchSets = branchValues
+            .map(branchEliminations)
+            .filter(Boolean);
+          if (!branchSets.length) return true;
           const commonKeys = branchSets.length
             ? [...branchSets[0]].filter(key => branchSets.every(set => set.has(key)))
             : [];
