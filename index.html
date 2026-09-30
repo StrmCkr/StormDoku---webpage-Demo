@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StormDoku: online and offline solver</title>
   <style>
@@ -5271,7 +5274,7 @@
         // Keep the URL relative for file:// copies. Chrome can reject a
         // file-origin URL object even though the same classic worker loads
         // correctly from the local server.
-        const workerPath = './src/search-worker.js?v=20260929-4';
+        const workerPath = './src/search-worker.js?v=20260929-5';
         const workerUrl = document.baseURI.startsWith('file:')
           ? workerPath
           : new URL(workerPath, document.baseURI);
