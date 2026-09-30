@@ -5322,6 +5322,8 @@
     let searchWorkerJobId = 0;
     let searchWorkerJobs = new Map();
     let searchWorkerDisabled = false;
+    let generatorWorker = null;
+    let generatorReject = null;
 
     function disableSearchWorker(error = null) {
       searchWorkerDisabled = true;
@@ -5392,7 +5394,52 @@
       });
     }
 
+    function runPuzzleGenerator(givens) {
+      return new Promise((resolve, reject) => {
+        const workerPath = './src/generator-worker.js?v=20260930-4';
+        const workerUrl = document.baseURI.startsWith('file:')
+          ? workerPath
+          : new URL(workerPath, document.baseURI);
+        let worker;
+        try {
+          worker = new Worker(workerUrl, { type: 'classic' });
+        } catch (error) {
+          reject(error);
+          return;
+        }
+        generatorWorker = worker;
+        generatorReject = reject;
+        const finish = (callback, value) => {
+          if (generatorWorker === worker) generatorWorker = null;
+          if (generatorReject === reject) generatorReject = null;
+          worker.terminate();
+          callback(value);
+        };
+        worker.onmessage = event => {
+          const data = event.data || {};
+          if (data.error) finish(reject, new Error(data.error));
+          else finish(resolve, data.result);
+        };
+        worker.onerror = event => {
+          const details = [
+            event.message,
+            event.filename && `(${event.filename})`,
+            event.lineno && `line ${event.lineno}`,
+            event.colno && `column ${event.colno}`,
+          ].filter(Boolean).join(' ');
+          finish(reject, new Error(details || 'Puzzle generator worker failed.'));
+        };
+        worker.postMessage({ givens });
+      });
+    }
+
     function cancelActiveSearches(reason = 'Search cancelled.') {
+      const activeGenerator = generatorWorker;
+      const rejectGenerator = generatorReject;
+      generatorWorker = null;
+      generatorReject = null;
+      if (activeGenerator) activeGenerator.terminate();
+      if (rejectGenerator) rejectGenerator(new Error(reason));
       const worker = searchWorker;
       searchWorker = null;
       if (worker) worker.terminate();
@@ -10049,7 +10096,6 @@
       renderSuperMultiColoringReport();
       renderThreeDMedusaMultiReport();
       renderFishReport();
-      renderMultiFishReport();
       renderMslsReport();
       renderAlsDofReport();
       renderNakedSubsetReport();
@@ -17812,7 +17858,7 @@
 
           attempts += 1;
           try {
-            result = await runSearchWorker('generate', { givens });
+            result = await runPuzzleGenerator(givens);
           } catch (error) {
             setBusy(false);
             setStatus(`Could not generate a puzzle: ${error.message || error}`, 'warn');
@@ -18227,7 +18273,9 @@
     renderCandidateSizeFilterButtons();
     renderDifficultyTable();
     renderGridViewHeaders();
-    generatePuzzle();
+    render();
+    // Paint the empty board first, then generate the default Any puzzle in the worker.
+    setTimeout(() => generatePuzzle(), 20);
   </script>
 </body>
 </html>

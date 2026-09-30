@@ -343,11 +343,6 @@ function runMsls(payload) {
     : core.findMsls(payload.candidateGrid, options);
 }
 
-function runGenerate(payload) {
-  const givens = Math.min(81, Math.max(17, Number(payload.givens) || 21));
-  return core.generate(givens);
-}
-
 self.onmessage = event => {
   const { id, type, payload } = event.data || {};
   if (type === 'cancel') {
@@ -369,7 +364,6 @@ self.onmessage = event => {
     else if (type === 'als-dof-chain') result = runAlsDofChain(payload || {});
     else if (type === 'ahs-dof') result = runAhsDof(payload || {});
     else if (type === 'msls') result = runMsls(payload || {});
-    else if (type === 'generate') result = runGenerate(payload || {});
     else throw new Error(`Unknown search worker operation: ${type}`);
 
     if (cancelled.has(id)) {
