@@ -5399,7 +5399,7 @@
         // Browsers commonly block dedicated workers from file:// pages. Keep
         // offline copies usable by yielding once, then generate from the
         // already-loaded core. HTTP copies continue to use the worker path.
-        if (document.baseURI.startsWith('file:')) {
+        if (location.protocol === 'file:') {
           setTimeout(() => {
             try {
               resolve(core.generate(givens));
