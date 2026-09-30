@@ -17970,7 +17970,11 @@
           setBusy(false);
         };
 
-        void tryGeneration();
+        void tryGeneration().catch(error => {
+          if (requestToken !== generationToken) return;
+          setBusy(false);
+          setStatus(`Could not generate a puzzle: ${error.message || error}`, 'warn');
+        });
       }, 20);
     }
 
