@@ -349,7 +349,7 @@
     }
 
     button:disabled {
-      cursor: wait;
+      cursor: not-allowed;
       opacity: .65;
     }
 
@@ -1625,6 +1625,19 @@
     }
 
     .cell.fish-base.fish-cover {
+      background: #86efac;
+    }
+
+    .cell.msls-base {
+      background: rgba(191, 219, 254, .78);
+      box-shadow: inset 0 0 0 2px rgba(37, 99, 235, .58);
+    }
+
+    .cell.msls-cover {
+      background: rgba(254, 202, 202, .62);
+    }
+
+    .cell.msls-base.msls-cover {
       background: #86efac;
     }
 
@@ -4063,6 +4076,10 @@
             popovertarget="ahsDofSettingsPopover" popovertargetaction="toggle">
             AHS-DOF
           </button>
+          <button id="mslsSettingsButton" class="secondary" type="button"
+            popovertarget="mslsSettingsPopover" popovertargetaction="toggle">
+            MSLS
+          </button>
           <button id="difficultySettingsButton" class="secondary" type="button"
             popovertarget="difficultySettingsPopover" popovertargetaction="toggle">
             Difficulty
@@ -4348,11 +4365,11 @@
             <div class="chain-settings-row">
               <label title="Maximum number of candidate digits allowed in each ALS. Larger values increase search cost.">
                 Maximum ALS Size / Digits
-                <input id="alsDofMaxDigits" type="number" min="2" max="9" step="1" value="4">
+                <input id="alsDofMaxDigits" type="number" min="2" max="9" step="1" value="5">
               </label>
               <label title="Maximum number of auxiliary ALSs in one ALS-DOF collection.">
                 Maximum Auxiliary ALSs
-                <input id="alsDofMaxAuxiliary" type="number" min="1" max="9" step="1" value="1">
+                <input id="alsDofMaxAuxiliary" type="number" min="1" max="9" step="1" value="5">
               </label>
             </div>
           </fieldset>
@@ -4381,6 +4398,34 @@
               <label title="Maximum verified results returned by one search.">
                 Maximum Results
                 <input id="ahsDofMaxResults" type="number" min="1" max="5000" step="1" value="500">
+              </label>
+            </div>
+          </fieldset>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-popover-holder">
+      <div id="mslsSettingsPopover" class="chain-settings-popover" popover>
+        <div class="chain-settings-grid">
+          <fieldset>
+            <legend>MSLS Search Range</legend>
+            <div class="chain-settings-row">
+              <label title="Minimum number of base sectors in an MSLS search.">
+                Minimum Sector Size
+                <input id="mslsMinSize" type="number" min="1" max="7" step="1" value="1">
+              </label>
+              <label title="Maximum number of base and cover sectors in an MSLS search.">
+                Maximum Sector Size
+                <input id="mslsMaxSize" type="number" min="1" max="7" step="1" value="5">
+              </label>
+              <label title="Search states allocated per requested MSLS sector size.">
+                State Budget / Size
+                <input id="mslsStateBudget" type="number" min="1000" max="50000000" step="1000" value="5000000">
+              </label>
+              <label title="Maximum MSLS results returned by one search.">
+                Maximum Results
+                <input id="mslsResultLimit" type="number" min="1" max="50000" step="1" value="10000">
               </label>
             </div>
           </fieldset>
@@ -4803,8 +4848,14 @@
           </summary>
           <div class="pom-body">
             <div id="alsSearchResults" class="pom-results">No ALS search has been run.</div>
-            <div id="alsDofResults" class="pom-results">No ALS-DOF net search has been run.</div>
-            <div id="alsDofChainResults" class="pom-results">No ALS-DOF chain search has been run.</div>
+            <section class="move-type-group">
+              <h3>ALS - DOF</h3>
+              <div id="alsDofResults" class="pom-results">No ALS-DOF net search has been run.</div>
+            </section>
+            <section class="move-type-group">
+              <h3>ALS - DOF Chains</h3>
+              <div id="alsDofChainResults" class="pom-results">No ALS-DOF chain search has been run.</div>
+            </section>
           </div>
         </details>
         <details class="pom-panel" id="ahsSearchPanel">
@@ -4824,6 +4875,16 @@
           <div class="pom-body">
             <div id="ahsSearchResults" class="pom-results">No AHS search has been run.</div>
             <div id="ahsDofResults" class="pom-results">No AHS-DOF search has been run.</div>
+          </div>
+        </details>
+        <details class="pom-panel" id="mslsPanel">
+          <summary>
+            <h2>MSLS</h2>
+            <button id="mslsBuild" class="secondary search-action" type="button"
+              title="Search Multi-Sector Locked Sets">Search</button>
+          </summary>
+          <div class="pom-body">
+            <div id="mslsResults" class="pom-results">No MSLS search has been run.</div>
           </div>
         </details>
         <details class="pom-panel" id="chainPanel">
@@ -4957,9 +5018,10 @@
   <script src="./src/subset-report-core.js?v=20260928-2"></script>
   <script src="./src/mini-sectors-core.js?v=20260928-1"></script>
   <script src="./src/strong-link-core.js?v=20260928-1"></script>
-  <script src="./src/chain-core.js?v=20260929-8"></script>
+  <script src="./src/chain-core.js?v=20260929-9"></script>
   <script src="./src/ahs-xy-core.js?v=20260929-3"></script>
   <script src="./src/ahs-dof-core.js?v=20260929-2"></script>
+  <script src="./src/msls-core.js?v=20260930-8"></script>
   <script>
     const core = window.StormDoku;
     const boardEl = document.getElementById('board');
@@ -4977,6 +5039,7 @@
     const inputEl = document.getElementById('input');
     const examplesPanelEl = document.getElementById('examplesPanel');
     const loadEl = document.getElementById('load');
+    const resetEl = document.getElementById('reset');
     const importEl = document.getElementById('import');
     const statusEl = document.getElementById('status');
     const puzzleStringEl = document.getElementById('puzzleString');
@@ -5037,6 +5100,11 @@
     const ahsSearchResultsEl = document.getElementById('ahsSearchResults');
     const ahsLinkResultsEl = document.getElementById('ahsLinkResults');
     const ahsDofResultsEl = document.getElementById('ahsDofResults');
+    const mslsResultsEl = document.getElementById('mslsResults');
+    const mslsMinSizeEl = document.getElementById('mslsMinSize');
+    const mslsMaxSizeEl = document.getElementById('mslsMaxSize');
+    const mslsStateBudgetEl = document.getElementById('mslsStateBudget');
+    const mslsResultLimitEl = document.getElementById('mslsResultLimit');
     const chainResultsEl = document.getElementById('chainResults');
     const alsDofResultsEl = document.getElementById('alsDofResults');
     const alsDofChainResultsEl = document.getElementById('alsDofChainResults');
@@ -5063,6 +5131,7 @@
     const ahsXzBuildEl = document.getElementById('ahsXzBuild');
     const ahsXyBuildEl = document.getElementById('ahsXyBuild');
     const ahsChainBuildEl = document.getElementById('ahsChainBuild');
+    const mslsBuildEl = document.getElementById('mslsBuild');
     const ahsLinkBuildEl = document.getElementById('ahsLinkBuild');
     const ahsDofBuildEl = document.getElementById('ahsDofBuild');
     const alsXyBuildEl = document.getElementById('alsXyBuild');
@@ -5186,6 +5255,8 @@
     let alsDofChainReport = null;
     let ahsReport = null;
     let ahsLinkReport = null;
+    let mslsReport = null;
+    let selectedMslsIndex = null;
     let selectedAlsDof = null;
     let selectedAlsDofIndex = null;
     let selectedAlsDofSource = 'net';
@@ -5274,7 +5345,7 @@
         // Keep the URL relative for file:// copies. Chrome can reject a
         // file-origin URL object even though the same classic worker loads
         // correctly from the local server.
-        const workerPath = './src/search-worker.js?v=20260929-5';
+      const workerPath = './src/search-worker.js?v=20260930-8';
         const workerUrl = document.baseURI.startsWith('file:')
           ? workerPath
           : new URL(workerPath, document.baseURI);
@@ -5321,10 +5392,20 @@
       });
     }
 
+    function cancelActiveSearches(reason = 'Search cancelled.') {
+      const worker = searchWorker;
+      searchWorker = null;
+      if (worker) worker.terminate();
+      for (const job of searchWorkerJobs.values()) job.reject(new Error(reason));
+      searchWorkerJobs.clear();
+      busy = false;
+      setBusy(false);
+    }
+
     function setBusy(nextBusy) {
       busy = nextBusy;
       for (const button of document.querySelectorAll('button')) {
-        if (button !== loadEl) button.disabled = busy;
+        if (button !== loadEl && button !== resetEl && button !== importEl) button.disabled = busy;
       }
       updateHistoryButtons();
     }
@@ -5765,6 +5846,8 @@
       alsDofReport = null;
       alsDofChainReport = null;
       ahsReport = null;
+      ahsLinkReport = null;
+      mslsReport = null;
       strongLinkReport = null;
       simpleColoringReport = null;
       selectedSimpleColoringIndex = null;
@@ -9279,6 +9362,10 @@
       const chainRemoved = chain?.eliminations || [];
       const removedMarks = new Set([...removed, ...chainRemoved].map(item => `${item.cell}:${item.digit}`));
       const vertices = new Set(activeStep?.vertices || activeStep?.at || []);
+      const isMsls = activeStep?.tech === 'msls';
+      const mslsBaseCells = new Set(activeStep?.mslsBaseCells || []);
+      const mslsCoverCells = new Set(activeStep?.mslsCoverCells || []);
+      const mslsCoverAtoms = new Set(activeStep?.mslsCoverAtoms || []);
       const fins = new Set(activeStep?.fins || activeStep?.triggerCells || []);
       const endofins = new Set(activeStep?.endofins || activeStep?.endoFins || []);
       const patternDigits = new Set(activeStep?.digits || []);
@@ -9304,6 +9391,10 @@
         candidateSizeFilterStyle: candidateSizeFilterStyle(),
         removedMarks,
         vertices,
+        isMsls,
+        mslsBaseCells,
+        mslsCoverCells,
+        mslsCoverAtoms,
         fins,
         endofins,
         patternDigits,
@@ -9447,6 +9538,8 @@
             mark.className = 'vantage-position';
             mark.textContent = String(position + 1);
             const cell = vantageCellFromSlot(view, sector, position);
+            if (highlights.isMsls && highlights.mslsBaseCells.has(cell)) tile.classList.add('msls-base');
+            if (highlights.isMsls && highlights.mslsCoverCells.has(cell)) tile.classList.add('msls-cover');
             const atom = atomKey(cell, digit);
             const positionActive = positions.has(position);
             const isFixed = showFixedInVantage && puzzle[cell] === digit;
@@ -9468,6 +9561,7 @@
             const isFishVertex = highlights.isFish
               && highlights.patternDigits.has(digit)
               && highlights.vertices.has(cell);
+            const isMslsDigit = highlights.isMsls && highlights.mslsCoverAtoms.has(atom);
             const isFishFin = highlights.isFish
               && highlights.patternDigits.has(digit)
               && highlights.fins.has(cell)
@@ -9514,6 +9608,7 @@
             }
             if (isElim && !isThreeDMedusaElim && !isMultiColoringElim) mark.classList.add('elim-digit');
             if (isFishVertex || isFishFin) mark.classList.add('fish');
+            if (isMslsDigit) mark.classList.add('fish');
             if (isFishEndofin) mark.classList.add('fish-endofin');
             if (isSubsetDigit) mark.classList.add('subset');
             if (isChain) mark.classList.add('chain');
@@ -9554,7 +9649,8 @@
               || isChainWeak || isChainAls || isAlsRecord || isAlsDof || isAhsRecord
               || isChainStart || isChainEnd || strongLinkStart || strongLinkEnd || isHiddenGhost
               || isDigitFocus || isCandidateSizeFilter || isSimpleColoringDigit || isSimpleColoringElim
-              || isMultiColoringDigit || isThreeDMedusaDigit || isThreeDMedusaElim || isMultiColoringElim;
+              || isMultiColoringDigit || isThreeDMedusaDigit || isThreeDMedusaElim || isMultiColoringElim
+              || isMslsDigit;
             if (!positionActive && !hasOverlay) mark.textContent = '';
             miniGrid.appendChild(mark);
           }
@@ -9603,6 +9699,8 @@
        }
         if (highlights.isFish && highlights.baseCells.has(cell)) el.classList.add('fish-base');
         if (highlights.isFish && highlights.coverCells.has(cell)) el.classList.add('fish-cover');
+        if (highlights.isMsls && highlights.mslsBaseCells.has(cell)) el.classList.add('msls-base');
+        if (highlights.isMsls && highlights.mslsCoverCells.has(cell)) el.classList.add('msls-cover');
         if (highlights.isFish && highlights.fins.has(cell) && !highlights.vertices.has(cell)) {
           el.classList.add('fish-fin');
         }
@@ -9665,6 +9763,7 @@
             const isFishEndofinDigit = highlights.isFish && highlights.patternDigits.has(digit)
               && highlights.endofins.has(cell);
             const isFishDigit = isFishVertexDigit || isFishFinDigit;
+            const isMslsDigit = highlights.isMsls && highlights.mslsCoverAtoms.has(atomKey);
             const isChainDigit = highlights.isChain && highlights.chainMarks.has(atomKey);
             const isChainXorEntryDigit = highlights.isChain && highlights.chainXorEntryMarks.has(atomKey);
             const isChainXorExitDigit = highlights.isChain && highlights.chainXorExitMarks.has(atomKey);
@@ -9708,7 +9807,7 @@
             mark.textContent = markFor(cell, digit)
               || (isElim || (hasCandidate && (isFishDigit || isFishEndofinDigit || isChainDigit || isStrongLinkDigit
                 || isAlsRecordDigit || isAlsDofDigit || isAhsRecordDigit || isDigitFocus || isCandidateSizeFilter
-                || isSimpleColoringDigit || isMultiColoringDigit || isThreeDMedusaDigit)) ? digit : '');
+                || isSimpleColoringDigit || isMultiColoringDigit || isThreeDMedusaDigit || isMslsDigit)) ? digit : '');
            if (isDigitFocus) mark.classList.add('digit-focus', 'digit-focus-' + digit);
            if (isCandidateSizeFilter) {
              mark.classList.add('candidate-size-filter-digit');
@@ -9717,6 +9816,7 @@
            if (isSetDigit) mark.classList.add('set-digit');
            if (isHiddenGhostDigit) mark.classList.add('hidden-ghost-digit');
             if (isFishDigit) mark.classList.add('fish-digit');
+            if (isMslsDigit) mark.classList.add('fish-digit');
             if (isFishEndofinDigit) mark.classList.add('fish-endofin-digit');
             if (isChainDigit) mark.classList.add('chain-digit');
             if (isChainXorEntryDigit) mark.classList.add('chain-xor-entry-digit');
@@ -9941,6 +10041,7 @@
       renderAlsReport();
       renderAlsLinkReport();
       renderAhsReport();
+      renderAhsLinkReport();
       renderStrongLinkReport();
       renderSimpleColoringReport();
       renderThreeDMedusaReport();
@@ -9948,6 +10049,8 @@
       renderSuperMultiColoringReport();
       renderThreeDMedusaMultiReport();
       renderFishReport();
+      renderMultiFishReport();
+      renderMslsReport();
       renderAlsDofReport();
       renderNakedSubsetReport();
       renderHiddenSubsetReport();
@@ -16188,6 +16291,8 @@
       alsDofReport = null;
       alsDofChainReport = null;
       ahsReport = null;
+      ahsLinkReport = null;
+      mslsReport = null;
       selectedAlsDof = null;
       selectedAlsDofIndex = null;
       selectedAlsDofSource = 'net';
@@ -16439,10 +16544,10 @@
         moveTypes: [...currentSolverMoveTypes()],
         alsMaxDigits: Number.isInteger(configuredDigits)
           ? Math.min(9, Math.max(2, configuredDigits))
-          : 4,
+          : 5,
         alsMaxAuxiliary: Number.isInteger(configuredAuxiliary)
           ? Math.min(9, Math.max(1, configuredAuxiliary))
-          : 1,
+          : 5,
       };
     }
 
@@ -17150,11 +17255,13 @@
 
       setTimeout(async () => {
         try {
-          // Keep the dedicated chain search bounded while the broader
-          // ALS-DOF work remains available through its separate controls.
-          const maxDigits = Math.min(4, Math.max(2,
-            Number(alsDofMaxDigitsEl.value) || 4));
-          const maxAuxiliary = 1;
+          // Chains use the same explicit ALS-DOF range controls as nets;
+          // keep the chain results in their own section without silently
+          // replacing the user's 5-by-5 preset.
+          const maxDigits = Math.min(9, Math.max(2,
+            Number(alsDofMaxDigitsEl.value) || 5));
+          const maxAuxiliary = Math.min(9, Math.max(1,
+            Number(alsDofMaxAuxiliaryEl.value) || 5));
           alsDofMaxDigitsEl.value = String(maxDigits);
           alsDofMaxAuxiliaryEl.value = String(maxAuxiliary);
           try {
@@ -17215,6 +17322,139 @@
           setBusy(false);
         }
       }, 20);
+    }
+
+
+    function mslsStepFromResult(result) {
+      const eliminations = (result.eliminations || []).map(item => ({
+        cell: item.r * 9 + item.c,
+        digit: item.digit,
+      }));
+      return {
+        tech: 'msls',
+        name: 'MSLS',
+        desc: core.formatMsls(result),
+        elim: { items: eliminations },
+        digits: [...new Set((result.links || []).flatMap(link => link.digits || []))],
+        vertices: result.cellIds || [],
+        at: result.cellIds || [],
+        mslsLinks: result.links || [],
+        mslsBaseCells: result.baseCellIds || result.cellIds || [],
+        mslsCoverCells: result.coverCellIds || [],
+        mslsCoverAtoms: result.coverAtoms || [],
+      };
+    }
+
+    function renderMslsReport() {
+      mslsResultsEl.textContent = '';
+      if (!mslsReport) {
+        mslsResultsEl.textContent = 'No MSLS search has been run.';
+        return;
+      }
+      const results = mslsReport.results || [];
+      const flagged = results.filter(result => (result.safetyFlags || []).length);
+      const summary = document.createElement('p');
+      summary.textContent = `${results.length} MSLS results found.`
+        + (mslsReport.stats?.truncated ? ' Search limit reached; results are incomplete.' : '')
+        + (flagged.length ? ` ${flagged.length} flagged for inspection.` : '');
+      mslsResultsEl.appendChild(summary);
+      if (!results.length) {
+        const empty = document.createElement('p');
+        empty.textContent = 'No MSLS elimination was found.';
+        mslsResultsEl.appendChild(empty);
+        return;
+      }
+      const list = document.createElement('ul');
+      list.className = 'log';
+      results.slice(0, 500).forEach((result, index) => {
+        const item = document.createElement('li');
+        const button = document.createElement('button');
+        const safetyFlags = result.safetyFlags || [];
+        button.type = 'button';
+        button.className = 'chain-result';
+        if (safetyFlags.length) button.classList.add('chain-result-flagged');
+        if (selectedMslsIndex === index) button.classList.add('selected');
+        button.textContent = `${safetyFlags.length ? '[FLAGGED] ' : ''}${index + 1}. ${core.formatMsls(result)}`;
+        button.title = safetyFlags.length
+          ? `Flagged for inspection: ${safetyFlags.join('; ')}`
+          : 'Highlight this MSLS result and its eliminations on the grid';
+        button.addEventListener('click', () => {
+          selectedMslsIndex = index;
+          selectedAlsId = null;
+          selectedAhsId = null;
+          selectedChainIndex = null;
+          selectedStrongLinkType = null;
+          selectedStrongLinkIndex = null;
+          activeStep = mslsStepFromResult(result);
+          lastRemoved = activeStep.elim.items;
+          renderBoard();
+          renderMslsReport();
+          setStatus(`MSLS result ${index + 1} selected.`, safetyFlags.length ? 'warn' : 'ok');
+          focusMap();
+        });
+        item.appendChild(button);
+        list.appendChild(item);
+      });
+      mslsResultsEl.appendChild(list);
+      if (results.length > 500) {
+        const more = document.createElement('p');
+        more.textContent = `Showing 500 of ${results.length} results.`;
+        mslsResultsEl.appendChild(more);
+      }
+    }
+
+    async function runMslsSearch() {
+      setBusy(true);
+      setStatus('Searching Multi-Sector Locked Sets...');
+      mslsResultsEl.textContent = 'Searching MSLS...';
+      try {
+        const requestedMin = Math.max(1, Math.min(7, Number(mslsMinSizeEl.value) || 1));
+        const requestedMax = Math.max(requestedMin, Math.min(7, Number(mslsMaxSizeEl.value) || 5));
+        const stateBudgetPerSize = Math.max(1000, Math.min(20000000, Number(mslsStateBudgetEl.value) || 5000000));
+        const stateBudget = Math.min(50000000, stateBudgetPerSize * requestedMax);
+        const resultLimit = Math.max(1, Math.min(50000, Number(mslsResultLimitEl.value) || 10000));
+        mslsMinSizeEl.value = String(requestedMin);
+        mslsMaxSizeEl.value = String(requestedMax);
+        mslsStateBudgetEl.value = String(stateBudgetPerSize);
+        mslsResultLimitEl.value = String(resultLimit);
+        const payload = {
+          candidateGrid: cand,
+          options: {
+            minBaseSectors: requestedMin,
+            minCoverSectors: requestedMin,
+            maxBaseSectors: requestedMax,
+            maxCoverSectors: requestedMax,
+            mixedCovers: true,
+            maxRemovedCells: 1,
+            fastCover: true,
+            maxK: 1,
+            maxLinks: 81,
+            maxCells: requestedMax * 9,
+            maxStates: stateBudget,
+            maxResults: resultLimit,
+          },
+        };
+        let report;
+        try {
+          report = await runSearchWorker('msls', payload);
+        } catch (workerError) {
+          // Keep MSLS usable when an already-open tab still owns an old worker.
+          // The same core is loaded on the page and can complete this search directly.
+          if (!core || typeof core.findMsls !== 'function') throw workerError;
+          report = core.findMsls(payload.candidateGrid, payload.options);
+        }
+        mslsReport = report;
+        selectedMslsIndex = null;
+        renderMslsReport();
+        openReportPanel(mslsResultsEl);
+        setStatus(`MSLS search complete. ${report.results.length} result${report.results.length === 1 ? '' : 's'}.`, report.results.length ? 'ok' : 'warn');
+      } catch (error) {
+        mslsResultsEl.textContent = `Could not search MSLS: ${error.message || error}`;
+        openReportPanel(mslsResultsEl);
+        setStatus('Could not search MSLS.', 'warn');
+      } finally {
+        setBusy(false);
+      }
     }
 
     function runAlsSearch(family) {
@@ -17681,6 +17921,7 @@
     }
 
     function loadPuzzle() {
+      cancelActiveSearches('Search cancelled by puzzle reload.');
       leaveHistoryPreview();
       const input = inputEl.value;
       const grid = core.decode(input);
@@ -17751,7 +17992,10 @@
     }
 
     document.getElementById('generate').addEventListener('click', generatePuzzle);
-    document.getElementById('reset').addEventListener('click', () => resetCandidates());
+    document.getElementById('reset').addEventListener('click', () => {
+      cancelActiveSearches('Search cancelled by puzzle reload.');
+      resetCandidates();
+    });
     document.getElementById('next').addEventListener('click', nextCycle);
     document.getElementById('run').addEventListener('click', runAll);
     applyBasicsEl.addEventListener('click', applyBasics);
@@ -17763,6 +18007,11 @@
     alsBuildEl.addEventListener('click', runAlsBuild);
     alsLinkBuildEl.addEventListener('click', runAlsLinkBuild);
     ahsBuildEl.addEventListener('click', runAhsBuild);
+    mslsBuildEl.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      runMslsSearch();
+    });
     strongLinkBuildEl.addEventListener('click', runStrongLinkBuild);
     simpleColoringBuildEl.addEventListener('click', (event) => {
       event.preventDefault();
@@ -17976,3 +18225,14 @@
   </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+

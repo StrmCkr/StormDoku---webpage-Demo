@@ -15,9 +15,10 @@ importScripts(
   './subset-report-core.js?v=20260928-2',
   './mini-sectors-core.js?v=20260928-1',
   './strong-link-core.js?v=20260928-1',
-  './chain-core.js?v=20260929-8',
+  './chain-core.js?v=20260929-9',
   './ahs-xy-core.js?v=20260929-3',
   './ahs-dof-core.js?v=20260929-2',
+  './msls-core.js?v=20260930-8',
 );
 
 const core = globalThis.StormDoku;
@@ -335,6 +336,13 @@ function runAhsDof(payload) {
   };
 }
 
+function runMsls(payload) {
+  const options=payload.options || {};
+  return options.model === 'MS-AHS' && typeof core.findMsAhs === 'function'
+    ? core.findMsAhs(payload.candidateGrid, options)
+    : core.findMsls(payload.candidateGrid, options);
+}
+
 self.onmessage = event => {
   const { id, type, payload } = event.data || {};
   if (type === 'cancel') {
@@ -355,6 +363,7 @@ self.onmessage = event => {
     else if (type === 'als-dof') result = runAlsDof(payload || {});
     else if (type === 'als-dof-chain') result = runAlsDofChain(payload || {});
     else if (type === 'ahs-dof') result = runAhsDof(payload || {});
+    else if (type === 'msls') result = runMsls(payload || {});
     else throw new Error(`Unknown search worker operation: ${type}`);
 
     if (cancelled.has(id)) {
@@ -366,3 +375,11 @@ self.onmessage = event => {
     reportError(id, error);
   }
 };
+
+
+
+
+
+
+
+
