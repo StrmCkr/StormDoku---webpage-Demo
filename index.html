@@ -5396,6 +5396,19 @@
 
     function runPuzzleGenerator(givens) {
       return new Promise((resolve, reject) => {
+        // Browsers commonly block dedicated workers from file:// pages. Keep
+        // offline copies usable by yielding once, then generate from the
+        // already-loaded core. HTTP copies continue to use the worker path.
+        if (document.baseURI.startsWith('file:')) {
+          setTimeout(() => {
+            try {
+              resolve(core.generate(givens));
+            } catch (error) {
+              reject(error);
+            }
+          }, 0);
+          return;
+        }
         const workerPath = './src/generator-worker.js?v=20260930-4';
         const workerUrl = document.baseURI.startsWith('file:')
           ? workerPath
