@@ -3820,7 +3820,7 @@
     <div class="header-brand">
       <h1>StormDoku: on-line | off-line</h1>
       <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo for regular Sudoku 9x9 grids.</p>
-      <p class="app-meta">Alpha v0.4.10 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <p class="app-meta">Alpha v0.5.01 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
     </div>
   </header>
 
@@ -5345,7 +5345,7 @@
         // Keep the URL relative for file:// copies. Chrome can reject a
         // file-origin URL object even though the same classic worker loads
         // correctly from the local server.
-      const workerPath = './src/search-worker.js?v=20260930-8';
+      const workerPath = './src/search-worker.js?v=20260930-9';
         const workerUrl = document.baseURI.startsWith('file:')
           ? workerPath
           : new URL(workerPath, document.baseURI);
@@ -17811,7 +17811,13 @@
           if (requestToken !== generationToken) return;
 
           attempts += 1;
-          result = core.generate(givens);
+          try {
+            result = await runSearchWorker('generate', { givens });
+          } catch (error) {
+            setBusy(false);
+            setStatus(`Could not generate a puzzle: ${error.message || error}`, 'warn');
+            return;
+          }
           if (quickGeneration) {
             puzzle = result.puzzle;
             originalPuzzle = [...result.puzzle];
