@@ -3820,7 +3820,7 @@
     <div class="header-brand">
       <h1>StormDoku: on-line | off-line</h1>
       <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo for regular Sudoku 9x9 grids.</p>
-      <p class="app-meta">Alpha v0.5.04 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <p class="app-meta">Alpha v0.5.05 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
     </div>
   </header>
 
@@ -5124,7 +5124,7 @@
   <script src="./src/subset-report-core.js?v=20260928-2"></script>
   <script src="./src/mini-sectors-core.js?v=20260928-1"></script>
   <script src="./src/strong-link-core.js?v=20261002-2"></script>
-  <script src="./src/chain-core.js?v=20261001-14"></script>
+  <script src="./src/chain-core.js?v=20261002-3"></script>
   <script src="./src/alc-core.js?v=20261002-7"></script>
   <script src="./src/ahs-xy-core.js?v=20261001-4"></script>
   <script src="./src/ahs-dof-core.js?v=20261002-1"></script>
@@ -10635,6 +10635,8 @@
           ["Rec't Kite", '3.25 + link modifiers'],
           ['Bridged Empty Rectangle', '3.25 + link modifiers'],
           ['3x Empty Rectangle', '3.25 + link modifiers'],
+          ['XY-Wing / ALS-XY (all-bivalent)', '3.25 + link modifiers'],
+          ['XY-Chain length 3', '3.25 + link modifiers'],
           ['XYZ Wing', '3.25 + ALS_RCC modifiers'],
           ['XYZ Ring', '3.50 + ALS_RCC modifiers'],
           ['Franken 3x3 Fish K0', '3.125'],
@@ -10655,6 +10657,7 @@
       {
         category: 'CHALLENGING', score: '4.125 to 4.75', items: [
           ['X-Chain depth 4, open', '4.25 + link modifiers'],
+          ['XY-Chain length 4 / ALS-XY (all-bivalent)', '4.25 + link modifiers'],
           ['XYZ Transport', '4.75 + link modifiers'],
           ['WXYZ Wing', '4.25 + ALS_RCC modifiers'],
           ['WXYZ Ring', '4.50 + ALS_RCC modifiers'],
@@ -10979,6 +10982,17 @@
         };
       };
 
+      const sizeOne = alsSizeOneChainInfo(chain);
+      if (sizeOne?.allBivalve && sizeOne.nodeCount === 3) {
+        const value = chainMathScore(3, chain, 3, 2);
+        return define(ratingCategoryForValue(value), value,
+          `XY-${chain.isRing ? 'Ring' : 'Wing'}`);
+      }
+      if (sizeOne?.allBivalve && sizeOne.nodeCount === 4 && chain.isRing) {
+        const value = chainMathScore(4, chain, 4, 2);
+        return define(ratingCategoryForValue(value), value, 'XY-Ring');
+      }
+
       const barns = barnsChainInfo(chain);
       const barnsTransport = barnsTransportChainInfo(chain);
       if (barnsTransport) {
@@ -11062,7 +11076,7 @@
       const eriCount = chainEriCount(chain);
       // Named ERI structures must be classified by their structural name
       // before the generic ERI-node count fallback below.
-      const namedEriStructure = /(?:^|-)\s*(?:Empty Rectangle|Dual Empty Rectangle|Rec'T Kite|Bridged Empty Rectangle|Bridged ERI|3x ERI|4x ERI|L\(1\)-Wing|L1-Wing)$/i.test(name);
+      const namedEriStructure = /(?:^|-)\s*(?:Empty Rectangle|Dual Empty Rectangle|Rec'T Kite|Bridged Empty Rectangle|Bridged ERI|\d+x ERI|L\(1\)-Wing|L1-Wing)$/i.test(name);
       if (eriCount > 0 && !namedEriStructure) {
         if (eriCount === 3) {
           const value = chainMathScore(3, chain, 3, 1);
@@ -11075,7 +11089,7 @@
         return define('Irritating', 5 + ringBonus, `ERI Chain${ringSuffix}`);
       }
 
-      const alsSizeOne = alsSizeOneChainInfo(chain);
+      const alsSizeOne = sizeOne;
       if (alsSizeOne) {
         if (alsSizeOne.remotePair) {
           const value = chainMathScore(5, chain, 4, 2);
@@ -11084,6 +11098,13 @@
         if (alsSizeOne.breakdown === 'XY-Wing') {
           const value = chainMathScore(3, chain, 3, 3);
           return define(ratingCategoryForValue(value), value, `XY-Wing${ringSuffix}`);
+        }
+        // A four-node all-bivalent path is the Challenging XY-Chain / ALS-XY
+        // form. Keep its native name instead of using the older generic
+        // ALS-XY score, which incorrectly placed it above Challenging.
+        if (alsSizeOne.allBivalve && alsSizeOne.nodeCount === 4) {
+          const value = chainMathScore(4, chain, 4, 2);
+          return define(ratingCategoryForValue(value), value, `XY-Chain${ringSuffix}`);
         }
         const value = chainMathScore(5, chain, 4, 2);
         return define(ratingCategoryForValue(value), value, `XY-Chain${ringSuffix}`);
@@ -11110,12 +11131,14 @@
         const value = chainMathScore(2, chain, 2, 2);
         return define(ratingCategoryForValue(value), value, `${name}${ringSuffix}`);
       }
-      if (/(?:^|-)\s*(?:Dual Empty Rectangle|Rec'T Kite|Bridged Empty Rectangle|Bridged ERI|3x ERI|L\(1\)-Wing|L1-Wing)$/i.test(name)) {
+      if (/(?:^|-)\s*(?:Dual Empty Rectangle|Rec'T Kite|Bridged Empty Rectangle|Bridged ERI|\d+x ERI|L\(1\)-Wing|L1-Wing)$/i.test(name)) {
         const value = chainMathScore(3, chain, 3, 3);
         return define(ratingCategoryForValue(value), value, `${name}${ringSuffix}`);
       }
-      if (/(?:^|-)\s*4x ERI$/i.test(name)) {
-        const value = chainMathScore(4, chain, 4, 1);
+      const eriChainName = name.match(/^(\d+)x ERI$/i);
+      if (eriChainName) {
+        const eriDepth = Math.max(3, Number(eriChainName[1]));
+        const value = chainMathScore(eriDepth, chain, eriDepth, 1);
         return define(ratingCategoryForValue(value), value, `${name}${ringSuffix}`);
       }
       if (/^X-Wing$/i.test(name)) return define('Very Easy', 2, 'AIC X-Wing');
@@ -13667,7 +13690,7 @@
       const name = String(chain.structureName || '').replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS)\s*-\s*/i, '');
       // X-Wing is filed under the structural Ring folder, but it is not an X-Ring.
       if (/^X-Wing$/i.test(name)) return 'X-Wing';
-      if (/^(?:Dual Empty Rectangle|Rec'T Kite|Bridged ERI|Bridged Empty Rectangle|3x ERI)$/i.test(name)) {
+      if (/^(?:Dual Empty Rectangle|Rec'T Kite|Bridged ERI|Bridged Empty Rectangle|\d+x ERI)$/i.test(name)) {
         return 'Empty Rectangle';
       }
       if (eriCount > 0) {
@@ -13957,10 +13980,13 @@
         : nodes.length === 3
           ? 'XY-Wing'
           : 'XY-Chain';
+      const allBivalve = nodeDigits.every(digits => digits.length === 2);
 
       return {
         breakdown,
         remotePair,
+        nodeCount: nodes.length,
+        allBivalve,
         subclass: chain.isRing ? 'Ring' : null,
       };
     }
@@ -15536,6 +15562,8 @@
       if (phase?.name === 'strong-all') return 2.25;
       if (phase?.family === 'barns') return 3.25;
       if (phase?.family === 'barns-transport') return 4.75;
+      // Moderate ALS-XZ also owns the B.A.R.N.S. XYZ wing/ring form.
+      if (phase?.name === 'moderate-als-xz') return 3.25;
       if (phase?.family === 'als-xz') return 7;
       if (phase?.family === 'als-xy') return 8;
       if (phase?.family === 'als-chain') return 10;
@@ -15982,6 +16010,9 @@
         allowedMoveKeys: [
           'x-chain', 'chain-x-wing', 'l1-wing', 'dual-empty-rectangle',
           'rect-kite', 'bridged-eri', 'eri-chain',
+          // Pure bivalent paths are the same XY-Wing/XY-Chain family as
+          // size-one ALS-XY, so they belong to the Moderate pass too.
+          'xy-wing', 'xy-chain',
         ],
       });
       addChain('moderate-als-xz', {
@@ -15991,7 +16022,9 @@
         maxDepth: 2,
         minDepth: 2,
         requireAls: true,
-        requireMixed: true,
+        // Moderate ALS-XZ includes pure two-node ALS-XZ as well as the
+        // B.A.R.N.S./mixed presentation. Pure ALS-XZ has no ordinary SL node.
+        requireMixed: false,
         alsLinkMode: 'xz-only',
         alsModuleKinds: ['ALS_XZ'],
         family: 'als-xz',
@@ -16258,12 +16291,16 @@
       addChain('challenging-chains', {
         name: 'strong-depth-4-0-3',
         includeAls: false,
-        strongLinkTypes: [0, 1, 2, 3],
+        strongLinkTypes: [0, 1, 2, 3, 4],
         maxDepth: 4,
         minDepth: 4,
         requireAls: false,
         requireMixed: false,
         family: null,
+        allowedMoveKeys: [
+          'x-chain', 'chain-x-wing', 'l1-wing', 'dual-empty-rectangle',
+          'rect-kite', 'bridged-eri', 'eri-chain', 'xy-wing', 'xy-chain',
+        ],
       });
       addChain('challenging-transport', {
         name: 'barns-transport-xyz',

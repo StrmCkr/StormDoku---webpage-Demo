@@ -1884,10 +1884,11 @@
       && sharedOriginKind(steps) !== 'B') {
       return 'Skyscraper';
     }
-    const hasEri = steps.some(step =>
-      step.linkType === core.ERI
-      || (step.linkTypeNames || []).some(name => String(name || '').toUpperCase() === 'ERI')
-    );
+    const hasEri = steps.some(step => {
+      const names = [step.linkTypeName, ...(step.linkTypeNames || [])]
+        .map(name => String(name || '').toUpperCase());
+      return step.linkType === core.ERI || names.includes('ERI');
+    });
     if (hasEri) return 'Empty Rectangle';
     if (steps.every((step) => step.linkType === 0 || step.linkType === 1)
       && hasRow && hasCol) return '2-String Kite';
@@ -1896,9 +1897,10 @@
 
   function classifyThreeLinkEri(steps, isRing) {
     if (steps.length !== 3 || steps.some((step) => step.family !== 'SL')) return null;
-    if (steps.some((step) => step.linkType < 0 || step.linkType > 3)) return null;
+    const types = steps.map(strongLinkTypeNumber);
+    if (types.some(type => type < 0 || type > 3)) return null;
 
-    const pattern = steps.map((step) => String(step.linkType)).join('');
+    const pattern = types.join('');
     const variants = isRing ? [pattern] : [pattern, [...pattern].reverse().join('')];
     const matches = (target) => variants.some((value) =>
       isRing ? ringPatternMatches(value, target) : value === target,
@@ -1908,6 +1910,30 @@
     if (matches('303')) return 'Bridged Empty Rectangle';
     if (matches('030')) return 'Dual Empty Rectangle';
     if (['030', '130', '031', '131'].some(matches)) return "Rec'T Kite";
+    return null;
+  }
+
+  function strongLinkTypeNumber(step) {
+    if (Number.isInteger(step.linkType)) return step.linkType;
+    const names = [step.linkTypeName, ...(step.linkTypeNames || [])]
+      .map(name => String(name || '').toUpperCase());
+    return ['BILOCAL', 'CELL_TO_GROUP', 'GROUP_TO_GROUP', 'ERI'].findIndex(name =>
+      names.includes(name));
+  }
+
+  function classifyAllEriChain(steps) {
+    if (steps.length < 3 || steps.some(step => step.family !== 'SL')) return null;
+    const types = steps.map(strongLinkTypeNumber);
+    if (types.every(type => type === core.ERI)) return `${steps.length}x ERI`;
+    return null;
+  }
+
+  function classifyEriWingSubclass(steps) {
+    if (steps.length !== 3 || steps.some(step => step.family !== 'SL')) return null;
+    const pattern = steps.map(strongLinkTypeNumber).join('');
+    if (['130', '031', '131'].includes(pattern)) return "Rec'T Kite";
+    if (pattern === '030') return 'Dual Empty Rectangle';
+    if (pattern === '303') return 'Bridged Empty Rectangle';
     return null;
   }
 
@@ -2215,7 +2241,13 @@
       if (finnedXWing) return prefixedStructureName(finnedXWing, steps);
       if (isXWingRing(steps)) return prefixedStructureName('X-Wing', steps);
       const threeLinkEri = classifyThreeLinkEri(steps, true);
+      const eriWingSubclass = classifyEriWingSubclass(steps);
+      if (eriWingSubclass) {
+        return prefixedNamedWingName('L(1)-Ring', steps);
+      }
       if (threeLinkEri) return prefixedStructureName(threeLinkEri, steps);
+      const allEri = classifyAllEriChain(steps);
+      if (allEri) return prefixedStructureName(allEri, steps);
       const invertedRing = invertedRingName(steps, ringWeakDigit);
       if (invertedRing) return prefixedStructureName(invertedRing, steps);
       if (ringPatternMatches(pattern, 'LVL') && isSplitWingRing(steps)) {
@@ -2248,7 +2280,13 @@
     const simpleName = classifyTwoLinkXChain(steps);
     if (simpleName) return prefixedStructureName(simpleName, steps);
     const threeLinkEri = classifyThreeLinkEri(steps, false);
+    const eriWingSubclass = classifyEriWingSubclass(steps);
+    if (eriWingSubclass) {
+      return prefixedNamedWingName('L(1)-Wing', steps);
+    }
     if (threeLinkEri) return prefixedStructureName(threeLinkEri, steps);
+    const allEri = classifyAllEriChain(steps);
+    if (allEri) return prefixedStructureName(allEri, steps);
     const invertedWing = invertedWingName(steps);
     if (invertedWing) return prefixedStructureName(invertedWing, steps);
     if (pattern === 'VVV' && digits.length === 3) return prefixedStructureName('XY-Wing', steps);
@@ -2413,11 +2451,13 @@
     const rankKey = `${String(logicalDepth(steps)).padStart(3, '0')}|${canonicalPathKey(steps, isRing, ringWeak)}`;
     const publicSteps = steps.map(publicStep);
     const publicIsRing = isRing && !isTerminal;
+    const eriSubclass = terminalStructureName
+      || classifyEriWingSubclass(publicSteps);
     const structureName = terminalStructureName
       || classifyChain(publicSteps, publicIsRing, ringWeak?.digit ?? null);
-    const terminalFamily = terminalStructureName ? 'Local - Wing | Ring' : null;
-    const terminalWing = terminalStructureName ? (isRing ? 'Ring' : 'Wing') : null;
-    const terminalRank = terminalStructureName ? 'L(1)' : null;
+    const terminalFamily = eriSubclass ? 'Local - Wing | Ring' : null;
+    const terminalWing = eriSubclass ? (isRing ? 'Ring' : 'Wing') : null;
+    const terminalRank = eriSubclass ? 'L(1)' : null;
     const publicClosureName = isTerminal
       ? null
       : ringClosureName || (ringWeak ? WEAK_TYPE_NAMES[ringWeak.weakType] : null);
@@ -2438,7 +2478,7 @@
             structureFamily: terminalFamily,
             structureWing: terminalWing,
             structureRank: terminalRank,
-            structureSubclass: terminalStructureName,
+            structureSubclass: eriSubclass,
             isRing: publicIsRing,
             isTerminal,
             ringWeakType: ringWeak?.weakType ?? null,
@@ -2466,7 +2506,7 @@
         structureFamily: terminalFamily,
         structureWing: terminalWing,
         structureRank: terminalRank,
-        structureSubclass: terminalStructureName,
+        structureSubclass: eriSubclass,
         isRing: publicIsRing,
         isTerminal,
         ringWeakType: ringWeak?.weakType ?? null,
