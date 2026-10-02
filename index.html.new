@@ -2807,7 +2807,7 @@
   <script src="./src/subset-report-core.js"></script>
   <script src="./src/mini-sectors-core.js"></script>
   <script src="./src/strong-link-core.js?v=20260917-1"></script>
-    <script src="./src/chain-core.js?v=20260918-3"></script>
+    <script src="./src/chain-core.js?v=20261001-12"></script>
   <script>
     const core = window.StormDoku;
     const boardEl = document.getElementById('board');
@@ -3024,7 +3024,7 @@
       }
 
       try {
-        searchWorker = new Worker(new URL('./src/search-worker.js?v=20260917-2', document.baseURI));
+        searchWorker = new Worker(new URL('./src/search-worker.js?v=20261001-4', document.baseURI));
         searchWorker.onmessage = event => {
           const { id, result, error } = event.data || {};
           const job = searchWorkerJobs.get(id);
@@ -5469,7 +5469,7 @@
       const fullName = String(chain.structureName || 'AIC');
       const isAicAls = /^AIC\s*\+\s*ALS(?:\s*-|$)/i.test(fullName);
       const name = fullName
-        .replace(/^\s*(?:AIC\s*\+\s*ALS|ALS|AHS|ALC)\s*-\s*/i, '')
+        .replace(/^\s*(?:AIC\s*\+\s*ALS|ALS|AHS)\s*-\s*/i, '')
         .trim();
       const ringBonus = chain.isRing ? 0.5 : 0;
       const ringSuffix = chain.isRing ? ' Ring' : '';
@@ -6891,7 +6891,7 @@
     }
 
     function xChainType(chain, eriCount) {
-      const name = String(chain.structureName || '').replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS|ALC)\s*-\s*/i, '');
+      const name = String(chain.structureName || '').replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS)\s*-\s*/i, '');
       // X-Wing is filed under the structural Ring folder, but it is not an X-Ring.
       if (/^X-Wing$/i.test(name)) return 'X-Wing';
       if (/^(?:Dual Empty Rectangle|Rec'T Kite|Bridged ERI|Bridged Empty Rectangle|3x ERI)$/i.test(name)) {
@@ -6907,7 +6907,7 @@
 
     function wChainType(chain) {
       const name = String(chain.structureName || '')
-        .replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS|ALC)\s*-\s*/i, '');
+        .replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS)\s*-\s*/i, '');
       if (/^W-Wing$/i.test(name)) return 'Wing';
       if (/^W-Ring$/i.test(name)) return 'Ring';
       if (/^Transport$/i.test(name)) return 'Transport';
@@ -6930,14 +6930,14 @@
 
     function strongChainType(chain) {
       const name = String(chain.structureName || '')
-        .replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS|ALC)\s*-\s*/i, '');
+        .replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS)\s*-\s*/i, '');
       const match = name.match(/^Strong[- ](Wing|Ring)$/i);
       return match ? match[1][0].toUpperCase() + match[1].slice(1).toLowerCase() : null;
     }
 
     function inversionChainType(chain) {
       const name = String(chain.structureName || '')
-        .replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS|ALC)\s*-\s*/i, '');
+        .replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS)\s*-\s*/i, '');
       return /^i[SWMLH](?:\d+)?-(?:Wing|Ring)$/i.test(name) ? name : null;
     }
 
@@ -7278,7 +7278,7 @@
       if (xType) {
         const isEriFamily = xType === 'Empty Rectangle';
         const name = String(chain.structureName || '')
-          .replace(/^\s*(?:ALS|AHS|ALC)\s*-\s*/i, '');
+          .replace(/^\s*(?:ALS|AHS)\s*-\s*/i, '');
         const finnedSashimi = name.match(/^(Finned|Sashimi) X-Wing$/i);
         const eriSubclass = /^(?:Dual Empty Rectangle|Rec'T Kite|Bridged ERI|Bridged Empty Rectangle|3x ERI)$/i.test(name)
           ? name.replace(/^Bridged Empty Rectangle$/i, 'Bridged ERI')
@@ -7872,7 +7872,7 @@
     function chainMoveKeys(chain) {
       const fullName = String(chain?.structureName || '');
       const name = fullName
-        .replace(/^\s*(?:AIC\s*\+\s*ALS|ALS|AHS|ALC)\s*-\s*/i, '')
+        .replace(/^\s*(?:AIC\s*\+\s*ALS|ALS|AHS)\s*-\s*/i, '')
         .trim();
       const keys = new Set();
 
@@ -8028,7 +8028,7 @@
     function chainMoveTieKey(chain) {
       const fullName = String(chain?.structureName || '');
       const name = fullName
-        .replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS|ALC)\s*-\s*/i, '')
+        .replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS)\s*-\s*/i, '')
         .trim();
       const barnsTransport = barnsTransportChainInfo(chain);
       const barns = barnsChainInfo(chain);

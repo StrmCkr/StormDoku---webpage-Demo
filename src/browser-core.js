@@ -1198,7 +1198,7 @@
     const source = String(text ?? '').trim();
     const cells = source.split(/\s+/);
     const cellTokens = cells.length === 81 && cells.every(token => /^[1-9]+$/.test(token))
-      ? [cells]
+      ? Array.from({ length: 9 }, (_, row) => cells.slice(row * 9, row * 9 + 9))
       : null;
     const rows = cellTokens || source.split(/\r?\n/)
       .map(line => line.match(/[1-9]+/g) || [])

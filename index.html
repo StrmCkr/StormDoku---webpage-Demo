@@ -3820,7 +3820,7 @@
     <div class="header-brand">
       <h1>StormDoku: on-line | off-line</h1>
       <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo for regular Sudoku 9x9 grids.</p>
-      <p class="app-meta">Alpha v0.5.01 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <p class="app-meta">Alpha v0.5.04 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
     </div>
   </header>
 
@@ -3856,9 +3856,10 @@
       <fieldset class="generator-panel">
         <legend>Generator</legend>
         <div class="generator-fields">
-          <label>
+          <label title="Target starting clues. The generator begins with a solved grid and removes clues; it may stop above this number when uniqueness or the selected difficulty requires it.">
             Givens
-            <input id="givens" type="number" min="17" max="81" value="21">
+            <input id="givens" type="number" min="17" max="81" value="21"
+              aria-label="Target number of starting clues">
           </label>
           <label>
             Difficulty
@@ -3880,6 +3881,7 @@
               <option value="Brutal">Brutal</option>
               <option value="Nightmare">Nightmare</option>
               <option value="Abyssal">Abyssal</option>
+              <option value="Ascendant">Ascendant</option>
               <option value="Transcendent">Transcendent</option>
               <option value="Unknown">Unknown</option>
             </select>
@@ -4131,13 +4133,14 @@
                   <li><strong>8. Challenging.</strong> <span>Depth 4 chains, transport chains, WXYZ ALS-XZ, and 4x4 Franken/Mutant fish.</span></li>
                   <li><strong>9. Irritating.</strong> <span>Depth 5+ single-digit X-Chains and ALS-Chains; size-5 subsets and 5x5 fish are available but off by default.</span></li>
                   <li><strong>10. Frustrating.</strong> <span>Named ALS Wings/Rings, WXYZ transport, W-transport, and size-6 subsets/fish, with the requested depth/type limits.</span></li>
-                  <li><strong>11. Hard.</strong> <span>Full ALS-XZ and AHS-XZ at depth 2; size-7 subsets and fish remain off by default.</span></li>
-                  <li><strong>12. Demanding.</strong> <span>Named ALS/AHS Wings and Rings first via their transport engines at AIC depth 3, then Transport ALS-XZ, then ALS-XY and AHS-XY at depth 3.</span></li>
-                  <li><strong>13. Expert.</strong> <span>Generic multi-digit AIC depth 5+ with strong-link types 0-4, followed by Transport ALS-XY; size-9 subsets remain off by default.</span></li>
-                  <li><strong>14. Brutal.</strong> <span>Full-scope ALS-Chains and AHS-Chains beyond depth 3.</span></li>
+                  <li><strong>11. Hard.</strong> <span>Full ALS-XZ, AHS-XZ, and ALC-XZ at depth 2; size-7 subsets and fish remain off by default.</span></li>
+                  <li><strong>12. Demanding.</strong> <span>Named ALS/AHS/ALC Wings and Rings, Transport ALS-XZ, Transport AHS-XZ, Transport ALC-XZ, plus ALS-XY, AHS-XY, and ALC-XY at depth 3.</span></li>
+                  <li><strong>13. Expert.</strong> <span>Generic multi-digit AIC depth 5+ with strong-link types 0-4, followed by Transport ALS-XY, Transport AHS-XY, and Transport ALC-XY; size-9 subsets remain off by default.</span></li>
+                  <li><strong>14. Brutal.</strong> <span>Full-scope ALS-Chains, AHS-Chains, and ALC-Chains beyond depth 3.</span></li>
                   <li><strong>15. Nightmare.</strong> <span>Full AIC with all available link types beyond depth 3.</span></li>
-                  <li><strong>16. Abyssal.</strong> <span>ALS-DOF, then DDS, then ADDS with progressive DOF and digit scaling.</span></li>
-                  <li><strong>17. Transcendent.</strong> <span>Highest-scope ALS-Chaining with progressive depth, digit, DOF, and runtime scaling.</span></li>
+                  <li><strong>16. Abyssal.</strong> <span>ALS-DOF, AHS-DOF, DDS, and ADDS with progressive DOF and digit scaling, followed by ALC-DOF.</span></li>
+                  <li><strong>17. Ascendant.</strong> <span>MSLS with progressively scaled multi-sector search.</span></li>
+                  <li><strong>18. Transcendent.</strong> <span>Highest-scope ALS-Chaining and AHS-DOF Chain with progressive depth, digit, DOF, and runtime scaling.</span></li>
                 </ol>
                 <div class="difficulty-flow-rule"><strong>Selection rule:</strong> stop at the first phase with a valid move. Within that phase, choose the lowest final score, then the named tie order. A later phase never outranks an earlier phase.</div>
                 <div class="difficulty-flow-rule"><strong>Score rule:</strong> base technique score + link modifiers + ALS_RCC digit modifiers + AHS_RCC cell modifiers. Strong-link modifiers are type 0=0.01, type 1=0.03, type 2=0.04, type 3=0.05, and type 4=0.06; ALS_RCC adds 0.01 per distinct digit in each ALS set, while AHS_RCC adds 0.01 per cell in each unique AHS set.</div>
@@ -4214,6 +4217,10 @@
               <label class="check" title="Type 5: Bivalve size-1 ALS strong links">
                 <input id="chainStrongType4" type="checkbox" checked>
                 BIVALVE (Size-1 ALS)
+              </label>
+              <label class="check" title="Almost Fish: a single digit XOR a genuine non-complete n x n+k fish">
+                <input id="chainStrongType7" type="checkbox">
+                ALMOST FISH (AF)
               </label>
               <label class="check" title="Include ALS RCC links in the chain walk">
                 <input id="chainAlsRcc" type="checkbox" checked>
@@ -4373,6 +4380,23 @@
               </label>
             </div>
           </fieldset>
+          <fieldset>
+            <legend>ALS DOF Chain Search Range</legend>
+            <div class="chain-settings-row">
+              <label title="Maximum number of candidate digits allowed in each ALS used by the chain.">
+                Chain ALS Size / Digits
+                <input id="alsDofChainMaxDigits" type="number" min="2" max="9" step="1" value="5">
+              </label>
+              <label title="Maximum auxiliary ALSs allowed in one ALS-DOF chain node.">
+                Chain Auxiliary ALSs
+                <input id="alsDofChainMaxAuxiliary" type="number" min="1" max="9" step="1" value="5">
+              </label>
+              <label title="Maximum verified ALS-DOF chain results returned by one search.">
+                Chain Maximum Results
+                <input id="alsDofChainMaxResults" type="number" min="1" max="5000" step="1" value="500">
+              </label>
+            </div>
+          </fieldset>
         </div>
       </div>
     </div>
@@ -4392,12 +4416,37 @@
                 <input id="ahsDofMaxCells" type="number" min="2" max="9" step="1" value="6">
               </label>
               <label title="Maximum DOF-1 auxiliary AHS nodes in one collection.">
-                Maximum Auxiliary AHSs
-                <input id="ahsDofMaxAuxiliary" type="number" min="1" max="3" step="1" value="2">
+                Maximum Auxiliary AHS
+                <input id="ahsDofMaxAuxiliary" type="number" min="1" max="9" step="1" value="2">
               </label>
               <label title="Maximum verified results returned by one search.">
                 Maximum Results
                 <input id="ahsDofMaxResults" type="number" min="1" max="5000" step="1" value="500">
+              </label>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>AHS DOF Chain Search Range</legend>
+            <div class="chain-settings-row">
+              <label title="Maximum DOF allowed for the AHS-DOF chain hub.">
+                Chain Maximum DOF
+                <input id="ahsDofChainMaxDof" type="number" min="2" max="3" step="1" value="2">
+              </label>
+              <label title="Maximum cells allowed in each AHS node used by the chain.">
+                Chain Maximum Cells
+                <input id="ahsDofChainMaxCells" type="number" min="2" max="9" step="1" value="6">
+              </label>
+              <label title="Maximum auxiliary AHS nodes allowed in one chain collection.">
+                Chain Auxiliary AHS
+                <input id="ahsDofChainMaxAuxiliary" type="number" min="1" max="9" step="1" value="2">
+              </label>
+              <label title="Maximum number of links in an AHS-DOF chain.">
+                Chain Maximum Depth
+                <input id="ahsDofChainMaxDepth" type="number" min="2" max="5" step="1" value="3">
+              </label>
+              <label title="Maximum verified AHS-DOF chain results returned by one search.">
+                Chain Maximum Results
+                <input id="ahsDofChainMaxResults" type="number" min="1" max="5000" step="1" value="500">
               </label>
             </div>
           </fieldset>
@@ -4411,13 +4460,13 @@
           <fieldset>
             <legend>MSLS Search Range</legend>
             <div class="chain-settings-row">
-              <label title="Minimum number of base sectors in an MSLS search.">
+              <label title="Minimum MSLS size. Sizes 1-2 are ordinary locked-set cases and are skipped.">
                 Minimum Sector Size
-                <input id="mslsMinSize" type="number" min="1" max="7" step="1" value="1">
+                <input id="mslsMinSize" type="number" min="3" max="5" step="1" value="3">
               </label>
-              <label title="Maximum number of base and cover sectors in an MSLS search.">
+              <label title="Maximum MSLS size. The default search scales from size 3 through size 5.">
                 Maximum Sector Size
-                <input id="mslsMaxSize" type="number" min="1" max="7" step="1" value="5">
+                <input id="mslsMaxSize" type="number" min="3" max="5" step="1" value="5">
               </label>
               <label title="Search states allocated per requested MSLS sector size.">
                 State Budget / Size
@@ -4475,6 +4524,42 @@
             </label>
             <label class="check">
               <input id="fishMutant" type="checkbox" checked>
+              Mutant
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Almost Fish (AF)</legend>
+          <div class="fish-size-row">
+            <label title="Smallest fish base size considered by AF links.">
+              Min N Size
+              <select id="afMinSize"></select>
+            </label>
+            <label title="Largest fish base size considered by AF links.">
+              Max N Size
+              <select id="afMaxSize"></select>
+            </label>
+            <label title="Smallest cover excess k considered by AF links.">
+              Min K Size
+              <select id="afMinK"></select>
+            </label>
+            <label title="Largest cover excess k considered by AF links.">
+              Max K Size
+              <select id="afMaxK"></select>
+            </label>
+          </div>
+          <div class="fish-type-row">
+            <label class="check" title="Allow basic row/column fish formations.">
+              <input id="afBasic" type="checkbox" checked>
+              Basic
+            </label>
+            <label class="check" title="Allow Franken fish formations.">
+              <input id="afFranken" type="checkbox" checked>
+              Franken
+            </label>
+            <label class="check" title="Allow Mutant fish formations.">
+              <input id="afMutant" type="checkbox" checked>
               Mutant
             </label>
           </div>
@@ -4835,11 +4920,11 @@
             <h2>Almost Locked Sets</h2>
             <div class="als-search-buttons" aria-label="Almost Locked Set searches">
               <button id="alsXzBuild" class="secondary" type="button"
-                title="Search ALS-XZ using ALS_RCC and type 5 links only">ALS - XZ</button>
+                title="Search ALS-XZ">ALS - XZ</button>
               <button id="alsXyBuild" class="secondary" type="button"
-                title="Search ALS-XY using bivalent type 4 and ALS_RCC type 5 links">ALS - XY</button>
+                title="Search ALS-XY">ALS - XY</button>
               <button id="alsChainBuild" class="secondary" type="button"
-                title="Search ALS chains using ALS_RCC and type 5 links only">ALS - Chain</button>
+                title="Search ALS chains">ALS - Chain</button>
               <button id="alsDofBuild" class="secondary" type="button"
                 title="Search ALS-DOF hub, DDS, and Almost-DDS nets">ALS - DOF</button>
               <button id="alsDofChainBuild" class="secondary" type="button"
@@ -4870,11 +4955,32 @@
                 title="Search AHS chains using AHS_RCC links and strong-link types 0 and 1">AHS - Chain</button>
               <button id="ahsDofBuild" class="secondary" type="button"
                 title="Search verified AHS-DOF cell nets">AHS - DOF</button>
+              <button id="ahsDofChainBuild" class="secondary" type="button"
+                title="Search verified AHS-DOF chains">AHS - DOF Chain</button>
             </div>
           </summary>
           <div class="pom-body">
             <div id="ahsSearchResults" class="pom-results">No AHS search has been run.</div>
             <div id="ahsDofResults" class="pom-results">No AHS-DOF search has been run.</div>
+            <div id="ahsDofChainResults" class="pom-results">No AHS-DOF chain search has been run.</div>
+          </div>
+        </details>
+        <details class="pom-panel" id="alcSearchPanel">
+          <summary>
+            <h2>Almost Locked Candidates</h2>
+            <div class="als-search-buttons" aria-label="Almost Locked Candidate searches">
+              <button id="alcXzBuild" class="secondary" type="button"
+                title="Search mixed ALS/AHS restricted-common ALC-XZ structures">ALC - XZ</button>
+              <button id="alcXyBuild" class="secondary" type="button"
+                title="Search mixed ALS/AHS ALC-XY chains">ALC - XY</button>
+              <button id="alcChainBuild" class="secondary" type="button"
+                title="Search mixed ALS/AHS ALC chains">ALC - Chain</button>
+              <button id="alcDofBuild" class="secondary" type="button"
+                title="Search ALC-DOF roots extended by ALS/AHS modules">ALC - DOF</button>
+            </div>
+          </summary>
+          <div class="pom-body">
+            <div id="alcSearchResults" class="pom-results">No ALC search has been run.</div>
           </div>
         </details>
         <details class="pom-panel" id="mslsPanel">
@@ -5007,20 +5113,21 @@
     </section>
   </main>
 
-  <script src="./src/browser-core.js?v=20260929-1"></script>
+  <script src="./src/browser-core.js?v=20261001-2"></script>
   <script src="./src/set-tools-core.js?v=20260928-1"></script>
   <script src="./src/pom-core.js?v=20260928-2"></script>
   <script src="./src/als-core.js?v=20260928-1"></script>
   <script src="./src/als-link-core.js?v=20260928-1"></script>
   <script src="./src/als-dof-core.js?v=20260928-1"></script>
   <script src="./src/ahs-core.js?v=20260928-2"></script>
-  <script src="./src/ahs-link-core.js?v=20260929-12"></script>
+  <script src="./src/ahs-link-core.js?v=20261001-28"></script>
   <script src="./src/subset-report-core.js?v=20260928-2"></script>
   <script src="./src/mini-sectors-core.js?v=20260928-1"></script>
-  <script src="./src/strong-link-core.js?v=20260928-1"></script>
-  <script src="./src/chain-core.js?v=20260929-9"></script>
-  <script src="./src/ahs-xy-core.js?v=20260929-3"></script>
-  <script src="./src/ahs-dof-core.js?v=20260929-2"></script>
+  <script src="./src/strong-link-core.js?v=20261002-2"></script>
+  <script src="./src/chain-core.js?v=20261001-14"></script>
+  <script src="./src/alc-core.js?v=20261002-7"></script>
+  <script src="./src/ahs-xy-core.js?v=20261001-4"></script>
+  <script src="./src/ahs-dof-core.js?v=20261002-1"></script>
   <script src="./src/msls-core.js?v=20260930-8"></script>
   <script>
     const core = window.StormDoku;
@@ -5098,8 +5205,10 @@
     const hiddenSubsetResultsEl = document.getElementById('hiddenSubsetResults');
     const alsSearchResultsEl = document.getElementById('alsSearchResults');
     const ahsSearchResultsEl = document.getElementById('ahsSearchResults');
+    const alcSearchResultsEl = document.getElementById('alcSearchResults');
     const ahsLinkResultsEl = document.getElementById('ahsLinkResults');
     const ahsDofResultsEl = document.getElementById('ahsDofResults');
+    const ahsDofChainResultsEl = document.getElementById('ahsDofChainResults');
     const mslsResultsEl = document.getElementById('mslsResults');
     const mslsMinSizeEl = document.getElementById('mslsMinSize');
     const mslsMaxSizeEl = document.getElementById('mslsMaxSize');
@@ -5129,26 +5238,39 @@
     const hiddenSubsetBuildEl = document.getElementById('hiddenSubsetBuild');
     const alsXzBuildEl = document.getElementById('alsXzBuild');
     const ahsXzBuildEl = document.getElementById('ahsXzBuild');
+    const alcXzBuildEl = document.getElementById('alcXzBuild');
+    const alcXyBuildEl = document.getElementById('alcXyBuild');
+    const alcChainBuildEl = document.getElementById('alcChainBuild');
+    const alcDofBuildEl = document.getElementById('alcDofBuild');
     const ahsXyBuildEl = document.getElementById('ahsXyBuild');
     const ahsChainBuildEl = document.getElementById('ahsChainBuild');
     const mslsBuildEl = document.getElementById('mslsBuild');
     const ahsLinkBuildEl = document.getElementById('ahsLinkBuild');
     const ahsDofBuildEl = document.getElementById('ahsDofBuild');
+    const ahsDofChainBuildEl = document.getElementById('ahsDofChainBuild');
     const alsXyBuildEl = document.getElementById('alsXyBuild');
     const alsChainBuildEl = document.getElementById('alsChainBuild');
     const alsDofBuildEl = document.getElementById('alsDofBuild');
     const alsDofChainBuildEl = document.getElementById('alsDofChainBuild');
     const alsDofMaxDigitsEl = document.getElementById('alsDofMaxDigits');
     const alsDofMaxAuxiliaryEl = document.getElementById('alsDofMaxAuxiliary');
+    const alsDofChainMaxDigitsEl = document.getElementById('alsDofChainMaxDigits');
+    const alsDofChainMaxAuxiliaryEl = document.getElementById('alsDofChainMaxAuxiliary');
+    const alsDofChainMaxResultsEl = document.getElementById('alsDofChainMaxResults');
     const ahsDofMaxDofEl = document.getElementById('ahsDofMaxDof');
     const ahsDofMaxCellsEl = document.getElementById('ahsDofMaxCells');
     const ahsDofMaxAuxiliaryEl = document.getElementById('ahsDofMaxAuxiliary');
     const ahsDofMaxResultsEl = document.getElementById('ahsDofMaxResults');
+    const ahsDofChainMaxDofEl = document.getElementById('ahsDofChainMaxDof');
+    const ahsDofChainMaxCellsEl = document.getElementById('ahsDofChainMaxCells');
+    const ahsDofChainMaxAuxiliaryEl = document.getElementById('ahsDofChainMaxAuxiliary');
+    const ahsDofChainMaxDepthEl = document.getElementById('ahsDofChainMaxDepth');
+    const ahsDofChainMaxResultsEl = document.getElementById('ahsDofChainMaxResults');
     const chainDepthEl = document.getElementById('chainDepth');
     const chainAlsRccEl = document.getElementById('chainAlsRcc');
     const chainAhsEl = document.getElementById('chainAhs');
-    const chainStrongTypeEls = Array.from({ length: 5 }, (_, index) =>
-      document.getElementById(`chainStrongType${index}`));
+    const chainStrongTypeEls = Array.from({ length: 8 }, (_, index) =>
+      document.getElementById(`chainStrongType${index}`) || { checked: false });
     const solverMoveTypeEls = new Map([
       ['last-man-standing', document.getElementById('moveLastManStanding')],
       ['hidden-single', document.getElementById('moveHiddenSingle')],
@@ -5232,6 +5354,13 @@
     const fishBasicEl = document.getElementById('fishBasic');
     const fishFrankenEl = document.getElementById('fishFranken');
     const fishMutantEl = document.getElementById('fishMutant');
+    const afMinSizeEl = document.getElementById('afMinSize');
+    const afMaxSizeEl = document.getElementById('afMaxSize');
+    const afMinKEl = document.getElementById('afMinK');
+    const afMaxKEl = document.getElementById('afMaxK');
+    const afBasicEl = document.getElementById('afBasic');
+    const afFrankenEl = document.getElementById('afFranken');
+    const afMutantEl = document.getElementById('afMutant');
     const fishDigitsEl = document.getElementById('fishDigits');
     const fishBaseSectorsEl = document.getElementById('fishBaseSectors');
     const fishCoverSectorsEl = document.getElementById('fishCoverSectors');
@@ -5254,7 +5383,14 @@
     let alsDofReport = null;
     let alsDofChainReport = null;
     let ahsReport = null;
+    let alcXzReport = null;
+    let alcXyReport = null;
+    let alcChainReport = null;
+    let alcDofReport = null;
     let ahsLinkReport = null;
+    let ahsDofReport = null;
+    let ahsDofChainReport = null;
+    let selectedAhsDofChainIndex = null;
     let mslsReport = null;
     let selectedMslsIndex = null;
     let selectedAlsDof = null;
@@ -5263,6 +5399,7 @@
     let selectedAlsId = null;
     const openAlsSizeGroups = new Set();
     let selectedAhsDof = null;
+    let selectedAhsDofNetIndex = null;
     let selectedAhsId = null;
     const openAhsSizeGroups = new Set();
     let strongLinkReport = null;
@@ -5347,7 +5484,7 @@
         // Keep the URL relative for file:// copies. Chrome can reject a
         // file-origin URL object even though the same classic worker loads
         // correctly from the local server.
-      const workerPath = './src/search-worker.js?v=20260930-9';
+      const workerPath = './src/search-worker.js?v=20261002-3';
         const workerUrl = document.baseURI.startsWith('file:')
           ? workerPath
           : new URL(workerPath, document.baseURI);
@@ -5502,20 +5639,26 @@
       renderPomReport();
     }
 
-    function syncFishRanges(changed) {
-      const minSize = Number(fishMinSizeEl.value);
-      const maxSize = Number(fishMaxSizeEl.value);
-      const minK = Number(fishMinKEl.value);
-      const maxK = Number(fishMaxKEl.value);
+    function syncFishRanges(changed, controls = null) {
+      const range = controls || {
+        minSize: fishMinSizeEl,
+        maxSize: fishMaxSizeEl,
+        minK: fishMinKEl,
+        maxK: fishMaxKEl,
+      };
+      const minSize = Number(range.minSize.value);
+      const maxSize = Number(range.maxSize.value);
+      const minK = Number(range.minK.value);
+      const maxK = Number(range.maxK.value);
 
       if (minSize > maxSize) {
-        if (changed === fishMinSizeEl) fishMaxSizeEl.value = String(minSize);
-        else fishMinSizeEl.value = String(maxSize);
+        if (changed === range.minSize) range.maxSize.value = String(minSize);
+        else range.minSize.value = String(maxSize);
       }
 
       if (minK > maxK) {
-        if (changed === fishMinKEl) fishMaxKEl.value = String(minK);
-        else fishMinKEl.value = String(maxK);
+        if (changed === range.minK) range.maxK.value = String(minK);
+        else range.minK.value = String(maxK);
       }
 
       fishSettingsChanged();
@@ -5722,6 +5865,10 @@
       fillNumberSelect(fishMaxSizeEl, 1, 7, 4);
       fillNumberSelect(fishMinKEl, 0, 2, 1);
       fillNumberSelect(fishMaxKEl, 0, 2, 2);
+      fillNumberSelect(afMinSizeEl, 2, 7, 2);
+      fillNumberSelect(afMaxSizeEl, 2, 7, 4);
+      fillNumberSelect(afMinKEl, 1, 2, 1);
+      fillNumberSelect(afMaxKEl, 1, 2, 2);
 
       for (const select of [fishMinSizeEl, fishMaxSizeEl, fishMinKEl, fishMaxKEl]) {
         select.addEventListener('change', () => syncFishRanges(select));
@@ -5730,10 +5877,33 @@
       for (const checkbox of [fishFastEl, fishBasicEl, fishFrankenEl, fishMutantEl]) {
         checkbox.addEventListener('change', fishSettingsChanged);
       }
+      for (const select of [afMinSizeEl, afMaxSizeEl, afMinKEl, afMaxKEl]) {
+        select.addEventListener('change', () => syncFishRanges(select, {
+          minSize: afMinSizeEl,
+          maxSize: afMaxSizeEl,
+          minK: afMinKEl,
+          maxK: afMaxKEl,
+        }));
+      }
+      for (const checkbox of [afBasicEl, afFrankenEl, afMutantEl]) {
+        checkbox.addEventListener('change', fishSettingsChanged);
+      }
 
       setAllDigits(true);
       renderFishSectorGrid('baseSectors');
       renderFishSectorGrid('coverSectors');
+    }
+
+    function currentAlmostFishOptions() {
+      return {
+        minSize: Number(afMinSizeEl.value),
+        maxSize: Number(afMaxSizeEl.value),
+        minK: Number(afMinKEl.value),
+        maxK: Number(afMaxKEl.value),
+        basicsEnabled: afBasicEl.checked,
+        frankenEnabled: afFrankenEl.checked,
+        mutantEnabled: afMutantEl.checked,
+      };
     }
 
     function currentPomFishOptions() {
@@ -5855,6 +6025,16 @@
       return ahsReport.find(record => record.uniqueID === selectedAhsId) || null;
     }
 
+    function selectedAhsDofNetRecord() {
+      if (!ahsDofReport || selectedAhsDofNetIndex === null) return null;
+      return ahsDofReport.results?.[selectedAhsDofNetIndex] || null;
+    }
+
+    function selectedAhsDofChainRecord() {
+      if (!ahsDofChainReport || selectedAhsDofChainIndex === null) return null;
+      return ahsDofChainReport.results?.[selectedAhsDofChainIndex] || null;
+    }
+
     function atomKey(cell, digit) {
       return String(cell) + ':' + String(digit);
     }
@@ -5906,6 +6086,12 @@
       alsDofReport = null;
       alsDofChainReport = null;
       ahsReport = null;
+      alcXzReport = null;
+      alcXyReport = null;
+      alcChainReport = null;
+      alcDofReport = null;
+      ahsDofReport = null;
+      ahsDofChainReport = null;
       ahsLinkReport = null;
       mslsReport = null;
       strongLinkReport = null;
@@ -5931,6 +6117,8 @@
       selectedAlsDofSource = 'net';
       selectedAlsId = null;
       selectedAhsDof = null;
+      selectedAhsDofNetIndex = null;
+      selectedAhsDofChainIndex = null;
       selectedAhsId = null;
       selectedStrongLinkType = null;
       selectedStrongLinkIndex = null;
@@ -7463,8 +7651,7 @@
         || typeName === 'ALS'
         || typeName.startsWith('ALS_')
         || !!step.module
-        || linkType === core.ALS
-        || linkType === 5;
+        || linkType === core.ALS;
     }
 
     function moduleVisualSides(step) {
@@ -7994,6 +8181,13 @@
       }
     }
 
+    function drawGroupedSideDigitBoxes(svg, side, className = 'strong-link-side-box strong-link-start-box') {
+      const cells = side?.cells || [];
+      const digits = side?.digits || [];
+      if (cells.length < 2 && digits.length < 2) return;
+      drawSideDigitBoxes(svg, side, className);
+    }
+
     function boxEdgeAnchor(box, target, fallback) {
       const center = { x: (box.left + box.right) / 2, y: (box.top + box.bottom) / 2 };
       const dx = target.x - center.x;
@@ -8056,6 +8250,23 @@
       svg.setAttribute('viewBox', '0 0 100 100');
       svg.setAttribute('aria-hidden', 'true');
 
+      if (chain.alcXz) {
+        const { als, ahs, contacts } = chain.alcXz;
+        drawSideDigitBoxes(svg, als, 'strong-link-side-box strong-link-start-box');
+        drawSideDigitBoxes(svg, ahs, 'strong-link-side-box strong-link-end-box');
+        for (const contact of contacts) {
+          for (const [left, right] of contact.pairs) {
+            drawWeakConnection(
+              svg,
+              { cells: [left], digits: [contact.digit] },
+              { cells: [right], digits: [contact.digit] },
+            );
+          }
+        }
+        boardEl.appendChild(svg);
+        return;
+      }
+
       if (chain.ahsXy) {
         for (const [index, step] of chain.steps.entries()) {
           const boxClass = index % 2
@@ -8080,6 +8291,18 @@
 
       for (let index = 0; index < chain.steps.length; index++) {
         const step = chain.steps[index];
+        if (!isAlsVisualStep(step)) {
+          drawGroupedSideDigitBoxes(
+            svg,
+            step.entry,
+            'strong-link-side-box strong-link-start-box',
+          );
+          drawGroupedSideDigitBoxes(
+            svg,
+            step.exit,
+            'strong-link-side-box strong-link-end-box',
+          );
+        }
         if (index > 0) {
           const fromSide = visibleChainExitSide(chain.steps[index - 1]);
           const toSide = visibleChainEntrySide(step);
@@ -9238,6 +9461,8 @@
       const alsRecord = selectedAlsRecord();
       const alsDofRecord = selectedAlsDofRecord();
       const ahsRecord = selectedAhsRecord();
+      const ahsDofChainRecord = selectedAhsDofChainRecord();
+      const ahsDofRecord = ahsDofChainRecord ? null : selectedAhsDofNetRecord();
       const alsRecordCells = new Set(alsRecord?.alsAllCells || []);
       const alsRecordMarks = new Set();
       for (const cell of alsRecord?.alsAllCells || []) {
@@ -9285,6 +9510,26 @@
       for (const cell of ahsRecord?.ahsAllCells || []) {
         for (const digit of ahsRecord?.ahsDigits || []) {
           if (cellHasCandidate(cell, digit)) ahsRecordMarks.add(atomKey(cell, digit));
+        }
+      }
+      const ahsDofRecordCells = new Set();
+      const ahsDofRecordMarks = new Set();
+      const ahsDofDisplayNodes = ahsDofChainRecord
+        ? ahsDofChainRecord.nets.flatMap(net => [net.hub, ...(net.auxiliary || [])])
+        : ahsDofRecord ? [ahsDofRecord.hub, ...(ahsDofRecord.auxiliary || [])] : [];
+      const ahsDofRecordElimMarks = new Set(
+        (ahsDofChainRecord?.eliminations || ahsDofRecord?.eliminations || [])
+          .map(item => atomKey(item.cell, item.digit)),
+      );
+      if (ahsDofDisplayNodes.length) {
+        const nodes = ahsDofDisplayNodes.filter(Boolean);
+        for (const node of nodes) {
+          for (const cell of node.cells || []) {
+            ahsDofRecordCells.add(cell);
+            for (const digit of node.digits || []) {
+              if (cellHasCandidate(cell, digit)) ahsDofRecordMarks.add(atomKey(cell, digit));
+            }
+          }
         }
       }
       const selectedStrongLinkGroup = strongLinkDisplayGroups()[selectedStrongLinkType] || [];
@@ -9335,19 +9580,19 @@
         }
       }
       const superMultiColoringRawRecord = !activeStep && !chain && !alsRecord && !alsDofRecord
-        && !ahsRecord && !strongLink
+        && !ahsRecord && !ahsDofRecord && !strongLink
         ? superMultiColoringReport?.[selectedSuperMultiColoringIndex] || null
         : null;
       const threeDMedusaMultiRawRecord = !superMultiColoringRawRecord && !activeStep && !chain && !alsRecord && !alsDofRecord
-        && !ahsRecord && !strongLink
+        && !ahsRecord && !ahsDofRecord && !strongLink
         ? threeDMedusaMultiReport?.[selectedThreeDMedusaMultiIndex] || null
         : null;
       const multiColoringRawRecord = !superMultiColoringRawRecord && !threeDMedusaMultiRawRecord && !activeStep && !chain && !alsRecord && !alsDofRecord
-        && !ahsRecord && !strongLink
+        && !ahsRecord && !ahsDofRecord && !strongLink
         ? multiColoringReport?.[selectedMultiColoringIndex] || null
         : null;
       const threeDMedusaRawRecord = !superMultiColoringRawRecord && !threeDMedusaMultiRawRecord && !multiColoringRawRecord && !activeStep && !chain && !alsRecord && !alsDofRecord
-        && !ahsRecord && !strongLink
+        && !ahsRecord && !ahsDofRecord && !strongLink
         ? threeDMedusaReport?.[selectedThreeDMedusaIndex] || null
         : null;
       const superMultiColoringRecord = displayColouringRecord(superMultiColoringRawRecord, 'superMulti');
@@ -9362,7 +9607,7 @@
           ? threeDMedusaMultiRecord
           : multiColoringRecord);
       const simpleColoringRawRecord = !superMultiColoringRawRecord && !threeDMedusaMultiRawRecord && !multiColoringRawRecord && !threeDMedusaRawRecord && !activeStep && !chain && !alsRecord && !alsDofRecord
-        && !ahsRecord && !strongLink
+        && !ahsRecord && !ahsDofRecord && !strongLink
         ? simpleColoringReport?.[selectedSimpleColoringIndex] || null
         : null;
       const simpleColoringRecord = displayColouringRecord(simpleColoringRawRecord, 'simple');
@@ -9479,6 +9724,13 @@
         ahsRecordCells,
         ahsRecordMarks,
         ahsRecordColor: ahsRecord ? AHS_RECORD_COLOR : null,
+        isAhsDof: !!(ahsDofRecord || ahsDofChainRecord),
+        ahsDofRecord,
+        ahsDofRecordCells,
+        ahsDofRecordMarks,
+        ahsDofRecordElimMarks,
+        ahsDofRecordColor: (ahsDofRecord || ahsDofChainRecord) ? AHS_RECORD_COLOR : null,
+        ahsDofChainRecord,
         isStrongLink: !!strongLink,
         strongLink: strongLink && selectedStrongLinkType === 3
           && strongLink.secondaryXorConstruction?.kind === 'eri'
@@ -9606,13 +9858,14 @@
             const isDigitFocus = positionActive && digitHighlightIsVisible(cell, digit);
             const isCandidateSizeFilter = candidateSizeFilterDigitMatches(cell, digit);
             const isAlsDofElim = highlights.alsDofElimMarks.has(atom);
+            const isAhsDofElim = highlights.ahsDofRecordElimMarks.has(atom);
             const isSimpleColoringElim = highlights.simpleColoringElimMarks.has(atom);
             const isMultiColoringElim = highlights.multiColoringElimMarks.has(atom);
             const isThreeDMedusaElim = highlights.threeDMedusaElimMarks.has(atom);
             const isThreeDMedusaInvalid = highlights.threeDMedusaInvalidMarks.has(atom);
             const multiColoringTokens = highlights.multiColoringMarks.get(atom);
             const isMultiColoringDigit = !!multiColoringTokens;
-            const isElim = highlights.removedMarks.has(atom) || isAlsDofElim || isSimpleColoringElim
+            const isElim = highlights.removedMarks.has(atom) || isAlsDofElim || isAhsDofElim || isSimpleColoringElim
               || isMultiColoringElim || isThreeDMedusaElim;
             const simpleColoringRole = highlights.simpleColoringMarks.get(atom);
             const isSimpleColoringDigit = !!simpleColoringRole;
@@ -9639,6 +9892,7 @@
             const isChainAls = highlights.isChain && highlights.chainAlsMarks.has(atom);
             const isAlsRecord = highlights.isAlsRecord && highlights.alsRecordMarks.has(atom);
             const isAlsDof = highlights.isAlsDof && highlights.alsDofMarks.has(atom);
+            const isAhsDof = highlights.isAhsDof && highlights.ahsDofRecordMarks.has(atom);
             const isAhsRecord = highlights.isAhsRecord && highlights.ahsRecordMarks.has(atom);
             const isChainStart = highlights.isChain && highlights.chainStartMarks.has(atom);
             const isChainEnd = highlights.isChain && highlights.chainEndMarks.has(atom);
@@ -9681,6 +9935,7 @@
             if (isChainWeak) mark.classList.add('chain-weak');
             if (isChainAls || isAlsRecord || isAlsDof) mark.classList.add('chain-als');
             if (isAhsRecord) mark.classList.add('ahs-record');
+            if (isAhsDof) mark.classList.add('ahs-record');
             if (isSimpleColoringDigit) {
               mark.classList.add('simple-colouring-digit', 'simple-colouring-' + simpleColoringRole + '-digit');
             }
@@ -9700,13 +9955,14 @@
             if (isAlsRecord) applyAlsColorVars(mark, highlights.alsRecordColor);
             if (isAlsDof) applyAlsColorVars(mark, highlights.alsDofStyleByAtom.get(atom));
             if (isAhsRecord) applyAhsColorVars(mark, highlights.ahsRecordColor);
+            if (isAhsDof) applyAhsColorVars(mark, highlights.ahsDofRecordColor);
 
             if (selectedPlayerCell === cell) mark.classList.add('player-cell-selected');
             bindPlayerDigitElement(mark, cell, digit);
 
             const hasOverlay = isElim || isFishVertex || isFishFin || isFishEndofin
               || isSubsetDigit || isChain || isChainXorEntry || isChainXorExit
-              || isChainWeak || isChainAls || isAlsRecord || isAlsDof || isAhsRecord
+              || isChainWeak || isChainAls || isAlsRecord || isAlsDof || isAhsRecord || isAhsDof
               || isChainStart || isChainEnd || strongLinkStart || strongLinkEnd || isHiddenGhost
               || isDigitFocus || isCandidateSizeFilter || isSimpleColoringDigit || isSimpleColoringElim
               || isMultiColoringDigit || isThreeDMedusaDigit || isThreeDMedusaElim || isMultiColoringElim
@@ -9784,6 +10040,10 @@
           el.classList.add('ahs-record-cell');
           applyAhsColorVars(el, highlights.ahsRecordColor);
         }
+        if (highlights.isAhsDof && highlights.ahsDofRecordCells.has(cell)) {
+          el.classList.add('ahs-record-cell');
+          applyAhsColorVars(el, highlights.ahsDofRecordColor);
+        }
         if (highlights.isChain && highlights.chainAlsEntryCells.has(cell)) el.classList.add('chain-als-entry');
         if (highlights.isChain && highlights.chainAlsExitCells.has(cell)) el.classList.add('chain-als-exit');
         if (highlights.isStrongLink && highlights.strongLink.activeCells?.includes(cell)) {
@@ -9810,11 +10070,12 @@
             mark.className = 'mark';
             const atomKey = `${cell}:${digit}`;
             const isAlsDofElim = highlights.alsDofElimMarks.has(atomKey);
+            const isAhsDofElim = highlights.ahsDofRecordElimMarks.has(atomKey);
             const isSimpleColoringElim = highlights.simpleColoringElimMarks.has(atomKey);
             const isMultiColoringElim = highlights.multiColoringElimMarks.has(atomKey);
             const isThreeDMedusaElim = highlights.threeDMedusaElimMarks.has(atomKey);
             const isThreeDMedusaInvalid = highlights.threeDMedusaInvalidMarks.has(atomKey);
-            const isElim = highlights.removedMarks.has(atomKey) || isAlsDofElim || isSimpleColoringElim
+            const isElim = highlights.removedMarks.has(atomKey) || isAlsDofElim || isAhsDofElim || isSimpleColoringElim
               || isMultiColoringElim || isThreeDMedusaElim;
             const isSetDigit = highlights.isSubset && highlights.patternDigits.has(digit) && highlights.vertices.has(cell);
             const isFishVertexDigit = highlights.isFish && highlights.patternDigits.has(digit) && highlights.vertices.has(cell);
@@ -9832,6 +10093,7 @@
             const isAlsRecordDigit = highlights.isAlsRecord && highlights.alsRecordMarks.has(atomKey);
             const isAlsDofDigit = highlights.isAlsDof && highlights.alsDofMarks.has(atomKey);
             const isAhsRecordDigit = highlights.isAhsRecord && highlights.ahsRecordMarks.has(atomKey);
+            const isAhsDofRecordDigit = highlights.isAhsDof && highlights.ahsDofRecordMarks.has(atomKey);
             const isChainStartDigit = highlights.isChain && highlights.chainStartMarks.has(atomKey);
             const isChainEndDigit = highlights.isChain && highlights.chainEndMarks.has(atomKey);
             const strongLinkPartitionStartDigit = highlights.isStrongLink
@@ -9866,7 +10128,7 @@
 
             mark.textContent = markFor(cell, digit)
               || (isElim || (hasCandidate && (isFishDigit || isFishEndofinDigit || isChainDigit || isStrongLinkDigit
-                || isAlsRecordDigit || isAlsDofDigit || isAhsRecordDigit || isDigitFocus || isCandidateSizeFilter
+                || isAlsRecordDigit || isAlsDofDigit || isAhsRecordDigit || isAhsDofRecordDigit || isDigitFocus || isCandidateSizeFilter
                 || isSimpleColoringDigit || isMultiColoringDigit || isThreeDMedusaDigit || isMslsDigit)) ? digit : '');
            if (isDigitFocus) mark.classList.add('digit-focus', 'digit-focus-' + digit);
            if (isCandidateSizeFilter) {
@@ -9897,6 +10159,10 @@
             if (isAhsRecordDigit) {
               mark.classList.add('ahs-record-digit');
               applyAhsColorVars(mark, highlights.ahsRecordColor);
+            }
+            if (isAhsDofRecordDigit) {
+              mark.classList.add('ahs-record-digit');
+              applyAhsColorVars(mark, highlights.ahsDofRecordColor);
             }
             if (isChainStartDigit) mark.classList.add('chain-start-digit');
             if (isChainEndDigit) mark.classList.add('chain-end-digit');
@@ -10043,6 +10309,10 @@
     function highlightedEurekaText() {
       if (activeStep?.chain) return chainText(activeStep.chain);
       if (activeStep?.desc) return activeStep.desc;
+      const ahsDofChain = selectedAhsDofChainRecord();
+      if (ahsDofChain) return `AHS-DOF Chain: ${core.formatAhsDofChain(ahsDofChain)}`;
+      const ahsDof = selectedAhsDofNetRecord();
+      if (ahsDof) return `AHS-DOF: ${core.formatAhsDofNet(ahsDof)}`;
       const alsDof = selectedAlsDofRecord();
       if (alsDof) return core.formatAlsDof(alsDof);
       return selectedFishEureka()
@@ -10140,7 +10410,8 @@
       Brutal: 130,
       Nightmare: 140,
       Abyssal: 150,
-      Transcendent: 160,
+      Ascendant: 160,
+      Transcendent: 170,
       Unknown: Number.POSITIVE_INFINITY,
     });
 
@@ -10161,7 +10432,8 @@
       { category: 'Brutal', min: 10, max: 10.999 },
       { category: 'Nightmare', min: 11, max: 11.999 },
       { category: 'Abyssal', min: 12, max: 12.999 },
-      { category: 'Transcendent', min: 13, max: 14.999 },
+      { category: 'Ascendant', min: 13, max: 13.999 },
+      { category: 'Transcendent', min: 14, max: 15.999 },
     ]);
 
     const RATING_CATEGORY_COLORS = Object.freeze({
@@ -10181,6 +10453,7 @@
       Brutal: 'violet',
       Nightmare: 'brown',
       Abyssal: 'brown',
+      Ascendant: 'black',
       Transcendent: 'black',
       Any: 'unknown',
       Unknown: 'unknown',
@@ -10232,11 +10505,14 @@
       addAt(90, 'l2-wing', 'l3-wing', 's-wing', 'm2-wing', 'm3-wing',
         'h1-wing', 'h2-wing', 'h3-wing', 'w-wing', 'strong-wing', 'inversion',
         'barns-transport');
-      addAt(100, 'als-xz');
-      addAt(110, 'als-named', 't-als-xz', 'als-xy');
-      addAt(120, 't-als-xy', 'aic-als');
-      addAt(130, 'als-chain');
-      addAt(150, 'als-dof', 'dds', 'adds');
+      addAt(100, 'als-xz', 'ahs-xz', 'alc-xz');
+      addAt(110, 'als-named', 'ahs-named', 'alc-named',
+        't-als-xz', 't-ahs-xz', 't-alc-xz', 'als-xy', 'ahs-xy', 'alc-xy');
+      addAt(120, 't-als-xy', 't-ahs-xy', 't-alc-xy', 'aic-als');
+      addAt(130, 'als-chain', 'ahs-chain', 'alc-chain');
+      addAt(150, 'als-dof', 'ahs-dof', 'alc-dof', 'dds', 'adds');
+      addAt(160, 'msls');
+      addAt(170, 'ahs-dof-chain');
 
       const strongLinkTypes = maxRank >= 50
         ? [0, 1, 2, 3, 4]
@@ -10268,10 +10544,10 @@
         basicFishSizes,
         strongLinkTypes,
         includeAlsRcc: maxRank >= 50,
-        alsMaxDigits: maxRank >= 160 ? 9 : maxRank >= 150 ? 5 : null,
+        alsMaxDigits: maxRank >= 170 ? 9 : maxRank >= 150 ? 5 : null,
         alsMaxSizeDOF: maxRank >= 150 ? Math.min(8, Math.max(1, Math.floor((maxRank - 140) / 2))) : null,
         alsMaxSizeFox: maxRank >= 150 ? Math.min(8, Math.max(2, Math.floor((maxRank - 140) / 2) + 1)) : null,
-        alsMaxAuxiliary: maxRank >= 160 ? 8 : maxRank >= 150 ? 2 : null,
+        alsMaxAuxiliary: maxRank >= 170 ? 8 : maxRank >= 150 ? 2 : null,
         alsSearchLimit: maxRank >= 150,
         scalingTier: Math.max(0, Math.floor(maxRank / 10)),
       };
@@ -10429,6 +10705,7 @@
           ['Basic 7x7 Fish (off by default)', '7'],
           ['ALS-XZ, full engine, depth 2', '7 + link / ALS_RCC modifiers'],
           ['AHS-XZ, full engine, depth 2', '7 + link / AHS_RCC modifiers'],
+          ['ALC-XZ, full engine, depth 2', '7.5 + link / ALS_RCC / AHS_RCC modifiers'],
           ['Franken 7x7 Fish K0', '7.125'],
           ['Mutant 7x7 Fish K0', '7.25'],
         ],
@@ -10439,9 +10716,13 @@
           ['Naked Octuple (off by default)', '8'],
           ['Named ALS Wings/Rings, ALS transport, AIC depth 3, types 0-5', '8 + link / ALS_RCC modifiers'],
           ['Named AHS Wings/Rings, AHS transport, AIC depth 3, types 0-4', '8 + link / AHS_RCC modifiers'],
+          ['Named ALC Wings/Rings + transport, AIC depth 3', '8 + link / ALS_RCC / AHS_RCC modifiers'],
           ['Transport ALS-XZ', '8 + link / ALS_RCC modifiers'],
+          ['Transport AHS-XZ', '8 + link / AHS_RCC modifiers'],
+          ['Transport ALC-XZ', '8 + link / ALS_RCC / AHS_RCC modifiers'],
           ['ALS-XY, unrestricted, depth 3', '8 + link / ALS_RCC modifiers'],
           ['AHS-XY, depth 3', '8 + link / AHS_RCC modifiers'],
+          ['ALC-XY, depth 3', '8.5 + link / ALS_RCC / AHS_RCC modifiers'],
         ],
       },
       {
@@ -10450,12 +10731,15 @@
           ['Naked Nontuple (off by default)', '9'],
           ['Generic AIC, strong-link types 0-4, depth > 4', '9 + link modifiers'],
           ['Transport ALS-XY', '9 + link / ALS_RCC modifiers'],
+          ['Transport AHS-XY', '9 + link / AHS_RCC modifiers'],
+          ['Transport ALC-XY', '9 + link / ALS_RCC / AHS_RCC modifiers'],
         ],
       },
       {
         category: 'BRUTAL', score: '10 to 10.5', items: [
           ['ALS Chains, full scope beyond depth 3', '10 + link / ALS_RCC modifiers'],
           ['AHS Chains, full scope beyond depth 3', '10 + link / AHS_RCC modifiers'],
+          ['ALC Chains, full scope beyond depth 3', '10.5 + link / ALS_RCC / AHS_RCC modifiers'],
         ],
       },
       {
@@ -10468,11 +10752,19 @@
           ['ALS-DOF, progressively scaled DOF/digits', '12 + 0.25 * (DOF - 1)'],
           ['DDS ring, progressively scaled DOF/digits', 'ALS-DOF + 0.5'],
           ['ADDS, progressively scaled DOF/digits', 'DDS + 0.25'],
+          ['AHS-DOF, progressively scaled DOF/cells', '12.25 + 0.25 * (DOF - 1)'],
+          ['ALC-DOF, progressively scaled mixed roots', '12.5 + scaling'],
         ],
       },
       {
-        category: 'TRANSCENDENT', score: '13 to 14.5', items: [
-          ['ALS-Chaining, progressively scaled depth/digits/DOF', '13+'],
+        category: 'MULTISECTOR', score: '13 to 13.999', items: [
+          ['MSLS, scaled multi-sector locked sets', '13 + link / cover modifiers'],
+        ],
+      },
+      {
+        category: 'TRANSCENDENT', score: '14 to 15.999', items: [
+          ['ALS-Chaining, progressively scaled depth/digits/DOF', '14+'],
+          ['AHS-DOF Chain, extended scope', '14+'],
         ],
       },
       {
@@ -10727,11 +11019,38 @@
       if (/^ALS\s*-\s*Chain$/i.test(fullName)) {
         return define('Brutal', 10 + ringBonus, `ALS Chain${ringSuffix}`);
       }
+      if (/^AHS\s*-\s*Chain(?:\s+Ring)?$/i.test(fullName)) {
+        return define('Brutal', 10 + ringBonus, `AHS Chain${ringSuffix}`);
+      }
       if (/^ALS\s*-\s*XY$/i.test(fullName)) {
         return define('Demanding', 8 + ringBonus, `ALS - XY${ringSuffix}`);
       }
+      if (/^AHS\s*-\s*XY(?:\s+Ring)?$/i.test(fullName)) {
+        return define('Demanding', 8 + ringBonus, `AHS - XY${ringSuffix}`);
+      }
       if (/^ALS\s*-\s*XZ$/i.test(fullName)) {
         return define('Hard', 7 + ringBonus, `ALS - XZ${ringSuffix}`);
+      }
+      if (/^AHS\s*-\s*XZ(?:\s+Ring)?$/i.test(fullName)) {
+        return define('Hard', 7 + ringBonus, `AHS - XZ${ringSuffix}`);
+      }
+      if (/^ALC\s*-\s*XZ(?:\s+Ring)?$/i.test(fullName)) {
+        return define('Hard', 7.5 + ringBonus, `ALC - XZ${ringSuffix}`);
+      }
+      if (/^ALC\s*-\s*XY(?:\s+Ring)?$/i.test(fullName)) {
+        return define('Demanding', 8.5 + ringBonus, `ALC - XY${ringSuffix}`);
+      }
+      if (/^ALC\s*-\s*Chain(?:\s+Ring)?$/i.test(fullName)) {
+        return define('Brutal', 10.5 + ringBonus, `ALC Chain${ringSuffix}`);
+      }
+      if (/^ALC\s*-\s*DOF\s+Chain(?:\s+Ring)?$/i.test(fullName)) {
+        return define('Abyssal', 12.5 + ringBonus, `ALC - DOF Chain${ringSuffix}`);
+      }
+
+      const alcNamed = /^ALC\s*-\s*/i.test(fullName)
+        && /(?:Wing|Ring)$/i.test(name);
+      if (alcNamed) {
+        return define('Demanding', 8 + ringBonus, `ALC - ${name}${ringSuffix}`);
       }
 
       const alsNamed = (isAicAls || /^ALS\s*-/i.test(fullName))
@@ -10876,6 +11195,29 @@
             : 'ALS - DOF';
         return {
           ...ratingDefinition(category, score, `${label}${step.isRing ? ' Ring' : ''}`),
+          hardestMove: step.desc || '',
+        };
+      }
+      if (tech === 'ahs-dof') {
+        const dof = Math.max(1, Number(step?.size ?? step?.record?.dof ?? 1));
+        const score = 12.25 + (0.25 * Math.max(0, dof - 1)) + (step?.isRing ? 0.5 : 0);
+        return {
+          ...ratingDefinition(ratingCategoryForValue(score), score,
+            `AHS - DOF${step?.isRing ? ' Ring' : ''}`),
+          hardestMove: step.desc || '',
+        };
+      }
+      if (tech === 'ahs-dof-chain') {
+        const score = 14 + (step?.isRing ? 0.5 : 0);
+        return {
+          ...ratingDefinition(ratingCategoryForValue(score), score,
+            `AHS - DOF Chain${step?.isRing ? ' Ring' : ''}`),
+          hardestMove: step.desc || '',
+        };
+      }
+      if (tech === 'msls') {
+        return {
+          ...ratingDefinition('Ascendant', 13, 'MSLS'),
           hardestMove: step.desc || '',
         };
       }
@@ -11663,9 +12005,33 @@
       for (const link of links.slice(0, 200)) {
         const item = document.createElement('li');
         const cells = value => core.cellGroupName(value || []);
+        const branches = Array.isArray(link.overlapBranches)
+          ? `; branches ${link.overlapBranches.map(branch => `${branch.value}: `
+            + `${cells(branch.left?.cells)}[${(branch.left?.digits || []).join('')}] / `
+            + `${cells(branch.right?.cells)}[${(branch.right?.digits || []).join('')}]`
+            + `${(branch.hsRestrictions?.length)
+              ? ` => ${branch.hsRestrictions.map(restriction => `${cells(restriction.cells)}<>${restriction.digits.join('')}`).join(', ')}`
+              : ''}`
+            + `${(branch.dofRestrictions?.length)
+              ? `; ${branch.dofRestrictions.map(restriction => `${cells(restriction.cells)}<>${restriction.digits.join('')}`).join(', ')}`
+              : ''}`
+            + `${(branch.sectorRestrictions?.length)
+              ? `; ${branch.sectorRestrictions.map(restriction => `${cells(restriction.cells)}<>${restriction.digits.join('')}`).join(', ')}`
+              : ''}`
+            + `${(branch.left?.eliminations?.length || branch.right?.eliminations?.length)
+              ? `; ${core.formatRemovals([...(branch.left?.eliminations || []), ...(branch.right?.eliminations || [])])}`
+              : ''}`).join(' | ')}`
+          : '';
+        const intrinsic = Array.isArray(link.intrinsicEliminations) && link.intrinsicEliminations.length
+          ? `; elims ${core.formatRemovals(link.intrinsicEliminations)}`
+          : '';
+        const bridgeExclusions = Array.isArray(link.bridgeCellExclusions) && link.bridgeCellExclusions.length
+          ? `; bridge ${cells([link.xzBridgeCell])}<>${link.bridgeCellExclusions.join('')}`
+          : '';
         item.textContent = `${link.moduleKind || link.linkTypeName}: RCC_L ${cells(link.RCC_Left?.rccCells || link.RCC_Left?.cells)} / `
           + `HS_L ${cells(link.HS_L?.cells)} / C ${cells(link.C?.leftCells || link.C?.cells)} / `
-          + `HS_R ${cells(link.HS_R?.cells)} / RCC_R ${cells(link.RCC_Right?.rccCells || link.RCC_Right?.cells)}`;
+          + `HS_R ${cells(link.HS_R?.cells)} / RCC_R ${cells(link.RCC_Right?.rccCells || link.RCC_Right?.cells)}`
+          + branches + intrinsic + bridgeExclusions;
         list.appendChild(item);
       }
       if (links.length > 200) {
@@ -11720,17 +12086,92 @@
       list.className = 'chain-list';
       results.slice(0, 200).forEach((link, index) => {
         const item = document.createElement('li');
-        item.textContent = `${index + 1}. AHS-DOF: ${core.formatAhsDofNet(link)}`;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'chain-result';
+        if (selectedAhsDofNetIndex === index) button.classList.add('selected');
+        button.textContent = `${index + 1}. AHS-DOF: ${core.formatAhsDofNet(link)}`;
+        button.title = 'Display this AHS-DOF net on the grid';
+        button.addEventListener('click', event => {
+          event.preventDefault();
+          event.stopPropagation();
+          selectedAhsDofNetIndex = index;
+          selectedAhsDof = null;
+          selectedAhsId = null;
+          selectedAlsId = null;
+          selectedAlsDofIndex = null;
+          selectedChainIndex = null;
+          selectedStrongLinkType = null;
+          selectedStrongLinkIndex = null;
+          activeStep = null;
+          lastRemoved = [];
+          renderBoard();
+          renderAhsDofResults(ahsDofReport);
+          openReportPanel(ahsDofResultsEl);
+          focusMap();
+          setStatus(`AHS-DOF result ${index + 1} displayed.`, 'ok');
+        });
+        item.appendChild(button);
         list.appendChild(item);
       });
       ahsDofResultsEl.appendChild(list);
     }
 
+    function renderAhsDofChainResults(report) {
+      ahsDofChainResultsEl.textContent = '';
+      if (!report) {
+        ahsDofChainResultsEl.textContent = 'No AHS-DOF chain search has been run.';
+        return;
+      }
+      const results = report.results || report.links || [];
+      const summary = document.createElement('p');
+      summary.textContent = `${results.length} verified AHS-DOF chain${results.length === 1 ? '' : 's'} found.`
+        + ` ${report.stats?.nets || 0} nets, ${report.stats?.bridges || 0} bridges checked`
+        + `${report.stats?.truncated ? '; result limit reached.' : '.'}`;
+      ahsDofChainResultsEl.appendChild(summary);
+      if (!results.length) return;
+      const list = document.createElement('ol');
+      list.className = 'chain-list';
+      results.slice(0, 200).forEach((chain, index) => {
+        const item = document.createElement('li');
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'chain-result';
+        if (selectedAhsDofChainIndex === index) button.classList.add('selected');
+        button.textContent = `${index + 1}. AHS-DOF Chain: ${core.formatAhsDofChain(chain)}`;
+        button.title = 'Display this AHS-DOF chain on the grid';
+        button.addEventListener('click', event => {
+          event.preventDefault();
+          event.stopPropagation();
+          selectedAhsDofChainIndex = index;
+          selectedAhsDofNetIndex = null;
+          selectedAhsDof = null;
+          selectedAhsId = null;
+          selectedAlsId = null;
+          selectedAlsDofIndex = null;
+          selectedChainIndex = null;
+          selectedStrongLinkType = null;
+          selectedStrongLinkIndex = null;
+          activeStep = null;
+          lastRemoved = [];
+          renderBoard();
+          renderAhsDofChainResults(ahsDofChainReport);
+          openReportPanel(ahsDofChainResultsEl);
+          focusMap();
+          setStatus(`AHS-DOF chain ${index + 1} displayed.`, 'ok');
+        });
+        item.appendChild(button);
+        list.appendChild(item);
+      });
+      ahsDofChainResultsEl.appendChild(list);
+    }
+
     async function runAhsDofBuild() {
       setBusy(true);
+      selectedAhsDofNetIndex = null;
       const maxDof = Math.max(2, Math.min(3, Number(ahsDofMaxDofEl.value) || 2));
       const maxCells = Math.max(2, Math.min(9, Number(ahsDofMaxCellsEl.value) || 6));
-      const maxAuxiliary = Math.max(1, Math.min(3, Number(ahsDofMaxAuxiliaryEl.value) || 2));
+      const maxAuxiliary = Math.max(1, Math.min(9, Number(ahsDofMaxAuxiliaryEl.value) || 2));
       const maxResults = Math.max(1, Math.min(5000, Number(ahsDofMaxResultsEl.value) || 500));
       ahsDofMaxDofEl.value = String(maxDof);
       ahsDofMaxCellsEl.value = String(maxCells);
@@ -11781,13 +12222,77 @@
             },
           };
         }
+        ahsDofReport = report;
         renderAhsDofResults(report);
         openReportPanel(ahsDofResultsEl);
         const count = (report.results || report.links || []).length;
         setStatus(`AHS-DOF search complete. ${count} verified net${count === 1 ? '' : 's'} found.`, count ? 'ok' : 'warn');
       } catch (error) {
+        ahsDofReport = null;
         renderAhsDofResults(null);
         setStatus(`Could not search AHS-DOF: ${error.message || error}`, 'warn');
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function runAhsDofChainBuild() {
+      setBusy(true);
+      selectedAhsDofChainIndex = null;
+      selectedAhsDofNetIndex = null;
+      setStatus('Searching AHS-DOF chains...');
+      try {
+        const payload = {
+          candidateGrid: cand,
+          minDof: 2,
+          maxDof: Math.max(2, Math.min(3, Number(ahsDofChainMaxDofEl.value) || 2)),
+          maxAhsSize: 8,
+          maxAhsFox: 7,
+          maxCells: Math.max(2, Math.min(9, Number(ahsDofChainMaxCellsEl.value) || 6)),
+          maxAuxiliary: Math.max(1, Math.min(9, Number(ahsDofChainMaxAuxiliaryEl.value) || 2)),
+          maxDepth: Math.max(2, Math.min(5, Number(ahsDofChainMaxDepthEl.value) || 3)),
+          maxResults: Math.max(1, Math.min(5000, Number(ahsDofChainMaxResultsEl.value) || 500)),
+        };
+        ahsDofChainMaxDofEl.value = String(payload.maxDof);
+        ahsDofChainMaxCellsEl.value = String(payload.maxCells);
+        ahsDofChainMaxAuxiliaryEl.value = String(payload.maxAuxiliary);
+        ahsDofChainMaxDepthEl.value = String(payload.maxDepth);
+        ahsDofChainMaxResultsEl.value = String(payload.maxResults);
+        try {
+          ahsDofChainReport = await runSearchWorker('ahs-dof-chain', payload);
+        } catch (workerError) {
+          const ahsList = core.ahsConstructor(cand, {
+            maxSize: payload.maxAhsSize, maxSizeFox: payload.maxAhsFox,
+          });
+          const netReport = core.findAhsDofNets(cand, { ...payload, ahsList });
+          const raw = core.findAhsDofChains(cand, { ...payload, netReport });
+          const accepted = [];
+          const rejectedResults = [];
+          for (const result of raw.results || []) {
+            const verification = core.verifyAhsDofChain(cand, result);
+            if (verification.ok) accepted.push({ ...result, verification });
+            else rejectedResults.push({ result, verification });
+          }
+          ahsDofChainReport = {
+            ...raw,
+            results: accepted,
+            rejectedResults,
+            stats: {
+              ...(raw.stats || {}),
+              verifierChecked: (raw.results || []).length,
+              verifierRejected: rejectedResults.length,
+              workerFallback: workerError.message || String(workerError),
+            },
+          };
+        }
+        renderAhsDofChainResults(ahsDofChainReport);
+        openReportPanel(ahsDofChainResultsEl);
+        const count = (ahsDofChainReport.results || ahsDofChainReport.links || []).length;
+        setStatus(`AHS-DOF chain search complete. ${count} chain${count === 1 ? '' : 's'} found.`, count ? 'ok' : 'warn');
+      } catch (error) {
+        ahsDofChainReport = null;
+        renderAhsDofChainResults(null);
+        setStatus(`Could not search AHS-DOF chains: ${error.message || error}`, 'warn');
       } finally {
         setBusy(false);
       }
@@ -12994,6 +13499,7 @@
     }
 
     function chainText(chain, verbose = false) {
+      if (chain.alcXz) return core.formatAlcXz(chain);
       if (chain.ahsXy) {
         return core.formatChainEureka(chain);
       }
@@ -13158,7 +13664,7 @@
     }
 
     function xChainType(chain, eriCount) {
-      const name = String(chain.structureName || '').replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS|ALC)\s*-\s*/i, '');
+      const name = String(chain.structureName || '').replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS)\s*-\s*/i, '');
       // X-Wing is filed under the structural Ring folder, but it is not an X-Ring.
       if (/^X-Wing$/i.test(name)) return 'X-Wing';
       if (/^(?:Dual Empty Rectangle|Rec'T Kite|Bridged ERI|Bridged Empty Rectangle|3x ERI)$/i.test(name)) {
@@ -13174,7 +13680,7 @@
 
     function wChainType(chain) {
       const name = String(chain.structureName || '')
-        .replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS|ALC)\s*-\s*/i, '');
+        .replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS)\s*-\s*/i, '');
       if (/^W-Wing$/i.test(name)) return 'Wing';
       if (/^W-Ring$/i.test(name)) return 'Ring';
       if (/^Transport$/i.test(name)) return 'Transport';
@@ -13197,14 +13703,14 @@
 
     function strongChainType(chain) {
       const name = String(chain.structureName || '')
-        .replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS|ALC)\s*-\s*/i, '');
+        .replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS)\s*-\s*/i, '');
       const match = name.match(/^Strong[- ](Wing|Ring)$/i);
       return match ? match[1][0].toUpperCase() + match[1].slice(1).toLowerCase() : null;
     }
 
     function inversionChainType(chain) {
       const name = String(chain.structureName || '')
-        .replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS|ALC)\s*-\s*/i, '');
+        .replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS)\s*-\s*/i, '');
       return /^i[SWMLH](?:\d+)?-(?:Wing|Ring)$/i.test(name) ? name : null;
     }
 
@@ -13581,7 +14087,7 @@
       if (xType) {
         const isEriFamily = xType === 'Empty Rectangle';
         const name = String(chain.structureName || '')
-          .replace(/^\s*(?:ALS|AHS|ALC)\s*-\s*/i, '');
+          .replace(/^\s*(?:ALS|AHS)\s*-\s*/i, '');
         const finnedSashimi = name.match(/^(Finned|Sashimi) X-Wing$/i);
         const eriSubclass = /^(?:Dual Empty Rectangle|Rec'T Kite|Bridged ERI|Bridged Empty Rectangle|3x ERI)$/i.test(name)
           ? name.replace(/^Bridged Empty Rectangle$/i, 'Bridged ERI')
@@ -13891,7 +14397,10 @@
           ? profileAlsMaxSizeFox
           : null;
       const alsSearchLimit = phase?.alsSearchLimit ?? profile?.alsSearchLimit ?? false;
-      const strongSet = buildSets ? core.buildStrongLinks(candidateGrid) : null;
+      const strongSet = buildSets ? core.buildStrongLinks(candidateGrid, {
+        includeAlmostFish: strongLinkTypes.includes(7),
+        almostFish: { grid: [...(puzzle || [])], ...currentAlmostFishOptions() },
+      }) : null;
       const allowedAlsCellCounts = Array.isArray(phase?.alsCellCounts)
         ? new Set(phase.alsCellCounts.map(Number))
         : null;
@@ -13938,6 +14447,7 @@
         includeAhs,
         ahsMaxCells: phase?.ahsMaxCells ?? null,
         strongLinkTypes,
+        almostFish: currentAlmostFishOptions(),
         maxDepth: profile?.maxDepth == null ? maxDepth : Math.min(maxDepth, profile.maxDepth),
         alsMaxDigits,
         alsMaxSizeDOF: baseAlsMaxSizeDOF,
@@ -13972,7 +14482,7 @@
         (profile?.strongLinkTypes || chainStrongTypeEls
           .map((element, index) => element.checked ? index : null)
           .filter(index => index !== null))
-          .filter(type => Number.isInteger(type) && type >= 0 && type <= 4),
+          .filter(type => Number.isInteger(type) && type >= 0 && type <= 7),
       )].sort((left, right) => left - right);
       const phases = [];
       const addPhase = (name, types, options = {}) => {
@@ -14208,6 +14718,7 @@
           || keys.has('als-named') || keys.has('barns') || alsNodeCount === 2;
       }
       if (phase.family === 'ahs-xz') return keys.has('ahs-xz');
+      if (phase.family === 'alc-xz') return keys.has('alc-xz');
       if (phase.family === 'als-xy') {
         // A pure ALS-XY wing can be made from three size-1 ALSs: the
         // ordinary bivalent XY-Wing. Those nodes arrive as type-4 cell ALS
@@ -14220,8 +14731,11 @@
           || sizeOne?.breakdown === 'XY-Wing';
       }
       if (phase.family === 'ahs-xy') return keys.has('ahs-xy');
+      if (phase.family === 'alc-xy') return keys.has('alc-xy');
       if (phase.family === 'als-chain') return keys.has('als-chain') || alsNodeCount > 3;
       if (phase.family === 'ahs-chain') return keys.has('ahs-chain');
+      if (phase.family === 'alc-chain') return keys.has('alc-chain');
+      if (phase.family === 'alc-dof') return keys.has('alc-dof');
       if (phase.family === 'aic-als') return keys.has('aic-als') || keys.has('als-named') || keys.has('w-transport');
       return true;
     }
@@ -14304,7 +14818,7 @@
     function chainMoveKeys(chain) {
       const fullName = String(chain?.structureName || '');
       const name = fullName
-        .replace(/^\s*(?:AIC\s*\+\s*ALS|ALS|AHS|ALC)\s*-\s*/i, '')
+        .replace(/^\s*(?:AIC\s*\+\s*ALS|ALS|AHS)\s*-\s*/i, '')
         .trim();
       const keys = new Set();
 
@@ -14345,6 +14859,10 @@
       if (/^ALS\s*-\s*XZ$/i.test(fullName)) keys.add('als-xz');
       if (/^T\s*-\s*ALS\s*-\s*XZ$/i.test(fullName)) keys.add('t-als-xz');
       if (/^ALS\s*-\s*XY$/i.test(fullName)) keys.add('als-xy');
+      if (/^ALC\s*-\s*XZ(?:\s+Ring)?$/i.test(fullName)) keys.add('alc-xz');
+      if (/^ALC\s*-\s*XY(?:\s+Ring)?$/i.test(fullName)) keys.add('alc-xy');
+      if (/^ALC\s*-\s*Chain(?:\s+Ring)?$/i.test(fullName)) keys.add('alc-chain');
+      if (/^ALC\s*-\s*DOF\s+Chain(?:\s+Ring)?$/i.test(fullName)) keys.add('alc-dof');
       if (/^AHS\s*-\s*XZ(?:\s+Ring)?$/i.test(fullName)) keys.add('ahs-xz');
       if (/^AHS\s*-\s*XY(?:\s+Ring)?$/i.test(fullName)) keys.add('ahs-xy');
       if (/^AHS\s*-\s*Chain(?:\s+Ring)?$/i.test(fullName)) keys.add('ahs-chain');
@@ -14448,6 +14966,12 @@
       'als-dof': 58,
       dds: 59,
       adds: 60,
+      'ahs-dof': 61,
+      'ahs-dof-chain': 62,
+      'alc-xz': 63,
+      'alc-xy': 64,
+      'alc-chain': 65,
+      'alc-dof': 66,
     });
 
     function directMoveTieKey(step) {
@@ -14473,7 +14997,7 @@
     function chainMoveTieKey(chain) {
       const fullName = String(chain?.structureName || '');
       const name = fullName
-        .replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS|ALC)\s*-\s*/i, '')
+        .replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS)\s*-\s*/i, '')
         .trim();
       const barnsTransport = barnsTransportChainInfo(chain);
       const barns = barnsChainInfo(chain);
@@ -14495,7 +15019,13 @@
       if (/^ALS\s*-\s*XZ$/i.test(fullName)) return 'als-xz';
       if (/^T\s*-\s*ALS\s*-\s*XZ$/i.test(fullName)) return 't-als-xz';
       if (/^ALS\s*-\s*XY$/i.test(fullName)) return 'als-xy';
+      if (/^ALC\s*-\s*XZ(?:\s+Ring)?$/i.test(fullName)) return 'alc-xz';
+      if (/^ALC\s*-\s*XY(?:\s+Ring)?$/i.test(fullName)) return 'alc-xy';
+      if (/^ALC\s*-\s*Chain(?:\s+Ring)?$/i.test(fullName)) return 'alc-chain';
+      if (/^ALC\s*-\s*DOF\s+Chain(?:\s+Ring)?$/i.test(fullName)) return 'alc-dof';
+      if (/^AHS\s*-\s*XZ(?:\s+Ring)?$/i.test(fullName)) return 'ahs-xz';
       if (/^AHS\s*-\s*XY(?:\s+Ring)?$/i.test(fullName)) return 'ahs-xy';
+      if (/^AHS\s*-\s*Chain(?:\s+Ring)?$/i.test(fullName)) return 'ahs-chain';
       if (/^T\s*-\s*ALS\s*-\s*XY$/i.test(fullName)) return 't-als-xy';
       if (/^ALS\s*-\s*Chain$/i.test(fullName)) return 'als-chain';
       if (/^ALS\s*-/i.test(fullName) && /(?:Wing|Ring)$/i.test(name)) return 'als-named';
@@ -14682,6 +15212,326 @@
       return bestAlsDofMoveFromReport(candidateGrid, report, enabledTypes, profile);
     }
 
+    function ahsDofStepFromResult(result, report, index, candidateGrid) {
+      const items = core.eliminationItems({ items: result?.eliminations || [] }, candidateGrid);
+      if (!items.length) return null;
+      const step = {
+        tech: 'ahs-dof',
+        name: result.name || 'AHS - DOF',
+        structureName: result.name || 'AHS - DOF',
+        size: result.dof || result.ahsDOF || result.ahsDof || 1,
+        isRing: !!result.isRing,
+        record: result,
+        ahsDofReport: report,
+        ahsDofIndex: index,
+        desc: core.formatAhsDof({ ...result, eliminations: items }),
+        elim: { items },
+        digits: [...new Set(items.map(item => item.digit))],
+        at: [...new Set((result.primaryA?.cells || result.hub?.cells || [])
+          .concat((result.auxiliary || []).flatMap(node => node.cells || [])))],
+      };
+      step.rating = ratingForStep(step);
+      return step;
+    }
+
+    function bestAhsDofMoveFromReport(candidateGrid, report, profile = null) {
+      let best = null;
+      for (let index = 0; index < (report?.results || []).length; index++) {
+        const step = ahsDofStepFromResult(report.results[index], report, index, candidateGrid);
+        if (!step) continue;
+        if (profile?.maxRank !== undefined && step.rating.rank > profile.maxRank) continue;
+        const candidate = {
+          step,
+          chain: null,
+          ahsDofReport: report,
+          ahsDofIndex: index,
+          priority: directMovePriority(step),
+        };
+        if (isHigherPriorityMove(candidate, best)) best = candidate;
+      }
+      return best;
+    }
+
+    function findSolverAhsDofMove(candidateGrid = cand, budget = 'interactive', profile = null) {
+      const maxCells = Math.min(9, Math.max(2, Number(profile?.ahsMaxCells) || 6));
+      const maxAuxiliary = Math.min(9, Math.max(1, Number(profile?.ahsMaxAuxiliary) || 2));
+      const raw = core.findAhsDofNets(candidateGrid, {
+        minDof: 2,
+        maxDof: 3,
+        maxAhsSize: 8,
+        maxAhsFox: 7,
+        maxCells,
+        maxAuxiliary,
+        maxResults: budget === 'generator' ? 1000 : 2500,
+      });
+      const accepted = [];
+      for (const result of raw.results || []) {
+        if (core.verifyAhsDofNet(candidateGrid, result).ok) accepted.push(result);
+      }
+      return bestAhsDofMoveFromReport(candidateGrid, { ...raw, results: accepted }, profile);
+    }
+
+    async function findSolverAhsDofMoveInWorker(candidateGrid = cand, budget = 'interactive', profile = null) {
+      const report = await runSearchWorker('ahs-dof', {
+        candidateGrid,
+        minDof: 2,
+        maxDof: 3,
+        maxAhsSize: 8,
+        maxAhsFox: 7,
+        maxCells: Math.min(9, Math.max(2, Number(profile?.ahsMaxCells) || 6)),
+        maxAuxiliary: Math.min(9, Math.max(1, Number(profile?.ahsMaxAuxiliary) || 2)),
+        maxResults: budget === 'generator' ? 1000 : 2500,
+      });
+      return bestAhsDofMoveFromReport(candidateGrid, report, profile);
+    }
+
+    function ahsDofChainStepFromResult(result, report, index, candidateGrid) {
+      const items = core.eliminationItems({ items: result?.eliminations || [] }, candidateGrid);
+      if (!items.length) return null;
+      const step = {
+        tech: 'ahs-dof-chain',
+        name: result.name || 'AHS - DOF Chain',
+        structureName: result.name || 'AHS - DOF Chain',
+        isRing: !!result.isRing,
+        record: result,
+        ahsDofChainReport: report,
+        ahsDofChainIndex: index,
+        desc: core.formatAhsDofChain({ ...result, eliminations: items }),
+        elim: { items },
+        digits: [...new Set(items.map(item => item.digit))],
+        at: [...new Set((result.nets || []).flatMap(net => [
+          ...(net.primaryA?.cells || net.hub?.cells || []),
+          ...(net.auxiliary || []).flatMap(node => node.cells || []),
+        ]))],
+      };
+      step.rating = ratingForStep(step);
+      return step;
+    }
+
+    function bestAhsDofChainMoveFromReport(candidateGrid, report, profile = null) {
+      let best = null;
+      for (let index = 0; index < (report?.results || []).length; index++) {
+        const step = ahsDofChainStepFromResult(report.results[index], report, index, candidateGrid);
+        if (!step) continue;
+        if (profile?.maxRank !== undefined && step.rating.rank > profile.maxRank) continue;
+        const candidate = {
+          step,
+          chain: null,
+          ahsDofChainReport: report,
+          ahsDofChainIndex: index,
+          priority: directMovePriority(step),
+        };
+        if (isHigherPriorityMove(candidate, best)) best = candidate;
+      }
+      return best;
+    }
+
+    function findSolverAhsDofChainMove(candidateGrid = cand, budget = 'interactive', profile = null) {
+      const payload = {
+        minDof: 2,
+        maxDof: 3,
+        maxAhsSize: 8,
+        maxAhsFox: 7,
+        maxCells: Math.min(9, Math.max(2, Number(profile?.ahsMaxCells) || 6)),
+        maxAuxiliary: Math.min(9, Math.max(1, Number(profile?.ahsMaxAuxiliary) || 2)),
+        maxDepth: 5,
+        maxResults: budget === 'generator' ? 500 : 1000,
+      };
+      const ahsList = core.ahsConstructor(candidateGrid, {
+        maxSize: payload.maxAhsSize,
+        maxSizeFox: payload.maxAhsFox,
+      });
+      const netReport = core.findAhsDofNets(candidateGrid, { ...payload, ahsList });
+      const raw = core.findAhsDofChains(candidateGrid, { ...payload, netReport });
+      const accepted = (raw.results || []).filter(result =>
+        core.verifyAhsDofChain(candidateGrid, result).ok);
+      return bestAhsDofChainMoveFromReport(candidateGrid, { ...raw, results: accepted }, profile);
+    }
+
+    async function findSolverAhsDofChainMoveInWorker(candidateGrid = cand, budget = 'interactive', profile = null) {
+      const payload = {
+        candidateGrid,
+        minDof: 2,
+        maxDof: 3,
+        maxAhsSize: 8,
+        maxAhsFox: 7,
+        maxCells: Math.min(9, Math.max(2, Number(profile?.ahsMaxCells) || 6)),
+        maxAuxiliary: Math.min(9, Math.max(1, Number(profile?.ahsMaxAuxiliary) || 2)),
+        maxDepth: 5,
+        maxResults: budget === 'generator' ? 500 : 1000,
+      };
+      const report = await runSearchWorker('ahs-dof-chain', payload);
+      return bestAhsDofChainMoveFromReport(candidateGrid, report, profile);
+    }
+
+    function alcSearchOptions(phase, candidateGrid, budget = 'interactive') {
+      const maxResults = budget === 'generator' ? 250 : 500;
+      const common = {
+        maxChains: maxResults,
+        maxResultAttempts: budget === 'generator' ? 12000 : 30000,
+        maxResultAttemptsPerStart: budget === 'generator' ? 600 : 1500,
+        maxStates: budget === 'generator' ? 30000 : 60000,
+        maxQueue: budget === 'generator' ? 30000 : 60000,
+        maxBranching: budget === 'generator' ? 120 : 200,
+      };
+      if (phase.alcType === 'xz') return {
+        ...common,
+        maxAlsCells: 5,
+        maxAhsDigits: 5,
+        maxAhsCells: 7,
+        maxAhsDof: 5,
+      };
+      if (phase.alcType === 'xy') return {
+        ...common,
+        maxDepth: 3,
+        maxAlsCells: 5,
+        maxAhsDigits: 5,
+        maxAhsCells: 7,
+      };
+      if (phase.alcType === 'chain') return {
+        ...common,
+        maxDepth: Math.max(4, phase.maxDepth || 8),
+        maxAlsCells: 5,
+        maxAhsDigits: 5,
+        maxAhsCells: 7,
+      };
+      return {
+        ...common,
+        maxDepth: Math.max(3, phase.maxDepth || 8),
+        maxDofRoots: budget === 'generator' ? 250 : 500,
+        maxAlsDigits: 5,
+        maxAlsAuxiliary: 5,
+        maxAhsDof: 3,
+        maxAhsAuxiliary: 5,
+        maxAhsCells: 7,
+        maxSearchChains: budget === 'generator' ? 500 : 1000,
+      };
+    }
+
+    function bestAlcMoveFromReport(candidateGrid, report, phase, fixedGrid, expectedSolution, profile) {
+      const chainPhase = {
+        ...(phase.chainPhase || {}),
+        alcType: phase.alcType,
+        family: `alc-${phase.alcType}`,
+      };
+      return bestChainFromReport(
+        report,
+        chainPhase,
+        new Set(['chains']),
+        candidateGrid,
+        fixedGrid,
+        expectedSolution,
+        chainPhase.maxDepth || 8,
+        profile,
+      );
+    }
+
+    function findSolverAlcMove(
+      candidateGrid = cand,
+      fixedGrid = puzzle,
+      budget = 'interactive',
+      expectedSolution = solution,
+      profile = null,
+      phase,
+    ) {
+      if (!phase?.alcType) return null;
+      const options = alcSearchOptions(phase, candidateGrid, budget);
+      let report;
+      if (phase.alcType === 'xz') report = core.findAlcXz(candidateGrid, options);
+      else if (phase.alcType === 'xy') report = core.findAlcXy(candidateGrid, options);
+      else if (phase.alcType === 'chain') report = core.findAlcChain(candidateGrid, options);
+      else report = core.findAlcDofChains(candidateGrid, options);
+      const best = bestAlcMoveFromReport(
+        candidateGrid,
+        report,
+        phase,
+        fixedGrid,
+        expectedSolution,
+        profile,
+      );
+      if (best) best.alcReport = report;
+      return best;
+    }
+
+    async function findSolverAlcMoveInWorker(
+      candidateGrid = cand,
+      fixedGrid = puzzle,
+      budget = 'interactive',
+      expectedSolution = solution,
+      profile = null,
+      phase,
+    ) {
+      if (!phase?.alcType) return null;
+      const options = alcSearchOptions(phase, candidateGrid, budget);
+      const report = await runSearchWorker(`alc-${phase.alcType}`, {
+        candidateGrid,
+        ...options,
+      });
+      const best = bestAlcMoveFromReport(
+        candidateGrid,
+        report,
+        phase,
+        fixedGrid,
+        expectedSolution,
+        profile,
+      );
+      if (best) best.alcReport = report;
+      return best;
+    }
+
+    function solverMslsOptions(budget = 'interactive') {
+      const maxSize = 5;
+      return {
+        minBaseSectors: 3,
+        minCoverSectors: 3,
+        maxBaseSectors: maxSize,
+        maxCoverSectors: maxSize,
+        mixedCovers: true,
+        maxRemovedCells: 1,
+        fastCover: true,
+        maxK: 1,
+        maxLinks: 81,
+        maxCells: maxSize * 9,
+        maxStates: budget === 'generator' ? 5000000 : 20000000,
+        maxResults: budget === 'generator' ? 250 : 1000,
+      };
+    }
+
+    function bestMslsMoveFromReport(candidateGrid, report, profile = null) {
+      let best = null;
+      for (let index = 0; index < (report?.results || []).length; index++) {
+        const step = mslsStepFromResult(report.results[index]);
+        step.mslsReport = report;
+        step.mslsIndex = index;
+        step.rating = ratingForStep(step);
+        if (profile?.maxRank !== undefined && step.rating.rank > profile.maxRank) continue;
+        if (!step.elim.items.length) continue;
+        const candidate = {
+          step,
+          chain: null,
+          mslsReport: report,
+          mslsIndex: index,
+          priority: directMovePriority(step),
+        };
+        if (isHigherPriorityMove(candidate, best)) best = candidate;
+      }
+      return best;
+    }
+
+    function findSolverMslsMove(candidateGrid = cand, budget = 'interactive', profile = null) {
+      const options = solverMslsOptions(budget);
+      const report = core.findMsls(candidateGrid, options);
+      return bestMslsMoveFromReport(candidateGrid, report, profile);
+    }
+
+    async function findSolverMslsMoveInWorker(candidateGrid = cand, budget = 'interactive', profile = null) {
+      const report = await runSearchWorker('msls', {
+        candidateGrid,
+        options: solverMslsOptions(budget),
+      });
+      return bestMslsMoveFromReport(candidateGrid, report, profile);
+    }
+
     function chainPhaseMinimumRating(phase) {
       if (phase?.name === 'strong-all') return 2.25;
       if (phase?.family === 'barns') return 3.25;
@@ -14689,6 +15539,10 @@
       if (phase?.family === 'als-xz') return 7;
       if (phase?.family === 'als-xy') return 8;
       if (phase?.family === 'als-chain') return 10;
+      if (phase?.family === 'alc-xz') return 7.5;
+      if (phase?.family === 'alc-xy') return 8.5;
+      if (phase?.family === 'alc-chain') return 10.5;
+      if (phase?.family === 'alc-dof') return 12.5;
       if (phase?.family === 'aic-als') return 11;
       if (phase?.name === 'type5-only') return 7;
       return 0;
@@ -14919,6 +15773,7 @@
           includeAls: search.includeAlsRcc,
           includeAhs: search.includeAhs,
           strongLinkTypes: search.strongLinkTypes,
+          almostFish: search.almostFish,
           alsCellCount: phase?.alsCellCount ?? null,
           alsCellCounts: phase?.alsCellCounts ?? null,
           alsModuleKinds: phase?.alsModuleKinds ?? null,
@@ -15045,6 +15900,33 @@
         name,
         kind: 'als-dof',
       });
+      const addAhsDof = name => phases.push({
+        name,
+        kind: 'ahs-dof',
+      });
+      const addAhsDofChain = name => phases.push({
+        name,
+        kind: 'ahs-dof-chain',
+      });
+      const addMsls = name => phases.push({
+        name,
+        kind: 'msls',
+      });
+      const addAlc = (name, alcType, options = {}) => phases.push({
+        name,
+        kind: 'alc',
+        alcType,
+        chainPhase: {
+          name,
+          includeAls: true,
+          includeAhs: true,
+          maxDepth: options.maxDepth || 8,
+          minDepth: options.minDepth || 2,
+          family: `alc-${alcType}`,
+          requiredTypes: ['chains'],
+          ...options,
+        },
+      });
 
       // The direct phases are deliberately small. This lets the same numeric
       // scorer choose between the methods in one tier without asking the
@@ -15155,7 +16037,7 @@
         addChain('irritating-als-chain', {
           name: 'als-chain-depth-5-plus',
           includeAls: true,
-          strongLinkTypes: [],
+               strongLinkTypes: [0, 1],
           maxDepth: 8,
           minDepth: 5,
           requireAls: true,
@@ -15227,6 +16109,11 @@
           family: 'ahs-xz',
           requiredTypes: ['chains', 'ahs-xz'],
         });
+        addAlc('hard-alc-xz', 'xz', {
+          maxDepth: 2,
+          minDepth: 2,
+          requiredTypes: ['chains'],
+        });
       }
       if (profile?.maxRank >= 110) {
         addChain('demanding-named-als', {
@@ -15293,6 +16180,11 @@
           family: 'ahs-xy',
           requiredTypes: ['chains', 'ahs-xy'],
         });
+        addAlc('demanding-alc-xy', 'xy', {
+          maxDepth: 3,
+          minDepth: 3,
+          requiredTypes: ['chains'],
+        });
       }
       if (profile?.maxRank >= 120) {
         addChain('expert-generic-aic', {
@@ -15344,6 +16236,11 @@
           requireMixed: false,
           family: 'ahs-chain',
           requiredTypes: ['chains', 'ahs-chain'],
+        });
+        addAlc('brutal-alc-chain', 'chain', {
+          maxDepth: 8,
+          minDepth: 4,
+          requiredTypes: ['chains'],
         });
       }
       if (profile?.maxRank >= 140) {
@@ -15397,10 +16294,19 @@
         { kind: 'fish', size: 4, k: [0, 1, 2], categories: ['Franken', 'Mutant'] },
       ]);
       addAlsDof('als-dof-family');
+      addAhsDof('ahs-dof-family');
+      addAlc('abyssal-alc-dof-chain', 'dof', {
+        maxDepth: 8,
+        minDepth: 3,
+        requiredTypes: ['chains'],
+      });
+      if (profile?.maxRank == null || profile.maxRank >= 160) addMsls('msls-family');
+      addAhsDofChain('ahs-dof-chain-family');
 
       return phases.filter(phase => {
         if (profile?.maxRank == null) return true;
-        return phase.kind !== 'chain' || profile.maxDepth >= phase.chainPhase.minDepth;
+        return !['chain', 'alc'].includes(phase.kind)
+          || profile.maxDepth >= phase.chainPhase.minDepth;
       });
     }
 
@@ -15408,12 +16314,16 @@
       if (phase.kind === 'als-dof') {
         return ['als-dof', 'dds', 'adds'].some(type => enabledTypes.has(type));
       }
+      if (phase.kind === 'ahs-dof') return enabledTypes.has('chains');
+      if (phase.kind === 'ahs-dof-chain') return enabledTypes.has('chains');
+      if (phase.kind === 'msls') return enabledTypes.has('msls');
       if (phase.kind === 'chain') {
         return phase.requiredTypes.every(type => enabledTypes.has(type))
           || (phase.requiredTypes.includes('chains')
             && phase.requiredTypes.slice(1).some(type => enabledTypes.has(type))
             && enabledTypes.has('chains'));
       }
+      if (phase.kind === 'alc') return enabledTypes.has('chains');
       if (spec?.kind === 'fish') {
         return (spec.k || [0]).some(k => enabledTypes.has(
           k === 0 ? basicFishMoveType(spec.size) : `${spec.size}x${spec.size}+k-fish`,
@@ -15548,10 +16458,41 @@
       const phases = solverPhasePlan(profile);
       const enabledTypes = currentSolverMoveTypes(profile?.moveTypes);
       for (const phase of phases) {
+        if (phase.kind === 'alc') {
+          if (!solverPhaseAllowsType(phase, enabledTypes)) continue;
+          const alc = findSolverAlcMove(
+            candidateGrid,
+            fixedGrid,
+            budget,
+            expectedSolution,
+            profile,
+            phase,
+          );
+          if (alc?.step) return alc;
+          continue;
+        }
         if (phase.kind === 'als-dof') {
           if (!solverPhaseAllowsType(phase, enabledTypes)) continue;
           const alsDof = findSolverAlsDofMove(candidateGrid, budget, profile);
           if (alsDof?.step) return alsDof;
+          continue;
+        }
+        if (phase.kind === 'ahs-dof') {
+          if (!solverPhaseAllowsType(phase, enabledTypes)) continue;
+          const ahsDof = findSolverAhsDofMove(candidateGrid, budget, profile);
+          if (ahsDof?.step) return ahsDof;
+          continue;
+        }
+        if (phase.kind === 'ahs-dof-chain') {
+          if (!solverPhaseAllowsType(phase, enabledTypes)) continue;
+          const ahsDofChain = findSolverAhsDofChainMove(candidateGrid, budget, profile);
+          if (ahsDofChain?.step) return ahsDofChain;
+          continue;
+        }
+        if (phase.kind === 'msls') {
+          if (!solverPhaseAllowsType(phase, enabledTypes)) continue;
+          const msls = findSolverMslsMove(candidateGrid, budget, profile);
+          if (msls?.step) return msls;
           continue;
         }
         if (phase.kind === 'direct') {
@@ -15584,6 +16525,19 @@
       const phases = solverPhasePlan(profile);
       const enabledTypes = currentSolverMoveTypes(profile?.moveTypes);
       for (const phase of phases) {
+        if (phase.kind === 'alc') {
+          if (!solverPhaseAllowsType(phase, enabledTypes)) continue;
+          const alc = await findSolverAlcMoveInWorker(
+            candidateGrid,
+            fixedGrid,
+            budget,
+            expectedSolution,
+            profile,
+            phase,
+          );
+          if (alc?.step) return alc;
+          continue;
+        }
         if (phase.kind === 'als-dof') {
           if (!solverPhaseAllowsType(phase, enabledTypes)) continue;
           const configuredDigits = Number(profile?.alsMaxDigits);
@@ -15605,6 +16559,24 @@
             profile,
           );
           if (alsDof?.step) return alsDof;
+          continue;
+        }
+        if (phase.kind === 'ahs-dof') {
+          if (!solverPhaseAllowsType(phase, enabledTypes)) continue;
+          const ahsDof = await findSolverAhsDofMoveInWorker(candidateGrid, budget, profile);
+          if (ahsDof?.step) return ahsDof;
+          continue;
+        }
+        if (phase.kind === 'ahs-dof-chain') {
+          if (!solverPhaseAllowsType(phase, enabledTypes)) continue;
+          const ahsDofChain = await findSolverAhsDofChainMoveInWorker(candidateGrid, budget, profile);
+          if (ahsDofChain?.step) return ahsDofChain;
+          continue;
+        }
+        if (phase.kind === 'msls') {
+          if (!solverPhaseAllowsType(phase, enabledTypes)) continue;
+          const msls = await findSolverMslsMoveInWorker(candidateGrid, budget, profile);
+          if (msls?.step) return msls;
           continue;
         }
         if (phase.kind === 'direct') {
@@ -15747,6 +16719,8 @@
       selectedAlsDof = null;
       selectedAlsDofIndex = null;
       selectedAlsDofSource = 'net';
+      selectedAhsDofNetIndex = null;
+      selectedAhsDofChainIndex = null;
       activeStep = null;
       lastRemoved = [];
       selectedFishKey = null;
@@ -15900,7 +16874,7 @@
       }
 
       const summary = document.createElement('p');
-      summary.textContent = `${chainReport.chains.length} ${alsSearchFamily.toUpperCase()} result${chainReport.chains.length === 1 ? '' : 's'} using ALS_RCC and type 5 links only.`;
+      summary.textContent = `${chainReport.chains.length} ${alsSearchFamily.toUpperCase()} result${chainReport.chains.length === 1 ? '' : 's'}.`;
       alsSearchResultsEl.appendChild(summary);
       if (!chainReport.chains.length) return;
 
@@ -15962,6 +16936,160 @@
         list.appendChild(item);
       });
       ahsSearchResultsEl.appendChild(list);
+    }
+
+    function renderAlcXzResults() {
+      alcSearchResultsEl.textContent = '';
+      if (!alcXzReport) {
+        alcSearchResultsEl.textContent = 'No ALC-XZ search has been run.';
+        return;
+      }
+      const chains = alcXzReport.chains || [];
+      const summary = document.createElement('p');
+      summary.textContent = `${chains.length} ALC-XZ result${chains.length === 1 ? '' : 's'} found.`
+        + (alcXzReport.stats?.truncated ? ' Search limit reached.' : '');
+      alcSearchResultsEl.appendChild(summary);
+      if (!chains.length) return;
+
+      const list = document.createElement('ol');
+      list.className = 'chain-list';
+      chains.slice(0, 200).forEach((chain, index) => {
+        const item = document.createElement('li');
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `chain-result${index === selectedChainIndex ? ' selected' : ''}`;
+        button.textContent = `${index + 1}. ${chainText(chain)}`;
+        const contacts = chain.alcXz?.contacts || [];
+        button.title = chain.alcXz
+          ? `ALS + AHS; ${contacts.length} weak digit contact${contacts.length === 1 ? '' : 's'}`
+          : 'ALC-XZ chain-engine result';
+        button.addEventListener('click', () => {
+          selectedChainIndex = index;
+          activeStep = null;
+          lastRemoved = [];
+          renderChainReport();
+          renderAlcXzResults();
+          renderBoard();
+          openReportPanel(alcSearchResultsEl);
+          focusMap();
+        });
+        item.appendChild(button);
+        list.appendChild(item);
+      });
+      alcSearchResultsEl.appendChild(list);
+    }
+
+    function renderAlcXyResults() {
+      alcSearchResultsEl.textContent = '';
+      if (!alcXyReport) {
+        alcSearchResultsEl.textContent = 'No ALC-XY search has been run.';
+        return;
+      }
+      const chains = alcXyReport.chains || [];
+      const summary = document.createElement('p');
+      summary.textContent = `${chains.length} ALC-XY result${chains.length === 1 ? '' : 's'} found.`
+        + (alcXyReport.stats?.truncated ? ' Search limit reached.' : '');
+      alcSearchResultsEl.appendChild(summary);
+      if (!chains.length) return;
+
+      const list = document.createElement('ol');
+      list.className = 'chain-list';
+      chains.slice(0, 200).forEach((chain, index) => {
+        const item = document.createElement('li');
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `chain-result${index === selectedChainIndex ? ' selected' : ''}`;
+        button.textContent = `${index + 1}. ${chainText(chain)}`;
+        button.title = 'Mixed ALC-XY: at least one ALS, one AHS, and one additional node';
+        button.addEventListener('click', () => {
+          selectedChainIndex = index;
+          activeStep = null;
+          lastRemoved = [];
+          renderChainReport();
+          renderAlcXyResults();
+          renderBoard();
+          openReportPanel(alcSearchResultsEl);
+          focusMap();
+        });
+        item.appendChild(button);
+        list.appendChild(item);
+      });
+      alcSearchResultsEl.appendChild(list);
+    }
+
+    function renderAlcChainResults() {
+      alcSearchResultsEl.textContent = '';
+      if (!alcChainReport) {
+        alcSearchResultsEl.textContent = 'No ALC-Chain search has been run.';
+        return;
+      }
+      const chains = alcChainReport.chains || [];
+      const summary = document.createElement('p');
+      summary.textContent = `${chains.length} ALC-Chain result${chains.length === 1 ? '' : 's'} found.`
+        + (alcChainReport.stats?.truncated ? ' Search limit reached.' : '');
+      alcSearchResultsEl.appendChild(summary);
+      if (!chains.length) return;
+
+      const list = document.createElement('ol');
+      list.className = 'chain-list';
+      chains.slice(0, 200).forEach((chain, index) => {
+        const item = document.createElement('li');
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `chain-result${index === selectedChainIndex ? ' selected' : ''}`;
+        button.textContent = `${index + 1}. ${chainText(chain)}`;
+        button.title = 'Mixed ALC-Chain: at least one ALS, one AHS, and one additional node';
+        button.addEventListener('click', () => {
+          selectedChainIndex = index;
+          activeStep = null;
+          lastRemoved = [];
+          renderChainReport();
+          renderAlcChainResults();
+          renderBoard();
+          openReportPanel(alcSearchResultsEl);
+          focusMap();
+        });
+        item.appendChild(button);
+        list.appendChild(item);
+      });
+      alcSearchResultsEl.appendChild(list);
+    }
+
+    function renderAlcDofResults() {
+      alcSearchResultsEl.textContent = '';
+      if (!alcDofReport) {
+        alcSearchResultsEl.textContent = 'No ALC-DOF search has been run.';
+        return;
+      }
+      const chains = alcDofReport.chains || [];
+      const summary = document.createElement('p');
+      summary.textContent = `${chains.length} ALC-DOF result${chains.length === 1 ? '' : 's'} found.`
+        + (alcDofReport.stats?.truncated ? ' Search limit reached.' : '');
+      alcSearchResultsEl.appendChild(summary);
+      if (!chains.length) return;
+      const list = document.createElement('ol');
+      list.className = 'chain-list';
+      chains.slice(0, 200).forEach((chain, index) => {
+        const item = document.createElement('li');
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `chain-result${index === selectedChainIndex ? ' selected' : ''}`;
+        button.textContent = `${index + 1}. ${chainText(chain)}`;
+        button.title = `ALC-DOF rooted in ${chain.alcDof?.rootType || 'DOF'} and extended with ALS/AHS modules`;
+        button.addEventListener('click', () => {
+          selectedChainIndex = index;
+          activeStep = null;
+          lastRemoved = [];
+          renderChainReport();
+          renderAlcDofResults();
+          renderBoard();
+          openReportPanel(alcSearchResultsEl);
+          focusMap();
+        });
+        item.appendChild(button);
+        list.appendChild(item);
+      });
+      alcSearchResultsEl.appendChild(list);
     }
 
     function alsDofTechniqueInfo(result) {
@@ -16197,6 +17325,8 @@
           alsDofReport,
           alsDofChainReport,
           ahsReport,
+          ahsDofReport,
+          ahsDofChainReport,
           strongLinkReport,
           fishReport,
           nakedSubsetReport,
@@ -16209,6 +17339,8 @@
           selectedAlsId,
           openAlsSizeGroups: [...openAlsSizeGroups],
           selectedAhsDof,
+          selectedAhsDofNetIndex,
+          selectedAhsDofChainIndex,
           selectedAhsId,
           openAhsSizeGroups: [...openAhsSizeGroups],
           selectedStrongLinkType,
@@ -16257,6 +17389,8 @@
       alsDofReport = visual.alsDofReport || null;
       alsDofChainReport = visual.alsDofChainReport || null;
       ahsReport = visual.ahsReport || null;
+      ahsDofReport = visual.ahsDofReport || null;
+      ahsDofChainReport = visual.ahsDofChainReport || null;
       strongLinkReport = visual.strongLinkReport || null;
       fishReport = visual.fishReport || null;
       nakedSubsetReport = visual.nakedSubsetReport || null;
@@ -16270,6 +17404,8 @@
       openAlsSizeGroups.clear();
       for (const value of visual.openAlsSizeGroups || []) openAlsSizeGroups.add(value);
       selectedAhsDof = visual.selectedAhsDof ?? null;
+      selectedAhsDofNetIndex = visual.selectedAhsDofNetIndex ?? null;
+      selectedAhsDofChainIndex = visual.selectedAhsDofChainIndex ?? null;
       selectedAhsId = visual.selectedAhsId ?? null;
       openAhsSizeGroups.clear();
       for (const value of visual.openAhsSizeGroups || []) openAhsSizeGroups.add(value);
@@ -16350,6 +17486,7 @@
       alsDofReport = null;
       alsDofChainReport = null;
       ahsReport = null;
+      alcXzReport = null;
       ahsLinkReport = null;
       mslsReport = null;
       selectedAlsDof = null;
@@ -16358,6 +17495,8 @@
       selectedAlsId = null;
       openAlsSizeGroups.clear();
       selectedAhsDof = null;
+      selectedAhsDofNetIndex = null;
+      selectedAhsDofChainIndex = null;
       selectedAhsId = null;
       openAhsSizeGroups.clear();
       strongLinkReport = null;
@@ -17314,21 +18453,23 @@
 
       setTimeout(async () => {
         try {
-          // Chains use the same explicit ALS-DOF range controls as nets;
-          // keep the chain results in their own section without silently
-          // replacing the user's 5-by-5 preset.
+          // Chains have their own range controls so widening a chain search
+          // does not silently change the parent ALS-DOF search.
           const maxDigits = Math.min(9, Math.max(2,
-            Number(alsDofMaxDigitsEl.value) || 5));
+            Number(alsDofChainMaxDigitsEl.value) || 5));
           const maxAuxiliary = Math.min(9, Math.max(1,
-            Number(alsDofMaxAuxiliaryEl.value) || 5));
-          alsDofMaxDigitsEl.value = String(maxDigits);
-          alsDofMaxAuxiliaryEl.value = String(maxAuxiliary);
+            Number(alsDofChainMaxAuxiliaryEl.value) || 5));
+          const maxResults = Math.min(5000, Math.max(1,
+            Number(alsDofChainMaxResultsEl.value) || 500));
+          alsDofChainMaxDigitsEl.value = String(maxDigits);
+          alsDofChainMaxAuxiliaryEl.value = String(maxAuxiliary);
+          alsDofChainMaxResultsEl.value = String(maxResults);
           try {
             alsDofChainReport = await runSearchWorker('als-dof-chain', {
               candidateGrid: cand,
               maxDigits,
               maxAuxiliary,
-              maxResults: 5000,
+              maxResults,
             });
           } catch (workerError) {
             // Workers can be blocked when the app is opened directly from
@@ -17342,7 +18483,7 @@
               alsList: sourceAls,
               maxAuxiliary,
               maxDigits,
-              maxResults: 5000,
+              maxResults,
               includePathChain: false,
             });
             const verifiedResults = raw.results.map(result => ({
@@ -17441,6 +18582,8 @@
           selectedMslsIndex = index;
           selectedAlsId = null;
           selectedAhsId = null;
+          selectedAhsDofNetIndex = null;
+          selectedAhsDofChainIndex = null;
           selectedChainIndex = null;
           selectedStrongLinkType = null;
           selectedStrongLinkIndex = null;
@@ -17467,8 +18610,8 @@
       setStatus('Searching Multi-Sector Locked Sets...');
       mslsResultsEl.textContent = 'Searching MSLS...';
       try {
-        const requestedMin = Math.max(1, Math.min(7, Number(mslsMinSizeEl.value) || 1));
-        const requestedMax = Math.max(requestedMin, Math.min(7, Number(mslsMaxSizeEl.value) || 5));
+        const requestedMin = Math.max(3, Math.min(5, Number(mslsMinSizeEl.value) || 3));
+        const requestedMax = Math.max(requestedMin, Math.min(5, Number(mslsMaxSizeEl.value) || 5));
         const stateBudgetPerSize = Math.max(1000, Math.min(20000000, Number(mslsStateBudgetEl.value) || 5000000));
         const stateBudget = Math.min(50000000, stateBudgetPerSize * requestedMax);
         const resultLimit = Math.max(1, Math.min(50000, Number(mslsResultLimitEl.value) || 10000));
@@ -17542,14 +18685,14 @@
       const maxDepth = phase.maxDepth;
       const label = family === 'als-xz' ? 'ALS-XZ'
         : family === 'als-xy' ? 'ALS-XY' : 'ALS-Chain';
-      // Type 4 is the bivalent ALS node. Type 5 is supplied separately by
+      // Type 4 is the Bivalve ALS node. Type 5 is supplied separately by
       // includeAlsRcc/alsLinkSet as ALS_RCC; it is not part of this array.
       const searchStrongLinkTypes = [4];
 
       setBusy(true);
       setStatus(family === 'als-xy'
-        ? `Searching ${label} with bivalent type 4 and ALS_RCC type 5 links...`
-        : `Searching ${label} with ALS_RCC and type 5 links only...`);
+        ? `Searching ${label}...`
+        : `Searching ${label}...`);
 
       setTimeout(() => {
         try {
@@ -17601,10 +18744,7 @@
           openReportPanel(alsSearchResultsEl);
 
           setStatus(
-            `${label} search complete. ${chains.length} result${chains.length === 1 ? '' : 's'} `
-              + (family === 'als-xy'
-                ? 'using bivalent type 4 and ALS_RCC type 5 links.'
-                : 'using ALS_RCC and type 5 links only.')
+            `${label} search complete. ${chains.length} result${chains.length === 1 ? '' : 's'}.`
               + `${rawReport.stats?.truncated ? ` Stopped at ${rawReport.stats.stopReason}.` : ''}`,
             chains.length ? 'ok' : 'warn',
           );
@@ -17668,15 +18808,20 @@
                 searchLimit: ahsXyOptions.ahsSearchLimit,
                 maxResults: ahsXyOptions.ahsMaxNodes,
               });
-              rawReport = core.findAhsXyChains(cand, {
+               const pureReport = core.findAhsXyChains(cand, {
                 ahsList,
                 maxTriples: ahsXyOptions.maxTriples,
                 maxChains: ahsXyOptions.limits.maxChains,
               });
+               const mixedReport = core.findAhsMixedChains(cand, {
+                 mode: 'xy', maxChains: ahsXyOptions.limits.maxChains,
+               });
+               rawReport = { chains: [...pureReport.chains, ...mixedReport.chains],
+                 stats: { ...pureReport.stats, mixed: mixedReport.stats } };
             } else {
               rawReport = await runSearchWorker('chains', {
                 candidateGrid: cand,
-                includeStrong: false,
+                 includeStrong: true,
                 includeAls: false,
                 includeAhs: true,
                 ...ahsXyOptions,
@@ -17711,25 +18856,29 @@
               maxQueue: 300000,
               maxBranching: 500,
               maxAhsLinks: 5000,
+               ...(isChain ? { resultFilter: steps => steps.length > 3
+                 && steps.some(step => step.view.node.family === 'AHS')
+                 && steps.every(step => step.view.node.family === 'AHS'
+                   || (step.view.node.family === 'SL' && [0, 1].includes(step.view.node.linkType))) } : {}),
             });
           }
-          const chains = rawReport.chains.filter(chain => {
+           const chains = rawReport.chains.filter(chain => {
             const steps = chain.steps || [];
             if (isChain) {
-              return (chain.structureName === 'AHS - Chain'
-                || chain.structureName === 'AHS - Chain Ring')
-                && steps.length > 3
-                && steps.every(step => step.family === 'AHS');
+               return steps.length > 3
+                 && steps.some(step => step.family === 'AHS')
+                 && steps.every(step => step.family === 'AHS'
+                   || (step.family === 'SL' && [0, 1].includes(step.linkType)));
             }
             if (!isXy) {
               return steps.some(step =>
                 step.family === 'AHS'
                 && ['AHS_XZ', 'AHS_XZ_RING'].includes(String(step.module?.moduleKind || '')));
             }
-            return (chain.structureName === 'AHS - XY'
-              || chain.structureName === 'AHS - XY Ring')
-              && steps.length === 3
-              && steps.every(step => step.family === 'AHS');
+             return steps.length === 3
+               && steps.some(step => step.family === 'AHS')
+               && steps.every(step => step.family === 'AHS'
+                 || (step.family === 'SL' && [0, 1].includes(step.linkType)));
           });
 
           chainReport = { ...rawReport, chains };
@@ -17750,7 +18899,7 @@
             `${label} search complete ${isXy
               ? 'using AHS cellular links'
               : isChain ? 'using AHS links with strong-link types 0 and 1'
-                : 'using strong-link types 0 and 1'}. `
+                : 'using AHS_RCC with strong-link types 0 and 1'}. `
               + `${chains.length} result${chains.length === 1 ? '' : 's'} found.`,
             chains.length ? 'ok' : 'warn',
           );
@@ -17766,6 +18915,210 @@
       }, 20);
     }
 
+
+    async function runAlcXzBuild() {
+      setBusy(true);
+      setStatus('Searching ALC-XZ...');
+      setTimeout(async () => {
+        try {
+          const payload = {
+            candidateGrid: cand,
+            maxChains: 500,
+            maxResultAttempts: 10000,
+            maxResultAttemptsPerStart: 1000,
+            maxStates: 30000,
+            maxQueue: 30000,
+            maxBranching: 200,
+            maxAlsLinks: 5000,
+            maxAhsLinks: 5000,
+          };
+          try {
+            alcXzReport = await runSearchWorker('alc-xz', payload);
+          } catch (workerError) {
+            alcXzReport = core.findAlcXz(cand, payload);
+            alcXzReport.stats = {
+              ...(alcXzReport.stats || {}),
+              workerFallback: workerError.message || String(workerError),
+            };
+          }
+          chainReport = alcXzReport;
+          selectedChainIndex = alcXzReport.chains.length ? 0 : null;
+          activeStep = null;
+          lastRemoved = [];
+          alsSearchFamily = null;
+          ahsSearchFamily = null;
+          renderChainReport();
+          renderAlcXzResults();
+          renderBoard();
+          openReportPanel(alcSearchResultsEl);
+          const count = alcXzReport.chains.length;
+          setStatus(`ALC-XZ search complete. ${count} result${count === 1 ? '' : 's'} found.`, count ? 'ok' : 'warn');
+        } catch (error) {
+          alcXzReport = null;
+          chainReport = null;
+          selectedChainIndex = null;
+          renderAlcXzResults();
+          setStatus(`Could not search ALC-XZ: ${error.message || error}`, 'warn');
+        } finally {
+          setBusy(false);
+        }
+      }, 20);
+    }
+
+    async function runAlcXyBuild() {
+      setBusy(true);
+      setStatus('Searching ALC-XY...');
+      setTimeout(async () => {
+        try {
+          const payload = {
+            candidateGrid: cand,
+            maxDepth: 3,
+            maxChains: 500,
+            maxResultAttempts: 20000,
+            maxResultAttemptsPerStart: 1000,
+            maxStates: 50000,
+            maxQueue: 50000,
+            maxBranching: 200,
+            maxAlsLinks: 5000,
+            maxAhsLinks: 5000,
+          };
+          try {
+            alcXyReport = await runSearchWorker('alc-xy', payload);
+          } catch (workerError) {
+            alcXyReport = core.findAlcXy(cand, payload);
+            alcXyReport.stats = {
+              ...(alcXyReport.stats || {}),
+              workerFallback: workerError.message || String(workerError),
+            };
+          }
+          chainReport = alcXyReport;
+          selectedChainIndex = alcXyReport.chains.length ? 0 : null;
+          activeStep = null;
+          lastRemoved = [];
+          alsSearchFamily = null;
+          ahsSearchFamily = null;
+          renderChainReport();
+          renderAlcXyResults();
+          renderBoard();
+          openReportPanel(alcSearchResultsEl);
+          const count = alcXyReport.chains.length;
+          setStatus(`ALC-XY search complete. ${count} result${count === 1 ? '' : 's'} found.`, count ? 'ok' : 'warn');
+        } catch (error) {
+          alcXyReport = null;
+          chainReport = null;
+          selectedChainIndex = null;
+          renderAlcXyResults();
+          setStatus(`Could not search ALC-XY: ${error.message || error}`, 'warn');
+        } finally {
+          setBusy(false);
+        }
+      }, 20);
+    }
+
+    async function runAlcChainBuild() {
+      setBusy(true);
+      setStatus('Searching ALC-Chain...');
+      setTimeout(async () => {
+        try {
+          const payload = {
+            candidateGrid: cand,
+            maxDepth: 6,
+            maxChains: 500,
+            maxResultAttempts: 30000,
+            maxResultAttemptsPerStart: 1200,
+            maxStates: 60000,
+            maxQueue: 60000,
+            maxBranching: 200,
+            maxAlsLinks: 5000,
+            maxAhsLinks: 5000,
+          };
+          try {
+            alcChainReport = await runSearchWorker('alc-chain', payload);
+          } catch (workerError) {
+            alcChainReport = core.findAlcChain(cand, payload);
+            alcChainReport.stats = {
+              ...(alcChainReport.stats || {}),
+              workerFallback: workerError.message || String(workerError),
+            };
+          }
+          chainReport = alcChainReport;
+          selectedChainIndex = alcChainReport.chains.length ? 0 : null;
+          activeStep = null;
+          lastRemoved = [];
+          alsSearchFamily = null;
+          ahsSearchFamily = null;
+          renderChainReport();
+          renderAlcChainResults();
+          renderBoard();
+          openReportPanel(alcSearchResultsEl);
+          const count = alcChainReport.chains.length;
+          setStatus(`ALC-Chain search complete. ${count} result${count === 1 ? '' : 's'} found.`, count ? 'ok' : 'warn');
+        } catch (error) {
+          alcChainReport = null;
+          chainReport = null;
+          selectedChainIndex = null;
+          renderAlcChainResults();
+          setStatus(`Could not search ALC-Chain: ${error.message || error}`, 'warn');
+        } finally {
+          setBusy(false);
+        }
+      }, 20);
+    }
+
+    async function runAlcDofBuild() {
+      setBusy(true);
+      setStatus('Searching ALC-DOF...');
+      setTimeout(async () => {
+        try {
+          const payload = {
+            candidateGrid: cand,
+            maxDepth: 8,
+            maxResults: 300,
+            maxDofRoots: 500,
+            maxAlsDigits: 5,
+            maxAlsAuxiliary: 5,
+            maxAhsDof: 3,
+            maxAhsAuxiliary: 5,
+            maxAhsCells: 7,
+            maxSearchChains: 1500,
+            maxResultAttempts: 30000,
+            maxResultAttemptsPerStart: 1500,
+            maxStates: 60000,
+            maxQueue: 60000,
+            maxBranching: 200,
+          };
+          try {
+            alcDofReport = await runSearchWorker('alc-dof', payload);
+          } catch (workerError) {
+            alcDofReport = core.findAlcDofChains(cand, payload);
+            alcDofReport.stats = {
+              ...(alcDofReport.stats || {}),
+              workerFallback: workerError.message || String(workerError),
+            };
+          }
+          chainReport = alcDofReport;
+          selectedChainIndex = alcDofReport.chains.length ? 0 : null;
+          activeStep = null;
+          lastRemoved = [];
+          alsSearchFamily = null;
+          ahsSearchFamily = null;
+          renderChainReport();
+          renderAlcDofResults();
+          renderBoard();
+          openReportPanel(alcSearchResultsEl);
+          const count = alcDofReport.chains.length;
+          setStatus(`ALC-DOF search complete. ${count} result${count === 1 ? '' : 's'} found.`, count ? 'ok' : 'warn');
+        } catch (error) {
+          alcDofReport = null;
+          chainReport = null;
+          selectedChainIndex = null;
+          renderAlcDofResults();
+          setStatus(`Could not search ALC-DOF: ${error.message || error}`, 'warn');
+        } finally {
+          setBusy(false);
+        }
+      }, 20);
+    }
 
     function runChainBuild() {
       setBusy(true);
@@ -18123,6 +19476,26 @@
       event.stopPropagation();
       runAhsSearch('ahs-xz');
     });
+    alcXzBuildEl.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      runAlcXzBuild();
+    });
+    alcXyBuildEl.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      runAlcXyBuild();
+    });
+    alcChainBuildEl.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      runAlcChainBuild();
+    });
+    alcDofBuildEl.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      runAlcDofBuild();
+    });
     ahsXyBuildEl.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -18137,6 +19510,11 @@
       event.preventDefault();
       event.stopPropagation();
       runAhsDofBuild();
+    });
+    ahsDofChainBuildEl.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      runAhsDofChainBuild();
     });
     ahsLinkBuildEl.addEventListener('click', (event) => {
       event.preventDefault();

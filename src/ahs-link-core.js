@@ -166,6 +166,45 @@
       }
     }
 
+    // A type 0/1 strong link can cover every surplus cell of a larger AHS.
+    // That reduction is itself a one-digit AHS-DOF endpoint, not merely an
+    // external bridge to an already-built DOF node.
+    if (ahs.ahsDOF > 1) {
+      for (const link of strongLinks || []) {
+        if (![0, 1].includes(Number(link.linkType))) continue;
+        const startDigit = Number(link.startingDigits?.[0]);
+        const linkDigit = Number(link.linkDigits?.[0]);
+        if (!startDigit || startDigit !== linkDigit) continue;
+
+        for (const triggerCells of [link.activeCells || [], link.linkedCells || []]) {
+          if (triggerCells.length <= 1 || triggerCells.length !== ahs.ahsDOF) continue;
+          if (!triggerCells.every(cell => ahs.ahsAllCells.includes(cell))) continue;
+          if (ahs.ahsDigits.includes(startDigit)) continue;
+
+          const remaining = ahs.ahsAllCells.filter(cell => !triggerCells.includes(cell));
+          for (const hiddenDigit of ahs.ahsDigits) {
+            const hiddenCells = remaining.filter(cell => (cand[cell] || []).includes(hiddenDigit));
+            if (hiddenCells.length !== 1) continue;
+            const endpoint = buildEndpoint(
+              cand,
+              ahs,
+              triggerCells,
+              triggerCells,
+              [startDigit],
+              { [startDigit]: [...triggerCells] },
+              'STRONG_LINK',
+              link.id,
+              link.originSector || [],
+              1,
+              hiddenDigit,
+              hiddenCells[0],
+            );
+            if (endpoint) endpoints.push(endpoint);
+          }
+        }
+      }
+    }
+
     // A digit outside the AHS set can remove every AHS cell that carries
     // that digit. If that reduction leaves a genuine hidden-single endpoint,
     // it is the second legal AHS conveyance form: external digit -> HS cell.
@@ -497,7 +536,7 @@
     // each parent. This prevents the weaker, invalid "set equality" shortcut.
     const byCell = new Map();
     for (const ahs of ahsList) {
-      if (ahs.ahsDOF !== 1 || ahs.ahsDigits.length !== 2) continue;
+      if (ahs.ahsDOF !== 1 || ahs.ahsDigits.length < 2 || ahs.ahsDigits.length > 3) continue;
       for (const cell of ahs.ahsAllCells) {
         const list = byCell.get(cell) || [];
         list.push(ahs);
@@ -511,7 +550,6 @@
         for (let rightIndex = leftIndex + 1; rightIndex < list.length; rightIndex++) {
           const right = list[rightIndex];
           if (left.ahsSector === right.ahsSector) continue;
-          if (intersection(left.ahsDigits, right.ahsDigits).length) continue;
 
           const overlap = intersection(left.ahsAllCells, right.ahsAllCells);
           if (overlap.length !== 1) continue;
@@ -519,6 +557,251 @@
           const rccCells = new Set([bridgeCell]);
           const leftBridge = left.ahsDigits.filter(digit => (cand[bridgeCell] || []).includes(digit));
           const rightBridge = right.ahsDigits.filter(digit => (cand[bridgeCell] || []).includes(digit));
+
+          // The shared RCC cell is neutral.  AHS-XZ requires opposite
+          // assignments at that cell; common parent digits are not a valid
+          // bridge and must never be allowed to form an AHS-XZ link.
+          if (intersection(left.ahsDigits, right.ahsDigits).length) continue;
+
+          // A shared-cell AHS pair is a valid XZ bridge even when the digit
+          // sets overlap. The shared cell carries the common bridge digits;
+          // digits present only on one side remain exclusive to that AHS.
+          // This is the AHS form used by
+          // (18)r1c459 / (138)r1235c4.
+          const commonDigits = intersection(left.ahsDigits, right.ahsDigits);
+          const sharedCellOverlap = commonDigits.length > 0
+            && (left.ahsDigits.every(digit => right.ahsDigits.includes(digit))
+              || right.ahsDigits.every(digit => left.ahsDigits.includes(digit)));
+          if (sharedCellOverlap && leftBridge.length && rightBridge.length) {
+            const bridge = {
+              conveyance: 'CELLS',
+              digit: null,
+              digits: [...commonDigits],
+              restrictedDigits: [...commonDigits],
+              leftCells: [bridgeCell],
+              rightCells: [bridgeCell],
+              sectors: commonSectors([bridgeCell]),
+            };
+            const nestedLink = buildLink(
+              cand,
+              directAhsEndpoint(left),
+              directAhsEndpoint(right),
+              directAhsNode(left),
+              bridge,
+              directAhsNode(right),
+            );
+            nestedLink.moduleKind = 'AHS_XZ';
+            nestedLink.xzBridgeCell = bridgeCell;
+            nestedLink.rccStartDigitsByCell = { [bridgeCell]: [...leftBridge] };
+            nestedLink.rccLinkedDigitsByCell = { [bridgeCell]: [...rightBridge] };
+            nestedLink.displayLeftRcc = leftBridge.join('');
+            nestedLink.displayRightRcc = rightBridge.join('');
+
+            // A shared-cell AHS bridge is conditional.  The cell is not a
+            // single RCC digit: each value in the cell creates a separate
+            // reduced-AHS branch.  Preserve those branches so the chain
+            // walker can continue with the correct reduced cell/digit sets.
+            const completeSharedAhsBranch = (ahs, branchDigit) => {
+              const remainingCells = ahs.ahsAllCells.filter(cell => cell !== bridgeCell);
+              const remainingDigits = ahs.ahsDigits.includes(branchDigit)
+                ? ahs.ahsDigits.filter(digit => digit !== branchDigit)
+                : [...ahs.ahsDigits];
+              if (remainingCells.length < remainingDigits.length) return null;
+
+              const cells = new Set(remainingCells);
+              const digits = new Set(remainingDigits);
+              const forced = [];
+              let changed = true;
+              while (changed) {
+                changed = false;
+                for (const digit of [...digits]) {
+                  const positions = [...cells].filter(cell =>
+                    (cand[cell] || []).includes(digit));
+                  if (!positions.length) return null;
+                  if (positions.length !== 1) continue;
+                  const cell = positions[0];
+                  forced.push({ cell, digit });
+                  cells.delete(cell);
+                  digits.delete(digit);
+                  changed = true;
+                }
+              }
+              return {
+                remainingCells: [...cells].sort((a, b) => a - b),
+                remainingDigits: [...digits].sort((a, b) => a - b),
+                forced,
+                sourceDigits: [...ahs.ahsDigits],
+              };
+            };
+
+            const branchValues = sortedUnique(cand[bridgeCell] || []);
+            const overlapBranches = branchValues.map(value => ({
+              value,
+              left: completeSharedAhsBranch(left, value),
+              right: completeSharedAhsBranch(right, value),
+            })).filter(branch => branch.left && branch.right);
+
+            const branchSectorRestrictions = branch => {
+              const restrictions = [];
+              const leftDigits = branch.left.remainingDigits;
+              const rightDigits = branch.right.remainingDigits;
+              const commonRemainingDigits = intersection(leftDigits, rightDigits);
+              const leftIsHs = branch.left.remainingCells.length === leftDigits.length
+                && leftDigits.length > 0;
+              const rightIsHs = branch.right.remainingCells.length === rightDigits.length
+                && rightDigits.length > 0;
+              if (!commonRemainingDigits.length || leftIsHs === rightIsHs) return restrictions;
+
+              const hs = leftIsHs ? branch.left : branch.right;
+              const ahs = leftIsHs ? branch.right : branch.left;
+              for (const unit of core.UNITS || []) {
+                const hsCells = hs.remainingCells.filter(cell => unit.includes(cell));
+                const ahsCells = ahs.remainingCells.filter(cell => unit.includes(cell));
+                if (!hsCells.length || !ahsCells.length) continue;
+                const lockedCells = new Set([...hsCells, ...ahsCells]);
+                const ahsRows = new Set(ahsCells.map(cell => Math.floor(cell / 9)));
+                const ahsCols = new Set(ahsCells.map(cell => cell % 9));
+                const cells = unit.filter(cell => {
+                  if (cell === bridgeCell || lockedCells.has(cell)) return false;
+                  // Keep the restriction on the AHS side of the shared
+                  // sector. For the b2 example this is exactly r2/r3c56;
+                  // the unrelated r1c6 cell is not part of the reduction.
+                  return ahsRows.has(Math.floor(cell / 9)) || ahsCols.has(cell % 9);
+                });
+                if (cells.length) restrictions.push({
+                  cells,
+                  digits: [...commonRemainingDigits],
+                });
+              }
+              return restrictions;
+            };
+
+            const branchDofRestrictions = branch => {
+              const restrictions = [];
+              const leftIsHs = branch.left.remainingCells.length === branch.left.remainingDigits.length
+                && branch.left.remainingDigits.length > 0;
+              const rightIsHs = branch.right.remainingCells.length === branch.right.remainingDigits.length
+                && branch.right.remainingDigits.length > 0;
+              if (leftIsHs === rightIsHs) return restrictions;
+              const hs = leftIsHs ? branch.left : branch.right;
+              const ahs = leftIsHs ? branch.right : branch.left;
+              const sharedAhsCells = new Set();
+              for (const unit of core.UNITS || []) {
+                const hsCells = hs.remainingCells.filter(cell => unit.includes(cell));
+                const ahsCells = ahs.remainingCells.filter(cell => unit.includes(cell));
+                if (!hsCells.length || !ahsCells.length) continue;
+                for (const cell of ahsCells) sharedAhsCells.add(cell);
+              }
+              const digits = Array.from({ length: 9 }, (_, index) => index + 1)
+                .filter(digit => !ahs.sourceDigits.includes(digit));
+              const cells = ahs.remainingCells.filter(cell => !sharedAhsCells.has(cell));
+              if (cells.length && digits.length) restrictions.push({ cells, digits });
+              return restrictions;
+            };
+
+            const branchEliminations = branch => {
+              const result = new Set();
+              for (const side of [branch.left, branch.right]) {
+                for (const assignment of side.forced) {
+                  for (const digit of cand[assignment.cell] || []) {
+                    if (digit !== assignment.digit && assignment.cell !== bridgeCell) {
+                      result.add(`${assignment.cell}:${digit}`);
+                    }
+                  }
+                  for (const cell of core.peersOf(assignment.cell)) {
+                    if (cell !== bridgeCell && (cand[cell] || []).includes(assignment.digit)) {
+                      result.add(`${cell}:${assignment.digit}`);
+                    }
+                  }
+                }
+              }
+
+              // When one branch reduces one parent to an HS and the other
+              // parent remains an AHS, their common digits are locked into
+              // the cells of each set inside any shared sector. Candidates
+              // of those digits in the rest of that sector are restricted.
+              for (const restriction of branchSectorRestrictions(branch)) {
+                for (const cell of restriction.cells) {
+                  for (const digit of restriction.digits) {
+                    if ((cand[cell] || []).includes(digit)) result.add(`${cell}:${digit}`);
+                  }
+                }
+              }
+              return result;
+            };
+
+            const branchSets = overlapBranches.map(branchEliminations);
+            const commonKeys = branchSets.length
+              ? [...branchSets[0]].filter(key => branchSets.every(set => set.has(key)))
+              : [];
+            nestedLink.overlapBranches = overlapBranches.map(branch => ({
+              value: branch.value,
+              left: {
+                cells: [...branch.left.remainingCells],
+                digits: [...branch.left.remainingDigits],
+                forced: branch.left.forced.map(item => ({ ...item })),
+              },
+              right: {
+                cells: [...branch.right.remainingCells],
+                digits: [...branch.right.remainingDigits],
+                forced: branch.right.forced.map(item => ({ ...item })),
+              },
+              dofRestrictions: branchDofRestrictions(branch),
+              sectorRestrictions: branchSectorRestrictions(branch),
+            }));
+            nestedLink.intrinsicEliminations = commonKeys.map(key => {
+              const [cell, digit] = key.split(':').map(Number);
+              return { cell, digit };
+            });
+            // The shared-cell reduction is itself the AHS-XZ proof. Keep
+            // the geometric sector restrictions and bridge exclusions on
+            // the link so the root search can report it even when some
+            // target cells are already solved. The chain evaluator still
+            // filters these against live candidates before publishing.
+            const proofEliminations = [];
+            for (const branch of overlapBranches) {
+              for (const restriction of branchSectorRestrictions(branch)) {
+                for (const cell of restriction.cells) {
+                  for (const digit of restriction.digits) {
+                    proofEliminations.push({ cell, digit });
+                  }
+                }
+              }
+              for (const restriction of branchDofRestrictions(branch)) {
+                for (const cell of restriction.cells) {
+                  for (const digit of restriction.digits) {
+                    proofEliminations.push({ cell, digit });
+                  }
+                }
+              }
+            }
+            for (const digit of Array.from({ length: 9 }, (_, index) => index + 1)) {
+              if (!branchValues.includes(digit)) proofEliminations.push({ cell: bridgeCell, digit });
+            }
+            const proofKeys = new Set(nestedLink.intrinsicEliminations.map(item => `${item.cell}:${item.digit}`));
+            for (const item of proofEliminations) {
+              const key = `${item.cell}:${item.digit}`;
+              if (!proofKeys.has(key)) {
+                proofKeys.add(key);
+                nestedLink.intrinsicEliminations.push(item);
+              }
+            }
+            nestedLink.branchEliminations = Object.fromEntries(
+              overlapBranches.map(branch => [
+                String(branch.value),
+                [...branchEliminations(branch)].map(key => {
+                  const [cell, digit] = key.split(':').map(Number);
+                  return { cell, digit };
+                }),
+              ]),
+            );
+            nestedLink.branchDigits = branchValues;
+            nestedLink.bridgeCellExclusions = Array.from({ length: 9 }, (_, index) => index + 1)
+              .filter(digit => !branchValues.includes(digit));
+            if (!addUnique(bucket, seen, nestedLink, maxLinks)) return false;
+            continue;
+          }
+
           if (leftBridge.length !== 1 || rightBridge.length !== 1) continue;
 
           // A one-cell RCC is a walkable AHS edge only when the shared cell
@@ -753,6 +1036,20 @@
         }
         const allEliminations = propagated.filter((item, index, all) =>
           all.findIndex(other => other.cell === item.cell && other.digit === item.digit) === index);
+
+        // A ring also closes the RCC cells themselves. Each shared cell is
+        // restricted to the union of the digits the two AHS parents can
+        // place there; every other candidate in that cell is disproved.
+        for (const cell of rccCells) {
+          const keepDigits = sortedUnique([
+            ...left.ahsDigits.filter(digit => (cand[cell] || []).includes(digit)),
+            ...right.ahsDigits.filter(digit => (cand[cell] || []).includes(digit)),
+          ]);
+          if (keepDigits.length < 2) continue;
+          for (const digit of cand[cell] || []) {
+            if (!keepDigits.includes(digit)) allEliminations.push({ cell, digit });
+          }
+        }
 
         const leftEndpoint = directAhsEndpoint(left);
         const rightEndpoint = directAhsEndpoint(right);

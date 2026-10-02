@@ -4,20 +4,21 @@
  * the page and returns structured-cloneable search results to the UI thread.
  */
 importScripts(
-  './browser-core.js?v=20260929-1',
+  './browser-core.js?v=20261001-2',
   './set-tools-core.js?v=20260928-1',
   './pom-core.js?v=20260928-2',
   './als-core.js?v=20260928-1',
   './als-dof-core.js?v=20260928-1',
   './als-link-core.js?v=20260928-1',
   './ahs-core.js?v=20260928-2',
-  './ahs-link-core.js?v=20260929-12',
+  './ahs-link-core.js?v=20261001-28',
   './subset-report-core.js?v=20260928-2',
   './mini-sectors-core.js?v=20260928-1',
-  './strong-link-core.js?v=20260928-1',
-  './chain-core.js?v=20260929-9',
-  './ahs-xy-core.js?v=20260929-3',
-  './ahs-dof-core.js?v=20260929-2',
+  './strong-link-core.js?v=20261002-2',
+  './chain-core.js?v=20261001-14',
+  './alc-core.js?v=20261002-7',
+  './ahs-xy-core.js?v=20261001-4',
+  './ahs-dof-core.js?v=20261002-1',
   './msls-core.js?v=20260930-8',
 );
 
@@ -47,13 +48,18 @@ function chainInventory(payload) {
     payload.ahsMaxCells ?? '',
     payload.ahsMaxFox ?? '',
     payload.ahsMaxNodes ?? '',
+    (payload.strongLinkTypes || []).join(','),
+    JSON.stringify(payload.almostFish || {}),
     (payload.alsCellCounts || []).join(','),
   ].join('::');
 
   if (!chainInventoryCache || chainInventoryCache.key !== inventoryKey) {
     chainInventoryCache = {
       key: inventoryKey,
-      strongSet: payload.includeStrong === false ? [] : core.buildStrongLinks(candidateGrid),
+      strongSet: payload.includeStrong === false ? [] : core.buildStrongLinks(candidateGrid, {
+        includeAlmostFish: (payload.strongLinkTypes || []).includes(7),
+        almostFish: { grid: [...(payload.fixedGrid || [])], ...(payload.almostFish || {}) },
+      }),
       alsList: payload.includeAls
         ? core.alsConstructor(candidateGrid, {
             ...(Number.isInteger(payload.alsMaxSizeDOF)
@@ -185,13 +191,19 @@ function runFish(payload) {
 function runChains(payload) {
   const candidateGrid = payload.candidateGrid;
   if (payload.ahsMode === 'xy') {
-    return core.findAhsXyChains(candidateGrid, {
+    const pure = core.findAhsXyChains(candidateGrid, {
       maxSize: payload.ahsMaxSize,
       maxSizeFox: payload.ahsMaxFox,
       maxNodes: payload.ahsMaxNodes,
       maxTriples: payload.maxTriples,
       maxChains: payload.limits?.maxChains,
     });
+    const mixed = core.findAhsMixedChains(candidateGrid, {
+      mode: 'xy',
+      maxChains: payload.limits?.maxChains,
+    });
+    return { chains: [...pure.chains, ...mixed.chains],
+      stats: { ...pure.stats, mixed: mixed.stats } };
   }
   const strongLinkTypes = payload.strongLinkTypes || [];
   const includeAls = Boolean(payload.includeAls);
@@ -268,10 +280,8 @@ function runAlsDof(payload) {
 }
 
 function runAlsDofChain(payload) {
-  // Dedicated ALS-DOF chains use the temporary safety limits requested by
-  // the UI; other ALS-DOF searches keep their independent settings.
-  const maxDigits = Math.min(4, Math.max(2, Number(payload.maxDigits) || 4));
-  const maxAuxiliary = 1;
+  const maxDigits = Math.min(9, Math.max(2, Number(payload.maxDigits) || 5));
+  const maxAuxiliary = Math.min(9, Math.max(1, Number(payload.maxAuxiliary) || 5));
   const alsList = core.alsConstructor(payload.candidateGrid, {
     maxSizeDOF: maxDigits - 1,
     maxSizeFox: maxDigits - 1,
@@ -280,7 +290,7 @@ function runAlsDofChain(payload) {
     alsList,
     maxAuxiliary,
     maxDigits,
-    maxResults: payload.maxResults || 5000,
+    maxResults: Math.min(5000, Math.max(1, Number(payload.maxResults) || 500)),
     includePathChain: false,
   });
   const accepted = [];
@@ -336,6 +346,61 @@ function runAhsDof(payload) {
   };
 }
 
+function runAhsDofChain(payload) {
+  const ahsList = core.ahsConstructor(payload.candidateGrid, {
+    maxSize: Number.isInteger(payload.maxAhsSize) ? payload.maxAhsSize : 8,
+    maxSizeFox: Number.isInteger(payload.maxAhsFox) ? payload.maxAhsFox : 7,
+  });
+  const netReport = core.findAhsDofNets(payload.candidateGrid, {
+    ahsList,
+    minDof: payload.minDof,
+    maxDof: payload.maxDof,
+    maxAhsSize: payload.maxAhsSize,
+    maxAhsFox: payload.maxAhsFox,
+    maxCells: payload.maxCells,
+    maxAuxiliary: payload.maxAuxiliary,
+    maxResults: payload.maxNetResults || 2000,
+  });
+  const raw = core.findAhsDofChains(payload.candidateGrid, {
+    netReport,
+    maxDepth: payload.maxDepth,
+    maxResults: payload.maxResults || 500,
+  });
+  const accepted = [];
+  const rejected = [];
+  for (const result of raw.results || []) {
+    const verification = core.verifyAhsDofChain(payload.candidateGrid, result);
+    if (verification.ok) accepted.push({ ...result, verification });
+    else rejected.push({ result, verification });
+  }
+  return {
+    ...raw,
+    results: accepted,
+    rejectedResults: rejected,
+    stats: {
+      ...(raw.stats || {}),
+      verifierChecked: (raw.results || []).length,
+      verifierRejected: rejected.length,
+    },
+  };
+}
+
+function runAlcXz(payload) {
+  return core.findAlcXz(payload.candidateGrid, payload);
+}
+
+function runAlcXy(payload) {
+  return core.findAlcXy(payload.candidateGrid, payload);
+}
+
+function runAlcChain(payload) {
+  return core.findAlcChain(payload.candidateGrid, payload);
+}
+
+function runAlcDof(payload) {
+  return core.findAlcDofChains(payload.candidateGrid, payload);
+}
+
 function runMsls(payload) {
   const options=payload.options || {};
   return options.model === 'MS-AHS' && typeof core.findMsAhs === 'function'
@@ -363,6 +428,11 @@ self.onmessage = event => {
     else if (type === 'als-dof') result = runAlsDof(payload || {});
     else if (type === 'als-dof-chain') result = runAlsDofChain(payload || {});
     else if (type === 'ahs-dof') result = runAhsDof(payload || {});
+    else if (type === 'ahs-dof-chain') result = runAhsDofChain(payload || {});
+    else if (type === 'alc-xz') result = runAlcXz(payload || {});
+    else if (type === 'alc-xy') result = runAlcXy(payload || {});
+    else if (type === 'alc-chain') result = runAlcChain(payload || {});
+    else if (type === 'alc-dof') result = runAlcDof(payload || {});
     else if (type === 'msls') result = runMsls(payload || {});
     else throw new Error(`Unknown search worker operation: ${type}`);
 

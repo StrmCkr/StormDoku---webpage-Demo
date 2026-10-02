@@ -12,7 +12,11 @@
   const GROUP_TO_GROUP = 2;
   const ERI = 3;
   const ALS = 4;
-  const TYPE_NAMES = ['BILOCAL', 'CELL_TO_GROUP', 'GROUP_TO_GROUP', 'ERI', 'ALS'];
+  const AF = 7;
+  const TYPE_NAMES = [
+    'BILOCAL', 'CELL_TO_GROUP', 'GROUP_TO_GROUP', 'ERI',
+    'ALS', 'ALS_RCC', 'AHS_RCC', 'AF',
+  ];
   const OFFSETS = [0, 9, 18, 18];
   let nextStrongLinkId = 0;
 
@@ -309,9 +313,102 @@
     }
   }
 
-  function buildStrongLinks(cand) {
+  // An Almost Fish is the XOR between one omitted candidate cell and a
+  // genuine omission-fish proposition for the same digit. Only a finned /
+  // omission fish can supply the second side; a complete fish has no extra
+  // cell and would duplicate an ordinary fish link.
+  function buildAlmostFishLinks(cand, buckets, seen, options = {}) {
+    if (typeof core.findOmissionFishReports !== 'function') return;
+
+    const reports = core.findOmissionFishReports(cand, {
+      grid: Array.isArray(options.grid) && options.grid.length === 81
+        ? [...options.grid]
+        : new Array(81).fill(0),
+      minSize: options.minSize ?? 2,
+      maxSize: options.maxSize ?? 4,
+      minK: options.minK ?? 1,
+      maxK: options.maxK ?? 2,
+      basicsEnabled: options.basicsEnabled ?? true,
+      frankenEnabled: options.frankenEnabled ?? true,
+      mutantEnabled: options.mutantEnabled ?? true,
+      earlyTermination: false,
+    });
+    const maxReports = Number.isInteger(options.maxReports) ? options.maxReports : 1500;
+    const limited = reports
+      .filter(report => Number(report?.k) > 0)
+      .sort((left, right) =>
+        Number(left.digit) - Number(right.digit)
+        || Number(left.size) - Number(right.size)
+        || Number(left.k) - Number(right.k)
+        || (left.baseSectors || []).join(',').localeCompare((right.baseSectors || []).join(',')))
+      .slice(0, Math.max(0, maxReports));
+
+    for (const report of limited) {
+      const digit = Number(report.digit);
+      const fishCells = [...new Set(report.vertices || [])]
+        .filter(cell => (cand[cell] || []).includes(digit));
+      if (!digit || !fishCells.length || !report.cells?.length) continue;
+
+      const vertexSet = new Set(fishCells);
+      const nextCycleCells = new Set([
+        ...(report.overcovered || []),
+        ...(report.triCovered || []),
+      ]);
+      const extraCells = [...new Set(report.triggerCells || [])]
+        .filter(cell => (cand[cell] || []).includes(digit))
+        .filter(cell => !vertexSet.has(cell))
+        .filter(cell => !nextCycleCells.has(cell));
+      if (!extraCells.length) continue;
+
+      const extraGroups = [
+        ...extraCells.map(cell => [cell]),
+        ...core.UNITS
+          .map(unit => extraCells.filter(cell => unit.includes(cell)))
+          .filter(group => group.length > 1)
+          .filter((group, index, groups) => groups.findIndex(other =>
+            other.join(',') === group.join(',')) === index),
+      ];
+
+      const fishElims = [...new Set(report.cells)]
+        .filter(cell => (cand[cell] || []).includes(digit));
+      if (!fishElims.length) continue;
+
+      for (const extraGroup of extraGroups) {
+        addUnique(buckets, seen, {
+          id: nextStrongLinkId++,
+          linkType: AF,
+          linkTypeName: TYPE_NAMES[AF],
+          originSector: commonSectors([...new Set([...extraGroup, ...fishCells])]),
+          startingDigits: [digit],
+          activeCells: extraGroup,
+          linkedCells: fishCells,
+          linkDigits: [digit],
+          startCellsSector: sectorMap(digit - 1, extraGroup),
+          linkCellsSector: sectorMap(digit - 1, fishCells),
+          startDigitSwapAvailable: [],
+          endDigitSwapAvailable: [],
+          potentialElimStart: { [digit]: peerPotentialEliminations(cand, digit, extraGroup) },
+          potentialElimEnd: { [digit]: fishElims },
+          rightWeakLinks: [],
+          leftWeakLinks: [],
+          conveyance: 'DIGITS',
+          xorConstruction: {
+            kind: 'almost-fish',
+            digit,
+            extraCells: [...extraGroup],
+            fishCells: [...fishCells],
+            fish: { ...report, cells: fishElims },
+          },
+          secondaryTypes: [],
+          secondaryXorConstruction: null,
+        });
+      }
+    }
+  }
+
+  function buildStrongLinks(cand, options = {}) {
     nextStrongLinkId = 0;
-    const buckets = [[], [], [], [], []];
+    const buckets = [[], [], [], [], [], [], [], []];
     const seen = new Set();
     const mini = core.buildMiniSectors(cand);
 
@@ -322,6 +419,10 @@
 
     for (let cell = 0; cell < 81; cell++) {
       if ((cand[cell] || []).length === 2) addUnique(buckets, seen, buildCellAlsLink(cand, cell));
+    }
+
+    if (options.includeAlmostFish === true) {
+      buildAlmostFishLinks(cand, buckets, seen, options.almostFish || {});
     }
 
     return buckets;
@@ -3066,6 +3167,7 @@
   core.GROUP_TO_GROUP = GROUP_TO_GROUP;
   core.ERI = ERI;
   core.ALS = ALS;
+  core.AF = AF;
   core.STRONG_LINK_TYPE_NAMES = TYPE_NAMES;
   core.buildStrongLinks = buildStrongLinks;
   core.strongLinkConstructor = buildStrongLinks;

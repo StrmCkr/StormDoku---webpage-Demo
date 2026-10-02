@@ -163,6 +163,59 @@
       triplesChecked: Math.min(triples, maxTriples), truncated } };
   }
 
+  function findAhsMixedChains(cand, options = {}) {
+    const isChain = options.mode === 'chain';
+    const strongLinkSet = options.strongLinkSet || core.buildStrongLinks(cand);
+    const ahsList = options.ahsList || core.ahsConstructor(cand, {
+      maxSize: isChain ? 8 : 4,
+      maxSizeFox: isChain ? 7 : 4,
+      searchLimit: !isChain,
+      ...(isChain ? {} : { maxResults: 800 }),
+    });
+    const ahsLinkSet = options.ahsLinkSet || core.buildAhsLinks(cand, {
+      ahsList,
+      strongLinkSet,
+      minDof: 1,
+      maxDof: 3,
+      maxLinks: options.maxAhsLinks ?? (isChain ? 5000 : 1200),
+    });
+    const resultFilter = steps => {
+      const ahsCount = steps.filter(step => step.view.node.family === 'AHS').length;
+      const strongCount = steps.filter(step => step.view.node.family === 'SL'
+        && [0, 1].includes(step.view.node.linkType)).length;
+      return ahsCount > 0 && strongCount > 0
+        && (isChain ? steps.length > 3 : steps.length === 3);
+    };
+    const report = core.findAicChains(cand, {
+      strongLinkSet,
+      ahsList,
+      ahsLinkSet,
+      includeStrong: true,
+      strongLinkTypes: [0, 1],
+      includeAls: false,
+      includeAhs: true,
+      maxDepth: isChain ? 8 : 3,
+      maxChains: options.maxChains ?? 500,
+      maxResultAttempts: options.maxResultAttempts ?? 20000,
+      maxResultAttemptsPerStart: options.maxResultAttemptsPerStart ?? 500,
+      maxStates: options.maxStates ?? 100000,
+      maxQueue: options.maxQueue ?? 100000,
+      maxBranching: options.maxBranching ?? 200,
+      maxAhsLinks: options.maxAhsLinks ?? (isChain ? 5000 : 1200),
+      resultFilter,
+    });
+    return {
+      ...report,
+      chains: report.chains.filter(chain => {
+        const steps = chain.steps || [];
+        return steps.some(step => step.family === 'AHS')
+          && steps.some(step => step.family === 'SL' && [0, 1].includes(step.linkType))
+          && (isChain ? steps.length > 3 : steps.length === 3);
+      }),
+    };
+  }
+
   core.findAhsXyChains = findAhsXyChains;
+  core.findAhsMixedChains = findAhsMixedChains;
   core.ahsXyHasPlacement = hasPlacement;
 })(globalThis);

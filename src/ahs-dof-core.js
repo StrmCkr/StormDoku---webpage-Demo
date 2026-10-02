@@ -313,7 +313,7 @@
       maxDof: Number.isInteger(options.maxDof) ? Math.max(2, Math.min(3, options.maxDof)) : 3,
       maxCells: Number.isInteger(options.maxCells) ? Math.max(2, Math.min(9, options.maxCells)) : 9,
       maxAuxiliary: Number.isInteger(options.maxAuxiliary)
-        ? Math.max(1, Math.min(3, options.maxAuxiliary)) : 3,
+        ? Math.max(1, Math.min(9, options.maxAuxiliary)) : 9,
       maxResults: Number.isInteger(options.maxResults) && options.maxResults > 0
         ? options.maxResults : 500,
     };
@@ -445,6 +445,138 @@
     return { ok: errors.length === 0, errors, expectedEliminations };
   }
 
+  function ahsDofChainSources(chain) {
+    const seen = new Set();
+    const sources = [];
+    for (const net of chain || []) {
+      for (const node of [net.hub, ...(net.auxiliary || [])]) {
+        const source = node?.source || node;
+        const id = source?.uniqueID ?? source?.id;
+        if (id == null || seen.has(id)) continue;
+        seen.add(id);
+        sources.push(source);
+      }
+    }
+    return sources;
+  }
+
+  function ahsDofNetNodes(net) {
+    return [net?.hub, ...(net?.auxiliary || [])].filter(Boolean);
+  }
+
+  function ahsDofChainBridge(left, right) {
+    for (const a of ahsDofNetNodes(left)) {
+      for (const b of ahsDofNetNodes(right)) {
+        if (a.source?.ahsSector === b.source?.ahsSector) continue;
+        const shared = intersection(a.cells, b.cells);
+        if (shared.length) return { kind: 'Shared cell', cells: shared, left: a.id, right: b.id };
+        for (const digit of intersection(a.digits, b.digits)) {
+          const pairs = a.cells.flatMap(cell => b.cells
+            .filter(other => cell !== other && core.peersOf(cell).includes(other))
+            .map(other => [cell, other]));
+          if (pairs.length) return { kind: 'Position', digit, pairs, left: a.id, right: b.id };
+        }
+      }
+    }
+
+    return null;
+  }
+
+  function ahsDofChainEliminations(cand, nets) {
+    const nodes = nets.flatMap(ahsDofNetNodes);
+    const sources = ahsDofChainSources(nets);
+    if (sources.length < 2 || !core.ahsXyHasPlacement(cand, sources)) return [];
+    const baseline = new Set(nets.flatMap(net => net.eliminations || [])
+      .map(item => `${item.cell}:${item.digit}`));
+    return ahsDofTargets(cand, nodes)
+      .filter(target => !baseline.has(`${target.cell}:${target.digit}`))
+      .filter(target => !core.ahsXyHasPlacement(cand, sources, target))
+      .sort((a, b) => a.cell - b.cell || a.digit - b.digit);
+  }
+
+  function findAhsDofChains(cand, options = {}) {
+    const maxDepth = Number.isInteger(options.maxDepth)
+      ? Math.max(2, Math.min(5, options.maxDepth)) : 3;
+    const maxResults = Number.isInteger(options.maxResults) && options.maxResults > 0
+      ? options.maxResults : 500;
+    const netReport = options.netReport || findAhsDofNets(cand, {
+      ...options,
+      minDof: options.minDof ?? 2,
+      maxDof: options.maxDof ?? 3,
+      maxResults: options.maxNetResults || Math.max(maxResults * 4, 500),
+    });
+    const nets = (netReport.results || []).filter(net =>
+      ahsDofNetNodes(net).length && (net.eliminations || []).length);
+    const adjacency = nets.map(() => []);
+    const bridges = new Map();
+    for (let left = 0; left < nets.length; left += 1) {
+      for (let right = left + 1; right < nets.length; right += 1) {
+        const bridge = ahsDofChainBridge(nets[left], nets[right]);
+        if (!bridge) continue;
+        adjacency[left].push(right);
+        adjacency[right].push(left);
+        bridges.set(`${left}:${right}`, bridge);
+      }
+    }
+    const bridgeOf = (left, right) => bridges.get(`${Math.min(left, right)}:${Math.max(left, right)}`);
+    const results = [];
+    const seen = new Set();
+    const stats = { nets: nets.length, bridges: bridges.size,
+      strongLinks: 0, pathsChecked: 0, chainResults: 0,
+      zeroEliminationChains: 0, truncated: false, maxDepth };
+    const evaluate = path => {
+      stats.pathsChecked += 1;
+      const chainNets = path.map(index => nets[index]);
+      const eliminations = ahsDofChainEliminations(cand, chainNets);
+      if (!eliminations.length) { stats.zeroEliminationChains += 1; return; }
+      const isRing = path.length > 2 && !!bridgeOf(path[0], path[path.length - 1]);
+      const key = `${path.join(',')}|${eliminations.map(item => `${item.cell}:${item.digit}`).join(',')}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      results.push({
+        tech: 'ahs-dof', name: isRing ? 'AHS-DOF Chain Ring' : 'AHS-DOF Chain',
+        type: 'AHS_DOF_CHAIN', mode: 'chain', isRing, depth: path.length,
+        nets: chainNets,
+        bridges: path.slice(0, -1).map((index, offset) => bridgeOf(index, path[offset + 1])),
+        eliminations, cells: eliminations.map(item => item.cell),
+      });
+    };
+    const visit = (path, used) => {
+      if (results.length >= maxResults) { stats.truncated = true; return; }
+      if (path.length >= 2) evaluate(path);
+      if (path.length >= maxDepth) return;
+      for (const next of adjacency[path[path.length - 1]]) {
+        if (used.has(next)) continue;
+        used.add(next);
+        visit([...path, next], used);
+        used.delete(next);
+        if (stats.truncated) return;
+      }
+    };
+    for (let start = 0; start < nets.length && !stats.truncated; start += 1) {
+      visit([start], new Set([start]));
+    }
+    stats.chainResults = results.length;
+    return { results, links: results, stats, options: { ...options, maxDepth, maxResults } };
+  }
+
+  function verifyAhsDofChain(cand, result) {
+    const errors = [];
+    const nets = result?.nets || [];
+    if (nets.length < 2) errors.push('AHS-DOF chain requires at least two nets');
+    for (const net of nets) {
+      const verification = verifyAhsDofNet(cand, net);
+      if (!verification.ok) errors.push(...verification.errors);
+    }
+    const expected = errors.length ? [] : ahsDofChainEliminations(cand, nets);
+    const expectedKeys = new Set(expected.map(item => `${item.cell}:${item.digit}`));
+    const actualKeys = new Set((result?.eliminations || []).map(item => `${item.cell}:${item.digit}`));
+    if (expectedKeys.size !== actualKeys.size || [...expectedKeys].some(key => !actualKeys.has(key))) {
+      errors.push('AHS-DOF chain elimination list is stale or unsupported');
+    }
+    return { ok: errors.length === 0, errors, expectedEliminations: expected };
+  }
+
   function ahsDofNotation(link) {
     if (!link) return '?';
     const name = cells => core.cellGroupName?.(cells)
@@ -466,11 +598,24 @@
     return `${sequence}${record.isRing ? ' - ring' : ''} => ${eliminations || 'none'}`;
   }
 
+  function formatAhsDofChain(record) {
+    if (!record) return '?';
+    const sequence = (record.nets || []).map(net => formatAhsDofNet(net)).join('  ->  ');
+    const bridges = (record.bridges || []).map(bridge => bridge?.kind || 'bridge').join(' / ');
+    const eliminations = (record.eliminations || [])
+      .map(item => `${core.cellName?.(item.cell) || `c${item.cell + 1}`}<>${item.digit}`)
+      .join(', ');
+    return `${sequence} [${bridges}]${record.isRing ? ' - ring' : ''} => ${eliminations || 'none'}`;
+  }
+
   core.findAhsDofLinks = findAhsDofLinks;
   core.findAhsDofNets = findAhsDofNets;
+  core.findAhsDofChains = findAhsDofChains;
   core.ahsDofSearch = findAhsDofNets;
   core.verifyAhsDofNet = verifyAhsDofNet;
+  core.verifyAhsDofChain = verifyAhsDofChain;
   core.formatAhsDof = ahsDofNotation;
   core.formatAhsDofNet = formatAhsDofNet;
+  core.formatAhsDofChain = formatAhsDofChain;
   core.AHS_DOF_RCC = 'AHS_DOF_RCC';
 })(globalThis);
