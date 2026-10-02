@@ -105,18 +105,18 @@
 
   function formatAlcXz(chain) {
     const { als, ahs, contacts } = chain.alcXz;
-    const alsName = `ALS (${als.digits.join('')})${core.cellGroupName(als.cells)}`;
-    const ahsName = `AHS (${ahs.digits.join('')})${core.sectorGroupName([ahs.sector])}{${core.cellGroupName(ahs.cells)}}`;
-    const bridge = contacts.map(contact => {
-      const byAlsCell = new Map();
-      for (const [left, right] of contact.pairs) {
-        if (!byAlsCell.has(left)) byAlsCell.set(left, []);
-        byAlsCell.get(left).push(right);
-      }
-      return `${contact.digit}:${[...byAlsCell].map(([left, right]) =>
-        `${core.cellName(left)}-${core.cellGroupName(right)}`).join('/')}`;
-    }).join(', ');
-    return `ALC - XZ: ${alsName} + ${ahsName} [NAND ${bridge}] => ${core.formatRemovals(chain.eliminations)}`;
+    const rccDigits = [...new Set((contacts || []).map(contact => Number(contact.digit)))]
+      .filter(Number.isInteger)
+      .sort((left, right) => left - right);
+    const alsRccCells = [...new Set((contacts || []).flatMap(contact =>
+      (contact.pairs || []).map(pair => pair[0])))].sort((left, right) => left - right);
+    const ahsRccCells = [...new Set((contacts || []).flatMap(contact =>
+      (contact.pairs || []).map(pair => pair[1])))].sort((left, right) => left - right);
+    const alsSide = `(${als.digits.join('')})${core.cellGroupName(als.cells)}`;
+    const ahsSide = `(${ahs.digits.join('')})${core.cellGroupName(ahs.cells)}`;
+    const leftRcc = `(${rccDigits.join('') || '?'})${core.cellGroupName(alsRccCells)}`;
+    const rightRcc = `(${rccDigits.join('') || '?'})${core.cellGroupName(ahsRccCells)}`;
+    return `ALC - XZ: ${alsSide} = ${leftRcc} - ${rightRcc} = ${ahsSide} => ${core.formatRemovals(chain.eliminations)}`;
   }
 
   function findAlcBivalveChains(cand, options = {}) {

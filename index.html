@@ -3820,7 +3820,7 @@
     <div class="header-brand">
       <h1>StormDoku: on-line | off-line</h1>
       <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo for regular Sudoku 9x9 grids.</p>
-      <p class="app-meta">Alpha v0.5.06 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <p class="app-meta">Alpha v0.5.07 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
     </div>
   </header>
 
@@ -4356,6 +4356,37 @@
                 <label class="check"><input id="moveAlsDof" type="checkbox" checked> ALS - DOF</label>
                 <label class="check"><input id="moveDds" type="checkbox" checked> DDS</label>
                 <label class="check"><input id="moveAdds" type="checkbox" checked> Almost DDS</label>
+              </div>
+            </details>
+            <details class="move-type-group">
+              <summary>AHS / Almost Hidden Sets</summary>
+              <div class="move-type-group-options">
+                <label class="check"><input id="moveAhsXz" type="checkbox" checked> AHS - XZ</label>
+                <label class="check"><input id="moveTAhsXz" type="checkbox" checked> T-AHS-XZ</label>
+                <label class="check"><input id="moveAhsXy" type="checkbox" checked> AHS - XY</label>
+                <label class="check"><input id="moveTAhsXy" type="checkbox" checked> T-AHS-XY</label>
+                <label class="check"><input id="moveAhsChain" type="checkbox" checked> AHS - Chain</label>
+                <label class="check"><input id="moveAhsNamed" type="checkbox" checked> Named AHS Wings/Rings</label>
+                <label class="check"><input id="moveAhsDof" type="checkbox" checked> AHS - DOF</label>
+                <label class="check"><input id="moveAhsDofChain" type="checkbox" checked> AHS - DOF Chain</label>
+              </div>
+            </details>
+            <details class="move-type-group">
+              <summary>ALC / Almost Locked Candidates</summary>
+              <div class="move-type-group-options">
+                <label class="check"><input id="moveAlcXz" type="checkbox" checked> ALC - XZ</label>
+                <label class="check"><input id="moveTAlcXz" type="checkbox" checked> T-ALC-XZ</label>
+                <label class="check"><input id="moveAlcXy" type="checkbox" checked> ALC - XY</label>
+                <label class="check"><input id="moveTAlcXy" type="checkbox" checked> T-ALC-XY</label>
+                <label class="check"><input id="moveAlcChain" type="checkbox" checked> ALC - Chain</label>
+                <label class="check"><input id="moveAlcNamed" type="checkbox" checked> Named ALC Wings/Rings</label>
+                <label class="check"><input id="moveAlcDof" type="checkbox" checked> ALC - DOF</label>
+              </div>
+            </details>
+            <details class="move-type-group">
+              <summary>Multi-Sector Locked Sets</summary>
+              <div class="move-type-group-options">
+                <label class="check"><input id="moveMsls" type="checkbox" checked> MSLS</label>
               </div>
             </details>
           </div>
@@ -5125,7 +5156,7 @@
   <script src="./src/mini-sectors-core.js?v=20260928-1"></script>
   <script src="./src/strong-link-core.js?v=20261002-2"></script>
   <script src="./src/chain-core.js?v=20261002-3"></script>
-  <script src="./src/alc-core.js?v=20261002-7"></script>
+  <script src="./src/alc-core.js?v=20261002-8"></script>
   <script src="./src/ahs-xy-core.js?v=20261001-4"></script>
   <script src="./src/ahs-dof-core.js?v=20261002-1"></script>
   <script src="./src/msls-core.js?v=20260930-8"></script>
@@ -5345,6 +5376,22 @@
       ['als-dof', document.getElementById('moveAlsDof')],
       ['dds', document.getElementById('moveDds')],
       ['adds', document.getElementById('moveAdds')],
+      ['ahs-xz', document.getElementById('moveAhsXz')],
+      ['t-ahs-xz', document.getElementById('moveTAhsXz')],
+      ['ahs-xy', document.getElementById('moveAhsXy')],
+      ['t-ahs-xy', document.getElementById('moveTAhsXy')],
+      ['ahs-chain', document.getElementById('moveAhsChain')],
+      ['ahs-named', document.getElementById('moveAhsNamed')],
+      ['ahs-dof', document.getElementById('moveAhsDof')],
+      ['ahs-dof-chain', document.getElementById('moveAhsDofChain')],
+      ['alc-xz', document.getElementById('moveAlcXz')],
+      ['t-alc-xz', document.getElementById('moveTAlcXz')],
+      ['alc-xy', document.getElementById('moveAlcXy')],
+      ['t-alc-xy', document.getElementById('moveTAlcXy')],
+      ['alc-chain', document.getElementById('moveAlcChain')],
+      ['alc-named', document.getElementById('moveAlcNamed')],
+      ['alc-dof', document.getElementById('moveAlcDof')],
+      ['msls', document.getElementById('moveMsls')],
     ]);
     const fishMinSizeEl = document.getElementById('fishMinSize');
     const fishMaxSizeEl = document.getElementById('fishMaxSize');

@@ -75,7 +75,7 @@ test('ALC-XZ locks the residual box cell to 5 or 8', () => {
   assert.ok(result, 'expected the r4c5 ALS and box-4 AHS to connect');
   assert.ok(result.eliminations.some(item => item.cell === 45 && item.digit === 7));
   assert.ok(result.eliminations.some(item => item.cell === 32 && item.digit === 5));
-  assert.match(core.formatAlcXz(result), /ALS \(58\)r4c5 \+ AHS \(58\)b4/);
+  assert.match(core.formatAlcXz(result), /\(58\)r4c5 = \(58\)r4c5 - \(58\)r4c12 = \(58\)b4p127/);
   assert.equal(hasJointPlacement(boxLine, result.alcXz.als, result.alcXz.ahs), true);
   for (const elimination of result.eliminations) {
     assert.equal(hasJointPlacement(boxLine, result.alcXz.als, result.alcXz.ahs, elimination), false);
