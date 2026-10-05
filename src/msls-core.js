@@ -56,7 +56,7 @@
   function compareResults(a, b) {
     return a.ns - b.ns
       || a.dc - b.dc
-      || a.rank - b.rank
+
       || a.eliminations.length - b.eliminations.length
       || a.cellIds.join(',').localeCompare(b.cellIds.join(','))
       || a.links.map(x => x.id).join('|').localeCompare(b.links.map(x => x.id).join('|'));
@@ -74,11 +74,11 @@
       for (const id of candidates) counts[id][digit]++;
     }
     if (cells.some(id => !grid[id].length || grid[id].some(d => !counts[id][d]))) return null;
-    const rank = covers.length - cells.length;
-    if (rank < 0) return null;
+    const coverDelta = covers.length - cells.length;
+    if (coverDelta < 0) return null;
     const eliminations = [];
     for (let id=0; id<81; id++) for (const digit of grid[id]) {
-      if (counts[id][digit] > rank + (base.has(id) ? 1 : 0)) {
+      if (counts[id][digit] > coverDelta + (base.has(id) ? 1 : 0)) {
         eliminations.push({r:Math.floor(id/9), c:id%9, digit});
       }
     }
@@ -99,10 +99,10 @@
       for (const digit of link.digits) if (grid[id].includes(digit)) coverAtoms.push(`${id}:${digit}`);
     }
     const coverKinds=new Set(covers.map(({house})=>house < 9 ? 'row' : house < 18 ? 'column' : 'box'));
-    const model=rank===1 ? 'MS-AHS'
-      : rank===0 && coverKinds.has('box') ? 'MS-LS'
-      : rank===0 ? 'MS-NS' : 'MSLS';
-    return {className:rank ? 'Almost Naked Set' : 'Naked Set', form:'Multi-digit Fish', model, rank,
+    const model=coverDelta===1 ? 'MS-AHS'
+      : coverDelta===0 && coverKinds.has('box') ? 'MS-LS'
+      : coverDelta===0 ? 'MS-NS' : 'MSLS';
+    return {className:coverDelta ? 'Almost Naked Set' : 'Naked Set', form:'Multi-digit Fish', model,
       ns:cells.length, dc:covers.length, hs:counts.filter(x=>x.some(n=>n>0)).length,
       cellIds:[...cells].sort((a,b)=>a-b), baseCellIds:[...cells].sort((a,b)=>a-b),
       coverCellIds:coverCells, coverAtoms, links, eliminations, safetyFlags:[]};
@@ -185,7 +185,7 @@
     function record(cells, covers) {
       if (covers.length>maxLinks) return;
       const result=evaluate(grid,cells,covers,searchData);
-      if (!result || result.rank>maxK) return;
+      if (!result || covers.length - cells.length > maxK) return;
       const key=cells.join(',')+'|'+result.links.map(x=>x.id).join('|');
       if (!seen.has(key)) { seen.add(key); results.push(result); }
     }
@@ -195,7 +195,7 @@
       const key=cells.join(','); if(tested.has(key)) return; tested.add(key);
       if(!budget()) return;
       // Reject intersections whose greedy per-digit cover count already
-      // exceeds the allowed rank. This avoids spending the exact-cover
+      // exceeds the allowed cover delta. This avoids spending the exact-cover
       // search budget on cores that cannot become MSLS proofs.
       let quickLinks=0;
       for(let d=1;d<=9;d++) {
@@ -327,7 +327,7 @@
     const links=result.links.map(x=>`${x.digits.join('')}${sectorName(x.house ?? (x.sector.kind === 'row' ? x.sector.index : x.sector.kind === 'column' ? 9 + x.sector.index : 18 + x.sector.index))}`).join(', ');
     const cells = greedyCellName(result.baseCellIds || result.cellIds || []);
     const name=result.model || 'MSLS';
-    return `${name} ${result.ns} x ${result.dc} (rank ${result.rank}): ${result.ns} Cells ${cells}; ${result.dc} Links ${links} => ${result.eliminations.map(x=>`${cellName(x.r*9+x.c)}<>${x.digit}`).join(', ')}`;
+    return `${name} ${result.ns} x ${result.dc}: ${result.ns} Cells ${cells}; ${result.dc} Links ${links} => ${result.eliminations.map(x=>`${cellName(x.r*9+x.c)}<>${x.digit}`).join(', ')}`;
   }
   function findMsAhs(input, options={}) {
     const report=findMsls(input, options);

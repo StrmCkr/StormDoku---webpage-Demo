@@ -318,26 +318,47 @@
   // omission fish can supply the second side; a complete fish has no extra
   // cell and would duplicate an ordinary fish link.
   function buildAlmostFishLinks(cand, buckets, seen, options = {}) {
-    if (typeof core.findOmissionFishReports !== 'function') return;
+    if (typeof core.findTemplateFishReports !== 'function') return;
 
-    const reports = core.findOmissionFishReports(cand, {
-      grid: Array.isArray(options.grid) && options.grid.length === 81
-        ? [...options.grid]
-        : new Array(81).fill(0),
+    let reports = core.findTemplateFishReports(cand, {
       minSize: options.minSize ?? 2,
       maxSize: options.maxSize ?? 4,
-      minK: options.minK ?? 1,
+      minK: options.minK ?? 0,
       maxK: options.maxK ?? 2,
+      maxUncoveredCells: options.maxUncoveredCells ?? 3,
+      maxReportsPerDigit: options.maxReportsPerDigit
+        ?? Math.max(20, Math.ceil((options.maxReports ?? 1500) / 75)),
+      triggerMode: 'all-candidates',
       basicsEnabled: options.basicsEnabled ?? true,
-      frankenEnabled: options.frankenEnabled ?? true,
-      mutantEnabled: options.mutantEnabled ?? true,
+      frankenEnabled: options.frankenEnabled ?? false,
+      mutantEnabled: options.mutantEnabled ?? false,
       earlyTermination: false,
     });
+    // Keep the established omission/template path as a compatibility source
+    // for grids whose AF is exposed by a template omission rather than by the
+    // direct one-uncovered-base-cell form above. Both sources are derived from
+    // the current candidate/template state, never from prior solving steps.
+    if (!reports.length && typeof core.findOmissionFishReports === 'function') {
+      reports = core.findOmissionFishReports(cand, {
+        grid: Array.isArray(options.grid) && options.grid.length === 81
+          ? [...options.grid]
+          : new Array(81).fill(0),
+        minSize: options.minSize ?? 2,
+        maxSize: options.maxSize ?? 4,
+        minK: options.minK ?? 0,
+        maxK: options.maxK ?? 2,
+        basicsEnabled: options.basicsEnabled ?? true,
+        frankenEnabled: options.frankenEnabled ?? false,
+        mutantEnabled: options.mutantEnabled ?? false,
+        earlyTermination: false,
+      });
+    }
     const maxReports = Number.isInteger(options.maxReports) ? options.maxReports : 1500;
     const limited = reports
-      .filter(report => Number(report?.k) > 0)
       .sort((left, right) =>
-        Number(left.digit) - Number(right.digit)
+        (left.uncoveredCells?.length ?? left.triggerCells?.length ?? 99)
+          - (right.uncoveredCells?.length ?? right.triggerCells?.length ?? 99)
+        || Number(left.digit) - Number(right.digit)
         || Number(left.size) - Number(right.size)
         || Number(left.k) - Number(right.k)
         || (left.baseSectors || []).join(',').localeCompare((right.baseSectors || []).join(',')))
@@ -345,7 +366,7 @@
 
     for (const report of limited) {
       const digit = Number(report.digit);
-      const fishCells = [...new Set(report.vertices || [])]
+      const fishCells = [...new Set(report.fishCells || report.vertices || [])]
         .filter(cell => (cand[cell] || []).includes(digit));
       if (!digit || !fishCells.length || !report.cells?.length) continue;
 
@@ -354,7 +375,7 @@
         ...(report.overcovered || []),
         ...(report.triCovered || []),
       ]);
-      const extraCells = [...new Set(report.triggerCells || [])]
+      const extraCells = [...new Set(report.uncoveredCells || report.triggerCells || [])]
         .filter(cell => (cand[cell] || []).includes(digit))
         .filter(cell => !vertexSet.has(cell))
         .filter(cell => !nextCycleCells.has(cell));
@@ -372,7 +393,6 @@
       const fishElims = [...new Set(report.cells)]
         .filter(cell => (cand[cell] || []).includes(digit));
       if (!fishElims.length) continue;
-
       for (const extraGroup of extraGroups) {
         addUnique(buckets, seen, {
           id: nextStrongLinkId++,
@@ -398,6 +418,7 @@
             extraCells: [...extraGroup],
             fishCells: [...fishCells],
             fish: { ...report, cells: fishElims },
+            uncoveredCells: [...extraGroup],
           },
           secondaryTypes: [],
           secondaryXorConstruction: null,

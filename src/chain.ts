@@ -2204,6 +2204,12 @@ function isSplitWingRing(steps: readonly PublicChainStep[]): boolean {
     && (isBivalveStep(valueSteps[0]) || isAlsRccStep(valueSteps[0]));
 }
 
+function classifyStrongWing(steps: readonly PublicChainStep[]): string | null {
+  if (steps.length !== 4 || steps.some(step => chainValueToken(step) !== 'L')) return null;
+  if (chainDigits(steps).length < 2) return null;
+  return 'Strong-Wing';
+}
+
 function classifyChain(
   steps: readonly PublicChainStep[],
   isRing: boolean,
@@ -2249,6 +2255,8 @@ function classifyChain(
   if (simpleName) return prefixedStructureName(simpleName, steps);
   const invertedWing = invertedWingName(steps);
   if (invertedWing) return prefixedStructureName(invertedWing, steps);
+  const strongWing = classifyStrongWing(steps);
+  if (strongWing) return prefixedStructureName(strongWing, steps);
   const threeLinkEri = classifyThreeLinkEri(steps, false);
   if (threeLinkEri) return prefixedStructureName(threeLinkEri, steps);
   if (pattern === 'VVV' && digits.length === 3) return prefixedStructureName('XY-Wing', steps);

@@ -6,7 +6,7 @@
 importScripts(
   './browser-core.js?v=20261001-2',
   './set-tools-core.js?v=20260928-1',
-  './pom-core.js?v=20260928-2',
+  './pom-core.js?v=20261004-2',
   './als-core.js?v=20260928-1',
   './als-dof-core.js?v=20260928-1',
   './als-link-core.js?v=20260928-1',
@@ -14,12 +14,12 @@ importScripts(
   './ahs-link-core.js?v=20261001-28',
   './subset-report-core.js?v=20260928-2',
   './mini-sectors-core.js?v=20260928-1',
-  './strong-link-core.js?v=20261002-2',
-  './chain-core.js?v=20261001-14',
-  './alc-core.js?v=20261002-7',
+  './strong-link-core.js?v=20261004-2',
+  './chain-core.js?v=20261004-2',
+  './alc-core.js?v=20261004-1',
   './ahs-xy-core.js?v=20261001-4',
   './ahs-dof-core.js?v=20261002-1',
-  './msls-core.js?v=20260930-8',
+  './msls-core.js?v=20261004-1',
 );
 
 const core = globalThis.StormDoku;
@@ -32,6 +32,13 @@ function candidateGridKey(candidateGrid) {
 
 function chainInventory(payload) {
   const candidateGrid = payload.candidateGrid || [];
+  const requestedCellCounts = Array.isArray(payload.alsCellCounts)
+    ? payload.alsCellCounts.map(Number).filter(Number.isInteger)
+    : [];
+  const requestedCellCount = Number(payload.alsCellCount);
+  const maxRequestedAlsCells = requestedCellCounts.length
+    ? Math.max(...requestedCellCounts)
+    : Number.isInteger(requestedCellCount) ? requestedCellCount : null;
   const inventoryKey = [
     candidateGridKey(candidateGrid),
     payload.includeStrong !== false,
@@ -44,13 +51,15 @@ function chainInventory(payload) {
     payload.ahsMaxLinks ?? '',
     payload.ahsMode || 'all',
     payload.ahsSearchLimit === true,
+    payload.ahsMaxDigits ?? '',
     payload.ahsMaxSize ?? '',
     payload.ahsMaxCells ?? '',
     payload.ahsMaxFox ?? '',
     payload.ahsMaxNodes ?? '',
     (payload.strongLinkTypes || []).join(','),
     JSON.stringify(payload.almostFish || {}),
-    (payload.alsCellCounts || []).join(','),
+    requestedCellCounts.join(','),
+    Number.isInteger(requestedCellCount) ? requestedCellCount : '',
   ].join('::');
 
   if (!chainInventoryCache || chainInventoryCache.key !== inventoryKey) {
@@ -62,8 +71,11 @@ function chainInventory(payload) {
       }),
       alsList: payload.includeAls
         ? core.alsConstructor(candidateGrid, {
-            ...(Number.isInteger(payload.alsMaxSizeDOF)
-              ? { maxSizeDOF: payload.alsMaxSizeDOF }
+            ...(Number.isInteger(payload.alsMaxSizeDOF) || Number.isInteger(maxRequestedAlsCells)
+              ? { maxSizeDOF: Math.min(...[
+                  Number.isInteger(payload.alsMaxSizeDOF) ? payload.alsMaxSizeDOF : 8,
+                  Number.isInteger(maxRequestedAlsCells) ? Math.max(0, maxRequestedAlsCells - 1) : 8,
+                ]) }
               : {}),
             ...(Number.isInteger(payload.alsMaxSizeFox)
               ? { maxSizeFox: payload.alsMaxSizeFox }
@@ -73,7 +85,9 @@ function chainInventory(payload) {
         : null,
       ahsList: payload.includeAhs
         ? core.ahsConstructor(candidateGrid, {
-            maxSize: Number.isInteger(payload.ahsMaxSize) ? payload.ahsMaxSize : 8,
+            maxSize: Number.isInteger(payload.ahsMaxDigits)
+              ? Math.max(1, payload.ahsMaxDigits - 1)
+              : (Number.isInteger(payload.ahsMaxSize) ? payload.ahsMaxSize : 8),
             maxSizeFox: Number.isInteger(payload.ahsMaxFox) ? payload.ahsMaxFox : 7,
             searchLimit: payload.ahsSearchLimit === true,
             ...(Number.isInteger(payload.ahsMaxNodes) && payload.ahsMaxNodes > 0
@@ -81,6 +95,8 @@ function chainInventory(payload) {
               : {}),
           }).filter(ahs => payload.ahsMaxCells == null
             || (ahs.ahsAllCells || []).length <= Number(payload.ahsMaxCells))
+          .filter(ahs => payload.ahsMaxDigits == null
+            || (ahs.ahsDigits || []).length <= Number(payload.ahsMaxDigits))
         : null,
       linkSets: new Map(),
     };
@@ -109,13 +125,16 @@ function chainInventory(payload) {
     ? new Set(payload.alsCellCounts.map(Number))
     : null;
   const linkMode = payload.alsLinkMode || 'all';
+  const ahsMaxDigits = Number.isInteger(Number(payload.ahsMaxDigits))
+    ? Math.max(2, Number(payload.ahsMaxDigits))
+    : null;
   const ahsMaxDof = Number.isInteger(Number(payload.ahsMaxDof))
     ? Math.max(1, Number(payload.ahsMaxDof))
     : 3;
   const ahsMaxLinks = Number.isInteger(Number(payload.ahsMaxLinks))
     ? Math.max(1, Number(payload.ahsMaxLinks))
     : maxLinks;
-  const linkKey = `${cellCount}:${[...(cellCounts || [])].join(',')}:${linkMode}:${maxDigits}:${maxLinks}:${payload.includeAhs === true}:${ahsMaxDof}:${ahsMaxLinks}`;
+  const linkKey = `${cellCount}:${[...(cellCounts || [])].join(',')}:${linkMode}:${maxDigits}:${maxLinks}:${payload.includeAhs === true}:${ahsMaxDigits}:${ahsMaxDof}:${ahsMaxLinks}`;
   let cachedLinks = chainInventoryCache.linkSets.get(linkKey);
   if (!cachedLinks) {
     const digitFilter = als => maxDigits == null
@@ -138,7 +157,8 @@ function chainInventory(payload) {
       : null;
     const ahsLinkSet = payload.includeAhs
       ? core.buildAhsLinks(candidateGrid, {
-          ahsList: chainInventoryCache.ahsList,
+          ahsList: chainInventoryCache.ahsList.filter(ahs => ahsMaxDigits == null
+            || (ahs.ahsDigits || []).length <= ahsMaxDigits),
           strongLinkSet: payload.includeStrong === false ? [] : chainInventoryCache.strongSet,
           minDof: 1,
           maxDof: ahsMaxDof,

@@ -174,13 +174,21 @@
     const maxAhsDigits = Math.min(5, Math.max(2, options.maxAhsDigits ?? 4));
     const maxAhsCells = Math.min(7, Math.max(3, options.maxAhsCells ?? 5));
     const maxAhsDof = Math.min(5, Math.max(1, options.maxAhsDof ?? 3));
+    const alsMaxSizeDOF = Number.isInteger(options.alsMaxSizeDOF)
+      ? Math.max(0, options.alsMaxSizeDOF) : maxAlsCells - 1;
+    const alsMaxSizeFox = Number.isInteger(options.alsMaxSizeFox)
+      ? Math.max(0, options.alsMaxSizeFox) : maxAlsCells;
+    const ahsMaxSize = Number.isInteger(options.ahsMaxSize)
+      ? Math.max(1, options.ahsMaxSize) : maxAhsDigits - 1;
+    const ahsMaxFox = Number.isInteger(options.ahsMaxFox)
+      ? Math.max(1, options.ahsMaxFox) : maxAhsCells - 1;
     const maxChains = Math.max(1, options.maxChains ?? 500);
     const alsList = (options.alsList || core.alsConstructor(cand, {
-      maxSizeDOF: maxAlsCells - 1, maxSizeFox: maxAlsCells,
+      maxSizeDOF: alsMaxSizeDOF, maxSizeFox: alsMaxSizeFox,
       searchLimit: true,
     })).filter(als => als.alsDOF === 1 && als.alsAllCells.length <= maxAlsCells);
     const ahsList = (options.ahsList || core.ahsConstructor(cand, {
-      maxSize: maxAhsDigits - 1, maxSizeFox: maxAhsCells - 1,
+      maxSize: ahsMaxSize, maxSizeFox: ahsMaxFox,
       searchLimit: false,
     })).filter(ahs => ahs.ahsDOF >= 1 && ahs.ahsDOF <= maxAhsDof
       && ahs.ahsDigits.length <= maxAhsDigits
@@ -248,6 +256,7 @@
       chains: allChains, technique: 'ALC-XZ',
       stats: { alsNodes: alsList.length, ahsNodes: ahsList.length,
         maxAlsCells, maxAhsDigits, maxAhsCells, maxAhsDof,
+        alsMaxSizeDOF, alsMaxSizeFox, ahsMaxSize, ahsMaxFox,
         pairsChecked, compatiblePairs, chainsFound: allChains.length, truncated },
     };
   }
@@ -259,13 +268,13 @@
     const chainMode = options.mode === 'chain';
     const strongLinkSet = options.strongLinkSet || core.buildStrongLinks(cand);
     const alsList = options.alsList || core.alsConstructor(cand, {
-      maxSizeDOF: options.maxAlsCells ?? 4,
-      maxSizeFox: options.maxAlsCells ?? 5,
+      maxSizeDOF: options.alsMaxSizeDOF ?? options.maxAlsCells ?? 4,
+      maxSizeFox: options.alsMaxSizeFox ?? options.maxAlsCells ?? 5,
       searchLimit: true,
     });
     const ahsList = options.ahsList || core.ahsConstructor(cand, {
-      maxSize: options.maxAhsDigits ?? 4,
-      maxSizeFox: options.maxAhsCells ?? 5,
+      maxSize: options.ahsMaxSize ?? options.maxAhsDigits ?? 4,
+      maxSizeFox: options.ahsMaxFox ?? options.maxAhsCells ?? 5,
       searchLimit: true,
     });
     const report = core.findAicChains(cand, {

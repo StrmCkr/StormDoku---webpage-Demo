@@ -205,6 +205,7 @@
       maxSize: Math.max(minSize, maxSize),
       minK: Math.min(minK, maxK),
       maxK: Math.max(minK, maxK),
+      maxUncoveredCells: Math.max(1, Number(options.maxUncoveredCells ?? 3)),
       digits: new Set(cleanDigits),
       baseSectors: new Set(cleanBaseSectors),
       coverSectors: new Set(cleanCoverSectors),
@@ -627,6 +628,94 @@
     return out;
   }
 
+  // Almost Fish uses the same sector geometry as a fish, but deliberately
+  // leaves one base candidate outside the selected cover. That one candidate
+  // is the cell side of the AF XOR; requiring full coverage here would reduce
+  // the search to ordinary fish only.
+  function filterAlmostFishCoverCombinations(state, digit, usableSectors, baseSectors, baseSaved, coverSize, options) {
+    const maxUncovered = Math.max(1, Number(options.maxUncoveredCells ?? 3));
+    const baseSet = setFrom(baseSectors);
+    const candidates = usableSectors.filter(sector => {
+      if (baseSet.has(sector)) return false;
+      return setIntersection(state.cellsByDigit[digit - 1][sector], baseSaved.allUsedCells).size > 0;
+    });
+    const out = [];
+
+    // AF cover selection is deliberately evaluated from the candidate
+    // geometry itself. The ordinary omission search's recursive trigger
+    // pruning can discard the uncovered cell that AF is supposed to expose.
+    for (const chosen of combinations(candidates, coverSize)) {
+      if (!fishTypeAllowed(fishType(baseSectors, chosen), options)) continue;
+      const covered = setUnion(...chosen.map(sector => state.cellsByDigit[digit - 1][sector]));
+      const missing = setDifference(baseSaved.allUsedCells, covered);
+      if (!missing.size || missing.size > maxUncovered) continue;
+      if (chosen.some((sector, index) => {
+        const cells = state.cellsByDigit[digit - 1][sector];
+        const check = setIntersection(cells, baseSaved.allUsedCells);
+        return chosen.slice(0, index).some(previous => {
+          const previousCells = state.cellsByDigit[digit - 1][previous];
+          const previousCheck = setIntersection(previousCells, baseSaved.allUsedCells);
+          return isSetSubset(check, previousCheck)
+            || isSetSubset(previousCheck, check)
+            || setEquals(cells, previousCells);
+        });
+      })) continue;
+      out.push([...chosen]);
+    }
+    return out;
+
+    const canLeaveUncovered = (start, covered) => {
+      let uncovered = 0;
+      for (const cell of baseSaved.allUsedCells) {
+        if (covered.has(cell)) continue;
+        uncovered += 1;
+        if (uncovered > maxUncovered) return false;
+        let possible = false;
+        for (let index = start; index < candidates.length; index++) {
+          if (state.cellsByDigit[digit - 1][candidates[index]].has(cell)) {
+            possible = true;
+            break;
+          }
+        }
+        if (!possible) return true;
+      }
+      return true;
+    };
+
+    const visit = (start, chosen, covered) => {
+      const remaining = coverSize - chosen.length;
+      if (remaining === 0) {
+        const missing = setDifference(baseSaved.allUsedCells, covered);
+        if (missing.size === 1 && fishTypeAllowed(fishType(baseSectors, chosen), options)) {
+          out.push([...chosen]);
+        }
+        return;
+      }
+      if (candidates.length - start < remaining || !canLeaveUncovered(start, covered)) return;
+
+      const lastStart = candidates.length - remaining;
+      for (let index = start; index <= lastStart; index++) {
+        const sector = candidates[index];
+        const cells = state.cellsByDigit[digit - 1][sector];
+        const chosenCheck = chosen.map(item => state.cellsByDigit[digit - 1][item]);
+        const check = setIntersection(cells, baseSaved.allUsedCells);
+        if (!check.size) continue;
+        if (chosenCheck.some(previous => {
+          const previousCheck = setIntersection(previous, baseSaved.allUsedCells);
+          return isSetSubset(check, previousCheck)
+            || isSetSubset(previousCheck, check)
+            || setEquals(cells, previous);
+        })) continue;
+        chosen.push(sector);
+        visit(index + 1, chosen, setUnion(covered, cells));
+        chosen.pop();
+      }
+    };
+
+    visit(0, [], new Set());
+    return out;
+  }
+
   function findOmissionFishPass(cand, templatesByDigit, digitTemplates, omissionsByDigit, reports, options = {}) {
     const opts = normaliseOmissionFishOptions(options);
     if (!(opts.basicsEnabled || opts.frankenEnabled || opts.mutantEnabled)) return false;
@@ -965,12 +1054,18 @@
       candidateCellsByDigit.push(candidateOnlyCells(cand, digit));
     }
 
-    const omissionsByDigit = collectOmissions(
-      templatesByDigit,
-      candidateCellsByDigit,
-      [],
-      new Set(),
-    );
+    // Almost Fish uses the template proposition before any elimination has
+    // been made. Its XOR cell is therefore supplied by the candidate state,
+    // not by the ordinary omission list (which only exists after template
+    // omissions have already been detected).
+    const omissionsByDigit = options.triggerMode === 'all-candidates'
+      ? candidateCellsByDigit.map(cells => new Set(cells))
+      : collectOmissions(
+        templatesByDigit,
+        candidateCellsByDigit,
+        [],
+        new Set(),
+      );
     const reports = [];
     findOmissionFishPass(
       cand,
@@ -980,6 +1075,116 @@
       reports,
       options,
     );
+    return reports;
+  }
+
+  // AF needs the fish proposition before any omission/elimination pass has
+  // run. Enumerate the template coverage directly and retain the candidates
+  // in the cover outside the covered base cells as the fish's own exclusions.
+  function findTemplateFishReports(cand, options = {}) {
+    const opts = normaliseOmissionFishOptions(options);
+    const state = buildDigitSectorState(cand);
+    const reports = [];
+    const maxReports = Number.isInteger(options.maxReports) ? options.maxReports : 1500;
+    const maxReportsPerDigit = Number.isInteger(options.maxReportsPerDigit)
+      ? options.maxReportsPerDigit
+      : Math.max(20, Math.ceil(maxReports / 75));
+
+    for (let digit = 1; digit <= 9; digit++) {
+      if (!opts.digits.has(digit)) continue;
+      let digitReports = 0;
+      const active = [...state.activeSectorsByDigit[digit - 1]];
+      const triggerCells = new Set(
+        [...Array(81).keys()].filter(cell => (cand[cell] || []).includes(digit)),
+      );
+      for (let size = opts.minSize; size <= opts.maxSize && digitReports < maxReportsPerDigit; size++) {
+        const baseCombinations = combinations(
+          active
+            .filter(sector => opts.baseSectors.has(sector))
+            // Permit the bounded uncovered side to exist in the source
+            // sector; the actual fish-core limit is checked after covers are
+            // selected below.
+            .filter(sector => state.cellsByDigit[digit - 1][sector].size <= size + 4),
+          size,
+        ).filter(sectors => {
+          if (!baseCombinationAllowed(sectors, opts)) return false;
+          return true;
+        });
+        for (const baseSectors of baseCombinations) {
+          const baseSaved = saveSectorCells(state, digit, baseSectors);
+          if (baseSaved.rcbOverlap.size || !noDuplicateCellSectors(state, digit, baseSectors)) continue;
+          const coverCandidates = coverSearchSectors(
+            active.filter(sector => !baseSectors.includes(sector)),
+            baseSectors,
+            opts,
+          );
+          // AF is progressive: a complete fish is ordinary fish and is
+          // discarded; an incomplete fish advances through k until its
+          // uncovered side is small enough to act as the cell-set XOR.
+          for (let k = Math.min(0, opts.minK); k <= opts.maxK && digitReports < maxReportsPerDigit; k++) {
+            const coverSize = size + k;
+            if (coverSize > 9) continue;
+            const coverCombinations = filterAlmostFishCoverCombinations(
+              state,
+              digit,
+              coverCandidates,
+              baseSectors,
+              baseSaved,
+              coverSize,
+              opts,
+            );
+            for (const coverSectors of coverCombinations) {
+              if (isImpossibleBoxFish(baseSectors, coverSectors)) continue;
+              const type = fishType(baseSectors, coverSectors);
+              if (!fishTypeAllowed(type, opts)) continue;
+              const coverSaved = saveSectorCells(state, digit, coverSectors);
+              const missing = setDifference(baseSaved.allUsedCells, coverSaved.allUsedCells);
+              if (!missing.size || missing.size > opts.maxUncoveredCells) continue;
+              const basicFormation = isBasicRow(baseSectors)
+                || isBasicCol(baseSectors)
+                || isBasicBox(baseSectors);
+              const fishCoreLimit = basicFormation ? size : size + 4;
+              if (baseSectors.some(sector => {
+                const coreCells = setIntersection(
+                  state.cellsByDigit[digit - 1][sector],
+                  coverSaved.allUsedCells,
+                );
+                return coreCells.size > fishCoreLimit;
+              })) continue;
+              const cells = activeCandidateEliminations(
+                cand,
+                digit,
+                setDifference(coverSaved.allUsedCells, baseSaved.allUsedCells),
+              );
+              if (!cells.length) continue;
+              const baseCells = setIntersection(baseSaved.allUsedCells, coverSaved.allUsedCells);
+              reports.push({
+                name: fishName(size, k, type),
+                category: type === 0 ? 'Basic' : type === 1 ? 'Franken' : 'Mutant',
+                digit,
+                size,
+                coverSize,
+                k,
+                baseSectors: uniqueSorted(baseSectors),
+                coverSectors: uniqueSorted(coverSectors),
+                cells,
+                fishCells: uniqueSorted([...baseCells]),
+                uncoveredCells: uniqueSorted([...missing]),
+                triggerCells: uniqueSorted([...missing]),
+                overcovered: [],
+                triCovered: [],
+                endoFins: [],
+                vertices: uniqueSorted([...baseCells].filter(cell =>
+                  (cand[cell] || []).includes(digit))),
+                reason: 'template-fish',
+              });
+              digitReports += 1;
+              if (reports.length >= maxReports) break;
+            }
+          }
+        }
+      }
+    }
     return reports;
   }
 
@@ -1168,6 +1373,7 @@
   core.pomCheck = pomCheck;
   core.omissionFishStep = omissionFishStep;
   core.findOmissionFishReports = findOmissionFishReports;
+  core.findTemplateFishReports = findTemplateFishReports;
   core.formatPomOmission = formatPomOmission;
   core.formatPomOmissionFish = formatPomOmissionFish;
 })(globalThis);

@@ -2221,6 +2221,12 @@
         || isAhsRccStep(valueSteps[0]));
   }
 
+  function classifyStrongWing(steps) {
+    if (steps.length !== 4 || steps.some(step => chainValueToken(step) !== 'L')) return null;
+    if (chainDigits(steps).length < 2) return null;
+    return 'Strong-Wing';
+  }
+
   function classifyChain(steps, isRing, ringWeakDigit = null) {
     if (steps.length === 1 && steps[0].module?.moduleKind) {
       const moduleKind = steps[0].module.moduleKind;
@@ -2289,6 +2295,8 @@
     if (allEri) return prefixedStructureName(allEri, steps);
     const invertedWing = invertedWingName(steps);
     if (invertedWing) return prefixedStructureName(invertedWing, steps);
+    const strongWing = classifyStrongWing(steps);
+    if (strongWing) return prefixedStructureName(strongWing, steps);
     if (pattern === 'VVV' && digits.length === 3) return prefixedStructureName('XY-Wing', steps);
     if (pattern === 'VLV' && digits.length === 2) return prefixedStructureName('W-Wing', steps);
     if (pattern === 'VLLVLL') return prefixedStructureName('Transport', steps);
@@ -3016,6 +3024,27 @@
   }
 
   function appendStepEureka(nodes, connectors, step, index) {
+    const almostFish = step.view?.node?.raw?.xorConstruction;
+    if (almostFish?.kind === 'almost-fish') {
+      const digit = Number(almostFish.digit);
+      const extraCells = almostFish.extraCells || [];
+      const fishCells = almostFish.fishCells || [];
+      const fish = almostFish.fish || {};
+      const fishLabel = fish.name
+        ? ` [${fish.name}: ${core.sectorGroupName(fish.baseSectors || [])}`
+          + ` / ${core.sectorGroupName(fish.coverSectors || [])}]`
+        : '';
+      const entryIsExtra = (step.entry?.cells || []).some(cell => extraCells.includes(cell));
+      const left = entryIsExtra ? extraCells : fishCells;
+      const right = entryIsExtra ? fishCells : extraCells;
+      pushEurekaUnit(nodes, connectors, {
+        text: `(${eurekaDigitsText([digit])})${core.cellGroupName(left)}`,
+      }, index === 0 ? null : '-');
+      pushEurekaUnit(nodes, connectors, {
+        text: `(${eurekaDigitsText([digit])})${core.cellGroupName(right)}${entryIsExtra ? fishLabel : ''}`,
+      }, '=');
+      return;
+    }
     const ahsXz = ahsXzEurekaUnits(step);
     const expandedSubset = rccSubsetEurekaUnits(step);
     const weakConnector = index === 0 ? null : '-';

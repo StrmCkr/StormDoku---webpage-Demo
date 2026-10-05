@@ -33,7 +33,7 @@ for(const [sig,n] of [['1234r1,12368r3,5b2,59b3',12],['124568c1,124567c5,123468c
   const result=report.results.find(x=>signature(x)===sig);
   assert.ok(result,`Missing ${sig}`);
   assert.equal(result.cellIds.length,n);
-  assert.equal(result.rank,0);
+  assert.equal(Object.prototype.hasOwnProperty.call(result, 'rank'), false);
   assert.equal(result.eliminations.map(e=>`${e.r},${e.c},${e.digit}`).join('|'),'2,0,1|2,0,2|2,0,6');
 }
 // The former HS=DC+1 shortcut does not constitute a cell-base fish proof.
