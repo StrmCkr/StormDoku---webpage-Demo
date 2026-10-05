@@ -3833,7 +3833,7 @@
     <div class="header-brand">
       <h1>StormDoku: on-line | off-line</h1>
       <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo for regular Sudoku 9x9 grids.</p>
-      <p class="app-meta">Alpha v0.5.22 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <p class="app-meta">Alpha v0.5.23 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
     </div>
   </header>
 
@@ -18694,7 +18694,12 @@
           cycle += 1;
           undoStack.push(before);
           redoStack = [];
-          setStatus(`${promotionSummary(promoted)} promoted. No enabled move found.`, 'ok');
+          setStatus(
+            boardIsComplete()
+              ? `${promotionSummary(promoted)} promoted. Completed.`
+              : `${promotionSummary(promoted)} promoted. No enabled move found.`,
+            'ok',
+          );
           return true;
         }
         setStatus('No enabled move found. Candidate grid is current.', 'warn');
@@ -18848,6 +18853,7 @@
     function applyNextCycle() {
       const before = snapshotState();
       const promoted = applyQueuedPromotions();
+      if (boardIsComplete()) return applyCycleChoice(before, promoted, null);
       const choice = chooseSolverStep(
         cand,
         puzzle,
@@ -18895,6 +18901,7 @@
     async function applyNextCycleInWorker() {
       const before = snapshotState();
       const promoted = applyQueuedPromotions();
+      if (boardIsComplete()) return applyCycleChoice(before, promoted, null);
       let choice;
 
       setBusy(true);
@@ -18977,6 +18984,10 @@
         while (applied < maxSteps) {
           const before = snapshotState();
           const promoted = applyQueuedPromotions();
+          if (boardIsComplete()) {
+            if (applyCycleChoice(before, promoted, null)) applied += 1;
+            break;
+          }
           const step = chooseBasicStep(cand, puzzle);
           if (!applyCycleChoice(before, promoted, step ? { step, chain: null } : null)) break;
 
@@ -19017,6 +19028,10 @@
         while (ran < 100) {
           const before = snapshotState();
           const promoted = applyQueuedPromotions();
+          if (boardIsComplete()) {
+            if (applyCycleChoice(before, promoted, null)) ran += 1;
+            break;
+          }
           const choice = await chooseInteractiveStep();
           if (!applyCycleChoice(before, promoted, choice)) break;
           ran += 1;
