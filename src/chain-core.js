@@ -571,6 +571,7 @@
     const strongSet = includeStrong
       ? (options.strongLinkSet || core.buildStrongLinks(cand, {
         includeAlmostFish: (options.strongLinkTypes ?? [0, 1, 2, 3, 4]).includes(7),
+        strongLinkTypes: options.strongLinkTypes,
       }))
       : [];
     const selectedStrongTypes = new Set(options.strongLinkTypes ?? [0, 1, 2, 3, 4]);
@@ -2078,6 +2079,17 @@
       && step.exit.cells.length === 1;
   }
 
+  function isPureRemotePairChain(steps) {
+    if (steps.length < 2 || steps.some(step => !isBivalveStep(step))) return false;
+    const digits = chainDigits(steps);
+    if (digits.length !== 2) return false;
+    const pair = digits.join(',');
+    return steps.every(step => sortedUnique([
+      ...step.entry.digits,
+      ...step.exit.digits,
+    ]).join(',') === pair);
+  }
+
   function isAlsRccStep(step) {
     return step.family === 'ALS' && step.linkTypeName === 'ALS_RCC';
   }
@@ -2391,9 +2403,18 @@
       if (ringPatternMatches(pattern, 'LVLV') && hasWRingValueNodes(steps)) {
         return prefixedStructureName('W-Ring', steps);
       }
+      if (pattern === 'LVV' && hasWRingValueNodes(steps)) {
+        return prefixedNamedWingName('H(2)-Ring', steps);
+      }
+      if (pattern === 'VLV' && hasWRingValueNodes(steps)) {
+        return prefixedStructureName('W-Ring', steps);
+      }
       if (ringPatternMatches(pattern, 'LLLLV')) return prefixedStructureName('Strong-Ring', steps);
       if (pattern && pattern.split('').every(token => token === 'L')) {
         return prefixedNamedWingName(`L(${Math.max(1, digits.length)})-Ring`, steps);
+      }
+      if (isPureRemotePairChain(steps)) {
+        return prefixedStructureName('Remote Pair', steps);
       }
       // A pure bivalve cycle is still an XY structure.  The ring state is
       // carried separately, so keep the XY-Chain name and let the formatter
@@ -2443,6 +2464,9 @@
     }
     if (pattern === 'LLL') {
       return prefixedNamedWingName(`L(${Math.min(3, Math.max(1, digits.length))})-Wing`, steps);
+    }
+    if (isPureRemotePairChain(steps)) {
+      return prefixedStructureName('Remote Pair', steps);
     }
     if (pattern.split('').every(token => token === 'V') && steps.length >= 3) {
       return prefixedStructureName('XY-Chain', steps);

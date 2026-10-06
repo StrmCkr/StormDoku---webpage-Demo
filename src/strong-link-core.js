@@ -435,17 +435,25 @@
     const buckets = [[], [], [], [], [], [], [], []];
     const seen = new Set();
     const mini = core.buildMiniSectors(cand);
+    // Strong-link types 0-3 are the ordinary single-digit links, with ERI
+    // explicitly being type 3. ALS_RCC (5), AHS_RCC (6), and AF (7) are not
+    // built by this reduced pass; ALS/AHS modules are supplied separately.
+    const selectedTypes = new Set(options.strongLinkTypes || [0, 1, 2, 3, 4, 7]);
+    const includeSingleDigit = [BILOCAL, CELL_TO_GROUP, GROUP_TO_GROUP]
+      .some(type => selectedTypes.has(type));
 
     for (let digit = 0; digit < 9; digit++) {
-      buildSingleDigitStrongLinks(cand, mini, digit, buckets, seen);
-      buildEriLinks(cand, mini.digitCells, digit, buckets, seen);
+      if (includeSingleDigit) buildSingleDigitStrongLinks(cand, mini, digit, buckets, seen);
+      if (selectedTypes.has(ERI)) buildEriLinks(cand, mini.digitCells, digit, buckets, seen);
     }
 
-    for (let cell = 0; cell < 81; cell++) {
-      if ((cand[cell] || []).length === 2) addUnique(buckets, seen, buildCellAlsLink(cand, cell));
+    if (selectedTypes.has(ALS)) {
+      for (let cell = 0; cell < 81; cell++) {
+        if ((cand[cell] || []).length === 2) addUnique(buckets, seen, buildCellAlsLink(cand, cell));
+      }
     }
 
-    if (options.includeAlmostFish === true) {
+    if (selectedTypes.has(AF) && options.includeAlmostFish === true) {
       buildAlmostFishLinks(cand, buckets, seen, options.almostFish || {});
     }
 

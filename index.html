@@ -3926,7 +3926,7 @@
     <div class="header-brand">
       <h1>StormDoku: on-line | off-line</h1>
       <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo for regular Sudoku 9x9 grids.</p>
-      <p class="app-meta">Alpha v0.6.00 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <p class="app-meta">Alpha v0.6.02 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
     </div>
   </header>
 
@@ -5294,8 +5294,8 @@
   <script src="./src/ahs-link-core.js?v=20261001-28"></script>
   <script src="./src/subset-report-core.js?v=20260928-2"></script>
   <script src="./src/mini-sectors-core.js?v=20260928-1"></script>
-    <script src="./src/strong-link-core.js?v=20261005-31"></script>
-  <script src="./src/chain-core.js?v=20261004-2"></script>
+    <script src="./src/strong-link-core.js?v=20261006-2"></script>
+      <script src="./src/chain-core.js?v=20261006-12"></script>
   <script src="./src/alc-core.js?v=20261004-1"></script>
   <script src="./src/ahs-xy-core.js?v=20261001-4"></script>
   <script src="./src/ahs-dof-core.js?v=20261002-1"></script>
@@ -5679,7 +5679,7 @@
         // Keep the URL relative for file:// copies. Chrome can reject a
         // file-origin URL object even though the same classic worker loads
         // correctly from the local server.
-      const workerPath = './src/search-worker.js?v=20261004-2';
+      const workerPath = './src/search-worker.js?v=20261006-4';
         const workerUrl = document.baseURI.startsWith('file:')
           ? workerPath
           : new URL(workerPath, document.baseURI);
@@ -5741,7 +5741,7 @@
           }, 0);
           return;
         }
-        const workerPath = './src/generator-worker.js?v=20260930-4';
+      const workerPath = './src/generator-worker.js?v=20261006-1';
         const workerUrl = document.baseURI.startsWith('file:')
           ? workerPath
           : new URL(workerPath, document.baseURI);
@@ -11404,12 +11404,12 @@
       };
 
       const sizeOne = alsSizeOneChainInfo(chain);
-      if (sizeOne?.allBivalve && sizeOne.nodeCount === 3) {
+      if (sizeOne?.allBivalve && sizeOne.nodeCount === 3 && !sizeOne.remotePair) {
         const value = chainMathScore(3, chain, 3, 2);
         return define(ratingCategoryForValue(value), value,
           `XY-${chain.isRing ? 'Ring' : 'Wing'}`);
       }
-      if (sizeOne?.allBivalve && sizeOne.nodeCount === 4) {
+      if (sizeOne?.allBivalve && sizeOne.nodeCount === 4 && !sizeOne.remotePair) {
         const value = chainMathScore(4, chain, 4, 2);
         return define(ratingCategoryForValue(value), value,
           chain.isRing ? 'XY-Ring' : 'WXYZ Wing');
@@ -13967,12 +13967,7 @@
       const bivalentInfo = alsSizeOneChainInfo(displayChain);
       const barnsInfo = barnsChainInfo(displayChain);
       const barnsTransportInfo = barnsTransportChainInfo(displayChain);
-      if (bivalentInfo?.allBivalve && bivalentInfo.nodeCount === 4) {
-        displayChain = {
-          ...displayChain,
-          structureName: displayChain.isRing ? 'XY-Ring' : 'WXYZ Wing',
-        };
-      } else if (barnsInfo) {
+      if (barnsInfo) {
         displayChain = {
           ...displayChain,
           structureName: `B.A.R.N.S. ${barnsInfo.sizeName} ${barnsInfo.form}`,
@@ -14131,13 +14126,28 @@
         for (const digit of chainDigits) {
           if (Number.isInteger(digit)) allDigits.add(digit);
         }
-        const isEri = names.some(name => String(name || '').toUpperCase() === 'ERI');
+        const isEri = step.linkType === core.ERI
+          || names.some(name => String(name || '').toUpperCase() === 'ERI');
         if (!isEri) continue;
         if (!chainDigits.length) return 0;
         count += 1;
       }
 
       return count > 0 && allDigits.size === 1 ? count : 0;
+    }
+
+    function isEriOnlyXChain(chain) {
+      const steps = chain?.steps || [];
+      if (!steps.length) return false;
+
+      return steps.every(step => {
+        const names = [
+          step.linkTypeName,
+          ...(Array.isArray(step.linkTypeNames) ? step.linkTypeNames : []),
+        ].map(name => String(name || '').toUpperCase());
+        return step.family === 'SL'
+          && (step.linkType === core.ERI || names.includes('ERI'));
+      });
     }
 
     function xChainType(chain, eriCount) {
@@ -14152,8 +14162,11 @@
         .replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS)\s*-\s*/i, '');
       // X-Wing is filed under the structural Ring folder, but it is not an X-Ring.
       if (/^X-Wing$/i.test(name)) return 'X-Wing';
-      if (/^(?:Dual Empty Rectangle|Rec'T Kite|Bridged ERI|Bridged Empty Rectangle|\d+x ERI)$/i.test(name)) {
-        return 'Empty Rectangle';
+      if (/^(?:L\(1\)-(?:Wing|Ring)|L1-(?:Wing|Ring)|Dual Empty Rectangle|Rec'T Kite|Bridged ERI|Bridged Empty Rectangle)$/i.test(name)) {
+        return 'L(1)';
+      }
+      if (/^\d+x ERI$/i.test(name) || (eriCount > 0 && isEriOnlyXChain(chain))) {
+        return 'ERI Chain';
       }
       if (emptyRectangleChain(chain)) {
         return 'Empty Rectangle';
@@ -14345,13 +14358,8 @@
     }
 
     function barnsChainInfo(chain) {
-      const bivalent = alsSizeOneChainInfo(chain);
-      if (bivalent?.allBivalve && bivalent.nodeCount === 4) {
-        return {
-          form: chain.isRing ? 'Ring' : 'Wing',
-          sizeName: barnsSizeName(4),
-        };
-      }
+      // B.A.R.N.S. size is defined from two actual ALS nodes and their RCC.
+      // A four-node type-4 XY chain is not a WXYZ B.A.R.N.S. construction.
       const nodes = alsChainNodes(chain);
       if (!nodes || nodes.length !== 2) return null;
 
@@ -14525,8 +14533,22 @@
       const genericXFamily = /^X\s*-\s*Chains?$/i.test(String(primary.family || ''))
         || /^X\s*Chains?$/i.test(String(primary.family || ''));
       if (!genericXFamily
+        && !/^Local(?: -)? Wing \| Ring$/i.test(String(primary.family || ''))
+        && primary.family !== 'ERI - Chain'
         && ((primary.family === 'AIC + ALS' && primary.wing) || (primary.wing && primary.rank))) {
         locations.push(primary);
+      }
+
+      const localRank = String(primary.rank || '').match(/^L(?:\((\d+)\)|(\d+))$/i);
+      if (/^Local(?: -)? Wing \| Ring$/i.test(String(primary.family || ''))
+        && localRank
+        && Number(localRank[1] || localRank[2]) >= 2) {
+        locations.push({
+          family: 'Hidden XY-Chain',
+          wing: 'Local Wing | Ring',
+          rank: primary.rank,
+          subclass: null,
+        });
       }
 
       // Named ALS wings/rings also live in the ALS family. Keep the
@@ -14573,6 +14595,7 @@
           wing: barnsInfo.form,
           rank: barnsInfo.sizeName,
           subclass: null,
+          path: [barnsInfo.sizeName],
         });
       }
 
@@ -14585,18 +14608,35 @@
         });
       }
 
-      if (hiddenXyInfo) {
+      if (hiddenXyInfo?.remotePair) {
         locations.push({
-          family: 'Hidden - XY chain',
-          wing: hiddenXyInfo.remotePair ? 'Hidden Remote Pair' : 'Chain',
-          rank: hiddenXyInfo.form,
+          family: 'Hidden XY-Chain',
+          wing: 'Hidden Remote Pair',
+          rank: hiddenXyInfo.form === 'Ring' ? 'Ring' : null,
           subclass: null,
         });
       }
 
       const xyChainInfo = alsSizeOneChainInfo(chain);
       if (xyChainInfo) {
-        if (!xyChainInfo.remotePair) {
+        const type4Only = (chain.steps || []).length > 0
+          && (chain.steps || []).every(step =>
+            step.family === 'SL' && Number(step.linkType) === 4
+          );
+        if (type4Only) {
+          const xyBranch = xyChainInfo.remotePair
+            ? 'Remote Pair'
+            : xyChainInfo.breakdown === 'XY-Wing'
+              ? 'XY - Wing'
+              : 'Generic';
+          locations.push({
+            family: 'XY - Chain',
+            wing: xyBranch,
+            rank: null,
+            subclass: null,
+            path: [xyBranch, chain.isRing ? 'Ring' : null].filter(Boolean),
+          });
+        } else if (!xyChainInfo.remotePair) {
           locations.push({
             family: 'Almost Locked Sets',
             wing: 'XY - Chain',
@@ -14613,15 +14653,6 @@
         }
       }
 
-      if (eriCount > 0) {
-        locations.push({
-          family: 'ERI - Chain',
-          wing: chain.isRing ? 'Ring' : 'Wing',
-          rank: `ERI(${eriCount})`,
-          subclass: null,
-        });
-      }
-
       const xType = xChainType(chain, eriCount);
       if (xType) {
         const isEriFamily = xType === 'Empty Rectangle';
@@ -14631,37 +14662,63 @@
         const eriSubclass = /^(?:Dual Empty Rectangle|Rec'T Kite|Bridged ERI|Bridged Empty Rectangle|3x ERI)$/i.test(name)
           ? name.replace(/^Bridged Empty Rectangle$/i, 'Bridged ERI')
           : null;
+        const l1Subclass = /^Dual Empty Rectangle$/i.test(name)
+          ? 'Dual Empty Rectangle'
+          : /^Rec'T Kite$/i.test(name)
+            ? "Rec'T Kite"
+            : /^(?:Bridged ERI|Bridged Empty Rectangle)$/i.test(name)
+              ? 'Bridged Rectangles'
+              : null;
+        const shortXChain = /^(?:2-String Kite|Empty Rectangle|Finned X-Wing|Sashimi X-Wing|Skyscraper|X-Wing|ERI Chain|L\(1\))$/i.test(xType);
+        const namedPath = xType === 'L(1)'
+          ? ['Local Wing | Ring', 'L(1)', chain.isRing ? 'Ring' : null, l1Subclass].filter(Boolean)
+          : [
+              shortXChain ? null : 'Single Digit Named Chains',
+              xType,
+              finnedSashimi
+                ? `${finnedSashimi[1][0].toUpperCase()}${finnedSashimi[1].slice(1).toLowerCase()} X-Wing`
+                : xType === 'X-Wing' ? null
+                  : isEriFamily && eriSubclass
+                    ? eriSubclass
+                    : null,
+            ].filter(Boolean);
         locations.push({
           family: 'X-Chains',
           wing: xType,
-          rank: finnedSashimi
+          rank: xType === 'L(1)' && l1Subclass
+            ? l1Subclass
+            : xType === 'ERI Chain'
+              ? `ERI(${eriCount})`
+              : finnedSashimi
             ? `${finnedSashimi[1][0].toUpperCase()}${finnedSashimi[1].slice(1).toLowerCase()} X-Wing`
-            : xType === 'X-Wing' ? 'Ring'
+            : xType === 'X-Wing' ? null
             : isEriFamily && eriSubclass
               ? eriSubclass
-              : isEriFamily && eriCount > 0 ? `ERI(${eriCount})` : null,
+              : null,
           subclass: null,
-          path: [
-            'Single Digit Named Chains',
-            xType,
-            finnedSashimi
-              ? `${finnedSashimi[1][0].toUpperCase()}${finnedSashimi[1].slice(1).toLowerCase()} X-Wing`
-              : xType === 'X-Wing' ? 'Ring'
-                : isEriFamily && eriSubclass
-                  ? eriSubclass
-                  : isEriFamily && eriCount > 0 ? `ERI(${eriCount})` : null,
-          ].filter(Boolean),
+          path: namedPath,
         });
-
-        // Named short X-chain forms also get a direct top-level location.
-        // Keep the X-Chains membership above so the same result remains
-        // discoverable from both the specific technique and the family.
-        locations.push({
-          family: xType,
-          wing: null,
-          rank: null,
-          subclass: null,
-        });
+      } else if (/^(?:X-Chain|AIC)$/i.test(String(chain.structureName || '').trim())) {
+        const genericSteps = chain.steps || [];
+        const usesOnlyAicTypes = genericSteps.length > 0
+          && genericSteps.every(step => Number(step.linkType) >= 1 && Number(step.linkType) <= 4);
+        if (chainUniqueDigitCount(chain) > 1 && usesOnlyAicTypes) {
+          locations.push({
+            family: 'A.I.C',
+            wing: null,
+            rank: null,
+            subclass: null,
+            path: [],
+          });
+        } else if (chainUniqueDigitCount(chain) === 1) {
+          locations.push({
+            family: 'X-Chains',
+            wing: 'Generic',
+            rank: null,
+            subclass: null,
+            path: ['Generic'],
+          });
+        }
       }
 
       const wType = wChainType(chain);
@@ -14671,8 +14728,10 @@
           wing: wType,
           rank: null,
           subclass: null,
+          path: chain.isRing ? ['Ring'] : [],
         });
       }
+
 
       const splitType = splitChainType(chain);
       if (splitType) {
@@ -14681,6 +14740,7 @@
           wing: splitType,
           rank: null,
           subclass: null,
+          path: chain.isRing ? ['Ring'] : [],
         });
       }
 
@@ -14691,6 +14751,7 @@
           wing: strongType,
           rank: null,
           subclass: null,
+          path: chain.isRing ? ['Ring'] : [],
         });
       }
 
@@ -14771,6 +14832,13 @@
 
     function chainFolderPath(folder) {
       if (Array.isArray(folder.path)) return folder.path.filter(Boolean);
+      if (/^Transport$/i.test(String(folder.family || ''))) {
+        return [folder.wing, folder.rank === 'Ring' ? 'Ring' : null].filter(Boolean);
+      }
+      if (/^(?:Hybrid|M) - Wing \| Ring$/i.test(String(folder.family || ''))
+        && /^[MH]\(\d+\)$/i.test(String(folder.rank || ''))) {
+        return [folder.rank, folder.wing === 'Ring' ? 'Ring' : null].filter(Boolean);
+      }
       return [folder.wing, folder.rank, folder.subclass].filter(Boolean);
     }
 
@@ -15467,7 +15535,10 @@
         if (!chainMatchesSearchPhase(chain, phase)) continue;
         if (!chainMoveEnabled(chain, enabledTypes)) continue;
 
-        const items = core.eliminationItems({ items: chain.eliminations || [] }, candidateGrid);
+        const items = core.eliminationItems(
+          { items: chain.eliminations || [] },
+          candidateGrid,
+        );
         if (!items.length) continue;
         if (chainSafetyFlags(chain, candidateGrid, expectedSolution, fixedGrid).length > 0) continue;
 
@@ -15585,8 +15656,7 @@
       if (/^ALS\s*-\s*Chain$/i.test(fullName)) keys.add('als-chain');
       if (/AIC\s*\+\s*ALS/i.test(fullName)) keys.add('aic-als');
 
-      const eriCount = chainEriCount(chain);
-      if (eriCount > 0 && !keys.has('bridged-eri')) keys.add('eri-chain');
+      if (isEriOnlyXChain(chain) && !keys.has('bridged-eri')) keys.add('eri-chain');
 
       const barns = barnsChainInfo(chain);
       const barnsTransport = barnsTransportChainInfo(chain);
@@ -15744,10 +15814,12 @@
       }
       if (barns) return barns.sizeName.length === 3 ? 'barns' : 'barns-wxyz';
 
-      const eriCount = chainEriCount(chain);
-      if (eriCount === 3) return '3x-eri';
-      if (eriCount === 4) return '4x-eri';
-      if (eriCount > 4) return 'eri-chain-long';
+      if (isEriOnlyXChain(chain)) {
+        const eriCount = chainEriCount(chain);
+        if (eriCount === 3) return '3x-eri';
+        if (eriCount === 4) return '4x-eri';
+        if (eriCount > 4) return 'eri-chain-long';
+      }
 
       const aicAlsNamed = /^AIC\s*\+\s*ALS\s*-\s*.+(?:Wing|Ring)$/i.test(fullName);
       if (aicAlsNamed) return 'als-named';
@@ -16503,7 +16575,7 @@
           const phaseFloor = chainPhaseMinimumRating(phase);
           const currentCeiling = Number.isFinite(Number(bestOverall?.step?.rating?.value))
             ? Number(bestOverall.step.rating.value)
-            : Number(scoreCeiling);
+            : scoreCeiling == null ? Number.NaN : Number(scoreCeiling);
           if (Number.isFinite(currentCeiling) && phaseFloor > currentCeiling) break;
           const searchPhase = {
             ...phase,
@@ -16694,7 +16766,7 @@
           const phaseFloor = chainPhaseMinimumRating(phase);
           const currentCeiling = Number.isFinite(Number(bestOverall?.step?.rating?.value))
             ? Number(bestOverall.step.rating.value)
-            : Number(scoreCeiling);
+            : scoreCeiling == null ? Number.NaN : Number(scoreCeiling);
           if (Number.isFinite(currentCeiling) && phaseFloor > currentCeiling) break;
           const searchPhase = {
             ...phase,
@@ -16845,10 +16917,30 @@
         requireAls: false,
         requireMixed: false,
         family: null,
+        singleDigitOnly: true,
+        // The phase is defined by the walker constraints, not by the display
+        // name. This keeps every legal depth-2 type-0-to-3 chain eligible,
+        // including a named form added by the classifier later.
         allowedMoveKeys: [
           'x-chain', 'chain-x-wing', 'skyscraper', '2-string-kite',
           'finned-x-wing', 'sashimi-x-wing', 'empty-rectangle',
         ],
+        // Modestly Easy must finish its depth-2 strong-link pass before the
+        // fish phase is allowed to run. Keep this phase bounded independently
+        // of the much larger Transcendent interactive profile budget.
+        searchLimits: {
+          // This pass only walks two strong-link modules. Collect enough
+          // candidates to survive safety/key filtering, then stop before the
+          // later fish phase can be reached from an incomplete report.
+          maxChains: 100,
+          maxResultAttempts: 5000,
+          maxResultAttemptsPerStart: 250,
+          maxStates: 10000,
+          maxQueue: 10000,
+          maxBranching: 100,
+          maxStartViews: Infinity,
+          maxAlsLinks: 0,
+        },
       });
       addDirect('modestly-easy-fish', [
         { kind: 'fish', size: 2, k: [0, 1, 2], categories: ['Franken', 'Mutant'] },
@@ -17464,6 +17556,13 @@
       });
     }
 
+    function solverFishMoveType(spec, k, category = 'Basic') {
+      // Basic K0 uses the ordinary fish toggle. Franken/Mutant K0 is still
+      // an extended-fish move and must not inherit the basic X-Wing toggle.
+      if (category === 'Basic' && k === 0) return basicFishMoveType(spec.size);
+      return `${spec.size}x${spec.size}+k-fish`;
+    }
+
     function solverPhaseAllowsType(phase, enabledTypes, spec = null) {
       if (phase.kind === 'als-dof') {
         return ['als-dof', 'dds', 'adds'].some(type => enabledTypes.has(type));
@@ -17479,9 +17578,8 @@
       }
       if (phase.kind === 'alc') return enabledTypes.has('alc-' + phase.alcType);
       if (spec?.kind === 'fish') {
-        return (spec.k || [0]).some(k => enabledTypes.has(
-          k === 0 ? basicFishMoveType(spec.size) : `${spec.size}x${spec.size}+k-fish`,
-        ));
+        return (spec.k || [0]).some(k => (spec.categories || ['Basic'])
+          .some(category => enabledTypes.has(solverFishMoveType(spec, k, category))));
       }
       return enabledTypes.has(spec?.type);
     }
@@ -17491,7 +17589,7 @@
       const categories = spec.categories || ['Basic'];
       for (const k of spec.k || [0]) {
         for (const category of categories) {
-          const fishType = k === 0 ? basicFishMoveType(spec.size) : `${spec.size}x${spec.size}+k-fish`;
+          const fishType = solverFishMoveType(spec, k, category);
           if (!enabledTypes.has(fishType)) continue;
           const fishOptions = {
             ...solverFishOptions(candidateGrid, fixedGrid, enabledTypes, profile),
@@ -17554,7 +17652,7 @@
         if (spec.kind === 'fish') {
           for (const k of spec.k || [0]) {
             for (const category of spec.categories || ['Basic']) {
-              const fishType = k === 0 ? basicFishMoveType(spec.size) : `${spec.size}x${spec.size}+k-fish`;
+              const fishType = solverFishMoveType(spec, k, category);
               if (!enabledTypes.has(fishType)) continue;
               const fishOptions = {
                 ...solverFishOptions(candidateGrid, fixedGrid, enabledTypes, profile),
@@ -17812,7 +17910,7 @@
           null,
           phase.chainPhase,
         );
-          if (chain?.step) return chain;
+        if (chain?.step) return chain;
       }
       return null;
     }
@@ -19058,12 +19156,34 @@
         solution,
         profile,
       );
+      // Modestly Easy is a strict queue: exhaust the reduced depth-2
+      // type-0-to-3 AIC pass before the worker is allowed to consider fish.
+      // Keeping this preflight synchronous also makes the ordering identical
+      // on file:// pages and after a worker timeout.
+      const firstChainPhase = solverPhasePlan(profile)
+        .find(phase => phase.name === 'modestly-easy-chains');
+      if (firstChainPhase && solverPhaseAllowsType(
+        firstChainPhase,
+        currentSolverMoveTypes(profile.moveTypes),
+      )) {
+        const firstChain = findSolverChainMove(
+          cand,
+          puzzle,
+          'interactive',
+          solution,
+          profile,
+          null,
+          firstChainPhase.chainPhase,
+        );
+        if (firstChain?.step) return firstChain;
+      }
       try {
-        // A stalled worker must not hold Next/Run-All indefinitely. The
-        // in-page path is already bounded by the same phase hierarchy and is
-        // especially quick for the small ALS-XZ pass used by this grid.
+        // The phase walker is bounded per phase. Give the depth-2 strong-link
+        // pass enough time to finish its first-result search before falling
+        // back; otherwise a timeout can incorrectly expose the later fish
+        // phase as the first move.
         const timeout = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Interactive search worker timed out.')), 2500);
+          setTimeout(() => reject(new Error('Interactive search worker timed out.')), 15000);
         });
         return await Promise.race([
           chooseSolverStepInWorker(cand, puzzle, solution, profile, 'interactive'),

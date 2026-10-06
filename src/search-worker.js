@@ -14,8 +14,8 @@ importScripts(
   './ahs-link-core.js?v=20261001-28',
   './subset-report-core.js?v=20260928-2',
   './mini-sectors-core.js?v=20260928-1',
-  './strong-link-core.js?v=20261004-2',
-  './chain-core.js?v=20261004-2',
+  './strong-link-core.js?v=20261006-2',
+  './chain-core.js?v=20261006-12',
   './alc-core.js?v=20261004-1',
   './ahs-xy-core.js?v=20261001-4',
   './ahs-dof-core.js?v=20261002-1',
@@ -67,6 +67,7 @@ function chainInventory(payload) {
       key: inventoryKey,
       strongSet: payload.includeStrong === false ? [] : core.buildStrongLinks(candidateGrid, {
         includeAlmostFish: (payload.strongLinkTypes || []).includes(7),
+        strongLinkTypes: payload.strongLinkTypes,
         almostFish: { grid: [...(payload.fixedGrid || [])], ...(payload.almostFish || {}) },
       }),
       alsList: payload.includeAls
