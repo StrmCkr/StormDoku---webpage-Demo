@@ -273,14 +273,17 @@
           linkedCells,
           miniXorConstruction(type, line, options, startSector, activeCells, linkedCells),
         );
-        if (type >= 2) {
+        if (type >= 0) {
           const profileCells = union(activeCells, linkedCells);
-          const dualEri = eriGeometries(line, mini.digitCells, digit, false)
+          const profileBox = Array.from({ length: 9 }, (_, box) => box)
+            .find(box => profileCells.every(cell => core.UNITS[18 + box].includes(cell)));
+          const dualEri = profileBox === undefined
+            ? null
+            : eriGeometries(profileBox, mini.digitCells, digit, false)
             .find(geometry => {
               const intersectionCell = geometry.construction.intersectionCell;
               const remainingProfileCells = profileCells.filter(cell => cell !== intersectionCell);
-              return geometry.boxCells.includes(geometry.construction.intersectionCell)
-                && remainingProfileCells.length > 1
+              return remainingProfileCells.length > 1
                 && geometry.boxCells.join(',') === profileCells.join(',');
             });
           if (dualEri) {

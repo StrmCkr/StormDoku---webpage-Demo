@@ -582,14 +582,135 @@
     if (includeAls) {
       alsList = alsList.length
         ? alsList
-        : core.alsConstructor?.(cand) || [];
+        : core.alsConstructor?.(cand, {
+          ...(Number.isInteger(options.alsMaxSizeDOF)
+            ? { maxSizeDOF: options.alsMaxSizeDOF } : {}),
+          ...(Number.isInteger(options.alsMaxSizeFox)
+            ? { maxSizeFox: options.alsMaxSizeFox } : {}),
+        }) || [];
+      if (Number.isInteger(options.alsMaxCells)) {
+        alsList = alsList.filter(als => (als.alsAllCells || []).length <= options.alsMaxCells);
+      }
       alsSet = options.alsLinkSet || core.buildAlsLinks(cand, {
         alsList,
         strictSingleCommon: options.strictAlsSingleCommon ?? true,
-        maxLinks: options.maxAlsLinks,
+        maxLinks: options.maxAlsLinks ?? options.maxAlsDofLinks,
       });
     }
     const alsLinks = flattenLinkSet(alsSet, core.flattenAlsLinks);
+
+    // A standalone ALS boundary is a valid AIC node.  It is the form used by
+    // ALS-backed M/W/H constructions: the ALS exposes one RCC digit to an
+    // ordinary strong link, rather than first pairing with another ALS.  The
+    // ALS constructor already computed the per-digit RCC cells and potential
+    // eliminations, so keep that record as the source of truth.
+    if (includeAls) {
+      const standalone = [];
+      const seen = new Set();
+      const sourceAls = alsList.filter(als =>
+        Number(als.alsDOF) === 1
+        && (als.alsAllCells || []).length > 1,
+      );
+      let nextId = 1000000;
+      for (const als of sourceAls) {
+        const entrySubset = {
+          uniqueID: als.uniqueID,
+          cells: [...(als.alsAllCells || [])],
+          digits: [...(als.alsDigits || [])],
+          rccList: [...(als.rccList || [])],
+          sector: als.alsSector,
+        };
+        for (const rcc of als.rccList || []) {
+          const digit = Number(rcc.rccDigit);
+          const rccCells = [...(rcc.rccCells || [])];
+          if (!Number.isInteger(digit) || !rccCells.length) continue;
+          const rccSectors = [...(rcc.rccSectors || [])];
+          const rccElims = [...(rcc.rccPotentialElim || [])];
+          const hasStrongContinuation = strongLinks.some(link => {
+            const sides = [
+              {
+                cells: link.activeCells || [],
+                digits: link.startingDigits || [],
+                sectors: (link.startCellsSector || {})[digit] || [],
+                elims: (link.potentialElimStart || {})[digit] || [],
+              },
+              {
+                cells: link.linkedCells || [],
+                digits: link.linkDigits || [],
+                sectors: (link.linkCellsSector || {})[digit] || [],
+                elims: (link.potentialElimEnd || {})[digit] || [],
+              },
+            ];
+            return sides.some(side => side.digits.includes(digit)
+              && intersection(rccSectors, side.sectors).length
+              && isSubsetOf(rccCells, side.elims)
+              && isSubsetOf(side.cells, rccElims));
+          });
+          if (!hasStrongContinuation) continue;
+          const exposedDigits = (als.alsDigits || []).filter(value => value !== digit);
+          if (!exposedDigits.length) continue;
+          const key = `${als.uniqueID}|${digit}|${rccCells.join(',')}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+
+          const cellsByDigit = {};
+          for (const value of exposedDigits) {
+            cellsByDigit[value] = (als.alsAllCells || [])
+              .filter(cell => (cand[cell] || []).includes(value));
+          }
+          const sectorMap = {};
+          for (const value of exposedDigits) {
+            const positions = cellsByDigit[value];
+            sectorMap[value] = core.UNITS
+              .map((unit, sector) => positions.length && positions.every(cell => unit.includes(cell)) ? sector : -1)
+              .filter(sector => sector >= 0);
+          }
+
+          standalone.push({
+            id: nextId++,
+            linkType: core.ALS_RCC ?? 5,
+            linkTypeName: 'ALS_RCC',
+            standaloneAls: true,
+            standaloneEntrySubset: entrySubset,
+            standaloneExitSubset: {
+              uniqueID: `${als.uniqueID}:rcc:${digit}`,
+              cells: [...rccCells],
+              digits: [digit],
+              rccList: [{
+                rccDigit: digit,
+                rccCells: [...rccCells],
+                rccSectors,
+                rccPotentialElim: rccElims,
+              }],
+              sector: als.alsSector,
+            },
+            activeCells: [...(als.alsAllCells || [])],
+            linkedCells: [...rccCells],
+            startingDigits: [...exposedDigits],
+            linkDigits: [digit],
+            startCellsSector: sectorMap,
+            linkCellsSector: { [digit]: rccSectors },
+            potentialElimStart: Object.fromEntries(
+              (als.rccList || []).map(record => [
+                Number(record.rccDigit), [...(record.rccPotentialElim || [])],
+              ]),
+            ),
+            potentialElimEnd: { [digit]: rccElims },
+            startDigitSwapAvailable: [],
+            endDigitSwapAvailable: [],
+            C: {
+              digit,
+              digits: [digit],
+              restrictedDigits: [digit],
+              leftCells: [],
+              rightCells: [...rccCells],
+              sectors: rccSectors,
+            },
+          });
+        }
+      }
+      alsLinks.push(...standalone);
+    }
     let ahsSet = [];
     let ahsList = options.ahsList || [];
     if (includeAhs && typeof core.buildAhsLinks === 'function') {
@@ -868,6 +989,10 @@
 
   function alsSubsetForSide(view, side) {
     const raw = view.node.raw;
+    if (raw.standaloneAls) {
+      const isEntry = side === 'entry' ? view.forward : !view.forward;
+      return isEntry ? raw.standaloneEntrySubset : raw.standaloneExitSubset;
+    }
     const isLeft = side === 'entry' ? view.forward : !view.forward;
     if (view.node.family === 'AHS') return isLeft ? raw.HS_L : raw.HS_R;
     return isLeft ? raw.LS_L : raw.LS_R;
@@ -2240,7 +2365,6 @@
 
     const digits = chainDigits(steps);
     const groupedPrefix = structurePrefix(steps);
-
     if (isRing) {
       const pattern = chainValuePattern(steps);
       const finnedXWing = classifyFinnedXWing(steps);
@@ -2328,18 +2452,23 @@
 
   function openPathKey(steps, reverse) {
     const parts = [];
+    const undirectedViewKey = view => {
+      const forward = viewSemanticKey(view, false);
+      const backward = viewSemanticKey(view, true);
+      return forward <= backward ? forward : backward;
+    };
 
     if (!reverse) {
-      parts.push(viewSemanticKey(steps[0].view));
+      parts.push(undirectedViewKey(steps[0].view));
       for (let index = 1; index < steps.length; index++) {
         parts.push(stepWeakKey(steps[index]));
-        parts.push(viewSemanticKey(steps[index].view));
+        parts.push(undirectedViewKey(steps[index].view));
       }
     } else {
-      parts.push(viewSemanticKey(steps[steps.length - 1].view, true));
+      parts.push(undirectedViewKey(steps[steps.length - 1].view));
       for (let index = steps.length - 1; index > 0; index--) {
         parts.push(stepWeakKey(steps[index]));
-        parts.push(viewSemanticKey(steps[index - 1].view, true));
+        parts.push(undirectedViewKey(steps[index - 1].view));
       }
     }
 
@@ -2543,12 +2672,24 @@
         (options.strongLinkTypes ?? [0, 1, 2, 3, 4])
           .filter(type => Number.isInteger(type) && type >= 0 && type <= 7),
       )].sort((a, b) => a - b),
-      maxAlsLinks: Number.isInteger(options.maxAlsLinks) ? options.maxAlsLinks : 5000,
+      maxAlsLinks: Number.isInteger(options.maxAlsLinks)
+        ? Math.max(1, options.maxAlsLinks)
+        : Number.isInteger(options.maxAlsDofLinks)
+          ? Math.max(1, options.maxAlsDofLinks)
+          : 5000,
+      maxAlsDofLinks: Number.isInteger(options.maxAlsDofLinks)
+        ? Math.max(1, options.maxAlsDofLinks) : null,
       maxAhsLinks: Number.isInteger(options.maxAhsLinks) ? options.maxAhsLinks : 5000,
       minAhsDof: Number.isInteger(options.minAhsDof) ? Math.max(1, options.minAhsDof) : 1,
       maxAhsDof: Number.isInteger(options.maxAhsDof) ? Math.max(1, Math.min(3, options.maxAhsDof)) : 3,
       strictAhsSingleCommon: options.strictAhsSingleCommon ?? false,
       maxDepth: Number.isInteger(options.maxDepth) ? Math.max(1, options.maxDepth) : 6,
+      alsMaxSizeDOF: Number.isInteger(options.alsMaxSizeDOF)
+        ? Math.max(0, options.alsMaxSizeDOF) : null,
+      alsMaxSizeFox: Number.isInteger(options.alsMaxSizeFox)
+        ? Math.max(0, options.alsMaxSizeFox) : null,
+      alsMaxCells: Number.isInteger(options.alsMaxCells)
+        ? Math.max(1, options.alsMaxCells) : null,
       maxChains: Number.isInteger(options.maxChains) ? Math.max(1, options.maxChains) : 200,
       maxResultAttempts: Number.isInteger(options.maxResultAttempts)
         ? Math.max(1, options.maxResultAttempts)
@@ -3043,6 +3184,18 @@
       pushEurekaUnit(nodes, connectors, {
         text: `(${eurekaDigitsText([digit])})${core.cellGroupName(right)}${entryIsExtra ? fishLabel : ''}`,
       }, '=');
+      return;
+    }
+    // A standalone ALS/RCC edge is displayed as one ALS node with its
+    // exposed RCC digit. The RCC cell is the handoff to the next link, not
+    // a second visible node in the Eureka notation.
+    if (step.view?.node?.raw?.standaloneAls) {
+      const entryIsAls = step.entry.cells.length > step.exit.cells.length;
+      const alsSide = entryIsAls ? step.entry : step.exit;
+      const rccSide = entryIsAls ? step.exit : step.entry;
+      pushEurekaUnit(nodes, connectors, {
+        text: `(${eurekaDigitsText(alsSide.digits)}=${eurekaDigitsText(rccSide.digits)})${core.cellGroupName(alsSide.cells)}`,
+      }, index === 0 ? null : '-');
       return;
     }
     const ahsXz = ahsXzEurekaUnits(step);

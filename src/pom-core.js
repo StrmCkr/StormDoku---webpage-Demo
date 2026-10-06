@@ -496,6 +496,10 @@
 
     return {
       cells: activeCandidateEliminations(cand, digit, setUnion(...parts)),
+      baseIntersections: uniqueSorted([...baseSaved.baseIntersections]),
+      peersOfBaseIntersection: uniqueSorted([
+        ...peerCandidateCellsForAll(cand, digit, baseSaved.baseIntersections),
+      ]),
       overcovered: uniqueSorted(overcovered),
       triCovered: uniqueSorted(threeCovers),
       endoFins: uniqueSorted(endoFins),
@@ -528,6 +532,11 @@
       baseSectors: uniqueSorted(baseSectors),
       coverSectors: uniqueSorted(coverSectors),
       cells: details.cells,
+      fishCells: uniqueSorted([
+        ...setIntersection(baseSaved.allUsedCells, coverSaved.allUsedCells),
+      ]),
+      baseIntersections: details.baseIntersections,
+      peersOfBaseIntersection: details.peersOfBaseIntersection,
       triggerCells: uniqueSorted(setIntersection(triggerCells, coverSaved.allUsedCells)),
       overcovered: details.overcovered,
       triCovered: details.triCovered,
@@ -1241,7 +1250,10 @@
         digits: [report.digit],
         baseSectors: report.baseSectors,
         coverSectors: report.coverSectors,
+        fishCells: report.fishCells || [],
         vertices: report.vertices || [],
+        baseIntersections: report.baseIntersections || [],
+        peersOfBaseIntersection: report.peersOfBaseIntersection || [],
         fins: report.triggerCells || [],
         endofins: report.endoFins || [],
         overcovered: report.overcovered || [],

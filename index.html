@@ -1616,16 +1616,12 @@
       font-weight: 900;
     }
 
-    .cell.fish-base {
-      background: var(--base-fill);
-    }
-
-    .cell.fish-cover {
-      background: var(--cover-fill);
-    }
-
     .cell.fish-base.fish-cover {
-      background: #86efac;
+      background: rgba(134, 239, 172, .3);
+    }
+
+    .cell.fish-intersection {
+      background: rgba(134, 239, 172, .3);
     }
 
     .cell.msls-base {
@@ -1653,7 +1649,10 @@
     }
 
     .cell.fish-fin {
-      background: rgba(30, 64, 175, .24);
+      /* Fins are styled on the candidate digit so unrelated candidates in
+         the same cell remain untouched. */
+      outline: 2px solid rgba(30, 64, 175, .65);
+      outline-offset: -3px;
     }
 
     .sector-frame {
@@ -1710,6 +1709,52 @@
       font-weight: 900;
     }
 
+    .mark.fish-fin-digit {
+      color: #1e3a8a;
+      background: rgba(147, 197, 253, .9);
+      border: 1px solid #1d4ed8;
+      border-radius: 4px;
+    }
+
+    .mark.fish-base-digit,
+    .mark.fish-base-intersection-digit,
+    .mark.fish-cover-digit,
+    .mark.fish-cover-double-digit,
+    .mark.fish-cover-triple-digit {
+      border-radius: 4px;
+      font-weight: 900;
+    }
+
+    .mark.fish-base-digit {
+      color: #052e16;
+      background: rgba(59, 130, 246, .3);
+      border: 1px solid rgba(37, 99, 235, .45);
+    }
+
+    .mark.fish-base-intersection-digit {
+      color: #172554;
+      background: rgba(30, 64, 175, .3);
+      border: 1px solid rgba(30, 64, 175, .55);
+    }
+
+    .mark.fish-cover-digit {
+      color: #431407;
+      background: rgba(180, 83, 9, .3);
+      border: 1px solid rgba(180, 83, 9, .45);
+    }
+
+    .mark.fish-cover-double-digit {
+      color: #431407;
+      background: rgba(249, 115, 22, .3);
+      border: 1px solid rgba(234, 88, 12, .55);
+    }
+
+    .mark.fish-cover-triple-digit {
+      color: #500724;
+      background: rgba(217, 70, 239, .3);
+      border: 1px solid rgba(192, 38, 211, .55);
+    }
+
     .mark.fish-endofin-digit {
       color: #86198f;
       background: #f0abfc;
@@ -1721,6 +1766,54 @@
     .mark.elim-digit {
       color: var(--red);
       font-weight: 900;
+    }
+
+    .mark.fish-digit.elim-digit {
+      color: #052e16 !important;
+      background: #86efac !important;
+      border-color: var(--dark-green) !important;
+    }
+
+    .mark.fish-fin-digit.elim-digit {
+      color: #1e3a8a !important;
+      background: rgba(147, 197, 253, .9) !important;
+      border-color: #1d4ed8 !important;
+    }
+
+    .mark.fish-endofin-digit.elim-digit {
+      color: #86198f !important;
+      background: #f0abfc !important;
+      border-color: #a21caf !important;
+    }
+
+    .mark.fish-base-digit.elim-digit {
+      color: #052e16 !important;
+      background: rgba(59, 130, 246, .3) !important;
+      border-color: rgba(37, 99, 235, .45) !important;
+    }
+
+    .mark.fish-base-intersection-digit.elim-digit {
+      color: #172554 !important;
+      background: rgba(30, 64, 175, .3) !important;
+      border-color: rgba(30, 64, 175, .55) !important;
+    }
+
+    .mark.fish-cover-digit.elim-digit {
+      color: #431407 !important;
+      background: rgba(180, 83, 9, .3) !important;
+      border-color: rgba(180, 83, 9, .45) !important;
+    }
+
+    .mark.fish-cover-double-digit.elim-digit {
+      color: #431407 !important;
+      background: rgba(249, 115, 22, .3) !important;
+      border-color: rgba(234, 88, 12, .55) !important;
+    }
+
+    .mark.fish-cover-triple-digit.elim-digit {
+      color: #500724 !important;
+      background: rgba(217, 70, 239, .3) !important;
+      border-color: rgba(192, 38, 211, .55) !important;
     }
 
     .mark.elim-digit::after {
@@ -3833,7 +3926,7 @@
     <div class="header-brand">
       <h1>StormDoku: on-line | off-line</h1>
       <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo for regular Sudoku 9x9 grids.</p>
-      <p class="app-meta">Alpha v0.5.23 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <p class="app-meta">Alpha v0.6.00 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
     </div>
   </header>
 
@@ -5201,7 +5294,7 @@
   <script src="./src/ahs-link-core.js?v=20261001-28"></script>
   <script src="./src/subset-report-core.js?v=20260928-2"></script>
   <script src="./src/mini-sectors-core.js?v=20260928-1"></script>
-  <script src="./src/strong-link-core.js?v=20261004-2"></script>
+    <script src="./src/strong-link-core.js?v=20261005-31"></script>
   <script src="./src/chain-core.js?v=20261004-2"></script>
   <script src="./src/alc-core.js?v=20261004-1"></script>
   <script src="./src/ahs-xy-core.js?v=20261001-4"></script>
@@ -7810,6 +7903,13 @@
     }
 
     function alsVisualSideKey(step, side, role) {
+      if (step?.view?.node?.raw?.standaloneAls) {
+        return 'ALS-STANDALONE:' + String(step.view.node.graphId || step.linkId || '');
+      }
+      const entryCells = new Set(moduleVisualSides(step).entry?.cells || []);
+      const exitCells = new Set(moduleVisualSides(step).exit?.cells || []);
+      const overlaps = [...entryCells].some(cell => exitCells.has(cell));
+      if (overlaps) return 'ALS-OVERLAP:' + alsVisualKey(step);
       const cells = (side?.cells || []).join(',');
       const digits = (side?.digits || []).join('');
       if (cells || digits) return 'ALS:' + digits + ':' + cells;
@@ -9863,7 +9963,7 @@
       const mslsBaseCells = new Set(activeStep?.mslsBaseCells || []);
       const mslsCoverCells = new Set(activeStep?.mslsCoverCells || []);
       const mslsCoverAtoms = new Set(activeStep?.mslsCoverAtoms || []);
-      const fins = new Set(activeStep?.fins || activeStep?.triggerCells || []);
+      const rawFins = new Set(activeStep?.fins || []);
       const endofins = new Set(activeStep?.endofins || activeStep?.endoFins || []);
       const patternDigits = new Set(activeStep?.digits || []);
       const candidateSizeFilterCells = new Set();
@@ -9878,6 +9978,14 @@
       const coverCells = activeStep?.coverSectors
         ? cellsForSectors(activeStep.coverSectors)
         : cellsForHouse(activeStep?.cover);
+      const fins = new Set([...rawFins].filter(cell => baseCells.has(cell)));
+      const fishCells = new Set(activeStep?.fishCells || [
+        ...baseCells,
+      ].filter(cell => coverCells.has(cell)));
+      const fishBaseIntersections = new Set(activeStep?.baseIntersections || []);
+      const fishPeersOfBaseIntersection = new Set(activeStep?.peersOfBaseIntersection || []);
+      const fishDoubleCover = new Set(activeStep?.overcovered || []);
+      const fishTripleCover = new Set(activeStep?.triCovered || []);
       const isFish = ['fish', 'pointing', 'claiming'].includes(activeStep?.tech);
       const isSubset = !!activeStep && !isFish;
       const isHiddenSubset = !!activeStep && activeStep.tech.startsWith('hidden-');
@@ -9897,6 +10005,11 @@
         patternDigits,
         baseCells,
         coverCells,
+        fishCells,
+        fishBaseIntersections,
+        fishPeersOfBaseIntersection,
+        fishDoubleCover,
+        fishTripleCover,
         isFish,
         isSubset,
         isHiddenSubset,
@@ -10205,8 +10318,7 @@
        if (fixedDigit && digitHighlightIsVisible(cell, fixedDigit)) {
          el.classList.add('digit-focus-cell', 'digit-focus-' + fixedDigit);
        }
-        if (highlights.isFish && highlights.baseCells.has(cell)) el.classList.add('fish-base');
-        if (highlights.isFish && highlights.coverCells.has(cell)) el.classList.add('fish-cover');
+        if (highlights.isFish && highlights.fishCells.has(cell)) el.classList.add('fish-intersection');
         if (highlights.isMsls && highlights.mslsBaseCells.has(cell)) el.classList.add('msls-base');
         if (highlights.isMsls && highlights.mslsCoverCells.has(cell)) el.classList.add('msls-cover');
         if (highlights.isFish && highlights.fins.has(cell) && !highlights.vertices.has(cell)) {
@@ -10273,9 +10385,26 @@
             const isFishVertexDigit = highlights.isFish && highlights.patternDigits.has(digit) && highlights.vertices.has(cell);
             const isFishFinDigit = highlights.isFish && highlights.patternDigits.has(digit)
               && highlights.fins.has(cell) && !highlights.vertices.has(cell);
+            const isFishIntersection = highlights.isFish
+              && highlights.patternDigits.has(digit)
+              && highlights.fishCells.has(cell);
+            const isFishBaseIntersection = isFishIntersection
+              && (highlights.fishBaseIntersections.has(cell)
+                || highlights.fishPeersOfBaseIntersection.has(cell));
+            const isFishBase = highlights.isFish
+              && highlights.patternDigits.has(digit)
+              && highlights.baseCells.has(cell)
+              && !highlights.fishCells.has(cell);
+            const isFishCover = highlights.isFish
+              && highlights.patternDigits.has(digit)
+              && highlights.coverCells.has(cell)
+              && !highlights.fishCells.has(cell);
+            const isFishDoubleCover = isFishCover && highlights.fishDoubleCover.has(cell);
+            const isFishTripleCover = isFishCover && highlights.fishTripleCover.has(cell);
             const isFishEndofinDigit = highlights.isFish && highlights.patternDigits.has(digit)
               && highlights.endofins.has(cell);
-            const isFishDigit = isFishVertexDigit || isFishFinDigit;
+            const isFishDigit = isFishVertexDigit || isFishFinDigit
+              || isFishBase || isFishBaseIntersection || isFishCover;
             const isMslsDigit = highlights.isMsls && highlights.mslsCoverAtoms.has(atomKey);
             const isChainDigit = highlights.isChain && highlights.chainMarks.has(atomKey);
             const isChainXorEntryDigit = highlights.isChain && highlights.chainXorEntryMarks.has(atomKey);
@@ -10330,6 +10459,12 @@
            if (isSetDigit) mark.classList.add('set-digit');
            if (isHiddenGhostDigit) mark.classList.add('hidden-ghost-digit');
             if (isFishDigit) mark.classList.add('fish-digit');
+            if (isFishFinDigit) mark.classList.add('fish-fin-digit');
+            if (isFishBase) mark.classList.add('fish-base-digit');
+            if (isFishBaseIntersection) mark.classList.add('fish-base-intersection-digit');
+            if (isFishCover) mark.classList.add('fish-cover-digit');
+            if (isFishDoubleCover) mark.classList.add('fish-cover-double-digit');
+            if (isFishTripleCover) mark.classList.add('fish-cover-triple-digit');
             if (isMslsDigit) mark.classList.add('fish-digit');
             if (isFishEndofinDigit) mark.classList.add('fish-endofin-digit');
             if (isChainDigit) mark.classList.add('chain-digit');
@@ -12749,18 +12884,12 @@
           ERI: 3,
           ALS: 4,
         };
-        const visibleSecondaryTypes = selectedStrongLinkType === 3
-          ? []
-          : (link.secondaryTypes || [])
-            .filter(type => secondaryTypeIndexes[type] === selectedStrongLinkType);
-        const secondary = visibleSecondaryTypes.length
-          ? ` [${visibleSecondaryTypes.join(' / ')}]`
+        const secondaryTypes = [...new Set(link.secondaryTypes || [])];
+        const secondary = secondaryTypes.length
+          ? ` [${secondaryTypes.join(' / ')}]`
           : '';
         const originalTypeName = typeNames[link.linkType] || link.linkTypeName;
-        const displayTypeName = selectedStrongLinkType === 3
-          ? typeNames[3]
-          : originalTypeName;
-        button.textContent = `${displayTypeName}${secondary}: (${link.startingDigits.join('')}) `
+        button.textContent = `${originalTypeName}${secondary}: (${link.startingDigits.join('')}) `
           + `${core.cellGroupName(link.activeCells)} = (${link.linkDigits.join('')}) `
           + `${core.cellGroupName(link.linkedCells)} `
           + `in ${core.sectorGroupName(link.originSector)}`;
@@ -13675,6 +13804,9 @@
         digits: [fish.digit],
         baseSectors: fish.baseSectors,
         coverSectors: fish.coverSectors,
+        fishCells: fish.fishCells || [],
+        baseIntersections: fish.baseIntersections || [],
+        peersOfBaseIntersection: fish.peersOfBaseIntersection || [],
         vertices: fish.vertices || [],
         fins: fish.triggerCells || [],
         endofins: fish.endoFins || [],
@@ -13953,12 +14085,14 @@
           subclass: null,
         };
       }
-      const match = name.match(/^(.*?)(L|M|H)\((\d+)\)\s*-\s*(.+)$/i);
+      // Ordinary AIC names carry L(n)/M(n)/H(n); named ALS/AHS/ALC
+      // variants intentionally omit the numeric designator.
+      const match = name.match(/^(.*?)(L|M|H)(?:\((\d+)\))?\s*-\s*(.+)$/i);
       if (!match) return { family: name, wing: null, rank: null, subclass: null };
 
       const prefix = match[1].trim().replace(/\s*-\s*$/, '');
       const rankType = match[2].toUpperCase();
-      const rank = match[3];
+      const rank = match[3] ? `(${match[3]})` : '';
       const label = match[4].trim();
       const kind = /ring/i.test(label) || chain.isRing ? 'Ring' : 'Wing';
       const designator = prefix ? `${prefix} ${rankType}` : null;
@@ -13968,12 +14102,12 @@
         : structuralSubclass;
       return {
         family: rankType === 'M'
-          ? 'M - Wings | Rings'
+          ? 'M - Wing | Ring'
           : rankType === 'H'
             ? 'Hybrid - Wing | Ring'
             : 'Local - Wing | Ring',
         wing: kind,
-        rank: `${rankType}(${rank})`,
+        rank: `${rankType}${rank}`,
         subclass,
       };
     }
@@ -13989,48 +14123,77 @@
         const names = Array.isArray(step.linkTypeNames)
           ? step.linkTypeNames
           : [step.linkTypeName];
-        const nodeDigits = new Set([
-          ...(step.entry?.digits || []),
-          ...(step.exit?.digits || []),
-        ]);
-        for (const digit of [
-          ...nodeDigits,
+        const chainDigits = [
           step.weakDigit,
           step.weakFromDigit,
           step.weakToDigit,
-        ]) {
+        ].filter(Number.isInteger);
+        for (const digit of chainDigits) {
           if (Number.isInteger(digit)) allDigits.add(digit);
         }
-        const isSingleDigitEri = nodeDigits.size === 1
-          && names.some(name => String(name || '').toUpperCase() === 'ERI');
-        if (!isSingleDigitEri) return 0;
+        const isEri = names.some(name => String(name || '').toUpperCase() === 'ERI');
+        if (!isEri) continue;
+        if (!chainDigits.length) return 0;
         count += 1;
       }
 
-      return allDigits.size === 1 ? count : 0;
+      return count > 0 && allDigits.size === 1 ? count : 0;
     }
 
     function xChainType(chain, eriCount) {
-      const name = String(chain.structureName || '').replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS)\s*-\s*/i, '');
+      const rawName = String(chain.structureName || '');
+      // The core walker keeps generic X-chain names on the record. Resolve
+      // the short named subclass here as well as in the display formatter so
+      // folder membership does not depend on which rendering path ran first.
+      const subclass = /^(?:X-Chain|AIC)$/i.test(rawName)
+        ? openXWingSubclass(chain)
+        : null;
+      const name = String(subclass || rawName)
+        .replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS)\s*-\s*/i, '');
       // X-Wing is filed under the structural Ring folder, but it is not an X-Ring.
       if (/^X-Wing$/i.test(name)) return 'X-Wing';
       if (/^(?:Dual Empty Rectangle|Rec'T Kite|Bridged ERI|Bridged Empty Rectangle|\d+x ERI)$/i.test(name)) {
         return 'Empty Rectangle';
       }
-      if (eriCount > 0) {
+      if (emptyRectangleChain(chain)) {
         return 'Empty Rectangle';
       }
-      if (/^(?:Finned|Sashimi) X-Wing$/i.test(name)) return 'Finned | Sashimi X-Wing';
+      if (/^(?:Finned|Sashimi) X-Wing$/i.test(name)) return name;
       if (/^(?:2-String Kite|Skyscraper|X-Wing)$/i.test(name)) return name;
       return null;
     }
 
+    function emptyRectangleChain(chain) {
+      const steps = chain.steps || [];
+      if (steps.length !== 2) return false;
+      const digits = new Set();
+      let eriCount = 0;
+      for (const step of steps) {
+        for (const digit of [
+          ...(step.entry?.digits || []),
+          ...(step.exit?.digits || []),
+          step.weakDigit,
+        ]) {
+          if (Number.isInteger(digit)) digits.add(digit);
+        }
+        const names = [step.linkTypeName, ...(step.linkTypeNames || [])]
+          .map(name => String(name || '').toUpperCase());
+        if (step.linkType === core.ERI || names.includes('ERI')) eriCount += 1;
+      }
+      return digits.size === 1 && eriCount === 1;
+    }
+
+    function chainNameWithoutAffix(chain) {
+      return String(chain.structureName || '')
+        .replace(/^\s*(?:(?:AIC\s*\+\s*)?(?:ALS|AHS)|ALC)\s*-\s*/i, '');
+    }
+
     function wChainType(chain) {
-      const name = String(chain.structureName || '')
-        .replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS)\s*-\s*/i, '');
+      const name = chainNameWithoutAffix(chain);
       if (/^W-Wing$/i.test(name)) return 'Wing';
       if (/^W-Ring$/i.test(name)) return 'Ring';
       if (/^Transport$/i.test(name)) return 'Transport';
+
       return null;
     }
 
@@ -14041,23 +14204,21 @@
         && step.linkType !== 4
         && String(step.linkTypeName || '').toUpperCase() !== 'ALS';
       return isStrong(steps[0])
-        && steps[1].family === 'ALS'
-        && String(steps[1].linkTypeName || '').toUpperCase() === 'ALS_RCC'
+        && ['ALS', 'AHS'].includes(steps[1].family)
+        && ['ALS_RCC', 'AHS_RCC'].includes(String(steps[1].linkTypeName || '').toUpperCase())
         && isStrong(steps[2])
         ? 'Wing'
         : null;
     }
 
     function strongChainType(chain) {
-      const name = String(chain.structureName || '')
-        .replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS)\s*-\s*/i, '');
+      const name = chainNameWithoutAffix(chain);
       const match = name.match(/^Strong[- ](Wing|Ring)$/i);
       return match ? match[1][0].toUpperCase() + match[1].slice(1).toLowerCase() : null;
     }
 
     function inversionChainType(chain) {
-      const name = String(chain.structureName || '')
-        .replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS)\s*-\s*/i, '');
+      const name = chainNameWithoutAffix(chain);
       return /^i[SWMLH](?:\d+)?-(?:Wing|Ring)$/i.test(name) ? name : null;
     }
 
@@ -14361,8 +14522,29 @@
 
       // Keep the existing structural folder. ERI chains can also belong to
       // Local/M/Hybrid folders, so the same chain may have more than one UI location.
-      if ((primary.family === 'AIC + ALS' && primary.wing) || (primary.wing && primary.rank)) {
+      const genericXFamily = /^X\s*-\s*Chains?$/i.test(String(primary.family || ''))
+        || /^X\s*Chains?$/i.test(String(primary.family || ''));
+      if (!genericXFamily
+        && ((primary.family === 'AIC + ALS' && primary.wing) || (primary.wing && primary.rank))) {
         locations.push(primary);
+      }
+
+      // Named ALS wings/rings also live in the ALS family. Keep the
+      // structural M/H/L folder above as a secondary location, but expose
+      // the same result under Almost Locked Sets so ALS-backed named forms
+      // are grouped with the other ALS techniques.
+      const namedAlsWing = String(chain.structureName || '').match(
+        /^ALS\s*-\s*([LMH])(?:\(\d+\))?\s*-\s*(Wing|Ring)$/i,
+      );
+      if (namedAlsWing) {
+        const rankType = namedAlsWing[1].toUpperCase();
+        const form = namedAlsWing[2][0].toUpperCase() + namedAlsWing[2].slice(1).toLowerCase();
+        locations.push({
+          family: 'Almost Locked Sets',
+          wing: `${rankType} - Wing | Ring`,
+          rank: form,
+          subclass: `ALS - ${rankType}-${form}`,
+        });
       }
 
       const alsInfo = alsOnlyChainInfo(chain) || alsNamedChainInfo(chain);
@@ -14450,7 +14632,7 @@
           ? name.replace(/^Bridged Empty Rectangle$/i, 'Bridged ERI')
           : null;
         locations.push({
-          family: 'X - Chains',
+          family: 'X-Chains',
           wing: xType,
           rank: finnedSashimi
             ? `${finnedSashimi[1][0].toUpperCase()}${finnedSashimi[1].slice(1).toLowerCase()} X-Wing`
@@ -14469,6 +14651,16 @@
                   ? eriSubclass
                   : isEriFamily && eriCount > 0 ? `ERI(${eriCount})` : null,
           ].filter(Boolean),
+        });
+
+        // Named short X-chain forms also get a direct top-level location.
+        // Keep the X-Chains membership above so the same result remains
+        // discoverable from both the specific technique and the family.
+        locations.push({
+          family: xType,
+          wing: null,
+          rank: null,
+          subclass: null,
         });
       }
 
@@ -15165,6 +15357,7 @@
       const alsSteps = (chain?.steps || []).filter(step => step.family === 'ALS');
       if (phase.requireAls && !alsSteps.length) return false;
       if (phase.minDepth != null && Number(chain?.length) < phase.minDepth) return false;
+      if (phase.maxDepth != null && Number(chain?.length) > phase.maxDepth) return false;
       if (phase.singleDigitOnly && chainUniqueDigitCount(chain) !== 1) return false;
       if (phase.genericAicOnly
         && (!/^AIC$/i.test(String(chain?.structureName || '').trim())
@@ -15227,13 +15420,26 @@
     }
 
     function phaseProfile(profile, phase) {
+      const selectedStrongTypes = Array.isArray(profile?.interactiveStrongLinkTypes)
+        ? new Set(profile.interactiveStrongLinkTypes)
+        : null;
+      const phaseStrongTypes = Array.isArray(phase.strongLinkTypes)
+        ? phase.strongLinkTypes
+        : [];
+      const configuredDepth = Number(profile?.interactiveMaxDepth);
       return {
         ...(profile || {}),
-        includeAlsRcc: phase.includeAls,
-        includeAhs: phase.includeAhs === true,
+        includeAlsRcc: phase.includeAls === true
+          && profile?.interactiveIncludeAls !== false,
+        includeAhs: phase.includeAhs === true
+          && profile?.interactiveIncludeAhs !== false,
         ahsMaxCells: phase.ahsMaxCells ?? profile?.ahsMaxCells ?? null,
-        strongLinkTypes: phase.strongLinkTypes,
-        maxDepth: phase.maxDepth,
+        strongLinkTypes: selectedStrongTypes
+          ? phaseStrongTypes.filter(type => selectedStrongTypes.has(type))
+          : phaseStrongTypes,
+        maxDepth: Number.isInteger(configuredDepth)
+          ? Math.min(phase.maxDepth, configuredDepth)
+          : phase.maxDepth,
       };
     }
 
@@ -15247,6 +15453,14 @@
       maxDepth,
       profile,
     ) {
+      const phaseTechniqueOrder = chain => {
+        if (!Array.isArray(phase?.allowedMoveKeys) || !phase.allowedMoveKeys.length) {
+          return moveTieOrder(chain, null);
+        }
+        const keys = chainMoveKeys(chain);
+        const index = phase.allowedMoveKeys.findIndex(key => keys.has(key));
+        return index >= 0 ? index : Number.POSITIVE_INFINITY;
+      };
       let best = null;
       for (let index = 0; index < report.chains.length; index++) {
         const chain = displayChainForUi(report.chains[index]);
@@ -15269,7 +15483,13 @@
           index,
           chain,
           step,
-          priority: solverMovePriority(chain, step, maxDepth, index),
+            // A phase is a conceptual hierarchy. Select its named move order
+            // before comparing link-modified scores, so a later named form
+            // cannot outrank an earlier X-chain/Skyscraper/Kite form.
+            priority: [
+              phaseTechniqueOrder(chain),
+              ...solverMovePriority(chain, step, maxDepth, index),
+            ],
         };
         if (isHigherPriorityMove(candidate, best)) best = candidate;
       }
@@ -15302,6 +15522,8 @@
     }
 
     function chainMoveKeys(chain) {
+      if (barnsTransportChainInfo(chain)) return new Set(['barns-transport']);
+
       const fullName = String(chain?.structureName || '');
       const name = fullName
         .replace(/^\s*(?:AIC\s*\+\s*ALS|ALS|AHS)\s*-\s*/i, '')
@@ -17235,56 +17457,11 @@
       if (profile?.maxRank == null || profile.maxRank >= 160) addMsls('ascendant-msls-family');
       addAhsDofChain('transcendent-ahs-dof-chain-family');
 
-      const phaseRank = phase => {
-        const name = String(phase.name || '').toLowerCase();
-        const exactOrder = {
-          'challenging-xchains': 70,
-          'challenging-transport': 71,
-          'challenging-barns-wxyz': 72,
-          'challenging-xy-chain': 73,
-          'challenging-fish': 74,
-          'irritating-xchains': 80,
-          'irritating-xy': 81,
-          'irritating-transport-wxyz': 82,
-          'irritating-barns-5': 83,
-          'irritating-hidden-xy': 84,
-        };
-        if (Object.prototype.hasOwnProperty.call(exactOrder, name)) {
-          return exactOrder[name];
-        }
-        const order = [
-          ['lulz', 0],
-          ['extremely-easy', 10],
-          ['very-easy', 20],
-          ['modestly-easy', 30],
-          ['easy-', 40],
-          ['moderate-', 50],
-          ['tough-', 60],
-          ['challenging-', 70],
-          ['irritating-', 80],
-          ['frustrating-', 90],
-          ['hard-', 100],
-          ['demanding-', 110],
-          ['expert-', 120],
-          ['brutal-', 130],
-          ['nightmare-', 140],
-          ['abyssal-', 150],
-          ['ascendant-msls-', 160],
-          ['msls-', 160],
-          ['transcendent-ahs-dof-chain-', 170],
-          ['ahs-dof-chain-', 170],
-        ];
-        return order.find(([prefix]) => name.startsWith(prefix))?.[1] ?? 0;
-      };
-
-      // The numeric values are explicit phase ordinals. They are not move
-      // scores: Next/Run-All must walk this list from the beginning after
-      // every applied elimination and return from the first phase that works.
       return phases.filter(phase => {
         if (profile?.maxRank == null) return true;
         return !['chain', 'alc'].includes(phase.kind)
           || profile.maxDepth >= phase.chainPhase.minDepth;
-      }).sort((left, right) => phaseRank(left) - phaseRank(right));
+      });
     }
 
     function solverPhaseAllowsType(phase, enabledTypes, spec = null) {
@@ -18836,11 +19013,19 @@
       const profile = generationTechniqueProfile('Transcendent') || {};
       const configuredDigits = Number(alsDofMaxDigitsEl.value);
       const configuredAuxiliary = Number(alsDofMaxAuxiliaryEl.value);
+      const configuredDepth = Math.min(8, Math.max(2, Number(chainDepthEl.value) || 8));
+      const configuredStrongTypes = chainStrongTypeEls
+        .map((element, index) => element.checked ? index : null)
+        .filter(index => index !== null);
       return {
         ...profile,
         // Run All/Next use the same hierarchy as rating, while the checkboxes
         // still control which techniques are actually enabled interactively.
         moveTypes: [...currentSolverMoveTypes()],
+        interactiveMaxDepth: configuredDepth,
+        interactiveStrongLinkTypes: configuredStrongTypes,
+        interactiveIncludeAls: chainAlsRccEl.checked,
+        interactiveIncludeAhs: chainAhsEl.checked,
         alsMaxDigits: Number.isInteger(configuredDigits)
           ? Math.min(9, Math.max(2, configuredDigits))
           : 5,
@@ -19192,6 +19377,7 @@
           const strongLinkTypes = chainStrongTypeEls
             .map((element, index) => element.checked ? index : null)
             .filter(index => index !== null);
+          const nodeLimits = chainNodeLimitOptions('chain');
           const includeAlmostFish = strongLinkTypes.includes(7);
           strongLinkReport = core.buildStrongLinks(cand, {
             includeAlmostFish,
@@ -20273,6 +20459,7 @@
         try {
           const includeAlsRcc = chainAlsRccEl.checked;
           const includeAhs = chainAhsEl.checked;
+          const nodeLimits = chainNodeLimitOptions('chain');
           const strongLinkTypes = chainStrongTypeEls
             .map((element, index) => element.checked ? index : null)
             .filter(index => index !== null);
@@ -20283,13 +20470,23 @@
               ? { grid: [...(puzzle || [])], ...currentAlmostFishOptions() }
               : {},
           });
-          alsReport = includeAlsRcc ? core.alsConstructor(cand) : null;
+          alsReport = includeAlsRcc ? core.alsConstructor(cand, {
+            ...(nodeLimits.alsMaxSizeDOF == null
+              ? {} : { maxSizeDOF: nodeLimits.alsMaxSizeDOF }),
+            ...(nodeLimits.alsMaxSizeFox == null
+              ? {} : { maxSizeFox: nodeLimits.alsMaxSizeFox }),
+          }).filter(als => nodeLimits.alsMaxCells == null
+            || (als.alsAllCells || []).length <= nodeLimits.alsMaxCells) : null;
           alsLinkReport = includeAlsRcc ? core.buildAlsLinks(cand, {
               alsList: alsReport,
               strictSingleCommon: true,
               maxLinks: 5000,
             }) : null;
-          const ahsList = includeAhs ? core.ahsConstructor(cand, { maxSize: 8, maxSizeFox: 7 }) : null;
+          const ahsList = includeAhs ? core.ahsConstructor(cand, {
+            maxSize: nodeLimits.ahsMaxDigits ?? 8,
+            maxSizeFox: nodeLimits.ahsMaxFox ?? 7,
+          }).filter(ahs => nodeLimits.ahsMaxCells == null
+            || (ahs.ahsAllCells || []).length <= nodeLimits.ahsMaxCells) : null;
           ahsReport = ahsList;
           const ahsLinkSet = includeAhs ? core.buildAhsLinks(cand, {
             ahsList,
@@ -20311,7 +20508,7 @@
             includeAhs,
             includeAls: includeAlsRcc,
             strongLinkTypes,
-            maxDepth: Number(chainDepthEl.value) || 6,
+            maxDepth: Math.min(8, Math.max(2, Number(chainDepthEl.value) || 6)),
             maxChains: 5000,
             maxResultAttempts: 100000,
             maxResultAttemptsPerStart: 5000,

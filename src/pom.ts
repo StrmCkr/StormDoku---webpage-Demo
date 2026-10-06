@@ -42,6 +42,9 @@ export interface PomOmissionFish {
   coverSectors: number[];
   cells: number[];
   triggerCells: number[];
+  fishCells?: number[];
+  baseIntersections?: number[];
+  peersOfBaseIntersection?: number[];
   overcovered: number[];
   triCovered: number[];
   endoFins: number[];
@@ -695,6 +698,10 @@ function omissionFishEliminations(
 
   return {
     cells: activeCandidateEliminations(cand, digit, setUnion(...parts)),
+      baseIntersections: uniqueSorted([...baseSaved.baseIntersections]),
+      peersOfBaseIntersection: uniqueSorted([
+        ...peerCandidateCellsForAll(cand, digit, baseSaved.baseIntersections),
+      ]),
     overcovered: uniqueSorted(overcovered),
     triCovered: uniqueSorted(threeCovers),
     endoFins: uniqueSorted(endoFins),
@@ -736,6 +743,11 @@ function processOmissionFishCover(
     baseSectors: uniqueSorted(baseSectors),
     coverSectors: uniqueSorted(coverSectors),
     cells: details.cells,
+      fishCells: uniqueSorted([
+        ...setIntersection(baseSaved.allUsedCells, coverSaved.allUsedCells),
+      ]),
+      baseIntersections: details.baseIntersections,
+      peersOfBaseIntersection: details.peersOfBaseIntersection,
     triggerCells: uniqueSorted(setIntersection(triggerCells, coverSaved.allUsedCells)),
     overcovered: details.overcovered,
     triCovered: details.triCovered,
