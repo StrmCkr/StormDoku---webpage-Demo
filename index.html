@@ -3973,7 +3973,7 @@
     <div class="header-brand">
       <h1>StormDoku: on-line | off-line</h1>
       <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo for regular Sudoku 9x9 grids.</p>
-      <p class="app-meta">Alpha v0.6.04 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <p class="app-meta">Alpha v0.6.06 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
     </div>
   </header>
 
@@ -5271,16 +5271,6 @@
             <div id="chainResults" class="pom-results">No chain search has been run.</div>
           </div>
         </details>
-        <details class="pom-panel" id="pomPanel">
-          <summary>
-            <h2>Pattern Overlay Method</h2>
-            <button id="pomCheck" class="secondary search-action" type="button"
-              title="Run the Pattern Overlay Method check">Check</button>
-          </summary>
-          <div class="pom-body">
-            <div id="pomResults" class="pom-results">No POM check has been run.</div>
-          </div>
-        </details>
         <details class="pom-panel" id="chromaticGraphPanel">
           <summary>
             <h2>Non-Colourable Chromatic Graphs</h2>
@@ -5299,6 +5289,16 @@
           </summary>
           <div class="pom-body">
             <div id="chromaticAlsGraphResults" class="pom-results">No ALS chromatic graph search has been run.</div>
+          </div>
+        </details>
+        <details class="pom-panel" id="pomPanel">
+          <summary>
+            <h2>Pattern Overlay Method</h2>
+            <button id="pomCheck" class="secondary search-action" type="button"
+              title="Run the Pattern Overlay Method check">Check</button>
+          </summary>
+          <div class="pom-body">
+            <div id="pomResults" class="pom-results">No POM check has been run.</div>
           </div>
         </details>
         <details class="pom-panel" id="retiredLegacyPanel">
@@ -5806,7 +5806,7 @@
         // Keep the URL relative for file:// copies. Chrome can reject a
         // file-origin URL object even though the same classic worker loads
         // correctly from the local server.
-      const workerPath = './src/search-worker.js?v=20261006-4';
+      const workerPath = './src/search-worker.js?v=20261007-1';
         const workerUrl = document.baseURI.startsWith('file:')
           ? workerPath
           : new URL(workerPath, document.baseURI);
@@ -17931,9 +17931,14 @@
         if (!solverPhaseAllowsType(phase, enabledTypes, spec)) continue;
         const step = spec.kind === 'fish'
           ? fishPhaseStep(candidateGrid, fixedGrid, spec, enabledTypes, profile)?.step
-          : core.subsetOrFishStep(candidateGrid, {
-                enabledTechniques: new Set([spec.type]),
-              });
+          : spec.type === 'box-line'
+            // Box-line reduction is a hierarchy phase in its own right. Keep
+            // it out of the generic subset dispatcher so a subset-size-1
+            // result cannot consume or hide the BLR pass.
+            ? core.boxLineStep(candidateGrid)
+            : core.subsetOrFishStep(candidateGrid, {
+                  enabledTechniques: new Set([spec.type]),
+                });
         if (!step) continue;
         step.rating = ratingForStep(step);
         if (profile?.maxRank !== undefined && step.rating.rank > profile.maxRank) continue;
@@ -17994,6 +17999,7 @@
           fixedGrid: [...fixedGrid],
           moveTypes: [spec.type],
           subsetOnly: true,
+          directType: spec.type === 'box-line' ? 'box-line' : null,
         });
         step = result;
         if (!step) continue;
@@ -19463,6 +19469,15 @@
         solution,
         profile,
       );
+      // Keep the cheap hierarchy phases synchronous and authoritative. A
+      // worker that starts with a stale/empty subset result must not expose a
+      // size-2 fish before singles, BLR, or size-2 subsets have been checked.
+      for (const phase of solverPhasePlan(profile)) {
+        if (phase.kind !== 'direct') break;
+        if (phase.name === 'very-easy-fish') break;
+        const direct = directSolverPhaseStep(cand, puzzle, phase, profile);
+        if (direct?.step) return direct;
+      }
       // Modestly Easy is a strict queue: exhaust the reduced depth-2
       // type-0-to-3 AIC pass before the worker is allowed to consider fish.
       // Keeping this preflight synchronous also makes the ordering identical

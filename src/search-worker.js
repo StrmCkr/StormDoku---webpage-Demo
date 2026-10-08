@@ -189,6 +189,9 @@ function reportError(id, error) {
 }
 
 function runSimple(payload) {
+  if (payload.directType === 'box-line') {
+    return core.boxLineStep(payload.candidateGrid);
+  }
   if (payload.subsetOnly) {
     const enabledTechniques = new Set(payload.moveTypes || []);
     return core.subsetOrFishStep(payload.candidateGrid, { enabledTechniques });
