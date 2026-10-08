@@ -1238,15 +1238,15 @@
       border-radius: 2px;
     }
 
-    .digit-focus-1 { --digit-focus-color: #b45309; }
-    .digit-focus-2 { --digit-focus-color: #0f766e; }
-    .digit-focus-3 { --digit-focus-color: #7c3aed; }
-    .digit-focus-4 { --digit-focus-color: #115e59; }
-    .digit-focus-5 { --digit-focus-color: #a16207; }
-    .digit-focus-6 { --digit-focus-color: #c2410c; }
-    .digit-focus-7 { --digit-focus-color: #15803d; }
-    .digit-focus-8 { --digit-focus-color: #a21caf; }
-    .digit-focus-9 { --digit-focus-color: #374151; }
+    .digit-focus-1 { --digit-focus-color: #f59e0b; }
+    .digit-focus-2 { --digit-focus-color: #92400e; }
+    .digit-focus-3 { --digit-focus-color: #06b6d4; }
+    .digit-focus-4 { --digit-focus-color: #16a34a; }
+    .digit-focus-5 { --digit-focus-color: #c026d3; }
+    .digit-focus-6 { --digit-focus-color: #4338ca; }
+    .digit-focus-7 { --digit-focus-color: #ff6d00; }
+    .digit-focus-8 { --digit-focus-color: #7c3aed; }
+    .digit-focus-9 { --digit-focus-color: #db2777; }
 
     .grid-view-label {
       color: var(--muted);
@@ -1557,6 +1557,7 @@
     }
 
     .vantage-position {
+      position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1641,9 +1642,9 @@
 
     .vantage-position.chain-weak {
       color: #1d4ed8;
-      background: rgba(191, 219, 254, .5);
-      box-shadow: inset 0 0 0 2px rgba(37, 99, 235, .58);
-      border-radius: 2px;
+      background: transparent;
+      box-shadow: none;
+      border-radius: 0;
       font-weight: 900;
     }
 
@@ -1906,8 +1907,8 @@
 
     .mark.chain-weak-digit {
       color: #1d4ed8;
-      border-radius: 4px;
-      box-shadow: inset 0 0 0 2px rgba(37, 99, 235, .58);
+      border-radius: 0;
+      box-shadow: none;
     }
 
     .mark.chain-als-digit {
@@ -1930,6 +1931,16 @@
       box-shadow: inset 0 0 0 1px rgba(5, 150, 105, .48);
       border-radius: 4px;
       font-weight: 900;
+    }
+
+    /* A hidden candidate must never leave an endpoint badge behind. */
+    .mark.chain-start-digit:empty,
+    .mark.chain-end-digit:empty,
+    .mark.chain-weak-digit:empty {
+      color: inherit;
+      background: transparent;
+      border: 0;
+      box-shadow: none;
     }
 
     .mark.chain-als-digit.chain-start-digit,
@@ -2116,6 +2127,23 @@
       z-index: 5;
     }
 
+    .vantage-position.elim {
+      text-decoration: none;
+    }
+
+    .vantage-position.elim::after {
+      content: "";
+      position: absolute;
+      left: 8%;
+      right: 8%;
+      top: 50%;
+      border-top: 2px solid var(--red);
+      transform: rotate(-35deg);
+      transform-origin: center;
+      pointer-events: none;
+      z-index: 6;
+    }
+
     .chain-overlay {
       position: absolute;
       inset: 0;
@@ -2164,7 +2192,7 @@
       stroke-width: .85;
       stroke-dasharray: 2.5 3.5;
       fill: none;
-      stroke-linecap: round;
+      stroke-linecap: butt;
       stroke-linejoin: round;
     }
 
@@ -2483,6 +2511,39 @@
       line-height: 1;
     }
 
+    #solutionStepsPanel > summary {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      grid-template-rows: auto auto;
+      align-items: center;
+    }
+
+    #solutionStepsPanel > summary h2 {
+      grid-column: 1;
+      grid-row: 1;
+      min-width: max-content;
+    }
+
+    #solutionStepsPanel > summary .solution-steps-preview {
+      grid-column: 2;
+      grid-row: 1;
+      width: 100%;
+    }
+
+    #solutionStepsPanel > summary .solution-summary-actions {
+      grid-column: 1 / 4;
+      grid-row: 2;
+      min-width: 0;
+      margin-left: 0;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    #solutionStepsPanel > summary::after {
+      grid-column: 3;
+      grid-row: 1;
+    }
+
     .solution-steps .log:empty::before {
       content: "No applied steps yet.";
       display: block;
@@ -2755,6 +2816,32 @@
     @media (max-width: 620px) {
       .toy-automorph-catalog {
         grid-template-columns: 1fr;
+      }
+
+      #solutionStepsPanel > summary {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-rows: auto auto auto;
+      }
+
+      #solutionStepsPanel > summary h2 {
+        grid-column: 1;
+        grid-row: 1;
+      }
+
+      #solutionStepsPanel > summary::after {
+        grid-column: 2;
+        grid-row: 1;
+      }
+
+      #solutionStepsPanel > summary .solution-steps-preview {
+        grid-column: 1 / 3;
+        grid-row: 2;
+      }
+
+      #solutionStepsPanel > summary .solution-summary-actions {
+        grid-column: 1 / 3;
+        grid-row: 3;
+        justify-content: flex-start;
       }
     }
 
@@ -3756,6 +3843,13 @@
       font-weight: 900;
     }
 
+    .grid-row-title .grid-view-selector {
+  color: #111827;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+    }
+
     @media (max-width: 1100px) {
       .controls-workspace-panel {
         grid-template-columns: minmax(0, 1fr) minmax(360px, 1fr);
@@ -3973,7 +4067,7 @@
     <div class="header-brand">
       <h1>StormDoku: on-line | off-line</h1>
       <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo for regular Sudoku 9x9 grids.</p>
-      <p class="app-meta">Alpha v0.6.06 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <p class="app-meta">Alpha v0.6.22 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
     </div>
   </header>
 
@@ -4308,9 +4402,9 @@
                   <li><strong>6c. Moderate XY-Chains.</strong> <span>Depth 3, type 4 only, producing XY-Wing/Ring forms.</span></li><li><strong>6d. Moderate fish.</strong> <span>Franken and Mutant 3x3+K, K=0, 1, 2.</span></li>
                   <li><strong>7. Tough.</strong> <span>Hidden Quad, Naked Quad, then basic Jellyfish.</span></li>
                   <li><strong>8. Challenging.</strong> <span>Execute in order: X-Chains using strong-link types 0-3 at depth 4; B.A.R.N.S. transport; B.A.R.N.S./WXYZ size 4; XY-Chains using type 4 only at depth 4; then 4x4 n×n+k Franken/Mutant fish. Stop at the first phase with a valid move.</span></li>
-                  <li><strong>9. Irritating.</strong> <span>In order: depth-5+ X/ERI chains using types 0-3; type-4 XY-Chains of any length with remote pairs; WXYZ transport; B.A.R.N.S. size 5; depth-5+ hidden XY-Chains with hidden remote pairs; then 5x5 Franken/Mutant fish, both off by default.</span></li>
+                  <li><strong>9. Irritating.</strong> <span>In order: depth-5+ X/ERI chains using types 0-3; type-4 XY-Chains of any length with remote pairs; WXYZ transport; B.A.R.N.S. size 5; then 5x5 Franken/Mutant fish, both off by default. Hidden XY classification is deferred to the later AIC stage.</span></li>
                   <li><strong>10. Frustrating.</strong> <span>Named ALS Wings/Rings, WXYZ transport, W-transport, and size-6 subsets/fish, with the requested depth/type limits.</span></li>
-                  <li><strong>11. Hard.</strong> <span>Full ALS-XZ, AHS-XZ, and ALC-XZ at depth 2; size-7 subsets and fish remain off by default.</span></li>
+                  <li><strong>11. Hard.</strong> <span>Full ALS-XZ, AHS-XZ, and ALC-XZ at depth 2; then Hidden XY-Chain and Remote Pair depth 4 followed by AIC depth 4; size-7 subsets and fish remain off by default.</span></li>
                   <li><strong>12. Demanding.</strong> <span>Named ALS/AHS/ALC Wings and Rings, Transport ALS-XZ, Transport AHS-XZ, Transport ALC-XZ, plus ALS-XY, AHS-XY, and ALC-XY at depth 3.</span></li>
                   <li><strong>13. Expert.</strong> <span>Generic multi-digit AIC depth 5+ with strong-link types 0-4, followed by Transport ALS-XY, Transport AHS-XY, and Transport ALC-XY; size-9 subsets remain off by default.</span></li>
                   <li><strong>14. Brutal.</strong> <span>Full-scope ALS-Chains, AHS-Chains, and ALC-Chains beyond depth 3.</span></li>
@@ -7976,6 +8070,13 @@
       const family = step.family || '';
       const typeName = String(step.linkTypeName || '').toUpperCase();
       const linkType = Number(step.linkType);
+      const moduleSubsets = chainModuleSubsets(step.module);
+      const isBivalentCellModule = typeName === 'ALS_RCC'
+        && moduleSubsets.length === 2
+        && moduleSubsets.every(subset =>
+          (subset.cells || []).length === 1
+          && (subset.digits || []).length === 2);
+      if (isBivalentCellModule) return false;
       return family === 'ALS'
         || typeName === 'ALS'
         || typeName.startsWith('ALS_')
@@ -8219,9 +8320,6 @@
         }
       }
 
-      if (!best && (forcedDigit != null || toDigit != null)) {
-        return vantageClosestAnchorPair(fromSide, toSide);
-      }
       return best;
     }
 
@@ -8380,7 +8478,6 @@
         }
       }
 
-      if (!best && (forcedDigit != null || toDigit != null)) return closestAnchorPair(fromSide, toSide);
       return best;
     }
 
@@ -8671,6 +8768,9 @@
       svg.setAttribute('class', 'chain-overlay');
       svg.setAttribute('viewBox', '0 0 100 100');
       svg.setAttribute('aria-hidden', 'true');
+      const isPureXyChain = (chain.steps || []).length > 0
+        && (chain.steps || []).every(step =>
+          step.family === 'SL' && Number(step.linkType) === 4);
 
       if (chain.alcXz) {
         const { als, ahs, contacts } = chain.alcXz;
@@ -8714,7 +8814,7 @@
       for (let index = 0; index < chain.steps.length; index++) {
         const step = chain.steps[index];
         drawAlmostFishOverlay(svg, step);
-        if (!isAlsVisualStep(step)) {
+        if (!isAlsVisualStep(step) && !isPureXyChain) {
           drawGroupedSideDigitBoxes(
             svg,
             step.entry,
@@ -10128,7 +10228,10 @@
       const fishDoubleCover = new Set(activeStep?.overcovered || []);
       const fishTripleCover = new Set(activeStep?.triCovered || []);
       const isFish = ['fish', 'pointing', 'claiming'].includes(activeStep?.tech);
-      const isSubset = !!activeStep && !isFish && !chromaticRecord;
+      const isSubset = !!activeStep
+        && activeStep.tech !== 'chain'
+        && !isFish
+        && !chromaticRecord;
       const isHiddenSubset = !!activeStep && activeStep.tech.startsWith('hidden-');
 
       return {
@@ -10372,7 +10475,9 @@
               mark.classList.add('candidate-size-filter');
               applyCandidateSizeFilterStyle(mark, highlights.candidateSizeFilterStyle);
             }
-            if (isElim && !isThreeDMedusaElim && !isMultiColoringElim) mark.classList.add('elim-digit');
+            if (isElim && !isThreeDMedusaElim && !isMultiColoringElim) {
+              mark.classList.add('elim-digit', 'elim');
+            }
             if (isFishVertex || isFishFin) mark.classList.add('fish');
             if (isMslsDigit) mark.classList.add('fish');
             if (isFishEndofin) mark.classList.add('fish-endofin');
@@ -10604,7 +10709,7 @@
               !isElim;
 
             mark.textContent = markFor(cell, digit)
-              || (isElim || (hasCandidate && (isFishDigit || isFishEndofinDigit || isChainDigit || isStrongLinkDigit
+              || (isElim || (hasCandidate && (isFishDigit || isFishEndofinDigit || isChainDigit || isChainWeakDigit || isStrongLinkDigit
                 || isAlsRecordDigit || isAlsDofDigit || isAhsRecordDigit || isAhsDofRecordDigit || isDigitFocus || isCandidateSizeFilter
                 || isSimpleColoringDigit || isMultiColoringDigit || isThreeDMedusaDigit || isMslsDigit
                 || isChromaticDigit)) ? digit : '');
@@ -10625,11 +10730,12 @@
             if (isMslsDigit) mark.classList.add('fish-digit');
             if (isFishEndofinDigit) mark.classList.add('fish-endofin-digit');
             if (isChromaticDigit) mark.classList.add('chromatic-digit', `chromatic-digit-${digit}`);
-            if (isChainDigit) mark.classList.add('chain-digit');
-            if (isChainXorEntryDigit) mark.classList.add('chain-xor-entry-digit');
-            if (isChainXorExitDigit) mark.classList.add('chain-xor-exit-digit');
-            if (isChainWeakDigit) mark.classList.add('chain-weak-digit');
-            if (isChainAlsDigit) {
+            if (isChainDigit && hasCandidate) mark.classList.add('chain-digit');
+            if (isChainXorEntryDigit && hasCandidate) mark.classList.add('chain-xor-entry-digit');
+            if (isChainXorExitDigit && hasCandidate) mark.classList.add('chain-xor-exit-digit');
+            // Weak links are represented by the dashed connector. Do not add
+            // a second blue badge to the candidate mini-grid.
+            if (isChainAlsDigit && hasCandidate) {
               mark.classList.add('chain-als-digit');
               applyAlsColorVars(mark, highlights.chainAlsStyleByAtom.get(atomKey));
             }
@@ -10649,11 +10755,11 @@
               mark.classList.add('ahs-record-digit');
               applyAhsColorVars(mark, highlights.ahsDofRecordColor);
             }
-            if (isChainStartDigit) mark.classList.add('chain-start-digit');
-            if (isChainEndDigit) mark.classList.add('chain-end-digit');
-            if (isStrongLinkDigit) mark.classList.add('strong-link-digit');
-            if (isStrongLinkStartDigit) mark.classList.add('strong-link-start-digit');
-            if (isStrongLinkEndDigit) mark.classList.add('strong-link-end-digit');
+            if (isChainStartDigit && hasCandidate) mark.classList.add('chain-start-digit');
+            if (isChainEndDigit && hasCandidate) mark.classList.add('chain-end-digit');
+            if (isStrongLinkDigit && hasCandidate) mark.classList.add('strong-link-digit');
+            if (isStrongLinkStartDigit && hasCandidate) mark.classList.add('strong-link-start-digit');
+            if (isStrongLinkEndDigit && hasCandidate) mark.classList.add('strong-link-end-digit');
             if (isSimpleColoringDigit) {
               mark.classList.add('simple-colouring-digit', 'simple-colouring-' + simpleColoringRole + '-digit');
             }
@@ -11231,12 +11337,12 @@
       addAt(60, 'hidden-quad', 'naked-quad', 'jellyfish');
       addAt(70, '4x4+k-fish');
       addAt(50, 'xy-chain');
-      addAt(80, 'remote-pair', 'hidden-xy-chain', 'hidden-remote-pair');
       addAt(70, 'barns-transport');
       addAt(90, 'l2-wing', 'l3-wing', 's-wing', 'm2-wing', 'm3-wing',
         'h1-wing', 'h2-wing', 'h3-wing', 'w-wing', 'strong-wing', 'inversion',
         'barns-transport');
       addAt(100, 'als-xz', 'ahs-xz', 'alc-xz');
+      addAt(100, 'remote-pair', 'hidden-xy-chain', 'hidden-remote-pair');
       addAt(110, 'als-named', 'ahs-named', 'alc-named',
         't-als-xz', 't-ahs-xz', 't-alc-xz', 'als-xy', 'ahs-xy', 'alc-xy');
       addAt(120, 't-als-xy', 't-ahs-xy', 't-alc-xy', 'aic-als');
@@ -11398,11 +11504,10 @@
           ['Hidden Quintuple (off by default)', '5'],
           ['Naked Quintuple (off by default)', '5'],
           ['Basic 5x5 Fish (off by default)', '5'],
-          ['X/ERI/Remote-Pair chains above four nodes', '5'],
+          ['X/ERI chains above four nodes', '5'],
           ['XY-Chains of any length plus remote pairs', '5 + link modifiers'],
           ['Transport WXYZ Wings/Rings', '5 + link modifiers'],
           ['B.A.R.N.S. size 5, VWXYZ Wings/Rings', '5 + ALS_RCC modifiers'],
-          ['Hidden XY/Remote-Pair chains above four nodes', '5'],
           ['Franken/Mutant 5x5 Fish K0 (off by default)', '5.125'],
         ],
       },
@@ -11432,6 +11537,7 @@
           ['ALS-XZ, full engine, depth 2', '7 + link / ALS_RCC modifiers'],
           ['AHS-XZ, full engine, depth 2', '7 + link / AHS_RCC modifiers'],
           ['ALC-XZ, full engine, depth 2', '7.5 + link / ALS_RCC / AHS_RCC modifiers'],
+          ['Hidden XY-Chain and Remote Pair depth 4', '7.5 + link modifiers'],
           ['AIC depth 4 (including Inversion Wings/Rings)', '7.6 + link modifiers', null, 'Inversion applies to qualifying depth-4 AIC constructions: strong and weak inference directions are exchanged and the chain is completed for the named iXY, iL, iM, iS, iH, or iW Wing/Ring form. It is a classification of the AIC result, not a separate search.'],
 
           ['Franken 7x7 Fish K0', '7.125'],
@@ -11716,12 +11822,6 @@
         return define(ratingCategoryForValue(value), value,
           `XY-${chain.isRing ? 'Ring' : 'Wing'}`);
       }
-      if (sizeOne?.allBivalve && sizeOne.nodeCount === 4 && !sizeOne.remotePair) {
-        const value = chainMathScore(4, chain, 4, 2);
-        return define(ratingCategoryForValue(value), value,
-          chain.isRing ? 'XY-Ring' : 'WXYZ Wing');
-      }
-
       const barns = barnsChainInfo(chain);
       const barnsTransport = barnsTransportChainInfo(chain);
       if (barnsTransport) {
@@ -17359,18 +17459,6 @@
             'dual-empty-rectangle', 'rect-kite', 'bridged-eri', 'eri-chain',
           ],
         });
-        addChain('irritating-hidden-xy', {
-          name: 'hidden-xy-chain-depth-5-plus',
-          includeAls: false,
-          includeAhs: false,
-          strongLinkTypes: [0, 1, 2, 3],
-          maxDepth: 8,
-          minDepth: 5,
-          requireAls: false,
-          requireMixed: false,
-          family: null,
-          allowedMoveKeys: ['hidden-xy-chain', 'hidden-remote-pair'],
-        });
         addChain('irritating-xy', {
           name: 'xy-chain-depth-3-plus-type-4',
           includeAls: false,
@@ -17528,7 +17616,19 @@
           requiredTypes: ['chains'],
         });
 
-
+        addChain('hard-hidden-xy-depth-4', {
+          name: 'hidden-xy-chain-depth-4',
+          includeAls: false,
+          includeAhs: false,
+          strongLinkTypes: [0, 1],
+          maxDepth: 4,
+          minDepth: 4,
+          requireAls: false,
+          requireMixed: false,
+          family: null,
+          allowedMoveKeys: ['hidden-xy-chain', 'hidden-remote-pair', 'remote-pair'],
+          requiredTypes: ['chains'],
+        });
         addChain('hard-aic-depth-4', {
           name: 'aic-depth-4',
           includeAls: false,
