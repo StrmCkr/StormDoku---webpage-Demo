@@ -545,14 +545,30 @@
     const direction = reverse
       ? (view.forward ? 'R' : 'F')
       : view.direction;
+    const isEriVariant = view.node.family === 'SL'
+      && (view.node.linkType === core.ERI
+        || view.node.linkTypeName === 'ERI'
+        || (view.node.linkTypeNames || []).includes('ERI'));
+    const semanticSide = side => isEriVariant
+      ? `ERI|${side.digits.join('')}|${side.cells.join(',')}`
+      : sideKey(side);
+
+    if (isEriVariant) {
+      return [
+        view.node.family,
+        core.ERI,
+        'ERI',
+        [semanticSide(entry), semanticSide(exit)].sort().join('<>'),
+      ].join('>');
+    }
 
     return [
       view.node.family,
-      view.node.linkType,
-      view.node.linkTypeName,
+      isEriVariant ? core.ERI : view.node.linkType,
+      isEriVariant ? 'ERI' : view.node.linkTypeName,
       direction,
-      sideKey(entry),
-      sideKey(exit),
+      semanticSide(entry),
+      semanticSide(exit),
     ].join('>');
   }
 
@@ -1882,6 +1898,26 @@
 
   function publicStep(step) {
     const module = orientedModule(step.view);
+    const raw = step.view.node.raw;
+    const secondaryEri = step.view.node.family === 'SL'
+      && Array.isArray(raw.secondaryTypes)
+      && raw.secondaryTypes.includes('ERI')
+      && raw.secondaryXorConstruction;
+    const entry = publicSide(step.view.entry);
+    const exit = publicSide(step.view.exit);
+    if (secondaryEri) {
+      const construction = raw.secondaryXorConstruction;
+      const entryCells = step.view.forward
+        ? construction.activeCells
+        : construction.linkedCells;
+      const exitCells = step.view.forward
+        ? construction.linkedCells
+        : construction.activeCells;
+      if (entryCells?.length && exitCells?.length) {
+        entry.cells = [...entryCells];
+        exit.cells = [...exitCells];
+      }
+    }
     return {
       family: step.view.node.family,
       linkId: step.view.node.id,
@@ -1895,8 +1931,8 @@
       direction: step.view.direction,
       entrySide: step.view.entry.name,
       exitSide: step.view.exit.name,
-      entry: publicSide(step.view.entry),
-      exit: publicSide(step.view.exit),
+      entry,
+      exit,
       weakIn: step.weakIn,
       weakInName: step.weakIn == null ? null : WEAK_TYPE_NAMES[step.weakIn],
       weakDigit: step.weakDigit,
@@ -2481,7 +2517,6 @@
       const backward = viewSemanticKey(view, true);
       return forward <= backward ? forward : backward;
     };
-
     if (!reverse) {
       parts.push(undirectedViewKey(steps[0].view));
       for (let index = 1; index < steps.length; index++) {

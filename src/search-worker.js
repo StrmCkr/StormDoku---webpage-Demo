@@ -15,7 +15,7 @@ importScripts(
   './subset-report-core.js?v=20260928-2',
   './mini-sectors-core.js?v=20260928-1',
   './strong-link-core.js?v=20261006-2',
-  './chain-core.js?v=20261006-12',
+  './chain-core.js?v=20261006-18',
   './alc-core.js?v=20261004-1',
   './ahs-xy-core.js?v=20261001-4',
   './ahs-dof-core.js?v=20261002-1',

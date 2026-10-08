@@ -1439,6 +1439,53 @@
       text-shadow: -1px 0 #111827, 0 1px #111827, 1px 0 #111827, 0 -1px #111827;
     }
 
+    .cell.chromatic-core-cell {
+      background: rgba(191, 219, 254, .58);
+      box-shadow: inset 0 0 0 2px #2563eb;
+    }
+
+    .cell.chromatic-guardian-cell {
+      background: rgba(254, 215, 170, .7);
+      box-shadow: inset 0 0 0 2px #c2410c;
+    }
+
+    .mark.chromatic-digit {
+      border-radius: 3px;
+      font-weight: 900;
+      text-shadow: none;
+    }
+
+    .mark.chromatic-digit-1 { --chromatic-digit-ink: #1d4ed8; --chromatic-digit-bg: rgba(191, 219, 254, .72); color: var(--chromatic-digit-ink); background: var(--chromatic-digit-bg); }
+    .mark.chromatic-digit-2 { --chromatic-digit-ink: #047857; --chromatic-digit-bg: rgba(167, 243, 208, .72); color: var(--chromatic-digit-ink); background: var(--chromatic-digit-bg); }
+    .mark.chromatic-digit-3 { --chromatic-digit-ink: #a16207; --chromatic-digit-bg: rgba(254, 249, 195, .82); color: var(--chromatic-digit-ink); background: var(--chromatic-digit-bg); }
+    .mark.chromatic-digit-4 { --chromatic-digit-ink: #7e22ce; --chromatic-digit-bg: rgba(233, 213, 255, .78); color: var(--chromatic-digit-ink); background: var(--chromatic-digit-bg); }
+    .mark.chromatic-digit-5 { --chromatic-digit-ink: #c2410c; --chromatic-digit-bg: rgba(255, 237, 213, .82); color: var(--chromatic-digit-ink); background: var(--chromatic-digit-bg); }
+    .mark.chromatic-digit-6 { --chromatic-digit-ink: #0891b2; --chromatic-digit-bg: rgba(207, 250, 254, .82); color: var(--chromatic-digit-ink); background: var(--chromatic-digit-bg); }
+    .mark.chromatic-digit-7 { --chromatic-digit-ink: #be185d; --chromatic-digit-bg: rgba(251, 207, 232, .78); color: var(--chromatic-digit-ink); background: var(--chromatic-digit-bg); }
+    .mark.chromatic-digit-8 { --chromatic-digit-ink: #4338ca; --chromatic-digit-bg: rgba(224, 231, 255, .82); color: var(--chromatic-digit-ink); background: var(--chromatic-digit-bg); }
+    .mark.chromatic-digit-9 { --chromatic-digit-ink: #166534; --chromatic-digit-bg: rgba(220, 252, 231, .82); color: var(--chromatic-digit-ink); background: var(--chromatic-digit-bg); }
+
+    .mark.chromatic-digit.elim-digit {
+      color: var(--chromatic-digit-ink) !important;
+      background: var(--chromatic-digit-bg) !important;
+      border-color: var(--chromatic-digit-ink) !important;
+      box-shadow: none !important;
+      text-decoration: none !important;
+      z-index: 7;
+    }
+
+    .mark.chromatic-digit.elim-digit::after {
+      content: "";
+      position: absolute;
+      left: 10%;
+      right: 10%;
+      top: 50%;
+      border-top: 2px solid var(--red);
+      transform: rotate(-28deg);
+      pointer-events: none;
+      z-index: 8;
+    }
+
     .cell.player-selected {
       outline: 3px solid #f59e0b;
       outline-offset: -3px;
@@ -3926,7 +3973,7 @@
     <div class="header-brand">
       <h1>StormDoku: on-line | off-line</h1>
       <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo for regular Sudoku 9x9 grids.</p>
-      <p class="app-meta">Alpha v0.6.02 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <p class="app-meta">Alpha v0.6.04 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
     </div>
   </header>
 
@@ -4027,6 +4074,26 @@
                 <div class="example-item">
               <button class="secondary example-load" type="button" data-example-puzzle="85..7.269.7.5.934.3..264758.2764..351.8.3.6.7..6.21894485316..276149....29385..1.">Lulz grid</button>
               <code class="example-puzzle">85..7.269.7.5.934.3..264758.2764..351.8.3.6.7..6.21894485316..276149....29385..1.</code>
+            </div>
+                <div class="example-item">
+              <button class="secondary example-load" type="button" data-example-key="non-colourable-chromatic">Non colourable chromatic graphs</button>
+              <code class="example-puzzle">Candidate grid: 123 / 456789</code>
+            </div>
+                <div class="example-item">
+              <button class="secondary example-load" type="button" data-example-puzzle="........1.....2.3...4.15.......346...47..8.1.6.31.78...78...1.63...8..744.67.138.">Chromatic Type 2 - Same digit 1</button>
+              <code class="example-puzzle">........1.....2.3...4.15.......346...47..8.1.6.31.78...78...1.63...8..744.67.138.</code>
+            </div>
+                <div class="example-item">
+              <button class="secondary example-load" type="button" data-example-puzzle=".......12.....13....4.....5.3..647...6837...14.71.8....43.16...68.74.1.37..8.3.6.">Chromatic Type 2 - Same digit 2</button>
+              <code class="example-puzzle">.......12.....13....4.....5.3..647...6837...14.71.8....43.16...68.74.1.37..8.3.6.</code>
+            </div>
+                <div class="example-item">
+              <button class="secondary example-load" type="button" data-example-puzzle="...........1..2.34..2.1356..17.86..3.6.2.1.8.2.873.6...7..28...12.36..7.8.61.73..">Chromatic Type 2 - Same digit 3</button>
+              <code class="example-puzzle">...........1..2.34..2.1356..17.86..3.6.2.1.8.2.873.6...7..28...12.36..7.8.61.73..</code>
+            </div>
+                <div class="example-item">
+              <button class="secondary example-load" type="button" data-example-puzzle="123000709000700230000200045230071006019620070000900000301090000072360000960100300">Chromatic Type 2A +x Guardians</button>
+              <code class="example-puzzle">123000709000700230000200045230071006019620070000900000301090000072360000960100300</code>
             </div>
               </div>
             </details>
@@ -4188,6 +4255,10 @@
             popovertarget="mslsSettingsPopover" popovertargetaction="toggle">
             MSLS
           </button>
+          <button id="chromaticSettingsButton" class="secondary" type="button"
+            popovertarget="chromaticSettingsPopover" popovertargetaction="toggle">
+            Chromatic
+          </button>
           <button id="difficultySettingsButton" class="secondary" type="button"
             popovertarget="difficultySettingsPopover" popovertargetaction="toggle">
             Difficulty
@@ -4281,6 +4352,26 @@
           <p class="difficulty-math-note">The solver follows the phases above. It selects the lowest final score only among valid moves in the current phase; ties use that phase's item order.</p>
         </section>
         <div id="difficultyTable" class="difficulty-table" role="table" aria-label="Difficulty rating table"></div>
+      </div>
+    </div>
+
+    <div class="settings-popover-holder">
+      <div id="chromaticSettingsPopover" class="chain-settings-popover" popover>
+        <div class="chain-settings-grid">
+          <label>Graph Units
+            <select id="chromaticUnitType">
+              <option value="box">Boxes</option>
+              <option value="row">Rows</option>
+              <option value="column">Columns</option>
+              <option value="all">All units</option>
+            </select>
+          </label>
+          <label>Min Sectors <input id="chromaticMinSectors" type="number" min="2" max="5" value="4"></label>
+          <label>Max Sectors <input id="chromaticMaxSectors" type="number" min="2" max="6" value="6"></label>
+          <label>Min Digits <input id="chromaticMinDigits" type="number" min="2" max="6" value="2"></label>
+          <label>Max Digits <input id="chromaticMaxDigits" type="number" min="2" max="6" value="5"></label>
+          <label>Max Cells <input id="chromaticMaxCells" type="number" min="12" max="40" value="32"></label>
+        </div>
       </div>
     </div>
 
@@ -5190,6 +5281,26 @@
             <div id="pomResults" class="pom-results">No POM check has been run.</div>
           </div>
         </details>
+        <details class="pom-panel" id="chromaticGraphPanel">
+          <summary>
+            <h2>Non-Colourable Chromatic Graphs</h2>
+            <button id="chromaticGraphBuild" class="secondary search-action" type="button"
+              title="Search candidate graphs that cannot be coloured with their selected digits">Search</button>
+          </summary>
+          <div class="pom-body">
+            <div id="chromaticGraphResults" class="pom-results">No chromatic graph search has been run.</div>
+          </div>
+        </details>
+        <details class="pom-panel" id="chromaticAlsGraphPanel">
+          <summary>
+            <h2>Non-Colourable Chromatic Graphs 2 (ALS DOF 0/1)</h2>
+            <button id="chromaticAlsGraphBuild" class="secondary search-action" type="button"
+              title="Search ALS DOF 0/1 chromatic graph formations">Search</button>
+          </summary>
+          <div class="pom-body">
+            <div id="chromaticAlsGraphResults" class="pom-results">No ALS chromatic graph search has been run.</div>
+          </div>
+        </details>
         <details class="pom-panel" id="retiredLegacyPanel">
           <summary><h2>Legacy</h2></summary>
           <div class="pom-body">
@@ -5294,8 +5405,10 @@
   <script src="./src/ahs-link-core.js?v=20261001-28"></script>
   <script src="./src/subset-report-core.js?v=20260928-2"></script>
   <script src="./src/mini-sectors-core.js?v=20260928-1"></script>
+  <script src="./src/chromatic-core.js?v=20261006-5"></script>
+  <script src="./src/chromatic-als-core.js?v=20261007-9"></script>
     <script src="./src/strong-link-core.js?v=20261006-2"></script>
-      <script src="./src/chain-core.js?v=20261006-12"></script>
+      <script src="./src/chain-core.js?v=20261006-18"></script>
   <script src="./src/alc-core.js?v=20261004-1"></script>
   <script src="./src/ahs-xy-core.js?v=20261001-4"></script>
   <script src="./src/ahs-dof-core.js?v=20261002-1"></script>
@@ -5372,6 +5485,8 @@
     const threeDMedusaMultiResultsEl = document.getElementById('threeDMedusaMultiResults');
     const multiColoringResultsEl = document.getElementById('multiColoringResults');
     const superMultiColoringResultsEl = document.getElementById('superMultiColoringResults');
+    const chromaticGraphResultsEl = document.getElementById('chromaticGraphResults');
+    const chromaticAlsGraphResultsEl = document.getElementById('chromaticAlsGraphResults');
     const fishResultsEl = document.getElementById('fishResults');
     const nakedSubsetResultsEl = document.getElementById('nakedSubsetResults');
     const hiddenSubsetResultsEl = document.getElementById('hiddenSubsetResults');
@@ -5403,6 +5518,14 @@
     const simpleColoringBuildEl = document.getElementById('simpleColoringBuild');
     const threeDMedusaBuildEl = document.getElementById('threeDMedusaBuild');
     const threeDMedusaMultiBuildEl = document.getElementById('threeDMedusaMultiBuild');
+    const chromaticGraphBuildEl = document.getElementById('chromaticGraphBuild');
+    const chromaticAlsGraphBuildEl = document.getElementById('chromaticAlsGraphBuild');
+    const chromaticUnitTypeEl = document.getElementById('chromaticUnitType');
+    const chromaticMinSectorsEl = document.getElementById('chromaticMinSectors');
+    const chromaticMaxSectorsEl = document.getElementById('chromaticMaxSectors');
+    const chromaticMinDigitsEl = document.getElementById('chromaticMinDigits');
+    const chromaticMaxDigitsEl = document.getElementById('chromaticMaxDigits');
+    const chromaticMaxCellsEl = document.getElementById('chromaticMaxCells');
     const multiColoringBuildEl = document.getElementById('multiColoringBuild');
     const chainBuildEl = document.getElementById('chainBuild');
     const fishBuildEl = document.getElementById('fishBuild');
@@ -5610,6 +5733,10 @@
     let selectedMultiColoringIndex = null;
     let superMultiColoringReport = null;
     let selectedSuperMultiColoringIndex = null;
+    let chromaticGraphReport = null;
+    let selectedChromaticGraphIndex = null;
+    let chromaticAlsGraphReport = null;
+    let selectedChromaticAlsGraphIndex = null;
     const colouringSequenceState = {
       simple: { enabled: false, breadth: 1 },
       multi: { enabled: false, breadth: 1 },
@@ -6301,6 +6428,10 @@
       selectedMultiColoringIndex = null;
       superMultiColoringReport = null;
       selectedSuperMultiColoringIndex = null;
+      chromaticGraphReport = null;
+      selectedChromaticGraphIndex = null;
+      chromaticAlsGraphReport = null;
+      selectedChromaticAlsGraphIndex = null;
       openAlsSizeGroups.clear();
       openAhsSizeGroups.clear();
           selectedThreeDMedusaMultiIndex = null;
@@ -9957,7 +10088,12 @@
       }
       const removed = lastRemoved;
       const chainRemoved = chain?.eliminations || [];
-      const removedMarks = new Set([...removed, ...chainRemoved].map(item => `${item.cell}:${item.digit}`));
+      const activeStepRemoved = activeStep?.elim?.items || [];
+      const removedMarks = new Set([
+        ...removed,
+        ...chainRemoved,
+        ...activeStepRemoved,
+      ].map(item => `${item.cell}:${item.digit}`));
       const vertices = new Set(activeStep?.vertices || activeStep?.at || []);
       const isMsls = activeStep?.tech === 'msls';
       const mslsBaseCells = new Set(activeStep?.mslsBaseCells || []);
@@ -9966,6 +10102,11 @@
       const rawFins = new Set(activeStep?.fins || []);
       const endofins = new Set(activeStep?.endofins || activeStep?.endoFins || []);
       const patternDigits = new Set(activeStep?.digits || []);
+      const chromaticRecord = activeStep?.chromaticRecord || null;
+      const chromaticCells = new Set(chromaticRecord?.cells || []);
+      const chromaticCoreCells = new Set(chromaticRecord?.coreCells || []);
+      const chromaticGuardians = new Set(chromaticRecord?.guardians || []);
+      const chromaticDigits = new Set(chromaticRecord?.digits || []);
       const candidateSizeFilterCells = new Set();
       if (activeCandidateSizeFilters.size) {
         for (let cell = 0; cell < 81; cell++) {
@@ -9987,7 +10128,7 @@
       const fishDoubleCover = new Set(activeStep?.overcovered || []);
       const fishTripleCover = new Set(activeStep?.triCovered || []);
       const isFish = ['fish', 'pointing', 'claiming'].includes(activeStep?.tech);
-      const isSubset = !!activeStep && !isFish;
+      const isSubset = !!activeStep && !isFish && !chromaticRecord;
       const isHiddenSubset = !!activeStep && activeStep.tech.startsWith('hidden-');
 
       return {
@@ -10003,6 +10144,12 @@
         fins,
         endofins,
         patternDigits,
+        isChromatic: !!chromaticRecord,
+        chromaticRecord,
+        chromaticCells,
+        chromaticCoreCells,
+        chromaticGuardians,
+        chromaticDigits,
         baseCells,
         coverCells,
         fishCells,
@@ -10318,6 +10465,11 @@
        if (fixedDigit && digitHighlightIsVisible(cell, fixedDigit)) {
          el.classList.add('digit-focus-cell', 'digit-focus-' + fixedDigit);
        }
+        if (highlights.isChromatic && highlights.chromaticCells.has(cell)) {
+          el.classList.add('chromatic-cell');
+          if (highlights.chromaticCoreCells.has(cell)) el.classList.add('chromatic-core-cell');
+          if (highlights.chromaticGuardians.has(cell)) el.classList.add('chromatic-guardian-cell');
+        }
         if (highlights.isFish && highlights.fishCells.has(cell)) el.classList.add('fish-intersection');
         if (highlights.isMsls && highlights.mslsBaseCells.has(cell)) el.classList.add('msls-base');
         if (highlights.isMsls && highlights.mslsCoverCells.has(cell)) el.classList.add('msls-cover');
@@ -10405,6 +10557,11 @@
               && highlights.endofins.has(cell);
             const isFishDigit = isFishVertexDigit || isFishFinDigit
               || isFishBase || isFishBaseIntersection || isFishCover;
+            const hasCandidate = cellHasCandidate(cell, digit);
+            const isChromaticDigit = highlights.isChromatic
+              && highlights.chromaticCells.has(cell)
+              && highlights.chromaticDigits.has(digit)
+              && hasCandidate;
             const isMslsDigit = highlights.isMsls && highlights.mslsCoverAtoms.has(atomKey);
             const isChainDigit = highlights.isChain && highlights.chainMarks.has(atomKey);
             const isChainXorEntryDigit = highlights.isChain && highlights.chainXorEntryMarks.has(atomKey);
@@ -10436,7 +10593,6 @@
            const isMultiColoringDigit = !!multiColoringTokens;
            const threeDMedusaRole = highlights.threeDMedusaMarks.get(atomKey);
            const isThreeDMedusaDigit = !!threeDMedusaRole;
-            const hasCandidate = cellHasCandidate(cell, digit);
            const isDigitFocus = hasCandidate && digitHighlightIsVisible(cell, digit);
            const isCandidateSizeFilter = candidateSizeFilterDigitMatches(cell, digit);
            const isHiddenGhostDigit =
@@ -10450,7 +10606,8 @@
             mark.textContent = markFor(cell, digit)
               || (isElim || (hasCandidate && (isFishDigit || isFishEndofinDigit || isChainDigit || isStrongLinkDigit
                 || isAlsRecordDigit || isAlsDofDigit || isAhsRecordDigit || isAhsDofRecordDigit || isDigitFocus || isCandidateSizeFilter
-                || isSimpleColoringDigit || isMultiColoringDigit || isThreeDMedusaDigit || isMslsDigit)) ? digit : '');
+                || isSimpleColoringDigit || isMultiColoringDigit || isThreeDMedusaDigit || isMslsDigit
+                || isChromaticDigit)) ? digit : '');
            if (isDigitFocus) mark.classList.add('digit-focus', 'digit-focus-' + digit);
            if (isCandidateSizeFilter) {
              mark.classList.add('candidate-size-filter-digit');
@@ -10467,6 +10624,7 @@
             if (isFishTripleCover) mark.classList.add('fish-cover-triple-digit');
             if (isMslsDigit) mark.classList.add('fish-digit');
             if (isFishEndofinDigit) mark.classList.add('fish-endofin-digit');
+            if (isChromaticDigit) mark.classList.add('chromatic-digit', `chromatic-digit-${digit}`);
             if (isChainDigit) mark.classList.add('chain-digit');
             if (isChainXorEntryDigit) mark.classList.add('chain-xor-entry-digit');
             if (isChainXorExitDigit) mark.classList.add('chain-xor-exit-digit');
@@ -10636,6 +10794,9 @@
     function highlightedEurekaText() {
       if (activeStep?.chain) return chainText(activeStep.chain);
       if (activeStep?.desc) return activeStep.desc;
+      if (selectedChromaticGraphIndex !== null && chromaticGraphReport?.results?.[selectedChromaticGraphIndex]) {
+        return chromaticGraphEureka(chromaticGraphReport.results[selectedChromaticGraphIndex]);
+      }
       const ahsDofChain = selectedAhsDofChainRecord();
       if (ahsDofChain) return `AHS-DOF Chain: ${core.formatAhsDofChain(ahsDofChain)}`;
       const ahsDof = selectedAhsDofNetRecord();
@@ -10675,6 +10836,15 @@
 
       const fish = selectedFishStep();
       if (fish) return fish;
+      if (selectedChromaticGraphIndex !== null && chromaticGraphReport?.results?.[selectedChromaticGraphIndex]) {
+        return chromaticStepFromResult(chromaticGraphReport.results[selectedChromaticGraphIndex]);
+      }
+      if (selectedChromaticAlsGraphIndex !== null
+        && chromaticAlsGraphReport?.results?.[selectedChromaticAlsGraphIndex]) {
+        return chromaticStepFromResult(
+          chromaticAlsGraphReport.results[selectedChromaticAlsGraphIndex],
+        );
+      }
       const hiddenSubset = selectedSubsetStep('hidden');
       if (hiddenSubset) return hiddenSubset;
       const nakedSubset = selectedSubsetStep('naked');
@@ -10783,6 +10953,141 @@
       window.alert(message);
     }
 
+    function nonColourableChromaticTestGrid() {
+      const rows = [
+        ['123', '456789', '456789', '123', '456789', '456789', '456789', '456789', '456789'],
+        ['456789', '123', '456789', '456789', '123', '456789', '456789', '456789', '456789'],
+        ['456789', '456789', '123', '456789', '456789', '123', '456789', '456789', '456789'],
+        ['123', '456789', '456789', '456789', '456789', '1236', '456789', '456789', '456789'],
+        ['456789', '123', '456789', '456789', '123', '456789', '456789', '456789', '456789'],
+        ['456789', '456789', '123', '123', '456789', '456789', '456789', '456789', '456789'],
+        ['456789', '456789', '456789', '456789', '456789', '456789', '456789', '456789', '456789'],
+        ['456789', '456789', '456789', '456789', '456789', '456789', '456789', '456789', '456789'],
+        ['456789', '456789', '456789', '456789', '456789', '456789', '456789', '456789', '456789'],
+      ];
+      return rows.map(row => row.join(' ')).join('\n');
+    }
+
+    function chromaticGraphEureka(record) {
+      const digits = (record.digits || []).join('');
+      const sectors = (record.sectorNames || []).join(',');
+      const cells = core.cellGroupName(record.cells || []) || 'none';
+      const guardians = core.cellGroupName(record.guardians || []) || 'none';
+      const eliminations = core.formatRemovals(record.eliminations || []) || 'none';
+      return `${record.classification}: K=${record.k} {${digits}} over ${sectors}; `
+        + `${cells}; guardian ${guardians} => ${eliminations}`;
+    }
+
+    function chromaticStepFromResult(record) {
+      const items = core.eliminationItems({ items: record.eliminations || [] }, cand);
+      return {
+        tech: record.tech,
+        name: record.classification,
+        structureName: record.classification,
+        desc: chromaticGraphEureka(record),
+        elim: { items },
+        at: [...(record.cells || [])],
+        vertices: [...(record.cells || [])],
+        chromaticRecord: record,
+      };
+    }
+
+    function renderChromaticGraphReport() {
+      chromaticGraphResultsEl.textContent = '';
+      if (!chromaticGraphReport) {
+        chromaticGraphResultsEl.textContent = 'No chromatic graph search has been run.';
+        return;
+      }
+      const summary = document.createElement('p');
+      summary.textContent = `${chromaticGraphReport.results.length} non-colourable graph${chromaticGraphReport.results.length === 1 ? '' : 's'}.`
+        + (chromaticGraphReport.stats?.truncated ? ' Search limit reached.' : '');
+      chromaticGraphResultsEl.appendChild(summary);
+      const list = document.createElement('ul');
+      list.className = 'log';
+      chromaticGraphReport.results.forEach((record, index) => {
+        const item = document.createElement('li');
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'chain-result';
+        button.textContent = `${index + 1}. ${chromaticGraphEureka(record)}`;
+        button.title = 'Highlight this chromatic graph and its guardian eliminations';
+        if (selectedChromaticGraphIndex === index) button.classList.add('selected');
+        button.addEventListener('click', () => {
+          selectedChromaticGraphIndex = index;
+          activeStep = chromaticStepFromResult(record);
+          render();
+          openReportPanel(chromaticGraphResultsEl);
+          focusMap();
+          setStatus(`Chromatic graph ${index + 1} selected.`, 'ok');
+        });
+        item.appendChild(button);
+        list.appendChild(item);
+      });
+      chromaticGraphResultsEl.appendChild(list);
+    }
+
+    function renderChromaticAlsGraphReport() {
+      chromaticAlsGraphResultsEl.textContent = '';
+      if (!chromaticAlsGraphReport) {
+        chromaticAlsGraphResultsEl.textContent = 'No ALS chromatic graph search has been run.';
+        return;
+      }
+      const typeLabels = {
+        1: 'Type 1: one ALS DOF guardian',
+        '2a': 'Type 2A: one ALS DOF, multiple guardians',
+        '2b': 'Type 2B: two ALS DOF, shared-digit guardians',
+        '2c': 'Type 2C: three ALS DOF-1 guardians',
+      };
+      const typeOrder = [1, '2a', '2b', '2c'];
+      const typeGroups = new Map(typeOrder.map(type => [type, []]));
+      chromaticAlsGraphReport.results.forEach((record, index) => {
+        if (!typeGroups.has(record.type)) typeGroups.set(record.type, []);
+        typeGroups.get(record.type).push({ record, index });
+      });
+      const summary = document.createElement('p');
+      const typeSummary = typeOrder
+        .map(type => `${typeLabels[type]}: ${typeGroups.get(type).length}`)
+        .join(' | ');
+      const stats = chromaticAlsGraphReport.stats || {};
+      const diagnosticSummary = [
+        Number.isFinite(stats.alsRecords) ? `ALS records: ${stats.alsRecords}` : '',
+        Number.isFinite(stats.alsDofZero) ? `DOF 0: ${stats.alsDofZero}` : '',
+        Number.isFinite(stats.tested) ? `tests: ${stats.tested}` : '',
+      ].filter(Boolean).join(' | ');
+      summary.textContent = `${chromaticAlsGraphReport.results.length} ALS-backed non-colourable graph${chromaticAlsGraphReport.results.length === 1 ? '' : 's'} (${typeSummary}).`
+        + (diagnosticSummary ? ` ${diagnosticSummary}.` : '')
+        + (stats.truncated ? ' Search limit reached.' : '');
+      chromaticAlsGraphResultsEl.appendChild(summary);
+      typeGroups.forEach((entries, type) => {
+        if (!entries.length) return;
+        const heading = document.createElement('h3');
+        heading.textContent = typeLabels[type] || `Type ${type}`;
+        chromaticAlsGraphResultsEl.appendChild(heading);
+        const list = document.createElement('ul');
+        list.className = 'log';
+        entries.forEach(({ record, index }) => {
+          const item = document.createElement('li');
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'chain-result';
+          if (selectedChromaticAlsGraphIndex === index) button.classList.add('selected');
+          button.textContent = `${index + 1}. ${chromaticGraphEureka(record)}`;
+          button.title = 'Highlight this ALS-backed chromatic graph and its eliminations';
+          button.addEventListener('click', () => {
+            selectedChromaticAlsGraphIndex = index;
+            activeStep = chromaticStepFromResult(record);
+            render();
+            openReportPanel(chromaticAlsGraphResultsEl);
+            focusMap();
+            setStatus(`ALS chromatic graph ${index + 1} selected.`, 'ok');
+          });
+          item.appendChild(button);
+          list.appendChild(item);
+        });
+        chromaticAlsGraphResultsEl.appendChild(list);
+      });
+    }
+
     function render() {
       renderDigitFocusButtons();
       renderBoard();
@@ -10801,6 +11106,8 @@
       renderMultiColoringReport();
       renderSuperMultiColoringReport();
       renderThreeDMedusaMultiReport();
+      renderChromaticGraphReport();
+      renderChromaticAlsGraphReport();
       renderFishReport();
       renderMslsReport();
       renderAlsDofReport();
@@ -20922,6 +21229,88 @@
       event.stopPropagation();
       runThreeDMedusaMultiBuild();
     });
+    chromaticGraphBuildEl.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      activeStep = null;
+      selectedChromaticGraphIndex = null;
+      setBusy(true);
+      setStatus('Searching non-colourable chromatic graphs...');
+      setTimeout(() => {
+        try {
+          chromaticGraphReport = window.StormChromaticCore.find(cand, {
+            unitType: chromaticUnitTypeEl.value,
+            minSectors: chromaticMinSectorsEl.value,
+            maxSectors: chromaticMaxSectorsEl.value,
+            minDigits: chromaticMinDigitsEl.value,
+            maxDigits: chromaticMaxDigitsEl.value,
+            maxCells: chromaticMaxCellsEl.value,
+          });
+          selectedChromaticGraphIndex = chromaticGraphReport.results.length ? 0 : null;
+          if (selectedChromaticGraphIndex !== null) {
+            activeStep = chromaticStepFromResult(chromaticGraphReport.results[0]);
+          }
+          render();
+          openReportPanel(chromaticGraphResultsEl);
+          setStatus(
+            chromaticGraphReport.results.length
+              ? `Chromatic graph search found ${chromaticGraphReport.results.length} result${chromaticGraphReport.results.length === 1 ? '' : 's'}.`
+              : 'Chromatic graph search found no non-colourable graphs.',
+            chromaticGraphReport.results.length ? 'ok' : 'warn',
+          );
+        } catch (error) {
+          console.error('Chromatic graph search failed:', error);
+          chromaticGraphReport = null;
+          render();
+          setStatus('Could not search non-colourable chromatic graphs.', 'warn');
+        } finally {
+          setBusy(false);
+        }
+      }, 0);
+    });
+    chromaticAlsGraphBuildEl.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      activeStep = null;
+      selectedChromaticAlsGraphIndex = null;
+      setBusy(true);
+      setStatus('Searching ALS-backed non-colourable chromatic graphs...');
+      setTimeout(() => {
+        try {
+          chromaticAlsGraphReport = window.StormChromaticAlsCore.find(cand, {
+            unitType: chromaticUnitTypeEl.value,
+            minSectors: chromaticMinSectorsEl.value,
+            maxSectors: chromaticMaxSectorsEl.value,
+            minDigits: chromaticMinDigitsEl.value,
+            maxDigits: chromaticMaxDigitsEl.value,
+            maxCells: chromaticMaxCellsEl.value,
+          });
+          selectedChromaticAlsGraphIndex = chromaticAlsGraphReport.results.length
+            ? 0
+            : null;
+          if (selectedChromaticAlsGraphIndex !== null) {
+            activeStep = chromaticStepFromResult(
+              chromaticAlsGraphReport.results[0],
+            );
+          }
+          render();
+          openReportPanel(chromaticAlsGraphResultsEl);
+          setStatus(
+            chromaticAlsGraphReport.results.length
+              ? `ALS chromatic graph search found ${chromaticAlsGraphReport.results.length} result${chromaticAlsGraphReport.results.length === 1 ? '' : 's'}.`
+              : 'ALS chromatic graph search found no formations.',
+            chromaticAlsGraphReport.results.length ? 'ok' : 'warn',
+          );
+        } catch (error) {
+          console.error('ALS chromatic graph search failed:', error);
+          chromaticAlsGraphReport = null;
+          render();
+          setStatus('Could not search ALS-backed chromatic graphs.', 'warn');
+        } finally {
+          setBusy(false);
+        }
+      }, 0);
+    });
     multiColoringBuildEl.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -21128,9 +21517,11 @@
       renderBoard();
     });
     document.addEventListener('keydown', handlePlayerKeydown);
-    for (const button of document.querySelectorAll('[data-example-puzzle]')) {
+    for (const button of document.querySelectorAll('[data-example-puzzle], [data-example-key]')) {
       button.addEventListener('click', () => {
-        inputEl.value = button.dataset.examplePuzzle;
+        inputEl.value = button.dataset.exampleKey === 'non-colourable-chromatic'
+          ? nonColourableChromaticTestGrid()
+          : button.dataset.examplePuzzle;
         loadPuzzle();
         examplesPanelEl.open = false;
         boardEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
