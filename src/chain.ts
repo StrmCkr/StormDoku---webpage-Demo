@@ -138,6 +138,13 @@ interface QueueNode {
   eliminations: ChainElimination[];
 }
 
+export interface ChainSearchProgress {
+  stage: 'inventory' | 'graph' | 'walk' | 'complete';
+  directedViews?: number;
+  statesVisited?: number;
+  transitionsAccepted?: number;
+}
+
 export interface ChainBuilderOptions {
   includeStrong?: boolean;
   includeAls?: boolean;
@@ -155,14 +162,16 @@ export interface ChainBuilderOptions {
   strongLinkSet?: StrongLinkSet | LinkRecord[];
   alsLinkSet?: AlsLinkSet | LinkRecord[];
   alsList?: Als[];
+  onProgress?: (progress: ChainSearchProgress) => void;
 }
 
 interface NormalisedOptions extends Required<Omit<
   ChainBuilderOptions,
-  'strongLinkSet' | 'alsLinkSet' | 'alsList' | 'strongLinkTypes'
+  'strongLinkSet' | 'alsLinkSet' | 'alsList' | 'strongLinkTypes' | 'onProgress'
 >> {
   strongLinkTypes: number[];
   maxStartViews: number;
+  onProgress: ((progress: ChainSearchProgress) => void) | null;
   strongLinkSet?: StrongLinkSet | LinkRecord[];
   alsLinkSet?: AlsLinkSet | LinkRecord[];
   alsList?: Als[];
@@ -847,7 +856,7 @@ function buildLinkInventory(cand: CandidateGrid, options: NormalisedOptions) {
   };
 }
 
-export function buildChainGraph(linkNodes: ChainNode[]) {
+export function buildChainGraph(linkNodes: ChainNode[], onProgress: ChainBuilderOptions['onProgress'] | null = null) {
   const views: DirectedView[] = [];
   const viewsByKey = new Map<string, DirectedView>();
   const entryByCells = new Map<string, DirectedView[]>();
@@ -855,6 +864,9 @@ export function buildChainGraph(linkNodes: ChainNode[]) {
   const entryByAlsCell = new Map<number, DirectedView[]>();
 
   for (const node of linkNodes) {
+    if (onProgress && views.length % 256 === 0) {
+      onProgress({ stage: 'graph', directedViews: views.length });
+    }
     for (const view of [directedView(node, true), directedView(node, false)]) {
       views.push(view);
       viewsByKey.set(view.key, view);
@@ -2502,13 +2514,15 @@ function normaliseOptions(options: ChainBuilderOptions): NormalisedOptions {
     strongLinkSet: options.strongLinkSet,
     alsLinkSet: options.alsLinkSet,
     alsList: options.alsList,
+    onProgress: typeof options.onProgress === 'function' ? options.onProgress : null,
   };
 }
 
 export function findAicChains(cand: CandidateGrid, options: ChainBuilderOptions = {}): ChainReport {
   const opts = normaliseOptions(options);
+  opts.onProgress?.({ stage: 'inventory' });
   const inventory = buildLinkInventory(cand, opts);
-  const graph = buildChainGraph(inventory.links);
+  const graph = buildChainGraph(inventory.links, opts.onProgress);
   const chainsByKey = new Map<string, ChainResultEntry>();
   const stats: ChainStats = {
     strongLinks: inventory.counts.strong,
@@ -2620,6 +2634,10 @@ export function findAicChains(cand: CandidateGrid, options: ChainBuilderOptions 
 
       const current = queue.shift()!;
       stats.statesVisited += 1;
+      if (opts.onProgress && (stats.statesVisited === 1 || stats.statesVisited % 64 === 0)) {
+        opts.onProgress({ stage: 'walk', statesVisited: stats.statesVisited,
+          transitionsAccepted: stats.transitionsAccepted });
+      }
       const currentDepth = logicalDepth(current.steps);
       if (currentDepth >= opts.maxDepth) continue;
 
@@ -2641,6 +2659,10 @@ export function findAicChains(cand: CandidateGrid, options: ChainBuilderOptions 
         if (reusesNonStartAtom || (sharedKnownAtoms.length && !closesToStart)) continue;
 
         stats.transitionsAccepted += 1;
+        if (opts.onProgress && stats.transitionsAccepted % 64 === 0) {
+          opts.onProgress({ stage: 'walk', statesVisited: stats.statesVisited,
+            transitionsAccepted: stats.transitionsAccepted });
+        }
         const nextSteps = [
           ...current.steps,
           { view: edge.target, weakIn: edge.weakType, weakDigit: edge.digit },
@@ -2731,6 +2753,7 @@ export function findAicChains(cand: CandidateGrid, options: ChainBuilderOptions 
     )
     .map(entry => entry.chain);
   stats.chainsFound = chains.length;
+  opts.onProgress?.({ stage: 'complete', statesVisited: stats.statesVisited });
 
   return {
     chains,

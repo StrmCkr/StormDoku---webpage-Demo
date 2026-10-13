@@ -82,6 +82,32 @@ test('ALC-XZ locks the residual box cell to 5 or 8', () => {
   }
 });
 
+test('ALC-XZ discards unfinished placement proofs when its state budget runs out', () => {
+  const report = core.findAlcXz(boxLine, { maxStates: 1 });
+  assert.equal(report.stats.statesVisited, 1);
+  assert.equal(report.stats.truncated, true);
+  assert.equal(report.stats.stopReason, 'maxStates');
+  assert.deepEqual(report.chains, []);
+});
+
+test('ALC-XY reads the public step metadata returned by the AIC core', () => {
+  const originalFind = core.findAicChains;
+  const originalBuild = core.buildStrongLinks;
+  try {
+    core.buildStrongLinks = () => [];
+    core.findAicChains = () => ({ chains: [{ isRing: false,
+      steps: [{ family: 'ALS', graphId: 'als:1' },
+        { family: 'AHS', graphId: 'ahs:1' }, { family: 'ALS', graphId: 'als:2' }],
+      eliminations: [],
+    }], stats: {} });
+    const report = core.findAlcXy(boxLine, { alsList: [], ahsList: [] });
+    assert.deepEqual(report.chains[0].alcXy.nodeFamilies, ['ALS', 'AHS']);
+  } finally {
+    core.findAicChains = originalFind;
+    core.buildStrongLinks = originalBuild;
+  }
+});
+
 test('ALC-XZ never removes a solution digit on regression puzzles', () => {
   const puzzles = [
     '764005920291000003538000600387026100942000067615704230476200395129003786853679412',

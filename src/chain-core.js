@@ -760,7 +760,7 @@
     };
   }
 
-  function buildChainGraph(linkNodes) {
+  function buildChainGraph(linkNodes, onProgress = null) {
     const views = [];
     const viewsByKey = new Map();
     const entryByCells = new Map();
@@ -771,6 +771,9 @@
     const alcStrongViews = [];
 
     for (const node of linkNodes) {
+      if (onProgress && views.length % 256 === 0) {
+        onProgress({ stage: 'graph', directedViews: views.length });
+      }
       for (const view of [directedView(node, true), directedView(node, false)]) {
         views.push(view);
         viewsByKey.set(view.key, view);
@@ -2768,13 +2771,15 @@
       ahsLinkSet: options.ahsLinkSet,
       ahsList: options.ahsList,
       resultFilter: typeof options.resultFilter === 'function' ? options.resultFilter : null,
+      onProgress: typeof options.onProgress === 'function' ? options.onProgress : null,
     };
   }
 
   function findAicChains(cand, options = {}) {
     const opts = normaliseOptions({ ...options, candidateGrid: cand });
+    opts.onProgress?.({ stage: 'inventory' });
     const inventory = buildLinkInventory(cand, opts);
-    const graph = buildChainGraph(inventory.links);
+    const graph = buildChainGraph(inventory.links, opts.onProgress);
     const chainsByKey = new Map();
     const stats = {
       strongLinks: inventory.counts.strong,
@@ -2890,6 +2895,10 @@
 
         const current = queue.shift();
         stats.statesVisited += 1;
+        if (opts.onProgress && (stats.statesVisited === 1 || stats.statesVisited % 64 === 0)) {
+          opts.onProgress({ stage: 'walk', statesVisited: stats.statesVisited,
+            transitionsAccepted: stats.transitionsAccepted });
+        }
         const currentDepth = logicalDepth(current.steps);
         if (currentDepth >= opts.maxDepth) continue;
 
@@ -2911,6 +2920,10 @@
           if (reusesNonStartAtom || (sharedKnownAtoms.length && !closesToStart)) continue;
 
           stats.transitionsAccepted += 1;
+          if (opts.onProgress && stats.transitionsAccepted % 64 === 0) {
+            opts.onProgress({ stage: 'walk', statesVisited: stats.statesVisited,
+              transitionsAccepted: stats.transitionsAccepted });
+          }
           const nextSteps = [
             ...current.steps,
             {
@@ -3015,6 +3028,7 @@
       )
       .map(entry => entry.chain);
     stats.chainsFound = chains.length;
+    opts.onProgress?.({ stage: 'complete', statesVisited: stats.statesVisited });
 
     return {
       chains,

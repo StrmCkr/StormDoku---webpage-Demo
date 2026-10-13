@@ -4170,6 +4170,15 @@
               <code class="example-puzzle">85..7.269.7.5.934.3..264758.2764..351.8.3.6.7..6.21894485316..276149....29385..1.</code>
             </div>
                 <div class="example-item">
+              <button class="secondary example-load" type="button" data-example-puzzle="500000009020100070008000300040002000000050000000706010003000800060004020900000005">Strmckr's 11.4 SE</button>
+              <code class="example-puzzle">500000009020100070008000300040002000000050000000706010003000800060004020900000005</code>
+            </div>
+              </div>
+            </details>
+            <details class="example-group example-group-chromatic">
+              <summary><h3>Chromatic Graphs</h3></summary>
+              <div class="report-subsection-body">
+                <div class="example-item">
               <button class="secondary example-load" type="button" data-example-key="non-colourable-chromatic">Non colourable chromatic graphs</button>
               <code class="example-puzzle">Candidate grid: 123 / 456789</code>
             </div>
@@ -4253,14 +4262,6 @@
               <code class="example-puzzle">26...7....1....37....356......5.4....7.96......9...62.....9..35.2..4.81...8..3...</code>
             </div>
 
-                <div class="example-item">
-              <button class="secondary example-load" type="button" data-example-puzzle="4...19...63.4...9.9.......715.8...2........45..8.2.9.......3.....4..8..387...1...">Hidden - XY-Chain</button>
-              <code class="example-puzzle">4...19...63.4...9.9.......715.8...2........45..8.2.9.......3.....4..8..387...1...</code>
-            </div>
-                <div class="example-item">
-              <button class="secondary example-load" type="button" data-example-puzzle="17..4.9.....6.3....3.....48...5.4...85...24..7..9...1.38..2..7.5....1.3.......62.">Hidden - XY-Chain (2)</button>
-              <code class="example-puzzle">17..4.9.....6.3....3.....48...5.4...85...24..7..9...1.38..2..7.5....1.3.......62.</code>
-            </div>
                 <div class="example-item">
               <button class="secondary example-load" type="button" data-example-puzzle=".8...4...1.79.6....6.8.52..6...79..8.35...96...8...4.......1...5..4....9...6.714.">2-String Kite</button>
               <code class="example-puzzle">.8...4...1.79.6....6.8.52..6...79..8.35...96...8...4.......1...5..4....9...6.714.</code>
@@ -4399,14 +4400,16 @@
                   <li><strong>5. Easy.</strong> <span>Hidden Triple, Naked Triple, then basic Swordfish.</span></li>
                   <li><strong>6a. Moderate chains.</strong> <span>Depth 3 only, strong-link types 0-3: X-Chains plus the L(1)-Wing and ERI subclasses.</span></li>
                   <li><strong>6b. Moderate B.A.R.N.S.</strong> <span>Size 3, using the ALS-XZ/B.A.R.N.S. form for XYZ Wing/Ring.</span></li>
-                  <li><strong>6c. Moderate XY-Chains.</strong> <span>Depth 3, type 4 only, producing XY-Wing/Ring forms.</span></li><li><strong>6d. Moderate fish.</strong> <span>Franken and Mutant 3x3+K, K=0, 1, 2.</span></li>
+                  <li><strong>6c. Moderate XY-Chains.</strong> <span>Depth 3, type 4 only, producing XY-Wing/Ring forms.</span></li>
+                  <li><strong>6d. Moderate named wings.</strong> <span>Depth 3; in order: L(2,3), W, S, M, H(1,2,3), and Strong wings/rings, after XY-Chains.</span></li>
+                  <li><strong>6e. Moderate fish.</strong> <span>Franken and Mutant 3x3+K, K=0, 1, 2.</span></li>
                   <li><strong>7. Tough.</strong> <span>Hidden Quad, Naked Quad, then basic Jellyfish.</span></li>
-                  <li><strong>8. Challenging.</strong> <span>Execute in order: X-Chains using strong-link types 0-3 at depth 4; B.A.R.N.S. transport; B.A.R.N.S./WXYZ size 4; XY-Chains using type 4 only at depth 4; then 4x4 n×n+k Franken/Mutant fish. Stop at the first phase with a valid move.</span></li>
-                  <li><strong>9. Irritating.</strong> <span>In order: depth-5+ X/ERI chains using types 0-3; type-4 XY-Chains of any length with remote pairs; WXYZ transport; B.A.R.N.S. size 5; then 5x5 Franken/Mutant fish, both off by default. Hidden XY classification is deferred to the later AIC stage.</span></li>
-                  <li><strong>10. Frustrating.</strong> <span>Named ALS Wings/Rings, WXYZ transport, W-transport, and size-6 subsets/fish, with the requested depth/type limits.</span></li>
-                  <li><strong>11. Hard.</strong> <span>Full ALS-XZ, AHS-XZ, and ALC-XZ at depth 2; then Hidden XY-Chain and Remote Pair depth 4 followed by AIC depth 4; size-7 subsets and fish remain off by default.</span></li>
+                  <li><strong>8. Challenging.</strong> <span>Execute in order: X-Chains using strong-link types 0-3 at depth 4; B.A.R.N.S. transport; B.A.R.N.S./WXYZ size 4; XY-Chain depth 4; Hidden XY-Chain depth 4 using types 0-3; AIC depth 4 using types 0-4, including Inversion Wings/Rings; then 4x4 n×n+k Franken/Mutant fish. Stop at the first phase with a valid move.</span></li>
+                  <li><strong>9. Irritating.</strong> <span>In order: X-Chains depth 5 using types 0-3; XY-Chain depth 5; Hidden XY-Chain depth 5 using types 0-3; AIC depth 5 using types 0-4; WXYZ transport; B.A.R.N.S. size 5; then 5x5 Franken/Mutant fish, both off by default.</span></li>
+                  <li><strong>10. Frustrating.</strong> <span>X-Chains depth 6, XY-Chains, Hidden XY-Chains, and AIC depth 6 using types 0-4; then WXYZ transport, B.A.R.N.S. transport, and size-6 subsets/fish.</span></li>
+                  <li><strong>11. Hard.</strong> <span>Full ALS-XZ, AHS-XZ, and ALC-XZ at depth 2; then full-depth X-Chains, full-depth XY-Chains, full-depth Hidden XY-Chains, and full-depth AIC using types 0-4; size-7 subsets and fish remain off by default.</span></li>
                   <li><strong>12. Demanding.</strong> <span>Named ALS/AHS/ALC Wings and Rings, Transport ALS-XZ, Transport AHS-XZ, Transport ALC-XZ, plus ALS-XY, AHS-XY, and ALC-XY at depth 3.</span></li>
-                  <li><strong>13. Expert.</strong> <span>Generic multi-digit AIC depth 5+ with strong-link types 0-4, followed by Transport ALS-XY, Transport AHS-XY, and Transport ALC-XY; size-9 subsets remain off by default.</span></li>
+                  <li><strong>13. Expert.</strong> <span>Transport ALS-XY, Transport AHS-XY, and Transport ALC-XY; size-9 subsets remain off by default.</span></li>
                   <li><strong>14. Brutal.</strong> <span>Full-scope ALS-Chains, AHS-Chains, and ALC-Chains beyond depth 3.</span></li>
                   <li><strong>15. Nightmare.</strong> <span>Full AIC with all available link types beyond depth 3.</span></li>
                   <li><strong>16. Abyssal.</strong> <span>ALS-DOF, AHS-DOF, DDS, and ADDS with progressive DOF and digit scaling, followed by ALC-DOF.</span></li>
@@ -4534,7 +4537,7 @@
             </label>
             <label>
               Max size
-              <input id="chainAlsMaxSize" type="number" min="2" max="9" step="1" value="5">
+              <input id="chainAlsMaxSize" type="number" min="2" max="8" step="1" value="5">
             </label>
             <label class="check" title="Limit the AHS node size used by chain searches.">
               <input id="chainUseAhsNodeLimits" type="checkbox" checked>
@@ -4542,7 +4545,7 @@
             </label>
             <label>
               Max digits
-              <input id="chainAhsMaxSize" type="number" min="2" max="9" step="1" value="6">
+              <input id="chainAhsMaxSize" type="number" min="2" max="8" step="1" value="6">
             </label>
             <label class="check" title="Limit the ALS/AHS node size used by mixed ALC searches.">
               <input id="chainUseAlcNodeLimits" type="checkbox" checked>
@@ -4550,7 +4553,7 @@
             </label>
             <label>
               Max size
-              <input id="chainAlcMaxSize" type="number" min="2" max="9" step="1" value="5">
+              <input id="chainAlcMaxSize" type="number" min="2" max="8" step="1" value="5">
             </label>
           </div>
           <p class="difficulty-math-note">The selected maximum is cumulative: size 2, then sizes 2-3, then sizes 2-4, and so on.</p>
@@ -5502,11 +5505,12 @@
   <script src="./src/chromatic-core.js?v=20261006-5"></script>
   <script src="./src/chromatic-als-core.js?v=20261007-9"></script>
     <script src="./src/strong-link-core.js?v=20261006-2"></script>
-      <script src="./src/chain-core.js?v=20261006-18"></script>
-  <script src="./src/alc-core.js?v=20261004-1"></script>
+      <script src="./src/chain-core.js?v=20261012-3"></script>
+  <script src="./src/alc-core.js?v=20261012-3"></script>
   <script src="./src/ahs-xy-core.js?v=20261001-4"></script>
   <script src="./src/ahs-dof-core.js?v=20261002-1"></script>
   <script src="./src/msls-core.js?v=20261004-1"></script>
+  <script src="./src/search-worker-source.js?v=20261012-3"></script>
   <script>
     const core = window.StormDoku;
     const boardEl = document.getElementById('board');
@@ -5783,6 +5787,7 @@
     let solution = null;
     let cand = core.allCandidates(puzzle);
     let cycle = 0;
+    let lastInteractiveSearchError = null;
     let activeStep = null;
     let lastRemoved = [];
     let promotionQueue = [];
@@ -5872,16 +5877,25 @@
       coverSectors: new Set(Array.from({ length: 27 }, (_, index) => index)),
     };
     let searchWorker = null;
+    let searchWorkerBlobUrl = null;
+    let interactiveSearchProgress = null;
     let searchWorkerJobId = 0;
     let searchWorkerJobs = new Map();
     let searchWorkerDisabled = false;
     let generatorWorker = null;
     let generatorReject = null;
 
+    function releaseSearchWorkerBlobUrl() {
+      if (searchWorkerBlobUrl === null) return;
+      URL.revokeObjectURL(searchWorkerBlobUrl);
+      searchWorkerBlobUrl = null;
+    }
+
     function disableSearchWorker(error = null) {
       searchWorkerDisabled = true;
       if (searchWorker) searchWorker.terminate();
       searchWorker = null;
+      releaseSearchWorkerBlobUrl();
       for (const job of searchWorkerJobs.values()) {
         job.reject(error || new Error('Search worker unavailable.'));
       }
@@ -5897,30 +5911,48 @@
       }
 
       try {
-        // Keep the URL relative for file:// copies. Chrome can reject a
-        // file-origin URL object even though the same classic worker loads
-        // correctly from the local server.
-      const workerPath = './src/search-worker.js?v=20261007-1';
-        const workerUrl = document.baseURI.startsWith('file:')
-          ? workerPath
-          : new URL(workerPath, document.baseURI);
+        const workerPath = './src/search-worker.js?v=20261012-3';
+        releaseSearchWorkerBlobUrl();
+        let workerUrl = new URL(workerPath, document.baseURI);
+        if (document.baseURI.startsWith('file:')) {
+          if (typeof window.StormDokuSearchWorkerSource !== 'string') {
+            throw new Error('Offline search worker source is missing.');
+          }
+          // A file-origin worker cannot import local scripts. Embed its cores
+          // in the Blob so offline Next and Run All share the same worker.
+          searchWorkerBlobUrl = URL.createObjectURL(new Blob(
+            [window.StormDokuSearchWorkerSource],
+            { type: 'text/javascript' },
+          ));
+          workerUrl = searchWorkerBlobUrl;
+        }
         searchWorker = new Worker(workerUrl, { type: 'classic' });
         searchWorker.onmessage = event => {
-          const { id, result, error } = event.data || {};
+          releaseSearchWorkerBlobUrl();
+          const { id, result, error, type } = event.data || {};
           const job = searchWorkerJobs.get(id);
           if (!job) return;
+          interactiveSearchProgress?.();
+          if (type === 'progress') return;
           searchWorkerJobs.delete(id);
           if (error) job.reject(new Error(error));
           else job.resolve(result);
         };
         searchWorker.onerror = event => {
-          const details = [event.message, event.filename && `(${event.filename})`, event.lineno && `line ${event.lineno}`]
+          const details = [
+            event.message,
+            event.filename && `(${event.filename})`,
+            event.lineno && `line ${event.lineno}`,
+            event.colno && `column ${event.colno}`,
+            event.type === 'error' && !event.message ? 'uncaught worker error' : null,
+          ]
             .filter(Boolean)
             .join(' ');
           const error = new Error(details || 'Search worker failed.');
           const failedWorker = searchWorker;
           searchWorker = null;
           if (failedWorker) failedWorker.terminate();
+          releaseSearchWorkerBlobUrl();
           for (const job of searchWorkerJobs.values()) job.reject(error);
           searchWorkerJobs.clear();
         };
@@ -5939,6 +5971,7 @@
       return new Promise((resolve, reject) => {
         searchWorkerJobs.set(id, { resolve, reject });
         try {
+          interactiveSearchProgress?.();
           worker.postMessage({ id, type, payload });
         } catch (error) {
           searchWorkerJobs.delete(id);
@@ -6009,6 +6042,7 @@
       const worker = searchWorker;
       searchWorker = null;
       if (worker) worker.terminate();
+      releaseSearchWorkerBlobUrl();
       for (const job of searchWorkerJobs.values()) job.reject(new Error(reason));
       searchWorkerJobs.clear();
       busy = false;
@@ -8606,8 +8640,9 @@
       return [...groups.values()];
     }
 
-    function digitBoundsFromAnchors(anchors) {
-      if (!anchors.length || new Set(anchors.map(anchor => anchor.cell)).size <= 1) return null;
+    function digitBoundsFromAnchors(anchors, includeSingleCell = false) {
+      if (!anchors.length || (!includeSingleCell
+        && new Set(anchors.map(anchor => anchor.cell)).size <= 1)) return null;
       const bounds = anchors.map(anchor => digitBoxBounds(anchor));
       return {
         left: Math.max(0, Math.min(...bounds.map(box => box.left))),
@@ -8620,7 +8655,7 @@
     function drawSideDigitBoxes(svg, side, className, color = null, onlyDigits = null) {
       for (const anchors of sideDigitGroups(side)) {
         if (onlyDigits && !onlyDigits.includes(anchors[0]?.digit)) continue;
-        const box = digitBoundsFromAnchors(anchors);
+        const box = digitBoundsFromAnchors(anchors, true);
         if (!box) continue;
         const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
         rect.setAttribute('x', String(box.left));
@@ -8633,13 +8668,6 @@
         applyAlsColorVars(rect, color);
         svg.appendChild(rect);
       }
-    }
-
-    function drawGroupedSideDigitBoxes(svg, side, className = 'strong-link-side-box strong-link-start-box') {
-      const cells = side?.cells || [];
-      const digits = side?.digits || [];
-      if (cells.length < 2 && digits.length < 2) return;
-      drawSideDigitBoxes(svg, side, className);
     }
 
     function drawAlmostFishOverlay(svg, step) {
@@ -8723,10 +8751,21 @@
 
     function groupedAnchorPair(fromSide, toSide, forcedDigit = null, toDigit = forcedDigit) {
       const pair = closestAnchorPair(fromSide, toSide, forcedDigit, toDigit);
-      if (!pair || (forcedDigit == null && toDigit == null)) return pair;
+      if (!pair) return pair;
 
-      const fromBox = digitBoundsFromAnchors(sideAnchors(fromSide, forcedDigit, true));
-      const toBox = digitBoundsFromAnchors(sideAnchors(toSide, toDigit, true));
+      // A grouped strong link must terminate at the group boundary rather
+      // than at whichever member happens to be closest. Weak links already
+      // arrive here with an explicit digit; strong links need the same
+      // treatment when either side contains multiple cells for that digit.
+      const hasGroupedDigit = side => sideDigitGroups(side)
+        .some(anchors => new Set(anchors.map(anchor => anchor.cell)).size > 1);
+      if (forcedDigit == null && toDigit == null
+        && !hasGroupedDigit(fromSide) && !hasGroupedDigit(toSide)) return pair;
+
+      const fromDigit = forcedDigit == null ? pair.from.digit : forcedDigit;
+      const toDigitValue = toDigit == null ? pair.to.digit : toDigit;
+      const fromBox = digitBoundsFromAnchors(sideAnchors(fromSide, fromDigit, true));
+      const toBox = digitBoundsFromAnchors(sideAnchors(toSide, toDigitValue, true));
       let from = pair.from;
       let to = pair.to;
       if (fromBox) from = boxEdgeAnchor(fromBox, to, from);
@@ -8735,7 +8774,7 @@
     }
 
     function drawStrongConnection(svg, fromSide, toSide) {
-      const pair = closestAnchorPair(fromSide, toSide);
+      const pair = groupedAnchorPair(fromSide, toSide);
       if (!pair) return;
       drawArc(svg, pair.from, pair.to, 'chain-strong-line', 5, -0.38);
       drawArc(svg, pair.from, pair.to, 'chain-strong-line', 5, 0.38);
@@ -8815,16 +8854,22 @@
         const step = chain.steps[index];
         drawAlmostFishOverlay(svg, step);
         if (!isAlsVisualStep(step) && !isPureXyChain) {
-          drawGroupedSideDigitBoxes(
-            svg,
-            step.entry,
-            'strong-link-side-box strong-link-start-box',
-          );
-          drawGroupedSideDigitBoxes(
-            svg,
-            step.exit,
-            'strong-link-side-box strong-link-end-box',
-          );
+          // The chain endpoints already have their green/blue node graphics.
+          // Add digit boxes only for intermediate sides.
+          if (index > 0) {
+            drawSideDigitBoxes(
+              svg,
+              step.entry,
+              'strong-link-side-box strong-link-start-box',
+            );
+          }
+          if (index < chain.steps.length - 1) {
+            drawSideDigitBoxes(
+              svg,
+              step.exit,
+              'strong-link-side-box strong-link-end-box',
+            );
+          }
         }
         if (index > 0) {
           const fromSide = visibleChainExitSide(chain.steps[index - 1]);
@@ -11333,13 +11378,14 @@
         'finned-x-wing', 'sashimi-x-wing');
       addAt(40, 'hidden-triple', 'naked-triple', 'swordfish');
       addAt(50, '3x3+k-fish', 'dual-empty-rectangle', 'rect-kite', 'bridged-eri',
-        'eri-chain', 'l1-wing', 'xy-wing', 'barns', 'als-xz');
+        'eri-chain', 'l1-wing', 'xy-wing', 'barns', 'als-xz',
+        's-wing', 'm2-wing', 'm3-wing', 'l2-wing', 'l3-wing',
+        'h1-wing', 'h2-wing', 'h3-wing', 'w-wing', 'strong-wing');
       addAt(60, 'hidden-quad', 'naked-quad', 'jellyfish');
       addAt(70, '4x4+k-fish');
       addAt(50, 'xy-chain');
       addAt(70, 'barns-transport');
-      addAt(90, 'l2-wing', 'l3-wing', 's-wing', 'm2-wing', 'm3-wing',
-        'h1-wing', 'h2-wing', 'h3-wing', 'w-wing', 'strong-wing', 'inversion',
+      addAt(90, 'inversion',
         'barns-transport');
       addAt(100, 'als-xz', 'ahs-xz', 'alc-xz');
       addAt(100, 'remote-pair', 'hidden-xy-chain', 'hidden-remote-pair');
@@ -11469,7 +11515,8 @@
           ['X-Chain depth 3, strong-link types 0-3', '3.25 + link modifiers'],
           ['L(1)-Wing and ERI subclasses', '3.25 + link modifiers'],
           ['B.A.R.N.S. size 3, XYZ Wing/Ring', '3.25 + ALS_RCC modifiers'],
-          ['XY-Chain depth 3, type 4 only', '3.25 + link modifiers'],
+          ['XY-Chain depth 3', '3.25 + link modifiers'],
+          ['L(2,3), W, S, M, H(1,2,3), Strong Wing/Ring depth 3', '3.25 + link modifiers'],
           ['Franken 3x3 Fish K0', '3.125'],
           ['Mutant 3x3 Fish K0', '3.25'],
           ['Franken 3x3+K1 Fish', '3.375'],
@@ -11491,6 +11538,8 @@
           ['B.A.R.N.S. transport, size 3', '4.75 + link modifiers'],
           ['B.A.R.N.S./WXYZ, size 4', '4.25 + ALS_RCC modifiers'],
           ['XY-Chain depth 4', '4.25 + link modifiers'],
+          ['Hidden XY-Chain depth 4', '4.25 + link modifiers'],
+          ['AIC depth 4, including Inversion Wings/Rings', '4.25 + link modifiers'],
           ['Franken 4x4 Fish K0', '4.125'],
           ['Mutant 4x4 Fish K0', '4.25'],
           ['Franken 4x4+K1 Fish', '4.375'],
@@ -11504,8 +11553,10 @@
           ['Hidden Quintuple (off by default)', '5'],
           ['Naked Quintuple (off by default)', '5'],
           ['Basic 5x5 Fish (off by default)', '5'],
-          ['X/ERI chains above four nodes', '5'],
-          ['XY-Chains of any length plus remote pairs', '5 + link modifiers'],
+          ['X-Chains depth 5', '5'],
+          ['XY-Chain depth 5', '5.25 + link modifiers'],
+          ['Hidden XY-Chain depth 5', '5.25 + link modifiers'],
+          ['AIC depth 5', '5.25 + link modifiers'],
           ['Transport WXYZ Wings/Rings', '5 + link modifiers'],
           ['B.A.R.N.S. size 5, VWXYZ Wings/Rings', '5 + ALS_RCC modifiers'],
           ['Franken/Mutant 5x5 Fish K0 (off by default)', '5.125'],
@@ -11516,12 +11567,10 @@
           ['Hidden Sextuple (off by default)', '6'],
           ['Naked Sextuple (off by default)', '6'],
           ['Basic 6x6 Fish (off by default)', '6'],
-          ['L(2)-Wing/Ring', '6'],
-          ['L(3)-Wing/Ring', '6'],
-          ['W-Wing/Ring', '6'],
-          ['S-Wing/Ring', '6'],
-          ['M(2,3)-Wing/Ring', '6'],
-          ['H(1,2,3)-Wing/Ring', '6'],
+          ['X-Chains depth 6', '6 + link modifiers'],
+          ['XY-Chain depth 6', '6 + link modifiers'],
+          ['Hidden XY-Chain depth 6', '6 + link modifiers'],
+          ['AIC depth 6', '6 + link modifiers'],
           ['Transport B.A.R.N.S. size 5', '6 + link modifiers'],
           ['B.A.R.N.S. size 6, UVWXYZ Wings/Rings', '6 + ALS_RCC modifiers'],
           ['Franken 6x6 Fish K0', '6.125'],
@@ -11536,9 +11585,11 @@
           ['Basic 7x7 Fish (off by default)', '7'],
           ['ALS-XZ, full engine, depth 2', '7 + link / ALS_RCC modifiers'],
           ['AHS-XZ, full engine, depth 2', '7 + link / AHS_RCC modifiers'],
-          ['ALC-XZ, full engine, depth 2', '7.5 + link / ALS_RCC / AHS_RCC modifiers'],
-          ['Hidden XY-Chain and Remote Pair depth 4', '7.5 + link modifiers'],
-          ['AIC depth 4 (including Inversion Wings/Rings)', '7.6 + link modifiers', null, 'Inversion applies to qualifying depth-4 AIC constructions: strong and weak inference directions are exchanged and the chain is completed for the named iXY, iL, iM, iS, iH, or iW Wing/Ring form. It is a classification of the AIC result, not a separate search.'],
+          ['ALC-XZ, full engine, depth 2', '7 + link / ALS_RCC / AHS_RCC modifiers'],
+          ['Full-depth X-Chains', '7.25 + link modifiers'],
+          ['Full-depth XY-Chains', '7.25 + link modifiers'],
+          ['Full-depth Hidden XY-Chains', '7.25 + link modifiers'],
+          ['Full-depth AIC', '7.25 + link modifiers'],
 
           ['Franken 7x7 Fish K0', '7.125'],
           ['Mutant 7x7 Fish K0', '7.25'],
@@ -11563,7 +11614,6 @@
         category: 'EXPERT', score: '9 to 9.5', items: [
           ['Hidden Nontuple (off by default)', '9'],
           ['Naked Nontuple (off by default)', '9'],
-          ['Generic AIC, depth > 4', '9 + link modifiers'],
           ['Transport ALS-XY', '9 + link / ALS_RCC modifiers'],
           ['Transport AHS-XY', '9 + link / AHS_RCC modifiers'],
           ['Transport ALC-XY', '9 + link / ALS_RCC / AHS_RCC modifiers'],
@@ -11578,7 +11628,7 @@
       },
       {
         category: 'NIGHTMARE', score: '11 to 11.5', items: [
-          ['Full AIC, beyond depth 3', '11 + link / ALS_RCC modifiers'],
+          ['Full AIC, beyond depth 3', '11 + link / ALS_RCC / AHS_RCC modifiers'],
         ],
       },
       {
@@ -11953,6 +12003,15 @@
         return define(ratingCategoryForValue(value), value, `XY-Chain${ringSuffix}`);
       }
 
+      // A named wing is more specific than the generic Hidden XY-Chain
+      // fallback. Some L(2)/L(3) forms use only bilocal links internally,
+      // so hiddenXyChainInfo() can recognize the same path as well.
+      if (/^(?:L\([23]\)|L[23]|S|M(?:\(\d+\))?|H(?:\(\d+\))?|W|Strong)-?(?:Wing|Ring)$/i.test(name)
+        || /^i[SWMLH]/i.test(name)) {
+        const value = chainMathScore(3, chain, 3, 3);
+        return define(ratingCategoryForValue(value), value, name + ringSuffix);
+      }
+
       const hiddenXy = hiddenXyChainInfo(chain);
       if (hiddenXy?.remotePair) {
         const value = chainMathScore(5, chain, 4, 2);
@@ -11988,7 +12047,8 @@
 
       if (/^(?:L\([23]\)|L[23]|S|M(?:\(\d+\))?|H(?:\(\d+\))?|W|Strong)-?(?:Wing|Ring)$/i.test(name)
         || /^i[SWMLH]/i.test(name)) {
-        return define('Frustrating', 6 + ringBonus, `${name}${ringSuffix}`);
+        const value = chainMathScore(3, chain, 3, 3);
+        return define(ratingCategoryForValue(value), value, `${name}${ringSuffix}`);
       }
 
       const length = chainLengthOf(chain);
@@ -12281,7 +12341,12 @@
       };
     }
 
-    async function simulateSolverInWorker(grid, expectedSolution, profile = null) {
+    async function simulateSolverInWorker(
+      grid,
+      expectedSolution,
+      profile = null,
+      budget = 'generator',
+    ) {
       const simulationCand = core.allCandidates(grid);
       const simulationGrid = [...grid];
       const steps = [];
@@ -12300,6 +12365,7 @@
               'generator',
             );
           } catch (error) {
+            if (budget === 'generator') throw error;
             // A file:// page or an older browser may reject workers. Keep the
             // existing synchronous solver as a transparent fallback.
             useWorker = false;
@@ -12377,11 +12443,28 @@
       targetCategory = 'any',
       profileOverride = undefined,
     ) {
+      const ratingTimeoutMs = 15000;
+      let timeoutId = null;
       try {
         const profile = profileOverride === undefined
           ? generationTechniqueProfile(targetCategory)
           : profileOverride;
-        const simulation = await simulateSolverInWorker(grid, expectedSolution, profile);
+        const simulation = await Promise.race([
+          simulateSolverInWorker(grid, expectedSolution, profile, 'generator'),
+          new Promise((resolve, reject) => {
+            timeoutId = setTimeout(() => {
+              const worker = searchWorker;
+              searchWorker = null;
+              if (worker) worker.terminate();
+              releaseSearchWorkerBlobUrl();
+              for (const job of searchWorkerJobs.values()) {
+                job.reject(new Error('Generated-grid rating timed out.'));
+              }
+              searchWorkerJobs.clear();
+              reject(new Error('Generated-grid rating timed out.'));
+            }, ratingTimeoutMs);
+          }),
+        ]);
         const rating = ratingFromSteps(simulation.steps, 'generated');
         return ratingWithSolvedState(
           rating,
@@ -12389,10 +12472,12 @@
         );
       } catch (error) {
         return {
-          ...unknownRating('Rating check failed.'),
+          ...unknownRating(error?.message || 'Rating check failed.'),
           source: 'generated',
           solved: false,
         };
+      } finally {
+        if (timeoutId !== null) clearTimeout(timeoutId);
       }
     }
 
@@ -15496,7 +15581,9 @@
         : null;
       const profileAlsMaxSizeFox = Number(profile?.alsMaxSizeFox);
       const phaseAlsMaxSizeFox = Number(phase?.alsMaxSizeFox);
-      const configuredAlsMaxSizeFox = Number(nodeLimits.alsMaxSizeFox);
+      const configuredAlsMaxSizeFox = phase?.fullFoxRange
+        ? null
+        : Number(nodeLimits.alsMaxSizeFox);
       const alsMaxSizeFoxCandidates = [
         phaseAlsMaxSizeFox,
         profileAlsMaxSizeFox,
@@ -15531,7 +15618,9 @@
       const passAlsMaxSizeFox = baseAlsMaxSizeFox == null || alsMaxDigits == null
         ? baseAlsMaxSizeFox
         : Math.min(baseAlsMaxSizeFox, Math.max(0, alsMaxDigits - 1));
-      const effectiveAlsMaxCells = nodeLimits.alsMaxCells;
+      const effectiveAlsMaxCells = phase?.fullFoxRange
+        ? Math.min(8, nodeLimits.alsMaxCells ?? 8)
+        : nodeLimits.alsMaxCells;
       const alsList = buildSets && includeAlsRcc ? core.alsConstructor(candidateGrid, {
         ...(passAlsMaxSizeDOF == null ? {} : { maxSizeDOF: passAlsMaxSizeDOF }),
         ...(passAlsMaxSizeFox == null ? {} : { maxSizeFox: passAlsMaxSizeFox }),
@@ -15552,13 +15641,19 @@
       const filteredAlsLinkSet = phase?.alsModuleKinds && alsLinkSet
         ? alsLinkSet.map(bucket => bucket.filter(link => phase.alsModuleKinds.includes(link.moduleKind)))
         : alsLinkSet;
-      const ahsDigitLimits = [phase?.ahsMaxDigits, nodeLimits.ahsMaxDigits]
+      const ahsDigitLimits = [
+        phase?.ahsMaxDigits,
+        phase?.fullFoxRange ? Math.min(8, nodeLimits.ahsMaxDigits ?? 8) : nodeLimits.ahsMaxDigits,
+      ]
         .map(Number)
         .filter(value => Number.isInteger(value) && value >= 2);
       const effectiveAhsMaxDigits = ahsDigitLimits.length
         ? Math.min(...ahsDigitLimits)
         : null;
-      const ahsCellLimits = [phase?.ahsMaxCells, nodeLimits.ahsMaxCells]
+      const ahsCellLimits = [
+        phase?.ahsMaxCells,
+        phase?.fullFoxRange ? Math.min(9, nodeLimits.ahsMaxCells ?? 9) : nodeLimits.ahsMaxCells,
+      ]
         .map(Number)
         .filter(value => Number.isInteger(value) && value > 0);
       const effectiveAhsMaxCells = ahsCellLimits.length
@@ -15662,6 +15757,7 @@
           minDepth: options.minDepth ?? null,
           family: options.family || null,
           allowedMoveKeys: options.allowedMoveKeys || null,
+          allowedMoveGroups: options.allowedMoveGroups || null,
           singleDigitOnly: options.singleDigitOnly === true,
           searchLimits: options.searchLimits || null,
         });
@@ -15864,6 +15960,8 @@
       const keys = chainMoveKeys(chain);
       if (Array.isArray(phase.allowedMoveKeys)
         && !phase.allowedMoveKeys.some(key => keys.has(key))) return false;
+      if (Array.isArray(phase.allowedMoveGroups)
+        && !phase.allowedMoveGroups.some(group => group.some(key => keys.has(key)))) return false;
       if (!phase.family) return true;
       if (phase.family === 'barns') return keys.has('barns');
       if (phase.family === 'barns-transport') return keys.has('barns-transport');
@@ -15929,6 +16027,13 @@
       profile,
     ) {
       const phaseTechniqueOrder = chain => {
+        if (Array.isArray(phase?.allowedMoveGroups) && phase.allowedMoveGroups.length) {
+          const keys = chainMoveKeys(chain);
+          const groupIndex = phase.allowedMoveGroups.findIndex(
+            group => group.some(key => keys.has(key)),
+          );
+          return groupIndex >= 0 ? groupIndex : Number.POSITIVE_INFINITY;
+        }
         if (!Array.isArray(phase?.allowedMoveKeys) || !phase.allowedMoveKeys.length) {
           return moveTieOrder(chain, null);
         }
@@ -15966,6 +16071,10 @@
             // cannot outrank an earlier X-chain/Skyscraper/Kite form.
             priority: [
               phaseTechniqueOrder(chain),
+              // Within the same named/classified move, prefer the proof that
+              // removes more candidates. This never crosses phase or class
+              // boundaries because both are compared first.
+              -items.length,
               ...solverMovePriority(chain, step, maxDepth, index),
             ],
         };
@@ -16029,17 +16138,17 @@
       if (/^Hidden XY-Chain$/i.test(name)) keys.add('hidden-xy-chain');
       if (/^Hidden Remote Pair$/i.test(name)) keys.add('hidden-remote-pair');
 
-      if (/^W-Wing$/i.test(name)) keys.add('w-wing');
-      if (/^S-Wing$/i.test(name)) keys.add('s-wing');
-      if (/^M(?:\(2\)|2)-Wing$/i.test(name)) keys.add('m2-wing');
-      if (/^M(?:\(3\)|3)-Wing$/i.test(name)) keys.add('m3-wing');
-      if (/^L(?:\(1\)|1)-Wing$/i.test(name)) keys.add('l1-wing');
-      if (/^L(?:\(2\)|2)-Wing$/i.test(name)) keys.add('l2-wing');
-      if (/^L(?:\(3\)|3)-Wing$/i.test(name)) keys.add('l3-wing');
-      if (/^H(?:\(1\)|1)-Wing$/i.test(name)) keys.add('h1-wing');
-      if (/^H(?:\(2\)|2)-Wing$/i.test(name)) keys.add('h2-wing');
-      if (/^H(?:\(3\)|3)-Wing$/i.test(name)) keys.add('h3-wing');
-      if (/^Strong[- ]Wing/i.test(name)) keys.add('strong-wing');
+      if (/^W-(?:Wing|Ring)$/i.test(name)) keys.add('w-wing');
+      if (/^S-(?:Wing|Ring)$/i.test(name)) keys.add('s-wing');
+      if (/^M(?:\(2\)|2)-(?:Wing|Ring)$/i.test(name)) keys.add('m2-wing');
+      if (/^M(?:\(3\)|3)-(?:Wing|Ring)$/i.test(name)) keys.add('m3-wing');
+      if (/^L(?:\(1\)|1)-(?:Wing|Ring)$/i.test(name)) keys.add('l1-wing');
+      if (/^L(?:\(2\)|2)-(?:Wing|Ring)$/i.test(name)) keys.add('l2-wing');
+      if (/^L(?:\(3\)|3)-(?:Wing|Ring)$/i.test(name)) keys.add('l3-wing');
+      if (/^H(?:\(1\)|1)-(?:Wing|Ring)$/i.test(name)) keys.add('h1-wing');
+      if (/^H(?:\(2\)|2)-(?:Wing|Ring)$/i.test(name)) keys.add('h2-wing');
+      if (/^H(?:\(3\)|3)-(?:Wing|Ring)$/i.test(name)) keys.add('h3-wing');
+      if (/^Strong[- ](?:Wing|Ring)/i.test(name)) keys.add('strong-wing');
       if (/^i[SWMLH]/i.test(name)) keys.add('inversion');
 
       if (/^AIC\s*\+\s*ALS\s*-\s*.+(?:Wing|Ring)$/i.test(fullName)
@@ -16583,6 +16692,7 @@
 
     function alcSearchOptions(phase, candidateGrid, budget = 'interactive') {
       const nodeLimits = chainNodeLimitOptions('alc');
+      const fullFoxRange = phase?.fullFoxRange === true;
       const maxResults = budget === 'generator' ? 250 : 500;
       const common = {
         maxChains: maxResults,
@@ -16594,9 +16704,9 @@
       };
       if (phase.alcType === 'xz') return {
         ...common,
-        maxAlsCells: nodeLimits.alsMaxCells ?? 5,
-        maxAhsDigits: 5,
-        maxAhsCells: 7,
+        maxAlsCells: fullFoxRange ? Math.min(8, nodeLimits.alsMaxCells ?? 8) : (nodeLimits.alsMaxCells ?? 5),
+        maxAhsDigits: fullFoxRange ? Math.min(8, nodeLimits.ahsMaxDigits ?? 8) : 5,
+        maxAhsCells: fullFoxRange ? Math.min(9, nodeLimits.ahsMaxCells ?? 9) : 7,
         maxAhsDof: 5,
         ...(nodeLimits.alsMaxSizeDOF == null ? {} : { alsMaxSizeDOF: nodeLimits.alsMaxSizeDOF }),
         ...(nodeLimits.alsMaxSizeFox == null ? {} : { alsMaxSizeFox: nodeLimits.alsMaxSizeFox }),
@@ -16790,7 +16900,10 @@
       if (phase?.family === 'ahs-xy') return 8;
       if (phase?.family === 'als-chain') return 10;
       if (phase?.family === 'ahs-chain') return 10;
-      if (phase?.family === 'alc-xz') return 7.5;
+      // ALS-XZ, AHS-XZ, and ALC-XZ are peer techniques at this depth.
+      // Their mental difficulty is equal; ALC's mixed representation does
+      // not make this phase harder than the other two.
+      if (phase?.family === 'alc-xz') return 7;
       if (phase?.family === 'alc-xy') return 8.5;
       if (phase?.family === 'alc-chain') return 10.5;
       if (phase?.family === 'alc-dof') return 12.5;
@@ -16815,6 +16928,13 @@
 
     function solverAhsMaxDigits(phase, profile = null) {
       if (!phase?.includeAhs) return null;
+      if (phase?.fullFoxRange) {
+        const configured = Number(profile?.ahsMaxDigits);
+        const selected = Number(chainNodeLimitOptions('chain').ahsMaxDigits);
+        return Math.min(8, Number.isInteger(configured) && configured >= 2
+          ? configured
+          : Number.isInteger(selected) && selected >= 2 ? selected : 8);
+      }
       const configured = Number(profile?.ahsMaxDigits);
       const phaseLimit = Number(phase?.ahsMaxDigits);
       const configuredNode = Number(chainNodeLimitOptions('chain').ahsMaxDigits);
@@ -16844,6 +16964,14 @@
     // a two-cell ALS normally carries three digits.
     function solverAlsCellPasses(phase, profile = null) {
       if (!phase?.includeAls) return [null];
+      if (phase?.fullFoxRange) {
+        const configured = Number(profile?.alsMaxCells);
+        const selected = Number(chainNodeLimitOptions('chain').alsMaxCells);
+        const maxCells = Math.min(8, Number.isInteger(configured) && configured >= 2
+          ? configured
+          : Number.isInteger(selected) && selected >= 2 ? selected : 8);
+        return Array.from({ length: Math.max(0, maxCells - 1) }, (_, index) => index + 2);
+      }
       const configured = Number(profile?.alsMaxCells);
       const phaseLimit = Number(phase?.alsMaxCells);
       const configuredMax = Number.isInteger(configured) && configured >= 2
@@ -17399,6 +17527,22 @@
         family: null,
         allowedMoveKeys: ['xy-wing', 'xy-chain'],
       });
+      addChain('moderate-named-wings', {
+        name: 'named-wings-depth-3',
+        includeAls: false,
+        strongLinkTypes: [0, 1, 2, 3, 4],
+        maxDepth: 3,
+        minDepth: 3,
+        requireAls: false,
+        requireMixed: false,
+        family: null,
+        allowedMoveKeys: [
+          'l2-wing', 'l3-wing',
+          'w-wing', 's-wing', 'm2-wing', 'm3-wing',
+          'h1-wing', 'h2-wing', 'h3-wing',
+          'strong-wing',
+        ],
+      });
       addDirect('moderate-fish', [
         { kind: 'fish', size: 3, k: [0, 1, 2], categories: ['Franken', 'Mutant'] },
       ]);      addDirect('tough-subsets', [
@@ -17408,42 +17552,114 @@
       addDirect('tough-fish', [
         { kind: 'fish', size: 4, k: [0], categories: ['Basic'] },
       ]);
-      addDirect('irritating-subsets', [
-        { type: 'hidden-quintuple' },
-        { type: 'naked-quintuple' },
-      ]);
-      addDirect('irritating-basic-fish', [
-        { kind: 'fish', size: 5, k: [0], categories: ['Basic'] },
-      ]);
-      addDirect('frustrating-subsets', [
-        { type: 'hidden-sextuple' },
-        { type: 'naked-sextuple' },
-      ]);
-      addDirect('frustrating-basic-fish', [
-        { kind: 'fish', size: 6, k: [0], categories: ['Basic'] },
-      ]);
-      addDirect('hard-subsets', [
-        { type: 'hidden-septuple' },
-        { type: 'naked-septuple' },
-      ]);
-      addDirect('hard-basic-fish', [
-        { kind: 'fish', size: 7, k: [0], categories: ['Basic'] },
-      ]);
-      addDirect('demanding-subsets', [
-        { type: 'hidden-octuple' },
-        { type: 'naked-octuple' },
-      ]);
-      addDirect('demanding-basic-fish', [
-        { kind: 'fish', size: 8, k: [0], categories: ['Basic'] },
-      ]);
-      addDirect('expert-subsets', [
-        { type: 'hidden-nontuple' },
-        { type: 'naked-nontuple' },
-      ]);
-      addDirect('expert-basic-fish', [
-        { kind: 'fish', size: 9, k: [0], categories: ['Basic'] },
-      ]);
+      if (profile?.maxRank >= 70) {
+        addChain('challenging-xchains', {
+          name: 'strong-depth-4-xchains',
+          includeAls: false,
+          strongLinkTypes: [0, 1, 2, 3],
+          maxDepth: 4,
+          minDepth: 4,
+          requireAls: false,
+          requireMixed: false,
+          family: null,
+          allowedMoveKeys: ['x-chain', 'chain-x-wing'],
+          singleDigitOnly: true,
+          searchLimits: {
+            maxChains: 250,
+            maxResultAttempts: 5000,
+            maxResultAttemptsPerStart: 250,
+            maxStates: 12000,
+            maxQueue: 12000,
+            maxBranching: 100,
+            maxStartViews: 2000,
+            maxAlsLinks: 1000,
+          },
+        });
+        addChain('challenging-transport', {
+          name: 'barns-transport-xyz',
+          includeAls: true,
+          strongLinkTypes: [0, 1, 2, 3, 4],
+          maxDepth: 3,
+          minDepth: 3,
+          requireAls: true,
+          requireMixed: true,
+          alsCellCount: 2,
+          barnsSize: 3,
+          family: 'barns-transport',
+          requiredTypes: ['chains', 'barns-transport'],
+        });
+        addChain('challenging-barns-wxyz', {
+          name: 'barns-wxyz',
+          includeAls: true,
+          strongLinkTypes: [4],
+          maxDepth: 2,
+          minDepth: 2,
+          requireAls: true,
+          requireMixed: false,
+          alsCellCount: 2,
+          alsMaxDigits: 3,
+          alsMaxSizeDOF: 1,
+          alsMaxSizeFox: 3,
+          alsLinkMode: 'xz-only',
+          alsModuleKinds: ['ALS_XZ'],
+          barnsSize: 4,
+          family: 'barns',
+          requiredTypes: ['chains', 'barns'],
+        });
+        addChain('challenging-xy-chain', {
+          name: 'xy-chain-depth-4',
+          includeAls: false,
+          strongLinkTypes: [4],
+          maxDepth: 4,
+          minDepth: 4,
+          requireAls: false,
+          requireMixed: false,
+          family: null,
+          allowedMoveKeys: ['xy-chain'],
+        });
+        addChain('challenging-hidden-xy', {
+          name: 'hidden-xy-chain-depth-4',
+          includeAls: false,
+          strongLinkTypes: [0, 1, 2, 3],
+          maxDepth: 4,
+          minDepth: 4,
+          requireAls: false,
+          requireMixed: false,
+          family: null,
+          allowedMoveKeys: ['hidden-xy-chain', 'hidden-remote-pair', 'remote-pair'],
+        });
+        addChain('challenging-aic', {
+          name: 'aic-depth-4',
+          includeAls: false,
+          strongLinkTypes: [0, 1, 2, 3, 4],
+          maxDepth: 4,
+          minDepth: 4,
+          requireAls: false,
+          requireMixed: false,
+          family: null,
+          searchLimits: {
+            maxChains: 250,
+            maxResultAttempts: 5000,
+            maxResultAttemptsPerStart: 250,
+            maxStates: 12000,
+            maxQueue: 12000,
+            maxBranching: 100,
+            maxStartViews: 2000,
+            maxAlsLinks: 1000,
+          },
+        });
+        addDirect('challenging-fish', [
+          { kind: 'fish', size: 4, k: [0, 1, 2], categories: ['Franken', 'Mutant'] },
+        ]);
+      }
       if (profile?.maxRank >= 80) {
+        addDirect('irritating-subsets', [
+          { type: 'hidden-quintuple' },
+          { type: 'naked-quintuple' },
+        ]);
+        addDirect('irritating-basic-fish', [
+          { kind: 'fish', size: 5, k: [0], categories: ['Basic'] },
+        ]);
         addChain('irritating-xchains', {
           name: 'strong-depth-5-plus',
           includeAls: false,
@@ -17460,15 +17676,36 @@
           ],
         });
         addChain('irritating-xy', {
-          name: 'xy-chain-depth-3-plus-type-4',
+          name: 'xy-chain-depth-5',
           includeAls: false,
           strongLinkTypes: [4],
           maxDepth: 8,
-          minDepth: 3,
+          minDepth: 5,
           requireAls: false,
           requireMixed: false,
           family: null,
           allowedMoveKeys: ['xy-wing', 'xy-chain', 'remote-pair'],
+        });
+        addChain('irritating-hidden-xy', {
+          name: 'hidden-xy-chain-depth-5',
+          includeAls: false,
+          strongLinkTypes: [0, 1, 2, 3],
+          maxDepth: 8,
+          minDepth: 5,
+          requireAls: false,
+          requireMixed: false,
+          family: null,
+          allowedMoveKeys: ['hidden-xy-chain', 'hidden-remote-pair', 'remote-pair'],
+        });
+        addChain('irritating-aic', {
+          name: 'aic-depth-5',
+          includeAls: false,
+          strongLinkTypes: [0, 1, 2, 3, 4],
+          maxDepth: 8,
+          minDepth: 5,
+          requireAls: false,
+          requireMixed: false,
+          family: null,
         });
         addChain('irritating-transport-wxyz', {
           name: 'barns-transport-wxyz',
@@ -17498,21 +17735,13 @@
         });
       }
       if (profile?.maxRank >= 90) {
-        addChain('frustrating-named-als', {
-          name: 'named-als-wings-rings',
-          includeAls: true,
-          strongLinkTypes: [0, 1, 2, 3, 4],
-          maxDepth: 3,
-          minDepth: 3,
-          requireAls: true,
-          requireMixed: true,
-          family: 'als-xz',
-          allowedMoveKeys: [
-            'l2-wing', 'l3-wing', 'w-wing', 's-wing',
-            'm2-wing', 'm3-wing', 'h1-wing', 'h2-wing', 'h3-wing',
-          ],
-          requiredTypes: ['chains', 'als-named'],
-        });
+        addDirect('frustrating-subsets', [
+          { type: 'hidden-sextuple' },
+          { type: 'naked-sextuple' },
+        ]);
+        addDirect('frustrating-basic-fish', [
+          { kind: 'fish', size: 6, k: [0], categories: ['Basic'] },
+        ]);
         addChain('frustrating-transport-barns-5', {
           name: 'barns-transport-size-5',
           includeAls: true,
@@ -17539,6 +17768,50 @@
           family: 'barns',
           requiredTypes: ['chains', 'barns'],
         });
+        addChain('frustrating-xchains', {
+          name: 'strong-depth-6-plus',
+          includeAls: false,
+          strongLinkTypes: [0, 1, 2, 3],
+          maxDepth: 8,
+          minDepth: 6,
+          requireAls: false,
+          requireMixed: false,
+          family: null,
+          singleDigitOnly: true,
+          allowedMoveKeys: ['x-chain', 'chain-x-wing', 'empty-rectangle', 'dual-empty-rectangle', 'rect-kite', 'bridged-eri', 'eri-chain'],
+        });
+        addChain('frustrating-xy', {
+          name: 'xy-chain-depth-6',
+          includeAls: false,
+          strongLinkTypes: [4],
+          maxDepth: 8,
+          minDepth: 6,
+          requireAls: false,
+          requireMixed: false,
+          family: null,
+          allowedMoveKeys: ['xy-wing', 'xy-chain', 'remote-pair'],
+        });
+        addChain('frustrating-hidden-xy', {
+          name: 'hidden-xy-chain-depth-6',
+          includeAls: false,
+          strongLinkTypes: [0, 1, 2, 3],
+          maxDepth: 8,
+          minDepth: 6,
+          requireAls: false,
+          requireMixed: false,
+          family: null,
+          allowedMoveKeys: ['hidden-xy-chain', 'hidden-remote-pair', 'remote-pair'],
+        });
+        addChain('frustrating-aic', {
+          name: 'aic-depth-6',
+          includeAls: false,
+          strongLinkTypes: [0, 1, 2, 3, 4],
+          maxDepth: 8,
+          minDepth: 6,
+          requireAls: false,
+          requireMixed: false,
+          family: null,
+        });
         addDirect('frustrating-extended-fish', [
           { kind: 'fish', size: 6, k: [0], categories: ['Franken', 'Mutant'] },
         ]);
@@ -17555,11 +17828,19 @@
         });
       }
       if (profile?.maxRank >= 100) {
+        addDirect('hard-subsets', [
+          { type: 'hidden-septuple' },
+          { type: 'naked-septuple' },
+        ]);
+        addDirect('hard-basic-fish', [
+          { kind: 'fish', size: 7, k: [0], categories: ['Basic'] },
+        ]);
         // Next/Run All should use the same narrow ALS-XZ route as the
         // dedicated ALS-XZ button before opening the full mixed-link phase.
         // Type 4 is the bivalve ALS edge; ALS_RCC supplies the other edge.
         addChain('hard-als-xz-shortcut', {
           name: 'als-xz-shortcut',
+          fullFoxRange: true,
           includeAls: true,
           strongLinkTypes: [4],
           maxDepth: 2,
@@ -17573,6 +17854,7 @@
         });
         addChain('hard-als-xz', {
           name: 'als-xz-full-depth-2',
+          fullFoxRange: true,
           includeAls: true,
           strongLinkTypes: [0, 1, 2, 3, 4],
           maxDepth: 2,
@@ -17586,6 +17868,7 @@
         });
         addChain('hard-ahs-xz-shortcut', {
           name: 'ahs-xz-shortcut',
+          fullFoxRange: true,
           includeAls: false,
           includeAhs: true,
           ahsMaxCells: 9,
@@ -17599,6 +17882,7 @@
         });
         addChain('hard-ahs-xz', {
           name: 'ahs-xz-full-depth-2',
+          fullFoxRange: true,
           includeAls: false,
           includeAhs: true,
           ahsMaxCells: 9,
@@ -17611,31 +17895,59 @@
           requiredTypes: ['chains', 'ahs-xz'],
         });
         addAlc('hard-alc-xz', 'xz', {
+          fullFoxRange: true,
           maxDepth: 2,
           minDepth: 2,
           requiredTypes: ['chains'],
         });
 
-        addChain('hard-hidden-xy-depth-4', {
-          name: 'hidden-xy-chain-depth-4',
+      addChain('hard-xchains-full-depth', {
+          name: 'strong-full-depth-xchains',
           includeAls: false,
           includeAhs: false,
-          strongLinkTypes: [0, 1],
-          maxDepth: 4,
-          minDepth: 4,
+          strongLinkTypes: [0, 1, 2, 3],
+          maxDepth: 8,
+          minDepth: 2,
+          requireAls: false,
+          requireMixed: false,
+          family: null,
+          singleDigitOnly: true,
+          allowedMoveKeys: ['x-chain', 'chain-x-wing', 'empty-rectangle', 'dual-empty-rectangle', 'rect-kite', 'bridged-eri', 'eri-chain'],
+          requiredTypes: ['chains'],
+        });
+        addChain('hard-xy-full-depth', {
+          name: 'xy-chain-full-depth',
+          includeAls: false,
+          includeAhs: false,
+          strongLinkTypes: [4],
+          maxDepth: 8,
+          minDepth: 2,
+          requireAls: false,
+          requireMixed: false,
+          family: null,
+          allowedMoveKeys: ['xy-wing', 'xy-chain', 'remote-pair'],
+          requiredTypes: ['chains'],
+        });
+        addChain('hard-hidden-xy-full-depth', {
+          name: 'hidden-xy-chain-full-depth',
+          includeAls: false,
+          includeAhs: false,
+          strongLinkTypes: [0, 1, 2, 3],
+          maxDepth: 8,
+          minDepth: 2,
           requireAls: false,
           requireMixed: false,
           family: null,
           allowedMoveKeys: ['hidden-xy-chain', 'hidden-remote-pair', 'remote-pair'],
           requiredTypes: ['chains'],
         });
-        addChain('hard-aic-depth-4', {
-          name: 'aic-depth-4',
+        addChain('hard-aic-full-depth', {
+          name: 'aic-full-depth',
           includeAls: false,
           includeAhs: false,
           strongLinkTypes: [0, 1, 2, 3, 4],
-          maxDepth: 4,
-          minDepth: 4,
+          maxDepth: 8,
+          minDepth: 2,
           requireAls: false,
           requireMixed: false,
           family: null,
@@ -17647,6 +17959,13 @@
 
       }
       if (profile?.maxRank >= 110) {
+        addDirect('demanding-subsets', [
+          { type: 'hidden-octuple' },
+          { type: 'naked-octuple' },
+        ]);
+        addDirect('demanding-basic-fish', [
+          { kind: 'fish', size: 8, k: [0], categories: ['Basic'] },
+        ]);
         addChain('demanding-named-als', {
           name: 'named-als-wings-rings-depth-3',
           includeAls: true,
@@ -17659,6 +17978,14 @@
           // ordinary strong links 0-4 plus ALS_RCC/type 5.
           alsLinkMode: 'all',
           family: 'als-xz',
+          allowedMoveGroups: [
+            ['l2-wing', 'l3-wing'],
+            ['w-wing'],
+            ['s-wing'],
+            ['m2-wing', 'm3-wing'],
+            ['h1-wing', 'h2-wing', 'h3-wing'],
+            ['strong-wing'],
+          ],
           requiredTypes: ['chains', 'als-named'],
         });
         addChain('demanding-ahs-named', {
@@ -17672,6 +17999,14 @@
           requireAls: false,
           requireMixed: false,
           family: 'ahs-xy',
+          allowedMoveGroups: [
+            ['l2-wing', 'l3-wing'],
+            ['w-wing'],
+            ['s-wing'],
+            ['m2-wing', 'm3-wing'],
+            ['h1-wing', 'h2-wing', 'h3-wing'],
+            ['strong-wing'],
+          ],
           requiredTypes: ['chains', 'ahs-xy'],
         });
         addChain('demanding-transport-als-xz', {
@@ -17761,6 +18096,13 @@
         });
       }
       if (profile?.maxRank >= 120) {
+        addDirect('expert-subsets', [
+          { type: 'hidden-nontuple' },
+          { type: 'naked-nontuple' },
+        ]);
+        addDirect('expert-basic-fish', [
+          { kind: 'fish', size: 9, k: [0], categories: ['Basic'] },
+        ]);
         addChain('expert-generic-aic', {
           name: 'generic-aic-depth-5-plus',
           includeAls: false,
@@ -17868,7 +18210,7 @@
           includeAls: true,
           includeAhs: true,
           ahsMaxCells: 9,
-          strongLinkTypes: [0, 1, 2, 3, 4, 7],
+          strongLinkTypes: [0, 1, 2, 3, 4, 5, 6, 7],
           maxDepth: 8,
           minDepth: 4,
           requireAls: false,
@@ -17876,76 +18218,6 @@
           family: null,
         });
       }
-      addChain('challenging-xchains', {
-        name: 'strong-depth-4-xchains',
-        includeAls: false,
-        strongLinkTypes: [0, 1, 2, 3],
-        maxDepth: 4,
-        minDepth: 4,
-        requireAls: false,
-        requireMixed: false,
-        family: null,
-        allowedMoveKeys: ['x-chain', 'chain-x-wing'],
-        singleDigitOnly: true,
-        searchLimits: {
-          maxChains: 250,
-          maxResultAttempts: 5000,
-          maxResultAttemptsPerStart: 250,
-          maxStates: 12000,
-          maxQueue: 12000,
-          maxBranching: 100,
-          maxStartViews: 2000,
-          maxAlsLinks: 1000,
-        },
-      });
-      addChain('challenging-transport', {
-        name: 'barns-transport-xyz',
-        includeAls: true,
-        strongLinkTypes: [0, 1, 2, 3, 4],
-        maxDepth: 3,
-        minDepth: 3,
-        requireAls: true,
-        requireMixed: true,
-        alsCellCount: 2,
-        barnsSize: 3,
-        family: 'barns-transport',
-        requiredTypes: ['chains', 'barns-transport'],
-      });
-      addChain('challenging-barns-wxyz', {
-        name: 'barns-wxyz',
-        includeAls: true,
-        strongLinkTypes: [4],
-        maxDepth: 2,
-        minDepth: 2,
-        requireAls: true,
-        requireMixed: false,
-        // A size-4 WXYZ is two size-2 ALS nodes. Keep this phase focused on
-        // that exact construction so it cannot burn time on larger ALS passes
-        // before the later XY-chain phase gets a chance to run.
-        alsCellCount: 2,
-        alsMaxDigits: 3,
-        alsMaxSizeDOF: 1,
-        alsMaxSizeFox: 3,
-        alsLinkMode: 'xz-only',
-        alsModuleKinds: ['ALS_XZ'],
-        barnsSize: 4,
-        family: 'barns',
-        requiredTypes: ['chains', 'barns'],
-      });
-      addChain('challenging-xy-chain', {
-        name: 'xy-chain-depth-4',
-        includeAls: false,
-        strongLinkTypes: [4],
-        maxDepth: 4,
-        minDepth: 4,
-        requireAls: false,
-        requireMixed: false,
-        family: null,
-        allowedMoveKeys: ['xy-chain'],
-      });
-      addDirect('challenging-fish', [
-        { kind: 'fish', size: 4, k: [0, 1, 2], categories: ['Franken', 'Mutant'] },
-      ]);
       addAlsDof('abyssal-als-dof-family');
       addAhsDof('abyssal-ahs-dof-family');
       addAlc('abyssal-alc-dof-chain', 'dof', {
@@ -18079,11 +18351,14 @@
                 mutantEnabled: category === 'Mutant',
                 priorityMode: true,
               };
+              // The worker supplies this callback from its own core. Only
+              // structured-cloneable fish settings cross the message boundary.
+              const { omissionFishSearch, ...workerFishOptions } = fishOptions;
               const result = await runSearchWorker('simple', {
                 candidateGrid,
                 fixedGrid: [...fixedGrid],
                 moveTypes: [fishType],
-                fishOptions,
+                fishOptions: workerFishOptions,
               });
               if (!result) continue;
               result.rating = ratingForStep(result);
@@ -19560,7 +19835,10 @@
       return applyCycleChoice(before, promoted, choice);
     }
 
-    async function chooseInteractiveStep() {
+    async function chooseInteractiveStep({
+      allowSynchronousFallback = true,
+    } = {}) {
+      lastInteractiveSearchError = null;
       const profile = interactiveTechniqueProfile();
       const fallback = () => chooseSolverStep(
         cand,
@@ -19578,49 +19856,41 @@
         const direct = directSolverPhaseStep(cand, puzzle, phase, profile);
         if (direct?.step) return direct;
       }
-      // Modestly Easy is a strict queue: exhaust the reduced depth-2
-      // type-0-to-3 AIC pass before the worker is allowed to consider fish.
-      // Keeping this preflight synchronous also makes the ordering identical
-      // on file:// pages and after a worker timeout.
-      const firstChainPhase = solverPhasePlan(profile)
-        .find(phase => phase.name === 'modestly-easy-chains');
-      if (firstChainPhase && solverPhaseAllowsType(
-        firstChainPhase,
-        currentSolverMoveTypes(profile.moveTypes),
-      )) {
-        const firstChain = findSolverChainMove(
-          cand,
-          puzzle,
-          'interactive',
-          solution,
-          profile,
-          null,
-          firstChainPhase.chainPhase,
-        );
-        if (firstChain?.step) return firstChain;
-      }
       try {
-        // The phase walker is bounded per phase. Give the depth-2 strong-link
-        // pass enough time to finish its first-result search before falling
-        // back; otherwise a timeout can incorrectly expose the later fish
-        // phase as the first move.
+        // Bound each worker operation, rather than the sum of all successful
+        // hierarchy phases. Progress resets the inactivity timeout.
+        let timeoutId;
+        let refreshTimeout;
         const timeout = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Interactive search worker timed out.')), 15000);
+          refreshTimeout = () => {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => reject(new Error('Interactive search worker timed out.')), 15000);
+          };
+          refreshTimeout();
         });
-        return await Promise.race([
-          chooseSolverStepInWorker(cand, puzzle, solution, profile, 'interactive'),
-          timeout,
-        ]);
+        interactiveSearchProgress = refreshTimeout;
+        try {
+          return await Promise.race([
+            chooseSolverStepInWorker(cand, puzzle, solution, profile, 'interactive'),
+            timeout,
+          ]);
+        } finally {
+          if (interactiveSearchProgress === refreshTimeout) interactiveSearchProgress = null;
+          clearTimeout(timeoutId);
+        }
       } catch (error) {
+        lastInteractiveSearchError = error;
         // Keep file:// pages and browsers without worker support usable, and
         // recover from a worker that is stuck in an older/high-cost phase.
         const worker = searchWorker;
         searchWorker = null;
         if (worker) worker.terminate();
+        releaseSearchWorkerBlobUrl();
         for (const job of searchWorkerJobs.values()) {
           job.reject(error);
         }
         searchWorkerJobs.clear();
+        if (!allowSynchronousFallback) return null;
         return fallback();
       }
     }
@@ -19749,6 +20019,7 @@
         return;
       }
       let ran = 0;
+      let stopReason = null;
       setBusy(true);
       setStatus('Run All started. Applying the enabled hierarchy from the first phase on each cycle.');
       try {
@@ -19759,9 +20030,30 @@
             if (applyCycleChoice(before, promoted, null)) ran += 1;
             break;
           }
-          const choice = await chooseInteractiveStep();
-          if (!applyCycleChoice(before, promoted, choice)) break;
+          setStatus(`Run All: searching cycle ${ran + 1}...`);
+          let choice = await chooseInteractiveStep({
+            allowSynchronousFallback: false,
+          });
+          if (!choice && lastInteractiveSearchError) {
+            setStatus('Run All search worker restarted; retrying the current cycle...', 'warn');
+            await new Promise(resolve => setTimeout(resolve, 0));
+            choice = await chooseInteractiveStep({
+              allowSynchronousFallback: false,
+            });
+          }
+          if (!choice) {
+            stopReason = lastInteractiveSearchError
+              ? `Run All stopped: search worker failed after retry (${lastInteractiveSearchError.message}).`
+              : 'Run All stopped: no enabled move was returned by the configured hierarchy.';
+            break;
+          }
+          if (!applyCycleChoice(before, promoted, choice)) {
+            stopReason = 'Run All stopped: the returned move could not be applied.';
+            break;
+          }
           ran += 1;
+          renderLog();
+          await new Promise(resolve => setTimeout(resolve, 0));
         }
       } finally {
         setBusy(false);
@@ -19769,7 +20061,9 @@
       if (logEntries.length) {
         ratingReport = ratingFromLog(logEntries, candidateGridIsSolved(cand, puzzle));
       }
-      if (solution && !candidateGridIsSolved(cand, puzzle)) {
+      if (stopReason) {
+        setStatus(stopReason, 'warn');
+      } else if (solution && !candidateGridIsSolved(cand, puzzle)) {
         setStatus('Run All stopped: enabled moves stalled before the puzzle was solved.', 'warn');
       }
       if (ran === 100) setStatus('Run All stopped at 100 cycles.', 'warn');
@@ -21147,10 +21441,10 @@
               && limitedRating.category === normalizedTarget
             );
 
-          // Reject candidates using the inexpensive target-bounded search
-          // before running the full Nightmare verification pass. This keeps
-          // Moderate and lower target generation from doing two deep chain
-          // searches for every one of the 1,000 attempts.
+          // The selected difficulty is the complete search ceiling for this
+          // candidate. Do not re-rate it with a broader profile: a candidate
+          // that solves within the selected tier is accepted, while one that
+          // falls below or stalls at that tier is rejected.
           if (!limitedMatchesTarget) {
             if (attempts >= maxRatingAttempts) {
               setBusy(false);
@@ -21165,14 +21459,7 @@
             return;
           }
 
-          rating = quickGeneration
-            ? limitedRating
-            : await rateGeneratedPuzzleInWorker(
-                result.puzzle,
-                result.solution,
-                targetCategory,
-                generationTechniqueProfile('Nightmare'),
-              );
+          rating = limitedRating;
           const matches = quickGeneration
             || (
               limitedRating.solved === true

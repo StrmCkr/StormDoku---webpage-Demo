@@ -63,10 +63,13 @@ the candidate grid itself may be useful while testing.
   or solving history.
 
 The heavier N x (N + K) fish searches and generator rating passes use a Web
-Worker when the browser permits workers. The board, reports, naming, safety
-checks, and rating display remain on the page thread. When the app is opened
-directly from a local file and the browser blocks workers, the same searches
-fall back to the existing synchronous implementation.
+Worker. The board, reports, naming, safety checks, and rating display remain
+on the page thread. Local-file copies use a bundled Blob worker so Next Cycle
+and Run All can run the same searches without a server or internet connection.
+
+After editing `src/search-worker.js` or any of its imported solver cores,
+run `node scripts/build-search-worker.js` to update the committed offline
+bundle. `node scripts/build-search-worker.js --check` verifies it is current.
 
 The `Solution` display is collapsed by default. `Solution Steps:` is also a
 collapsible report and shows the most recent applied step in its summary.

@@ -15,8 +15,8 @@ importScripts(
   './subset-report-core.js?v=20260928-2',
   './mini-sectors-core.js?v=20260928-1',
   './strong-link-core.js?v=20261006-2',
-  './chain-core.js?v=20261006-18',
-  './alc-core.js?v=20261004-1',
+  './chain-core.js?v=20261012-3',
+  './alc-core.js?v=20261012-3',
   './ahs-xy-core.js?v=20261001-4',
   './ahs-dof-core.js?v=20261002-1',
   './msls-core.js?v=20261004-1',
@@ -212,7 +212,7 @@ function runFish(payload) {
   });
 }
 
-function runChains(payload) {
+function runChains(payload, onProgress = null) {
   const candidateGrid = payload.candidateGrid;
   if (payload.ahsMode === 'xy') {
     const pure = core.findAhsXyChains(candidateGrid, {
@@ -241,6 +241,7 @@ function runChains(payload) {
     : alsLinkSet;
 
   const report = core.findAicChains(candidateGrid, {
+    onProgress,
     strongLinkSet: strongSet,
     alsList,
     alsLinkSet: filteredAlsLinkSet,
@@ -409,20 +410,20 @@ function runAhsDofChain(payload) {
   };
 }
 
-function runAlcXz(payload) {
-  return core.findAlcXz(payload.candidateGrid, payload);
+function runAlcXz(payload, onProgress = null) {
+  return core.findAlcXz(payload.candidateGrid, { ...payload, onProgress });
 }
 
-function runAlcXy(payload) {
-  return core.findAlcXy(payload.candidateGrid, payload);
+function runAlcXy(payload, onProgress = null) {
+  return core.findAlcXy(payload.candidateGrid, { ...payload, onProgress });
 }
 
-function runAlcChain(payload) {
-  return core.findAlcChain(payload.candidateGrid, payload);
+function runAlcChain(payload, onProgress = null) {
+  return core.findAlcChain(payload.candidateGrid, { ...payload, onProgress });
 }
 
-function runAlcDof(payload) {
-  return core.findAlcDofChains(payload.candidateGrid, payload);
+function runAlcDof(payload, onProgress = null) {
+  return core.findAlcDofChains(payload.candidateGrid, { ...payload, onProgress });
 }
 
 function runMsls(payload) {
@@ -445,18 +446,28 @@ self.onmessage = event => {
       return;
     }
 
+    let lastProgressTime = 0;
+    let lastProgressStage = null;
+    const onProgress = progress => {
+      const now = Date.now();
+      if (progress.stage === lastProgressStage && now - lastProgressTime < 1000) return;
+      lastProgressTime = now;
+      lastProgressStage = progress.stage;
+      self.postMessage({ id, type: 'progress', operation: type, ...progress });
+    };
+    onProgress({ stage: 'start' });
     let result;
     if (type === 'simple') result = runSimple(payload || {});
     else if (type === 'fish') result = runFish(payload || {});
-    else if (type === 'chains') result = runChains(payload || {});
+    else if (type === 'chains') result = runChains(payload || {}, onProgress);
     else if (type === 'als-dof') result = runAlsDof(payload || {});
     else if (type === 'als-dof-chain') result = runAlsDofChain(payload || {});
     else if (type === 'ahs-dof') result = runAhsDof(payload || {});
     else if (type === 'ahs-dof-chain') result = runAhsDofChain(payload || {});
-    else if (type === 'alc-xz') result = runAlcXz(payload || {});
-    else if (type === 'alc-xy') result = runAlcXy(payload || {});
-    else if (type === 'alc-chain') result = runAlcChain(payload || {});
-    else if (type === 'alc-dof') result = runAlcDof(payload || {});
+    else if (type === 'alc-xz') result = runAlcXz(payload || {}, onProgress);
+    else if (type === 'alc-xy') result = runAlcXy(payload || {}, onProgress);
+    else if (type === 'alc-chain') result = runAlcChain(payload || {}, onProgress);
+    else if (type === 'alc-dof') result = runAlcDof(payload || {}, onProgress);
     else if (type === 'msls') result = runMsls(payload || {});
     else throw new Error(`Unknown search worker operation: ${type}`);
 
@@ -469,6 +480,8 @@ self.onmessage = event => {
     reportError(id, error);
   }
 };
+
+self.postMessage({ type: 'ready' });
 
 
 

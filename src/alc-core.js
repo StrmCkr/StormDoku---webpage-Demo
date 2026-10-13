@@ -29,10 +29,23 @@
     return masks;
   }
 
+  function consumePlacementState(work) {
+    if (!work) return true;
+    if (work.statesVisited >= work.maxStates) {
+      work.exhausted = true;
+      return false;
+    }
+    work.statesVisited++;
+    if (work.onProgress && work.statesVisited % 256 === 0) {
+      work.onProgress({ stage: 'placements', statesVisited: work.statesVisited });
+    }
+    return true;
+  }
+
   // ALS cells each take one value; every hidden digit of the AHS must take
   // one of its sector positions. These necessary Sudoku constraints provide
   // a local proof for every candidate excluded by all joint completions.
-  function placementEliminations(cand, masks, als = null, ahs = null) {
+  function placementEliminations(cand, masks, als = null, ahs = null, work = null) {
     const variables = [];
     if (als) {
       for (const cell of als.alsAllCells) {
@@ -53,6 +66,7 @@
     let common = null;
     let completions = 0;
     function visit(index, excluded) {
+      if (!consumePlacementState(work)) return;
       if (index === variables.length) {
         common = common === null ? excluded : common & excluded;
         completions++;
@@ -65,11 +79,14 @@
         assigned.push(choice);
         visit(index + 1, excluded | masks[choice.cell][choice.digit]);
         assigned.pop();
+        if (work?.exhausted) return;
         if (common === 0n) return;
       }
     }
     visit(0, 0n);
-    return completions ? common : null;
+    // A partial intersection is not a proof that every completion excludes
+    // a candidate. Never report it when the work budget was exhausted.
+    return !work?.exhausted && completions ? common : null;
   }
 
   function sharedDigitContacts(cand, als, ahs) {
@@ -138,6 +155,7 @@
     const chainMode = options.mode === 'chain';
     const report = core.findAicChains(cand, {
       candidateGrid: cand,
+      onProgress: options.onProgress,
       strongLinkSet,
       strongLinkTypes: [0, 1, 4],
       includeStrong: true,
@@ -170,6 +188,13 @@
   }
 
   function findAlcXz(cand, options = {}) {
+    const work = {
+      maxStates: Number.isInteger(options.maxStates) ? Math.max(1, options.maxStates) : Infinity,
+      statesVisited: 0,
+      exhausted: false,
+      onProgress: typeof options.onProgress === 'function' ? options.onProgress : null,
+    };
+    work.onProgress?.({ stage: 'inventory', statesVisited: 0 });
     const maxAlsCells = Math.min(5, Math.max(1, options.maxAlsCells ?? 4));
     const maxAhsDigits = Math.min(5, Math.max(2, options.maxAhsDigits ?? 4));
     const maxAhsCells = Math.min(7, Math.max(3, options.maxAhsCells ?? 5));
@@ -204,19 +229,22 @@
 
     outer: for (const als of alsList) {
       for (const ahs of ahsList) {
+        if (!consumePlacementState(work)) break outer;
         if (als.alsAllCells.some(cell => ahs.ahsAllCells.includes(cell))) continue;
         const contacts = sharedDigitContacts(cand, als, ahs);
         if (!contacts.length) continue;
         pairsChecked++;
-        const both = placementEliminations(cand, masks, als, ahs);
+        const both = placementEliminations(cand, masks, als, ahs, work);
+        if (work.exhausted) break outer;
         if (both === null) continue;
         compatiblePairs++;
         if (!alsAlone.has(als.uniqueID)) {
-          alsAlone.set(als.uniqueID, placementEliminations(cand, masks, als));
+          alsAlone.set(als.uniqueID, placementEliminations(cand, masks, als, null, work));
         }
         if (!ahsAlone.has(ahs.uniqueID)) {
-          ahsAlone.set(ahs.uniqueID, placementEliminations(cand, masks, null, ahs));
+          ahsAlone.set(ahs.uniqueID, placementEliminations(cand, masks, null, ahs, work));
         }
+        if (work.exhausted) break outer;
         const newEliminations = both & ~(alsAlone.get(als.uniqueID) | ahsAlone.get(ahs.uniqueID));
         if (!newEliminations) continue;
         const eliminations = [];
@@ -252,12 +280,16 @@
     // already owns bivalve paths, including those that happen to touch an
     // AHS link, and reporting them here creates illegal ALC eliminations.
     const allChains = chains;
+    if (work.exhausted) truncated = true;
+    work.onProgress?.({ stage: 'complete', statesVisited: work.statesVisited });
     return {
       chains: allChains, technique: 'ALC-XZ',
       stats: { alsNodes: alsList.length, ahsNodes: ahsList.length,
         maxAlsCells, maxAhsDigits, maxAhsCells, maxAhsDof,
         alsMaxSizeDOF, alsMaxSizeFox, ahsMaxSize, ahsMaxFox,
-        pairsChecked, compatiblePairs, chainsFound: allChains.length, truncated },
+        pairsChecked, compatiblePairs, chainsFound: allChains.length, truncated,
+        statesVisited: work.statesVisited,
+        stopReason: work.exhausted ? 'maxStates' : truncated ? 'maxChains' : null },
     };
   }
 
@@ -280,6 +312,7 @@
     const report = core.findAicChains(cand, {
       candidateGrid: cand,
       strongLinkSet,
+      onProgress: options.onProgress,
       // ALC-Chain is the modular ALS/AHS continuation. Ordinary AIC strong
       // links belong to the generic AIC search and must not become the third
       // node here.
@@ -317,7 +350,9 @@
       structureFamily: 'ALC',
       alcXy: {
         mode: chainMode ? 'chain' : 'xy',
-        nodeFamilies: [...new Set((chain.steps || []).map(step => step.view.node.family))],
+        nodeFamilies: [...new Set((chain.steps || [])
+          .map(step => step.family ?? step.view?.node?.family)
+          .filter(Boolean))],
       },
     }));
     return {
@@ -334,7 +369,7 @@
 
   function subsetViewsForChain(steps) {
     return (steps || []).flatMap(step => {
-      const module = step.view?.node?.module;
+      const module = step.module || step.view?.node?.module;
       const raw = step.view?.node?.raw || {};
       return [
         module?.entrySubset, module?.exitSubset,
@@ -391,6 +426,7 @@
       candidateGrid: cand,
       strongLinkSet,
       strongLinkTypes: [],
+      onProgress: options.onProgress,
       includeStrong: false,
       includeAls: true,
       includeAhs: true,
@@ -419,7 +455,7 @@
         return nodes.length >= 2 && nodes.every(node => available.some(view => sameModularNode(node, view)));
       });
       if (!rootMatch) continue;
-      const key = `${rootMatch.type}|${chain.steps.map(step => step.view.node.graphId).join('|')}|${(chain.eliminations || []).map(item => `${item.cell}:${item.digit}`).join(',')}`;
+      const key = `${rootMatch.type}|${chain.steps.map(step => step.graphId ?? step.view?.node?.graphId).join('|')}|${(chain.eliminations || []).map(item => `${item.cell}:${item.digit}`).join(',')}`;
       if (seen.has(key)) continue;
       seen.add(key);
       chains.push({
