@@ -372,8 +372,10 @@
 
   function assignmentsCompatible(left, right) {
     return left.every(leftItem => right.every(rightItem =>
-      leftItem.digit !== rightItem.digit
-      || !core.peersOf(leftItem.cell).includes(rightItem.cell)));
+      leftItem.cell === rightItem.cell
+        ? leftItem.digit === rightItem.digit
+        : leftItem.digit !== rightItem.digit
+          || !core.peersOf(leftItem.cell).includes(rightItem.cell)));
   }
 
   function targetCompatible(assignment, cell, digit) {
@@ -382,12 +384,11 @@
   }
 
   function ringCanPlaceTarget(nodeAssignments, nodes, cell, digit) {
-    const ownerIndex = nodes.findIndex(node => (node.cells || []).includes(cell));
     const selected = [];
     const visit = index => {
       if (index === nodeAssignments.length) return true;
       for (const assignment of nodeAssignments[index]) {
-        if (index === ownerIndex) {
+        if ((nodes[index].cells || []).includes(cell)) {
           if (!assignment.some(item => item.cell === cell && item.digit === digit)) continue;
         } else if (!targetCompatible(assignment, cell, digit)) {
           continue;
@@ -427,6 +428,7 @@
     const assignmentResults = nodes.map(node => ringAssignments(cand, node));
     if (assignmentResults.some(item => item.truncated || !item.assignments.length)) return [];
     const assignments = assignmentResults.map(item => item.assignments);
+    if (!ringCanPlaceTarget(assignments, nodes, -1, 0)) return [];
 
     const digits = sortedUnique(nodes.flatMap(node => node.digits || []));
     const records = [];
@@ -1602,6 +1604,8 @@
   }
 
   // Almost DDS is the one-auxiliary-over form of a higher-DOF collection.
+  // Auxiliary cells may overlap; the occupancy check assigns each shared
+  // physical cell one value across all of its memberships.
   // The extra auxiliary supplies the final RCC worth of coverage; once the
   // union exactly covers the hub digits, the complete collection is evaluated
   // with the closed-occupancy rule used for rings.
@@ -1681,7 +1685,8 @@
 
         for (let index = start; index < candidates.length; index += 1) {
           const candidate = candidates[index];
-          if (selected.some(entry => !disjoint(entry.node.cells, candidate.node.cells))) continue;
+          if (selected.some(entry => entry.node.cells.length === candidate.node.cells.length
+            && entry.node.cells.every(cell => candidate.node.cells.includes(cell)))) continue;
           const nextDigits = candidate.bridges
             .map(bridge => bridge.digit)
             .filter(digit => !covered.has(digit));
@@ -1998,11 +2003,17 @@
     const hub = result.primaryA;
     const auxiliary = result.auxiliary || [];
     const allNodes = [hub, ...(result.primaryC ? [result.primaryC] : []), ...auxiliary];
-    const occupied = new Set();
+    const allowAuxiliaryOverlap = result.mode === 'almost-dds'
+      && result.ringForm === 'almost-dds';
+    const occupied = new Map();
     for (const node of allNodes) {
       for (const cell of node.cells || []) {
-        if (occupied.has(cell)) errors.push(`overlapping ALS cell ${cell}`);
-        occupied.add(cell);
+        if (occupied.has(cell)
+          && !(allowAuxiliaryOverlap && node !== occupied.get(cell)
+            && auxiliary.includes(node) && auxiliary.includes(occupied.get(cell)))) {
+          errors.push(`overlapping ALS cell ${cell}`);
+        }
+        occupied.set(cell, node);
       }
       const actualDigits = sortedUnique(
         (node.cells || []).flatMap(cell => cand[cell] || []),

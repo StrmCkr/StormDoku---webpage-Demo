@@ -8,7 +8,7 @@ importScripts(
   './set-tools-core.js?v=20260928-1',
   './pom-core.js?v=20261004-2',
   './als-core.js?v=20260928-1',
-  './als-dof-core.js?v=20260928-1',
+  './als-dof-core.js?v=20261013-1',
   './als-link-core.js?v=20260928-1',
   './ahs-core.js?v=20260928-2',
   './ahs-link-core.js?v=20261001-28',
@@ -20,6 +20,8 @@ importScripts(
   './ahs-xy-core.js?v=20261001-4',
   './ahs-dof-core.js?v=20261002-1',
   './msls-core.js?v=20261004-1',
+  './chromatic-core.js?v=20261006-5',
+  './chromatic-als-core.js?v=20261007-9',
 );
 
 const core = globalThis.StormDoku;
@@ -433,6 +435,27 @@ function runMsls(payload) {
     : core.findMsls(payload.candidateGrid, options);
 }
 
+const coreSearchMethods = new Set([
+  'pomCheck', 'alsConstructor', 'buildAlsLinks', 'ahsConstructor',
+  'buildAhsLinks', 'buildStrongLinks', 'buildSimpleColoring',
+  'buildThreeDMedusa', 'buildMultiColoring', 'buildThreeDMedusaMultiColoring',
+  'findGenericSubsetReports', 'findAicChains', 'findAhsXyChains',
+  'findAhsMixedChains', 'generate', 'solveDlx',
+]);
+
+function runCoreSearch(payload) {
+  const { method, args = [] } = payload;
+  if (!coreSearchMethods.has(method)) throw new Error(`Unknown core search: ${method}`);
+  // Functions cannot be cloned into a worker; reconstruct this existing filter here.
+  if (method === 'findAicChains' && args[1]?.ahsChainOnly) {
+    args[1].resultFilter = steps => steps.length > 3
+      && steps.some(step => step.view.node.family === 'AHS')
+      && steps.every(step => step.view.node.family === 'AHS'
+        || (step.view.node.family === 'SL' && [0, 1].includes(step.view.node.linkType)));
+  }
+  return core[method](...args);
+}
+
 self.onmessage = event => {
   const { id, type, payload } = event.data || {};
   if (type === 'cancel') {
@@ -469,6 +492,9 @@ self.onmessage = event => {
     else if (type === 'alc-chain') result = runAlcChain(payload || {}, onProgress);
     else if (type === 'alc-dof') result = runAlcDof(payload || {}, onProgress);
     else if (type === 'msls') result = runMsls(payload || {});
+    else if (type === 'core-search') result = runCoreSearch(payload || {});
+    else if (type === 'chromatic') result = globalThis.StormChromaticCore.find(payload.candidateGrid, payload.options);
+    else if (type === 'chromatic-als') result = globalThis.StormChromaticAlsCore.find(payload.candidateGrid, payload.options);
     else throw new Error(`Unknown search worker operation: ${type}`);
 
     if (cancelled.has(id)) {

@@ -939,6 +939,11 @@
       font-size: 12px;
     }
 
+    .grid-actions-panel .header-button-row #stopSearch {
+      grid-column: 1 / -1;
+      justify-self: center;
+    }
+
     .candidate-size-toolbar.grid-cell-size-panel {
       display: flex;
       align-items: center;
@@ -1964,12 +1969,6 @@
       font-weight: 900;
     }
 
-    .mark.chain-digit.elim-digit {
-      color: var(--red);
-      background: #fee2e2;
-      border-color: var(--red);
-    }
-
     .cell.strong-link-active-cell {
       background: rgba(147, 197, 253, .24);
       box-shadow: inset 0 0 0 2px rgba(37, 99, 235, .62);
@@ -2112,14 +2111,17 @@
       z-index: 2;
     }
 
-    /* Elimination styling wins over every chain-role class, including in
-       Rn/Cn/Bn where the role rules are intentionally more specific. */
-    .mark.elim-digit,
-    .vantage-position.elim {
+    /* Chain nodes keep their role graphics beneath the elimination slash. */
+    .mark.elim-digit:not(.chain-digit),
+    .vantage-position.elim:not(.chain) {
       color: var(--red) !important;
       background: transparent !important;
       border-color: transparent !important;
       box-shadow: none !important;
+    }
+
+    .mark.elim-digit,
+    .vantage-position.elim {
       font-weight: 900;
       text-decoration: line-through;
       text-decoration-color: var(--red);
@@ -3145,6 +3147,21 @@
       line-height: 1;
     }
 
+    .search-controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 6px;
+      margin-left: auto;
+    }
+
+    .pom-panel summary .search-stop {
+      padding: 5px 8px;
+      font-size: 12px;
+      line-height: 1;
+      flex: 0 0 auto;
+    }
+
     .pom-body {
       display: grid;
       gap: 10px;
@@ -4067,7 +4084,7 @@
     <div class="header-brand">
       <h1>StormDoku: on-line | off-line</h1>
       <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo for regular Sudoku 9x9 grids.</p>
-      <p class="app-meta">Alpha v0.6.23 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <p class="app-meta">Alpha v0.6.24 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
     </div>
   </header>
 
@@ -5001,6 +5018,8 @@
                 title="Last Man Standing, singles, Box - Line Reduction, subsets, and basic fish sizes 1-4">Basics</button>
               <button id="applyHighlightedMove" class="secondary" type="button"
                 title="Apply the currently highlighted move">Apply</button>
+              <button id="stopSearch" class="secondary search-stop" type="button"
+                title="Stop the active search or run" disabled>Stop</button>
             </div>
           </fieldset>
         </div>
@@ -5497,7 +5516,7 @@
   <script src="./src/pom-core.js?v=20261004-2"></script>
   <script src="./src/als-core.js?v=20260928-1"></script>
   <script src="./src/als-link-core.js?v=20260928-1"></script>
-  <script src="./src/als-dof-core.js?v=20260928-1"></script>
+  <script src="./src/als-dof-core.js?v=20261013-1"></script>
   <script src="./src/ahs-core.js?v=20260928-2"></script>
   <script src="./src/ahs-link-core.js?v=20261001-28"></script>
   <script src="./src/subset-report-core.js?v=20260928-2"></script>
@@ -5510,7 +5529,7 @@
   <script src="./src/ahs-xy-core.js?v=20261001-4"></script>
   <script src="./src/ahs-dof-core.js?v=20261002-1"></script>
   <script src="./src/msls-core.js?v=20261004-1"></script>
-  <script src="./src/search-worker-source.js?v=20261012-3"></script>
+  <script src="./src/search-worker-source.js?v=20261014-1"></script>
   <script>
     const core = window.StormDoku;
     const boardEl = document.getElementById('board');
@@ -5870,6 +5889,7 @@
     let limitDigitHighlightsToSize = false;
     let historyPreview = null;
     let busy = false;
+    let searchEpoch = 0;
     let generationToken = 0;
     const pomFishSettings = {
       digits: new Set([1, 2, 3, 4, 5, 6, 7, 8, 9]),
@@ -5911,7 +5931,7 @@
       }
 
       try {
-        const workerPath = './src/search-worker.js?v=20261012-3';
+        const workerPath = './src/search-worker.js?v=20261014-1';
         releaseSearchWorkerBlobUrl();
         let workerUrl = new URL(workerPath, document.baseURI);
         if (document.baseURI.startsWith('file:')) {
@@ -5927,7 +5947,9 @@
           workerUrl = searchWorkerBlobUrl;
         }
         searchWorker = new Worker(workerUrl, { type: 'classic' });
+        const currentWorker = searchWorker;
         searchWorker.onmessage = event => {
+          if (searchWorker !== currentWorker) return;
           releaseSearchWorkerBlobUrl();
           const { id, result, error, type } = event.data || {};
           const job = searchWorkerJobs.get(id);
@@ -5939,6 +5961,7 @@
           else job.resolve(result);
         };
         searchWorker.onerror = event => {
+          if (searchWorker !== currentWorker) return;
           const details = [
             event.message,
             event.filename && `(${event.filename})`,
@@ -5964,6 +5987,7 @@
     }
 
     function runSearchWorker(type, payload) {
+      const epoch = searchEpoch;
       const worker = ensureSearchWorker();
       if (!worker) return Promise.reject(new Error('Search worker unavailable.'));
 
@@ -5977,24 +6001,36 @@
           searchWorkerJobs.delete(id);
           reject(error);
         }
+      }).then(result => {
+        if (epoch !== searchEpoch) throw searchCancellationError();
+        return result;
       });
     }
 
+    function runCoreSearch(method, ...args) {
+      return runSearchWorker('core-search', { method, args });
+    }
+
+    function searchCancellationError(reason = 'Search cancelled.') {
+      const error = new Error(reason);
+      error.name = 'AbortError';
+      return error;
+    }
+
+    function isSearchCancelled(error) {
+      return error?.name === 'AbortError';
+    }
+
+    function scheduleSearch(callback, delay = 20) {
+      const epoch = searchEpoch;
+      setTimeout(() => {
+        if (epoch === searchEpoch) void callback();
+      }, delay);
+    }
+
     function runPuzzleGenerator(givens) {
+      if (location.protocol === 'file:') return runCoreSearch('generate', givens);
       return new Promise((resolve, reject) => {
-        // Browsers commonly block dedicated workers from file:// pages. Keep
-        // offline copies usable by yielding once, then generate from the
-        // already-loaded core. HTTP copies continue to use the worker path.
-        if (location.protocol === 'file:') {
-          setTimeout(() => {
-            try {
-              resolve(core.generate(givens));
-            } catch (error) {
-              reject(error);
-            }
-          }, 0);
-          return;
-        }
       const workerPath = './src/generator-worker.js?v=20261006-1';
         const workerUrl = document.baseURI.startsWith('file:')
           ? workerPath
@@ -6033,28 +6069,70 @@
     }
 
     function cancelActiveSearches(reason = 'Search cancelled.') {
+      searchEpoch += 1;
+      generationToken += 1;
+      const error = searchCancellationError(reason);
       const activeGenerator = generatorWorker;
       const rejectGenerator = generatorReject;
       generatorWorker = null;
       generatorReject = null;
       if (activeGenerator) activeGenerator.terminate();
-      if (rejectGenerator) rejectGenerator(new Error(reason));
+      if (rejectGenerator) rejectGenerator(error);
       const worker = searchWorker;
       searchWorker = null;
       if (worker) worker.terminate();
       releaseSearchWorkerBlobUrl();
-      for (const job of searchWorkerJobs.values()) job.reject(new Error(reason));
+      for (const job of searchWorkerJobs.values()) job.reject(error);
       searchWorkerJobs.clear();
       busy = false;
       setBusy(false);
     }
 
-    function setBusy(nextBusy) {
+    function stopActiveSearch() {
+      if (!busy) return;
+      cancelActiveSearches('Search stopped.');
+      render();
+      setStatus('Stopped. Current grid and completed steps kept.', 'warn');
+    }
+
+    function initSearchStopButtons() {
+      for (const summary of document.querySelectorAll('details > summary')) {
+        const actions = summary.querySelector('.als-search-buttons');
+        const search = summary.querySelector('.search-action');
+        if (!actions && !search) continue;
+        const stop = document.createElement('button');
+        stop.type = 'button';
+        stop.className = 'secondary search-stop';
+        stop.textContent = 'Stop';
+        stop.title = 'Stop the active search or run';
+        stop.disabled = true;
+        if (actions) actions.appendChild(stop);
+        else {
+          const controls = document.createElement('div');
+          controls.className = 'search-controls';
+          search.replaceWith(controls);
+          controls.append(search, stop);
+        }
+      }
+      for (const stop of document.querySelectorAll('.search-stop')) {
+        stop.addEventListener('click', event => {
+          event.preventDefault();
+          event.stopPropagation();
+          stopActiveSearch();
+        });
+      }
+    }
+
+    function setBusy(nextBusy, epoch = null) {
+      if (epoch !== null && epoch !== searchEpoch) return;
+      if (nextBusy) searchEpoch += 1;
       busy = nextBusy;
       for (const button of document.querySelectorAll('button')) {
-        if (button !== loadEl && button !== resetEl && button !== importEl) button.disabled = busy;
+        if (button.classList.contains('search-stop')) button.disabled = !busy;
+        else if (button !== loadEl && button !== resetEl && button !== importEl) button.disabled = busy;
       }
       updateHistoryButtons();
+      return searchEpoch;
     }
 
     function updateHistoryButtons() {
@@ -6491,6 +6569,13 @@
 
     function cellHasCandidate(cell, digit) {
       return (cand[cell] || []).includes(digit);
+    }
+
+    function chainCandidateIsVisible(cell, digit) {
+      if (cellHasCandidate(cell, digit)) return true;
+      return lastRemoved.some(item => item.cell === cell && item.digit === digit)
+        && (selectedChain()?.eliminations || []).some(item =>
+          item.cell === cell && item.digit === digit);
     }
 
     function clonePlayerSolveBackups() {
@@ -8078,7 +8163,7 @@
       for (const cell of side.cells || []) {
         for (const digit of digits) {
           if (!sideDigits.includes(digit)) continue;
-          if (existingOnly && !cellHasCandidate(cell, digit)) continue;
+          if (existingOnly && !chainCandidateIsVisible(cell, digit)) continue;
           atoms.push(atomKey(cell, digit));
         }
       }
@@ -8332,7 +8417,7 @@
       for (const cell of side?.cells || []) {
         for (const digit of digits) {
           if (!sideDigits.includes(digit)) continue;
-          if (existingOnly && !cellHasCandidate(cell, digit)) continue;
+          if (existingOnly && !chainCandidateIsVisible(cell, digit)) continue;
           anchors.push(vantageAtomAnchor(cell, digit));
         }
       }
@@ -8490,7 +8575,7 @@
       for (const cell of side.cells || []) {
         for (const digit of digits) {
           if (!sideDigits.includes(digit)) continue;
-          if (existingOnly && !cellHasCandidate(cell, digit)) continue;
+          if (existingOnly && !chainCandidateIsVisible(cell, digit)) continue;
           anchors.push(digitAnchor(cell, digit));
         }
       }
@@ -10708,6 +10793,7 @@
             const isFishDigit = isFishVertexDigit || isFishFinDigit
               || isFishBase || isFishBaseIntersection || isFishCover;
             const hasCandidate = cellHasCandidate(cell, digit);
+            const hasChainCandidate = highlights.isChain && chainCandidateIsVisible(cell, digit);
             const isChromaticDigit = highlights.isChromatic
               && highlights.chromaticCells.has(cell)
               && highlights.chromaticDigits.has(digit)
@@ -10775,12 +10861,12 @@
             if (isMslsDigit) mark.classList.add('fish-digit');
             if (isFishEndofinDigit) mark.classList.add('fish-endofin-digit');
             if (isChromaticDigit) mark.classList.add('chromatic-digit', `chromatic-digit-${digit}`);
-            if (isChainDigit && hasCandidate) mark.classList.add('chain-digit');
-            if (isChainXorEntryDigit && hasCandidate) mark.classList.add('chain-xor-entry-digit');
-            if (isChainXorExitDigit && hasCandidate) mark.classList.add('chain-xor-exit-digit');
+            if (isChainDigit && hasChainCandidate) mark.classList.add('chain-digit');
+            if (isChainXorEntryDigit && hasChainCandidate) mark.classList.add('chain-xor-entry-digit');
+            if (isChainXorExitDigit && hasChainCandidate) mark.classList.add('chain-xor-exit-digit');
             // Weak links are represented by the dashed connector. Do not add
             // a second blue badge to the candidate mini-grid.
-            if (isChainAlsDigit && hasCandidate) {
+            if (isChainAlsDigit && hasChainCandidate) {
               mark.classList.add('chain-als-digit');
               applyAlsColorVars(mark, highlights.chainAlsStyleByAtom.get(atomKey));
             }
@@ -10800,8 +10886,8 @@
               mark.classList.add('ahs-record-digit');
               applyAhsColorVars(mark, highlights.ahsDofRecordColor);
             }
-            if (isChainStartDigit && hasCandidate) mark.classList.add('chain-start-digit');
-            if (isChainEndDigit && hasCandidate) mark.classList.add('chain-end-digit');
+            if (isChainStartDigit && hasChainCandidate) mark.classList.add('chain-start-digit');
+            if (isChainEndDigit && hasChainCandidate) mark.classList.add('chain-end-digit');
             if (isStrongLinkDigit && hasCandidate) mark.classList.add('strong-link-digit');
             if (isStrongLinkStartDigit && hasCandidate) mark.classList.add('strong-link-start-digit');
             if (isStrongLinkEndDigit && hasCandidate) mark.classList.add('strong-link-end-digit');
@@ -12365,6 +12451,7 @@
               'generator',
             );
           } catch (error) {
+            if (isSearchCancelled(error)) throw error;
             if (budget === 'generator') throw error;
             // A file:// page or an older browser may reject workers. Keep the
             // existing synchronous solver as a transparent fallback.
@@ -12471,6 +12558,7 @@
           candidateGridIsSolved(simulation.cand, simulation.grid, expectedSolution),
         );
       } catch (error) {
+        if (isSearchCancelled(error)) throw error;
         return {
           ...unknownRating(error?.message || 'Rating check failed.'),
           source: 'generated',
@@ -12998,14 +13086,15 @@
     }
 
     function runAhsLinkBuild() {
-      setBusy(true);
+      const searchToken = setBusy(true);
       setStatus('Building AHS links...');
-      setTimeout(() => {
+      scheduleSearch(async () => {
         try {
-          const ahsList = ahsReport || core.ahsConstructor(cand, { maxSize: 8, maxSizeFox: 7 });
-          ahsLinkReport = core.buildAhsLinks(cand, {
+          const ahsList = ahsReport || await runCoreSearch('ahsConstructor', cand, { maxSize: 8, maxSizeFox: 7 });
+          const strongLinkSet = await runCoreSearch('buildStrongLinks', cand);
+          ahsLinkReport = await runCoreSearch('buildAhsLinks', cand, {
             ahsList,
-            strongLinkSet: core.buildStrongLinks(cand),
+            strongLinkSet,
             minDof: 1,
             maxDof: 3,
             maxLinks: 5000,
@@ -13015,11 +13104,12 @@
           const count = core.flattenAhsLinks(ahsLinkReport).length;
           setStatus(`AHS link build complete. ${count} link${count === 1 ? '' : 's'} built.`, count ? 'ok' : 'warn');
         } catch (error) {
+          if (isSearchCancelled(error)) return;
           ahsLinkReport = null;
           renderAhsLinkReport();
           setStatus(`Could not build AHS links: ${error.message || error}`, 'warn');
         } finally {
-          setBusy(false);
+          setBusy(false, searchToken);
         }
       }, 20);
     }
@@ -13122,7 +13212,7 @@
     }
 
     async function runAhsDofBuild() {
-      setBusy(true);
+      const searchToken = setBusy(true);
       selectedAhsDofNetIndex = null;
       const maxDof = Math.max(2, Math.min(3, Number(ahsDofMaxDofEl.value) || 2));
       const maxCells = Math.max(2, Math.min(9, Number(ahsDofMaxCellsEl.value) || 6));
@@ -13134,65 +13224,33 @@
       ahsDofMaxResultsEl.value = String(maxResults);
       setStatus('Searching verified AHS-DOF cell nets...');
       try {
-        let report;
-        try {
-          report = await runSearchWorker('ahs-dof', {
-            candidateGrid: cand,
-            minDof: 2,
-            maxDof,
-            maxAhsSize: 8,
-            maxAhsFox: 7,
-            maxCells,
-            maxAuxiliary,
-            maxResults,
-          });
-        } catch (workerError) {
-          const ahsList = core.ahsConstructor(cand, { maxSize: 8, maxSizeFox: 7 });
-          const raw = core.findAhsDofNets(cand, {
-            ahsList,
-            minDof: 2,
-            maxDof,
-            maxAhsSize: 8,
-            maxAhsFox: 7,
-            maxCells,
-            maxAuxiliary,
-            maxResults,
-          });
-          const accepted = [];
-          const rejectedResults = [];
-          for (const result of raw.results || []) {
-            const verification = core.verifyAhsDofNet(cand, result);
-            if (verification.ok) accepted.push({ ...result, verification });
-            else rejectedResults.push({ result, verification });
-          }
-          report = {
-            ...raw,
-            results: accepted,
-            rejectedResults,
-            stats: {
-              ...(raw.stats || {}),
-              verifierChecked: (raw.results || []).length,
-              verifierRejected: rejectedResults.length,
-              workerFallback: workerError.message || String(workerError),
-            },
-          };
-        }
+        const report = await runSearchWorker('ahs-dof', {
+          candidateGrid: cand,
+          minDof: 2,
+          maxDof,
+          maxAhsSize: 8,
+          maxAhsFox: 7,
+          maxCells,
+          maxAuxiliary,
+          maxResults,
+        });
         ahsDofReport = report;
         renderAhsDofResults(report);
         openReportPanel(ahsDofResultsEl);
         const count = (report.results || report.links || []).length;
         setStatus(`AHS-DOF search complete. ${count} verified net${count === 1 ? '' : 's'} found.`, count ? 'ok' : 'warn');
       } catch (error) {
+        if (isSearchCancelled(error)) return;
         ahsDofReport = null;
         renderAhsDofResults(null);
         setStatus(`Could not search AHS-DOF: ${error.message || error}`, 'warn');
       } finally {
-        setBusy(false);
+        setBusy(false, searchToken);
       }
     }
 
     async function runAhsDofChainBuild() {
-      setBusy(true);
+      const searchToken = setBusy(true);
       selectedAhsDofChainIndex = null;
       selectedAhsDofNetIndex = null;
       setStatus('Searching AHS-DOF chains...');
@@ -13213,43 +13271,18 @@
         ahsDofChainMaxAuxiliaryEl.value = String(payload.maxAuxiliary);
         ahsDofChainMaxDepthEl.value = String(payload.maxDepth);
         ahsDofChainMaxResultsEl.value = String(payload.maxResults);
-        try {
-          ahsDofChainReport = await runSearchWorker('ahs-dof-chain', payload);
-        } catch (workerError) {
-          const ahsList = core.ahsConstructor(cand, {
-            maxSize: payload.maxAhsSize, maxSizeFox: payload.maxAhsFox,
-          });
-          const netReport = core.findAhsDofNets(cand, { ...payload, ahsList });
-          const raw = core.findAhsDofChains(cand, { ...payload, netReport });
-          const accepted = [];
-          const rejectedResults = [];
-          for (const result of raw.results || []) {
-            const verification = core.verifyAhsDofChain(cand, result);
-            if (verification.ok) accepted.push({ ...result, verification });
-            else rejectedResults.push({ result, verification });
-          }
-          ahsDofChainReport = {
-            ...raw,
-            results: accepted,
-            rejectedResults,
-            stats: {
-              ...(raw.stats || {}),
-              verifierChecked: (raw.results || []).length,
-              verifierRejected: rejectedResults.length,
-              workerFallback: workerError.message || String(workerError),
-            },
-          };
-        }
+        ahsDofChainReport = await runSearchWorker('ahs-dof-chain', payload);
         renderAhsDofChainResults(ahsDofChainReport);
         openReportPanel(ahsDofChainResultsEl);
         const count = (ahsDofChainReport.results || ahsDofChainReport.links || []).length;
         setStatus(`AHS-DOF chain search complete. ${count} chain${count === 1 ? '' : 's'} found.`, count ? 'ok' : 'warn');
       } catch (error) {
+        if (isSearchCancelled(error)) return;
         ahsDofChainReport = null;
         renderAhsDofChainResults(null);
         setStatus(`Could not search AHS-DOF chains: ${error.message || error}`, 'warn');
       } finally {
-        setBusy(false);
+        setBusy(false, searchToken);
       }
     }
 
@@ -19836,7 +19869,7 @@
     }
 
     async function chooseInteractiveStep({
-      allowSynchronousFallback = true,
+      allowSynchronousFallback = false,
     } = {}) {
       lastInteractiveSearchError = null;
       const profile = interactiveTechniqueProfile();
@@ -19879,6 +19912,7 @@
           clearTimeout(timeoutId);
         }
       } catch (error) {
+        if (isSearchCancelled(error)) throw error;
         lastInteractiveSearchError = error;
         // Keep file:// pages and browsers without worker support usable, and
         // recover from a worker that is stuck in an older/high-cost phase.
@@ -19901,12 +19935,15 @@
       if (boardIsComplete()) return applyCycleChoice(before, promoted, null);
       let choice;
 
-      setBusy(true);
+      const searchToken = setBusy(true);
       setStatus('Searching enabled moves...');
       try {
         choice = await chooseInteractiveStep();
+      } catch (error) {
+        if (isSearchCancelled(error)) return false;
+        throw error;
       } finally {
-        setBusy(false);
+        setBusy(false, searchToken);
       }
 
       return applyCycleChoice(before, promoted, choice);
@@ -19974,26 +20011,44 @@
       }
       const maxSteps = 1000;
       let applied = 0;
-      setBusy(true);
+      const searchToken = setBusy(true);
       setStatus('Basics started. Applying Last Man Standing, singles, Box - Line Reduction, subsets, and basic fish sizes 1 through 4 until exhausted.');
 
       try {
         while (applied < maxSteps) {
+          if (searchToken !== searchEpoch) return;
           const before = snapshotState();
           const promoted = applyQueuedPromotions();
           if (boardIsComplete()) {
             if (applyCycleChoice(before, promoted, null)) applied += 1;
             break;
           }
-          const step = chooseBasicStep(cand, puzzle);
+          const step = await runSearchWorker('simple', {
+            candidateGrid: cand,
+            fixedGrid: puzzle,
+            moveTypes: [
+              'last-man-standing', 'hidden-single', 'naked-single', 'box-line',
+              'hidden-pair', 'naked-pair', 'hidden-triple', 'naked-triple',
+              'hidden-quad', 'naked-quad', 'x-wing', 'swordfish', 'jellyfish',
+            ],
+            fishOptions: {
+              ...currentPomFishOptions(),
+              fishSizes: [2, 3, 4], minSize: 2, maxSize: 4, minK: 0, maxK: 0,
+              basicsEnabled: true, frankenEnabled: false, mutantEnabled: false,
+            },
+          });
           if (!applyCycleChoice(before, promoted, step ? { step, chain: null } : null)) break;
 
           applied += 1;
           renderLog();
           await new Promise(resolve => setTimeout(resolve, 0));
         }
+      } catch (error) {
+        if (isSearchCancelled(error)) return;
+        setStatus(`Basics stopped: ${error.message || error}`, 'warn');
+        return;
       } finally {
-        setBusy(false);
+        setBusy(false, searchToken);
       }
 
       if (logEntries.length) {
@@ -20020,10 +20075,11 @@
       }
       let ran = 0;
       let stopReason = null;
-      setBusy(true);
+      const searchToken = setBusy(true);
       setStatus('Run All started. Applying the enabled hierarchy from the first phase on each cycle.');
       try {
         while (ran < 100) {
+          if (searchToken !== searchEpoch) return;
           const before = snapshotState();
           const promoted = applyQueuedPromotions();
           if (boardIsComplete()) {
@@ -20055,8 +20111,11 @@
           renderLog();
           await new Promise(resolve => setTimeout(resolve, 0));
         }
+      } catch (error) {
+        if (isSearchCancelled(error)) return;
+        stopReason = `Run All stopped: ${error.message || error}`;
       } finally {
-        setBusy(false);
+        setBusy(false, searchToken);
       }
       if (logEntries.length) {
         ratingReport = ratingFromLog(logEntries, candidateGridIsSolved(cand, puzzle));
@@ -20074,37 +20133,43 @@
     }
 
     function runPomCheck() {
-      setBusy(true);
+      const searchToken = setBusy(true);
       setStatus('Running POM check...');
 
-      setTimeout(() => {
-        pomReport = core.pomCheck(cand, puzzle);
-        renderPomReport();
-        openReportPanel(pomResultsEl);
-        const omissionCount = pomReport.omissions.reduce((total, item) => total + item.cells.length, 0);
-        const totalReports = pomReport.omissions.length
-          + pomReport.hiddenSubsets.length
-          + pomReport.nakedSubsets.length
-          + pomReport.tkDeletes.length;
-        const details = [];
-        if (totalReports) details.push(`${totalReports} reports`);
-        if (omissionCount) details.push(`${omissionCount} omitted candidate cells`);
-        if (pomReport.tkDeletes.length) details.push(`${pomReport.tkDeletes.length} TK-deletes`);
-        setStatus(
-          `POM check complete.${details.length ? ` ${details.join(', ')}.` : ' No reports.'} Grid and solving history unchanged.`,
-          'ok',
-        );
-        setBusy(false);
+      scheduleSearch(async () => {
+        try {
+          pomReport = await runCoreSearch('pomCheck', cand, puzzle);
+          renderPomReport();
+          openReportPanel(pomResultsEl);
+          const omissionCount = pomReport.omissions.reduce((total, item) => total + item.cells.length, 0);
+          const totalReports = pomReport.omissions.length
+            + pomReport.hiddenSubsets.length
+            + pomReport.nakedSubsets.length
+            + pomReport.tkDeletes.length;
+          const details = [];
+          if (totalReports) details.push(`${totalReports} reports`);
+          if (omissionCount) details.push(`${omissionCount} omitted candidate cells`);
+          if (pomReport.tkDeletes.length) details.push(`${pomReport.tkDeletes.length} TK-deletes`);
+          setStatus(
+            `POM check complete.${details.length ? ` ${details.join(', ')}.` : ' No reports.'} Grid and solving history unchanged.`,
+            'ok',
+          );
+        } catch (error) {
+          if (isSearchCancelled(error)) return;
+          setStatus(`Could not run POM: ${error.message || error}`, 'warn');
+        } finally {
+          setBusy(false, searchToken);
+        }
       }, 20);
     }
 
     function runAlsBuild() {
-      setBusy(true);
+      const searchToken = setBusy(true);
       setStatus('Building LS / ALS records...');
 
-      setTimeout(() => {
+      scheduleSearch(async () => {
         try {
-          alsReport = core.alsConstructor(cand);
+          alsReport = await runCoreSearch('alsConstructor', cand);
           selectedAlsDof = null;
           selectedAlsDofIndex = null;
           selectedAlsId = null;
@@ -20118,6 +20183,7 @@
           renderChainReport();
           setStatus(`LS / ALS build complete. ${alsReport.length} records. Grid and solving history unchanged.`, 'ok');
         } catch (error) {
+          if (isSearchCancelled(error)) return;
           alsReport = null;
           selectedAlsDof = null;
           selectedAlsId = null;
@@ -20130,23 +20196,23 @@
           renderChainReport();
           setStatus('Could not build LS / ALS records.', 'warn');
         } finally {
-          setBusy(false);
+          setBusy(false, searchToken);
         }
       }, 20);
     }
 
     function runAlsLinkBuild() {
-      setBusy(true);
+      const searchToken = setBusy(true);
       setStatus('Building ALS graph links...');
 
-      setTimeout(() => {
+      scheduleSearch(async () => {
         try {
-          const sourceAls = alsReport || core.alsConstructor(cand);
+          const sourceAls = alsReport || await runCoreSearch('alsConstructor', cand);
           if (!alsReport) {
             alsReport = sourceAls;
             renderAlsReport();
           }
-          alsLinkReport = core.buildAlsLinks(cand, {
+          alsLinkReport = await runCoreSearch('buildAlsLinks', cand, {
             alsList: sourceAls,
             strictSingleCommon: true,
           });
@@ -20160,24 +20226,25 @@
             'ok',
           );
         } catch (error) {
+          if (isSearchCancelled(error)) return;
           alsLinkReport = null;
           chainReport = null;
           renderAlsLinkReport();
           renderChainReport();
           setStatus('Could not build ALS graph links.', 'warn');
         } finally {
-          setBusy(false);
+          setBusy(false, searchToken);
         }
       }, 20);
     }
 
     function runAhsBuild() {
-      setBusy(true);
+      const searchToken = setBusy(true);
       setStatus('Building HS / AHS records...');
 
-      setTimeout(() => {
+      scheduleSearch(async () => {
         try {
-          ahsReport = core.ahsConstructor(cand, {
+          ahsReport = await runCoreSearch('ahsConstructor', cand, {
             maxSize: 8,
             maxSizeFox: 7,
           });
@@ -20190,6 +20257,7 @@
           renderChainReport();
           setStatus(`HS / AHS build complete. ${ahsReport.length} records. Grid and solving history unchanged.`, 'ok');
         } catch (error) {
+          if (isSearchCancelled(error)) return;
           ahsReport = null;
           selectedAhsDof = null;
           selectedAhsId = null;
@@ -20199,23 +20267,23 @@
           renderChainReport();
           setStatus('Could not build HS / AHS records.', 'warn');
         } finally {
-          setBusy(false);
+          setBusy(false, searchToken);
         }
       }, 20);
     }
 
     function runStrongLinkBuild() {
-      setBusy(true);
+      const searchToken = setBusy(true);
       setStatus('Building strong links...');
 
-      setTimeout(() => {
+      scheduleSearch(async () => {
         try {
           const strongLinkTypes = chainStrongTypeEls
             .map((element, index) => element.checked ? index : null)
             .filter(index => index !== null);
           const nodeLimits = chainNodeLimitOptions('chain');
           const includeAlmostFish = strongLinkTypes.includes(7);
-          strongLinkReport = core.buildStrongLinks(cand, {
+          strongLinkReport = await runCoreSearch('buildStrongLinks', cand, {
             includeAlmostFish,
             almostFish: includeAlmostFish
               ? { grid: [...(puzzle || [])], ...currentAlmostFishOptions() }
@@ -20233,26 +20301,27 @@
             'ok',
           );
         } catch (error) {
+          if (isSearchCancelled(error)) return;
           strongLinkReport = null;
           chainReport = null;
           renderStrongLinkReport();
           renderChainReport();
           setStatus('Could not build strong links.', 'warn');
         } finally {
-          setBusy(false);
+          setBusy(false, searchToken);
         }
       }, 20);
     }
 
     function runSimpleColoringBuild() {
-      setBusy(true);
+      const searchToken = setBusy(true);
       setStatus('Searching Simple Colouring...');
 
-      setTimeout(() => {
+      scheduleSearch(async () => {
         try {
-          const currentStrongLinks = core.buildStrongLinks(cand);
+          const currentStrongLinks = await runCoreSearch('buildStrongLinks', cand);
           simpleColoringReport = annotateColouringReports(
-            core.buildSimpleColoring(cand, currentStrongLinks),
+            await runCoreSearch('buildSimpleColoring', cand, currentStrongLinks),
           );
           selectedSimpleColoringIndex = simpleColoringReport.length ? 0 : null;
           selectedThreeDMedusaIndex = null;
@@ -20272,6 +20341,7 @@
             simpleColoringReport.length ? 'ok' : 'warn',
           );
         } catch (error) {
+          if (isSearchCancelled(error)) return;
           simpleColoringReport = null;
           selectedSimpleColoringIndex = null;
           selectedThreeDMedusaIndex = null;
@@ -20280,20 +20350,20 @@
           console.error('Simple Colouring search failed:', error);
           setStatus('Could not search Simple Colouring.', 'warn');
         } finally {
-          setBusy(false);
+          setBusy(false, searchToken);
         }
       }, 20);
     }
 
     function runThreeDMedusaBuild() {
-      setBusy(true);
+      const searchToken = setBusy(true);
       setStatus('Searching 3D - Medusa {Simple}...');
 
-      setTimeout(() => {
+      scheduleSearch(async () => {
         try {
-          const currentStrongLinks = core.buildStrongLinks(cand);
+          const currentStrongLinks = await runCoreSearch('buildStrongLinks', cand);
           threeDMedusaReport = annotateColouringReports(
-            core.buildThreeDMedusa(cand, currentStrongLinks),
+            await runCoreSearch('buildThreeDMedusa', cand, currentStrongLinks),
           );
           selectedThreeDMedusaIndex = threeDMedusaReport.length ? 0 : null;
           selectedSimpleColoringIndex = null;
@@ -20313,26 +20383,27 @@
             threeDMedusaReport.length ? 'ok' : 'warn',
           );
         } catch (error) {
+          if (isSearchCancelled(error)) return;
           threeDMedusaReport = null;
           selectedThreeDMedusaIndex = null;
           renderThreeDMedusaReport();
           renderBoard();
           setStatus('Could not search 3D-Medusa.', 'warn');
         } finally {
-          setBusy(false);
+          setBusy(false, searchToken);
         }
       }, 20);
     }
 
     function runMultiColoringBuild() {
-      setBusy(true);
+      const searchToken = setBusy(true);
       setStatus('Searching Multi-colouring...');
 
-      setTimeout(() => {
+      scheduleSearch(async () => {
         try {
-          const currentStrongLinks = core.buildStrongLinks(cand);
+          const currentStrongLinks = await runCoreSearch('buildStrongLinks', cand);
           multiColoringReport = annotateColouringReports(
-            core.buildMultiColoring(cand, currentStrongLinks),
+            await runCoreSearch('buildMultiColoring', cand, currentStrongLinks),
           );
           selectedMultiColoringIndex = multiColoringReport.length ? 0 : null;
           selectedSimpleColoringIndex = null;
@@ -20355,6 +20426,7 @@
             multiColoringReport.length ? 'ok' : 'warn',
           );
         } catch (error) {
+          if (isSearchCancelled(error)) return;
           multiColoringReport = null;
           selectedMultiColoringIndex = null;
           selectedSuperMultiColoringIndex = null;
@@ -20365,7 +20437,7 @@
           console.error('Multi-colouring search failed:', error);
           setStatus('Could not search Multi-colouring.', 'warn');
         } finally {
-          setBusy(false);
+          setBusy(false, searchToken);
         }
       }, 20);
     }
@@ -20415,14 +20487,14 @@
     }
 
     function runThreeDMedusaMultiBuild() {
-      setBusy(true);
+      const searchToken = setBusy(true);
       setStatus('Searching 3D - Medusa {Multi-colouring}...');
 
-      setTimeout(() => {
+      scheduleSearch(async () => {
         try {
-          const currentStrongLinks = core.buildStrongLinks(cand);
+          const currentStrongLinks = await runCoreSearch('buildStrongLinks', cand);
           threeDMedusaMultiReport = annotateColouringReports(
-            core.buildThreeDMedusaMultiColoring(cand, currentStrongLinks),
+            await runCoreSearch('buildThreeDMedusaMultiColoring', cand, currentStrongLinks),
           );
           selectedThreeDMedusaMultiIndex = threeDMedusaMultiReport.length ? 0 : null;
           selectedSimpleColoringIndex = null;
@@ -20446,6 +20518,7 @@
             threeDMedusaMultiReport.length ? 'ok' : 'warn',
           );
         } catch (error) {
+          if (isSearchCancelled(error)) return;
           threeDMedusaMultiReport = null;
           selectedThreeDMedusaMultiIndex = null;
           renderThreeDMedusaMultiReport();
@@ -20453,29 +20526,22 @@
           console.error('3D-Medusa Multi-colouring search failed:', error);
           setStatus('Could not search 3D-Medusa {Multi-colouring}.', 'warn');
         } finally {
-          setBusy(false);
+          setBusy(false, searchToken);
         }
       }, 20);
     }
 
     function runFishBuild() {
-      setBusy(true);
+      const searchToken = setBusy(true);
       setStatus('Searching N x (N + K) fish...');
 
-      setTimeout(async () => {
+      scheduleSearch(async () => {
         try {
-          try {
-            fishReport = await runSearchWorker('fish', {
-              candidateGrid: cand,
-              fixedGrid: puzzle,
-              options: currentPomFishOptions(),
-            });
-          } catch (error) {
-            fishReport = core.findOmissionFishReports(cand, {
-              ...currentPomFishOptions(),
-              grid: puzzle,
-            });
-          }
+          fishReport = await runSearchWorker('fish', {
+            candidateGrid: cand,
+            fixedGrid: puzzle,
+            options: currentPomFishOptions(),
+          });
           selectedFishCategory = null;
           selectedFishSize = null;
           selectedFishKey = null;
@@ -20483,27 +20549,28 @@
           openReportPanel(fishResultsEl);
           setStatus('N x (N + K) fish search complete. ' + fishReport.length + ' reports. Grid and solving history unchanged.', fishReport.length ? 'ok' : 'warn');
         } catch (error) {
+          if (isSearchCancelled(error)) return;
           fishReport = null;
           selectedFishCategory = null;
           renderFishReport();
           setStatus('Could not search N x (N + K) fish.', 'warn');
         } finally {
-          setBusy(false);
+          setBusy(false, searchToken);
         }
       }, 20);
     }
 
     function runGenericSubsetBuild(kind) {
       const hidden = kind === 'hidden';
-      setBusy(true);
+      const searchToken = setBusy(true);
       setStatus(`Searching ${hidden ? 'hidden' : 'naked'} subsets...`);
 
-      setTimeout(() => {
+      scheduleSearch(async () => {
         try {
           const options = hidden
             ? { kind, ahsList: ahsReport || undefined }
             : { kind, alsList: alsReport || undefined };
-          const report = core.findGenericSubsetReports(cand, options);
+          const report = await runCoreSearch('findGenericSubsetReports', cand, options);
           if (hidden) {
             hiddenSubsetReport = report;
             selectedHiddenSubsetSize = null;
@@ -20523,6 +20590,7 @@
             report.length ? 'ok' : 'warn',
           );
         } catch (error) {
+          if (isSearchCancelled(error)) return;
           if (hidden) {
             hiddenSubsetReport = null;
             selectedHiddenSubsetSize = null;
@@ -20536,13 +20604,13 @@
           }
           setStatus(`Could not search ${hidden ? 'hidden' : 'naked'} subsets.`, 'warn');
         } finally {
-          setBusy(false);
+          setBusy(false, searchToken);
         }
       }, 20);
     }
 
     async function runAlsDofBuild() {
-      setBusy(true);
+      const searchToken = setBusy(true);
       setStatus('Searching ALS-DOF auxiliary nets in the background...');
 
       try {
@@ -20553,46 +20621,12 @@
         alsDofMaxDigitsEl.value = String(maxDigits);
         alsDofMaxAuxiliaryEl.value = String(maxAuxiliary);
 
-        let report;
-        try {
-          report = await runSearchWorker('als-dof', {
-            candidateGrid: cand,
-            maxDigits,
-            maxAuxiliary,
-            maxResults: 5000,
-          });
-        } catch (workerError) {
-          // Preserve file:// and older-browser support when workers are
-          // unavailable. This fallback is intentionally explicit because it
-          // can be CPU-heavy at the upper DOF limits.
-          const sourceAls = core.alsConstructor(cand, {
-            maxSizeDOF: maxDigits - 1,
-            maxSizeFox: maxDigits - 1,
-          });
-          const raw = core.findAlsDofNets(cand, {
-            alsList: sourceAls,
-            maxAuxiliary,
-            maxDigits,
-            maxResults: 5000,
-            includeChain: true,
-          });
-          const verifiedResults = raw.results.map(result => ({
-            ...result,
-            verification: core.verifyAlsDofNet(cand, result, { alsList: sourceAls }),
-          }));
-          const acceptedResults = verifiedResults.filter(result => result.verification.ok);
-          report = {
-            ...raw,
-            results: acceptedResults,
-            rejectedResults: verifiedResults.filter(result => !result.verification.ok),
-            stats: {
-              ...raw.stats,
-              verifierChecked: verifiedResults.length,
-              verifierRejected: verifiedResults.length - acceptedResults.length,
-              workerFallback: workerError.message || String(workerError),
-            },
-          };
-        }
+        const report = await runSearchWorker('als-dof', {
+          candidateGrid: cand,
+          maxDigits,
+          maxAuxiliary,
+          maxResults: 5000,
+        });
         alsReport = null;
         alsDofReport = report;
         selectedAlsDof = null;
@@ -20607,20 +20641,21 @@
           alsDofReport.results.length ? 'ok' : 'warn',
         );
       } catch (error) {
+        if (isSearchCancelled(error)) return;
         alsDofReport = null;
         renderAlsDofReport();
         console.error('ALS-DOF auxiliary-net search failed:', error);
         setStatus(`Could not search ALS-DOF auxiliary nets: ${error.message || error}`, 'warn');
       } finally {
-        setBusy(false);
+        setBusy(false, searchToken);
       }
     }
 
     function runAlsDofChainBuild() {
-      setBusy(true);
+      const searchToken = setBusy(true);
       setStatus('Searching ALS-DOF chains...');
 
-      setTimeout(async () => {
+      scheduleSearch(async () => {
         try {
           // Chains have their own range controls so widening a chain search
           // does not silently change the parent ALS-DOF search.
@@ -20633,45 +20668,12 @@
           alsDofChainMaxDigitsEl.value = String(maxDigits);
           alsDofChainMaxAuxiliaryEl.value = String(maxAuxiliary);
           alsDofChainMaxResultsEl.value = String(maxResults);
-          try {
-            alsDofChainReport = await runSearchWorker('als-dof-chain', {
-              candidateGrid: cand,
-              maxDigits,
-              maxAuxiliary,
-              maxResults,
-            });
-          } catch (workerError) {
-            // Workers can be blocked when the app is opened directly from
-            // file://. Keep the chain search usable with the same verified
-            // in-page implementation used by the other ALS-DOF search.
-            const sourceAls = core.alsConstructor(cand, {
-              maxSizeDOF: maxDigits - 1,
-              maxSizeFox: maxDigits - 1,
-            });
-            const raw = core.findAlsDofChains(cand, {
-              alsList: sourceAls,
-              maxAuxiliary,
-              maxDigits,
-              maxResults,
-              includePathChain: false,
-            });
-            const verifiedResults = raw.results.map(result => ({
-              ...result,
-              verification: core.verifyAlsDofNet(cand, result, { alsList: sourceAls }),
-            }));
-            const acceptedResults = verifiedResults.filter(result => result.verification.ok);
-            alsDofChainReport = {
-              ...raw,
-              results: acceptedResults,
-              rejectedResults: verifiedResults.filter(result => !result.verification.ok),
-              stats: {
-                ...raw.stats,
-                verifierChecked: verifiedResults.length,
-                verifierRejected: verifiedResults.length - acceptedResults.length,
-                workerFallback: workerError.message || String(workerError),
-              },
-            };
-          }
+          alsDofChainReport = await runSearchWorker('als-dof-chain', {
+            candidateGrid: cand,
+            maxDigits,
+            maxAuxiliary,
+            maxResults,
+          });
           selectedAlsDof = null;
           selectedAlsDofIndex = null;
           selectedAlsDofSource = 'chain';
@@ -20684,11 +20686,12 @@
             alsDofChainReport.results.length ? 'ok' : 'warn',
           );
         } catch (error) {
+          if (isSearchCancelled(error)) return;
           alsDofChainReport = null;
           renderAlsDofReport();
           setStatus(`Could not search ALS-DOF chains: ${error.message || error}`, 'warn');
         } finally {
-          setBusy(false);
+          setBusy(false, searchToken);
         }
       }, 20);
     }
@@ -20774,7 +20777,7 @@
     }
 
     async function runMslsSearch() {
-      setBusy(true);
+      const searchToken = setBusy(true);
       setStatus('Searching Multi-Sector Locked Sets...');
       mslsResultsEl.textContent = 'Searching MSLS...';
       try {
@@ -20804,26 +20807,19 @@
             maxResults: resultLimit,
           },
         };
-        let report;
-        try {
-          report = await runSearchWorker('msls', payload);
-        } catch (workerError) {
-          // Keep MSLS usable when an already-open tab still owns an old worker.
-          // The same core is loaded on the page and can complete this search directly.
-          if (!core || typeof core.findMsls !== 'function') throw workerError;
-          report = core.findMsls(payload.candidateGrid, payload.options);
-        }
+        const report = await runSearchWorker('msls', payload);
         mslsReport = report;
         selectedMslsIndex = null;
         renderMslsReport();
         openReportPanel(mslsResultsEl);
         setStatus(`MSLS search complete. ${report.results.length} result${report.results.length === 1 ? '' : 's'}.`, report.results.length ? 'ok' : 'warn');
       } catch (error) {
+        if (isSearchCancelled(error)) return;
         mslsResultsEl.textContent = `Could not search MSLS: ${error.message || error}`;
         openReportPanel(mslsResultsEl);
         setStatus('Could not search MSLS.', 'warn');
       } finally {
-        setBusy(false);
+        setBusy(false, searchToken);
       }
     }
 
@@ -20857,12 +20853,12 @@
       // includeAlsRcc/alsLinkSet as ALS_RCC; it is not part of this array.
       const searchStrongLinkTypes = [4];
 
-      setBusy(true);
+      const searchToken = setBusy(true);
       setStatus(family === 'als-xy'
         ? `Searching ${label}...`
         : `Searching ${label}...`);
 
-      setTimeout(() => {
+      scheduleSearch(async () => {
         try {
           const search = chainSearchOptions(
             cand,
@@ -20872,15 +20868,37 @@
               includeAlsRcc: true,
               strongLinkTypes: searchStrongLinkTypes,
             },
-            true,
+            false,
             phase,
           );
-          const rawReport = core.findAicChains(cand, {
+          search.strongSet = await runCoreSearch('buildStrongLinks', cand, {
+            includeAlmostFish: search.strongLinkTypes.includes(7),
+            almostFish: { grid: [...puzzle], ...search.almostFish },
+          });
+          search.alsList = (await runCoreSearch('alsConstructor', cand, {
+            ...(search.alsMaxSizeDOF == null ? {} : { maxSizeDOF: search.alsMaxSizeDOF }),
+            ...(search.alsMaxSizeFox == null ? {} : { maxSizeFox: search.alsMaxSizeFox }),
+            searchLimit: search.alsSearchLimit,
+          })).filter(als => search.alsMaxCells == null
+            || (als.alsAllCells || []).length <= search.alsMaxCells)
+            .filter(als => search.alsMaxDigits == null
+              || (als.alsDigits || []).length <= search.alsMaxDigits);
+          search.alsLinkSet = await runCoreSearch('buildAlsLinks', cand, {
+            alsList: search.alsList,
+            strictSingleCommon: true,
+            xzOnly: phase.alsLinkMode === 'xz-only',
+            maxLinks: search.maxAlsLinks,
+          });
+          if (phase.alsModuleKinds) {
+            search.alsLinkSet = search.alsLinkSet.map(bucket => bucket.filter(link =>
+              phase.alsModuleKinds.includes(link.moduleKind)));
+          }
+          const rawReport = await runCoreSearch('findAicChains', cand, {
             strongLinkSet: search.strongSet,
             alsList: search.alsList,
             alsLinkSet: search.alsLinkSet,
             includeAls: search.includeAlsRcc,
-          includeAhs: search.includeAhs,
+            includeAhs: search.includeAhs,
             strongLinkTypes: search.strongLinkTypes,
             maxDepth: search.maxDepth,
             maxChains: search.maxChains,
@@ -20917,6 +20935,7 @@
             chains.length ? 'ok' : 'warn',
           );
         } catch (error) {
+          if (isSearchCancelled(error)) return;
           alsSearchFamily = null;
           chainReport = null;
           selectedChainIndex = null;
@@ -20924,7 +20943,7 @@
           renderAlsSearchResults();
           setStatus(`Could not search ${label}.`, 'warn');
         } finally {
-          setBusy(false);
+          setBusy(false, searchToken);
         }
       }, 20);
     }
@@ -20933,10 +20952,10 @@
       const isXy = family === 'ahs-xy';
       const isChain = family === 'ahs-chain';
       const label = isXy ? 'AHS-XY' : isChain ? 'AHS-Chain' : 'AHS-XZ';
-      setBusy(true);
+      const searchToken = setBusy(true);
       setStatus(`Searching ${label}...`);
 
-      setTimeout(async () => {
+      scheduleSearch(async () => {
         try {
           let strongLinkSet = null;
           let ahsList = null;
@@ -20967,21 +20986,18 @@
               },
             };
             if (document.baseURI.startsWith('file:')) {
-              // Chrome may block classic workers for file:// pages. Keep the
-              // same bounded AHS-XY search available in local copies by
-              // running the worker payload through the page cores directly.
-              ahsList = core.ahsConstructor(cand, {
+              ahsList = await runCoreSearch('ahsConstructor', cand, {
                 maxSize: ahsXyOptions.ahsMaxSize,
                 maxSizeFox: ahsXyOptions.ahsMaxFox,
                 searchLimit: ahsXyOptions.ahsSearchLimit,
                 maxResults: ahsXyOptions.ahsMaxNodes,
               });
-               const pureReport = core.findAhsXyChains(cand, {
+               const pureReport = await runCoreSearch('findAhsXyChains', cand, {
                 ahsList,
                 maxTriples: ahsXyOptions.maxTriples,
                 maxChains: ahsXyOptions.limits.maxChains,
               });
-               const mixedReport = core.findAhsMixedChains(cand, {
+               const mixedReport = await runCoreSearch('findAhsMixedChains', cand, {
                  mode: 'xy', maxChains: ahsXyOptions.limits.maxChains,
                });
                rawReport = { chains: [...pureReport.chains, ...mixedReport.chains],
@@ -20996,19 +21012,19 @@
               });
             }
           } else {
-            strongLinkSet = core.buildStrongLinks(cand);
-            ahsList = core.ahsConstructor(cand, { maxSize: 8, maxSizeFox: 7 });
+            strongLinkSet = await runCoreSearch('buildStrongLinks', cand);
+            ahsList = await runCoreSearch('ahsConstructor', cand, { maxSize: 8, maxSizeFox: 7 });
             const ahsBuilderStrongLinks = isChain
               ? core.flattenStrongLinks(strongLinkSet).filter(link => [0, 1].includes(Number(link.linkType)))
               : strongLinkSet;
-            ahsLinkSet = core.buildAhsLinks(cand, {
+            ahsLinkSet = await runCoreSearch('buildAhsLinks', cand, {
               ahsList,
               strongLinkSet: ahsBuilderStrongLinks,
               minDof: 1,
               maxDof: 3,
               maxLinks: 5000,
             });
-            rawReport = core.findAicChains(cand, {
+            rawReport = await runCoreSearch('findAicChains', cand, {
               strongLinkSet,
               strongLinkTypes: [0, 1],
               includeStrong: true,
@@ -21024,10 +21040,7 @@
               maxQueue: 300000,
               maxBranching: 500,
               maxAhsLinks: 5000,
-               ...(isChain ? { resultFilter: steps => steps.length > 3
-                 && steps.some(step => step.view.node.family === 'AHS')
-                 && steps.every(step => step.view.node.family === 'AHS'
-                   || (step.view.node.family === 'SL' && [0, 1].includes(step.view.node.linkType))) } : {}),
+               ...(isChain ? { ahsChainOnly: true } : {}),
             });
           }
            const chains = rawReport.chains.filter(chain => {
@@ -21072,21 +21085,22 @@
             chains.length ? 'ok' : 'warn',
           );
         } catch (error) {
+          if (isSearchCancelled(error)) return;
           ahsSearchFamily = null;
           chainReport = null;
           selectedChainIndex = null;
           renderAhsSearchResults();
           setStatus(`Could not search ${label}: ${error.message || error}`, 'warn');
         } finally {
-          setBusy(false);
+          setBusy(false, searchToken);
         }
       }, 20);
     }
 
     async function runAlcXzBuild() {
-      setBusy(true);
+      const searchToken = setBusy(true);
       setStatus('Searching ALC-XZ...');
-      setTimeout(async () => {
+      scheduleSearch(async () => {
         try {
           const payload = {
             candidateGrid: cand,
@@ -21099,15 +21113,7 @@
             maxAlsLinks: 5000,
             maxAhsLinks: 5000,
           };
-          try {
-            alcXzReport = await runSearchWorker('alc-xz', payload);
-          } catch (workerError) {
-            alcXzReport = core.findAlcXz(cand, payload);
-            alcXzReport.stats = {
-              ...(alcXzReport.stats || {}),
-              workerFallback: workerError.message || String(workerError),
-            };
-          }
+          alcXzReport = await runSearchWorker('alc-xz', payload);
           chainReport = alcXzReport;
           selectedChainIndex = alcXzReport.chains.length ? 0 : null;
           activeStep = null;
@@ -21121,21 +21127,22 @@
           const count = alcXzReport.chains.length;
           setStatus(`ALC-XZ search complete. ${count} result${count === 1 ? '' : 's'} found.`, count ? 'ok' : 'warn');
         } catch (error) {
+          if (isSearchCancelled(error)) return;
           alcXzReport = null;
           chainReport = null;
           selectedChainIndex = null;
           renderAlcXzResults();
           setStatus(`Could not search ALC-XZ: ${error.message || error}`, 'warn');
         } finally {
-          setBusy(false);
+          setBusy(false, searchToken);
         }
       }, 20);
     }
 
     async function runAlcXyBuild() {
-      setBusy(true);
+      const searchToken = setBusy(true);
       setStatus('Searching ALC-XY...');
-      setTimeout(async () => {
+      scheduleSearch(async () => {
         try {
           const payload = {
             candidateGrid: cand,
@@ -21149,15 +21156,7 @@
             maxAlsLinks: 5000,
             maxAhsLinks: 5000,
           };
-          try {
-            alcXyReport = await runSearchWorker('alc-xy', payload);
-          } catch (workerError) {
-            alcXyReport = core.findAlcXy(cand, payload);
-            alcXyReport.stats = {
-              ...(alcXyReport.stats || {}),
-              workerFallback: workerError.message || String(workerError),
-            };
-          }
+          alcXyReport = await runSearchWorker('alc-xy', payload);
           chainReport = alcXyReport;
           selectedChainIndex = alcXyReport.chains.length ? 0 : null;
           activeStep = null;
@@ -21171,21 +21170,22 @@
           const count = alcXyReport.chains.length;
           setStatus(`ALC-XY search complete. ${count} result${count === 1 ? '' : 's'} found.`, count ? 'ok' : 'warn');
         } catch (error) {
+          if (isSearchCancelled(error)) return;
           alcXyReport = null;
           chainReport = null;
           selectedChainIndex = null;
           renderAlcXyResults();
           setStatus(`Could not search ALC-XY: ${error.message || error}`, 'warn');
         } finally {
-          setBusy(false);
+          setBusy(false, searchToken);
         }
       }, 20);
     }
 
     async function runAlcChainBuild() {
-      setBusy(true);
+      const searchToken = setBusy(true);
       setStatus('Searching ALC-Chain...');
-      setTimeout(async () => {
+      scheduleSearch(async () => {
         try {
           const payload = {
             candidateGrid: cand,
@@ -21199,15 +21199,7 @@
             maxAlsLinks: 5000,
             maxAhsLinks: 5000,
           };
-          try {
-            alcChainReport = await runSearchWorker('alc-chain', payload);
-          } catch (workerError) {
-            alcChainReport = core.findAlcChain(cand, payload);
-            alcChainReport.stats = {
-              ...(alcChainReport.stats || {}),
-              workerFallback: workerError.message || String(workerError),
-            };
-          }
+          alcChainReport = await runSearchWorker('alc-chain', payload);
           chainReport = alcChainReport;
           selectedChainIndex = alcChainReport.chains.length ? 0 : null;
           activeStep = null;
@@ -21221,21 +21213,22 @@
           const count = alcChainReport.chains.length;
           setStatus(`ALC-Chain search complete. ${count} result${count === 1 ? '' : 's'} found.`, count ? 'ok' : 'warn');
         } catch (error) {
+          if (isSearchCancelled(error)) return;
           alcChainReport = null;
           chainReport = null;
           selectedChainIndex = null;
           renderAlcChainResults();
           setStatus(`Could not search ALC-Chain: ${error.message || error}`, 'warn');
         } finally {
-          setBusy(false);
+          setBusy(false, searchToken);
         }
       }, 20);
     }
 
     async function runAlcDofBuild() {
-      setBusy(true);
+      const searchToken = setBusy(true);
       setStatus('Searching ALC-DOF...');
-      setTimeout(async () => {
+      scheduleSearch(async () => {
         try {
           const payload = {
             candidateGrid: cand,
@@ -21254,15 +21247,7 @@
             maxQueue: 60000,
             maxBranching: 200,
           };
-          try {
-            alcDofReport = await runSearchWorker('alc-dof', payload);
-          } catch (workerError) {
-            alcDofReport = core.findAlcDofChains(cand, payload);
-            alcDofReport.stats = {
-              ...(alcDofReport.stats || {}),
-              workerFallback: workerError.message || String(workerError),
-            };
-          }
+          alcDofReport = await runSearchWorker('alc-dof', payload);
           chainReport = alcDofReport;
           selectedChainIndex = alcDofReport.chains.length ? 0 : null;
           activeStep = null;
@@ -21276,22 +21261,23 @@
           const count = alcDofReport.chains.length;
           setStatus(`ALC-DOF search complete. ${count} result${count === 1 ? '' : 's'} found.`, count ? 'ok' : 'warn');
         } catch (error) {
+          if (isSearchCancelled(error)) return;
           alcDofReport = null;
           chainReport = null;
           selectedChainIndex = null;
           renderAlcDofResults();
           setStatus(`Could not search ALC-DOF: ${error.message || error}`, 'warn');
         } finally {
-          setBusy(false);
+          setBusy(false, searchToken);
         }
       }, 20);
     }
 
     function runChainBuild() {
-      setBusy(true);
+      const searchToken = setBusy(true);
       setStatus('Walking chains...');
 
-      setTimeout(() => {
+      scheduleSearch(async () => {
         try {
           const includeAlsRcc = chainAlsRccEl.checked;
           const includeAhs = chainAhsEl.checked;
@@ -21300,31 +21286,31 @@
             .map((element, index) => element.checked ? index : null)
             .filter(index => index !== null);
           const includeAlmostFish = strongLinkTypes.includes(7);
-          strongLinkReport = core.buildStrongLinks(cand, {
+          strongLinkReport = await runCoreSearch('buildStrongLinks', cand, {
             includeAlmostFish,
             almostFish: includeAlmostFish
               ? { grid: [...(puzzle || [])], ...currentAlmostFishOptions() }
               : {},
           });
-          alsReport = includeAlsRcc ? core.alsConstructor(cand, {
+          alsReport = includeAlsRcc ? (await runCoreSearch('alsConstructor', cand, {
             ...(nodeLimits.alsMaxSizeDOF == null
               ? {} : { maxSizeDOF: nodeLimits.alsMaxSizeDOF }),
             ...(nodeLimits.alsMaxSizeFox == null
               ? {} : { maxSizeFox: nodeLimits.alsMaxSizeFox }),
-          }).filter(als => nodeLimits.alsMaxCells == null
+          })).filter(als => nodeLimits.alsMaxCells == null
             || (als.alsAllCells || []).length <= nodeLimits.alsMaxCells) : null;
-          alsLinkReport = includeAlsRcc ? core.buildAlsLinks(cand, {
+          alsLinkReport = includeAlsRcc ? await runCoreSearch('buildAlsLinks', cand, {
               alsList: alsReport,
               strictSingleCommon: true,
               maxLinks: 5000,
             }) : null;
-          const ahsList = includeAhs ? core.ahsConstructor(cand, {
+          const ahsList = includeAhs ? (await runCoreSearch('ahsConstructor', cand, {
             maxSize: nodeLimits.ahsMaxDigits ?? 8,
             maxSizeFox: nodeLimits.ahsMaxFox ?? 7,
-          }).filter(ahs => nodeLimits.ahsMaxCells == null
+          })).filter(ahs => nodeLimits.ahsMaxCells == null
             || (ahs.ahsAllCells || []).length <= nodeLimits.ahsMaxCells) : null;
           ahsReport = ahsList;
-          const ahsLinkSet = includeAhs ? core.buildAhsLinks(cand, {
+          const ahsLinkSet = includeAhs ? await runCoreSearch('buildAhsLinks', cand, {
             ahsList,
             strongLinkSet: strongLinkReport,
             minDof: 1,
@@ -21336,7 +21322,7 @@
           renderAlsReport();
           renderAlsLinkReport();
 
-          chainReport = core.findAicChains(cand, {
+          chainReport = await runCoreSearch('findAicChains', cand, {
             strongLinkSet: strongLinkReport,
             alsList: alsReport,
             alsLinkSet: alsLinkReport,
@@ -21373,11 +21359,12 @@
             chains.length ? 'ok' : 'warn',
           );
         } catch (error) {
+          if (isSearchCancelled(error)) return;
           chainReport = null;
           renderChainReport();
           setStatus('Could not walk chains.', 'warn');
         } finally {
-          setBusy(false);
+          setBusy(false, searchToken);
         }
       }, 20);
     }
@@ -21410,10 +21397,12 @@
           try {
             result = await runPuzzleGenerator(givens);
           } catch (error) {
+            if (requestToken !== generationToken || isSearchCancelled(error)) return;
             setBusy(false);
             setStatus(`Could not generate a puzzle: ${error.message || error}`, 'warn');
             return;
           }
+          if (requestToken !== generationToken) return;
           if (quickGeneration) {
             puzzle = result.puzzle;
             originalPuzzle = [...result.puzzle];
@@ -21432,6 +21421,7 @@
             result.solution,
             targetCategory,
           );
+          if (requestToken !== generationToken) return;
           const normalizedTarget = normalizeRatingCategory(targetCategory);
           const limitedMatchesTarget = quickGeneration
             || normalizedTarget === 'Unknown'
@@ -21541,12 +21531,12 @@
       // uniqueness checking happens asynchronously below.
       resetAnalysisAfterPlayerEdit();
       render();
-      setBusy(true);
+      const searchToken = setBusy(true);
       setStatus('Checking puzzle uniqueness...');
 
-      setTimeout(() => {
+      scheduleSearch(async () => {
         try {
-          const dlxResult = core.solveDlx(loadedGrid, 2);
+          const dlxResult = await runCoreSearch('solveDlx', loadedGrid, 2);
           if (dlxResult.count === 0) {
             if (parsed729) {
               puzzle = loadedGrid;
@@ -21587,9 +21577,10 @@
             parsed729?.candidates || null,
           );
         } catch (error) {
+          if (isSearchCancelled(error)) return;
           setStatus('Could not check that puzzle.', 'warn');
         } finally {
-          setBusy(false);
+          setBusy(false, searchToken);
         }
       }, 20);
     }
@@ -21636,18 +21627,18 @@
       event.stopPropagation();
       activeStep = null;
       selectedChromaticGraphIndex = null;
-      setBusy(true);
+      const searchToken = setBusy(true);
       setStatus('Searching non-colourable chromatic graphs...');
-      setTimeout(() => {
+      scheduleSearch(async () => {
         try {
-          chromaticGraphReport = window.StormChromaticCore.find(cand, {
+          chromaticGraphReport = await runSearchWorker('chromatic', { candidateGrid: cand, options: {
             unitType: chromaticUnitTypeEl.value,
             minSectors: chromaticMinSectorsEl.value,
             maxSectors: chromaticMaxSectorsEl.value,
             minDigits: chromaticMinDigitsEl.value,
             maxDigits: chromaticMaxDigitsEl.value,
             maxCells: chromaticMaxCellsEl.value,
-          });
+          } });
           selectedChromaticGraphIndex = chromaticGraphReport.results.length ? 0 : null;
           if (selectedChromaticGraphIndex !== null) {
             activeStep = chromaticStepFromResult(chromaticGraphReport.results[0]);
@@ -21661,12 +21652,13 @@
             chromaticGraphReport.results.length ? 'ok' : 'warn',
           );
         } catch (error) {
+          if (isSearchCancelled(error)) return;
           console.error('Chromatic graph search failed:', error);
           chromaticGraphReport = null;
           render();
           setStatus('Could not search non-colourable chromatic graphs.', 'warn');
         } finally {
-          setBusy(false);
+          setBusy(false, searchToken);
         }
       }, 0);
     });
@@ -21675,18 +21667,18 @@
       event.stopPropagation();
       activeStep = null;
       selectedChromaticAlsGraphIndex = null;
-      setBusy(true);
+      const searchToken = setBusy(true);
       setStatus('Searching ALS-backed non-colourable chromatic graphs...');
-      setTimeout(() => {
+      scheduleSearch(async () => {
         try {
-          chromaticAlsGraphReport = window.StormChromaticAlsCore.find(cand, {
+          chromaticAlsGraphReport = await runSearchWorker('chromatic-als', { candidateGrid: cand, options: {
             unitType: chromaticUnitTypeEl.value,
             minSectors: chromaticMinSectorsEl.value,
             maxSectors: chromaticMaxSectorsEl.value,
             minDigits: chromaticMinDigitsEl.value,
             maxDigits: chromaticMaxDigitsEl.value,
             maxCells: chromaticMaxCellsEl.value,
-          });
+          } });
           selectedChromaticAlsGraphIndex = chromaticAlsGraphReport.results.length
             ? 0
             : null;
@@ -21704,12 +21696,13 @@
             chromaticAlsGraphReport.results.length ? 'ok' : 'warn',
           );
         } catch (error) {
+          if (isSearchCancelled(error)) return;
           console.error('ALS chromatic graph search failed:', error);
           chromaticAlsGraphReport = null;
           render();
           setStatus('Could not search ALS-backed chromatic graphs.', 'warn');
         } finally {
-          setBusy(false);
+          setBusy(false, searchToken);
         }
       }, 0);
     });
@@ -21930,6 +21923,7 @@
       });
     }
 
+    initSearchStopButtons();
     initFishSettings();
     initToyControls();
     renderToyAutomorphCatalog();
