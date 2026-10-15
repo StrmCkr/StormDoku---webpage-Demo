@@ -888,6 +888,7 @@
 
   function findAlsDofChains(cand, options = {}) {
     const normalised = normaliseOptions(options);
+    const includeHydra = options.includeHydra === true;
     const maxResults = normalised.maxResults;
     const chainLimit = Math.max(1, Math.floor(maxResults / 2));
     // The evaluated chain form uses the two endpoint ALSs plus the number of
@@ -899,14 +900,14 @@
       ...options,
       requireAuxiliaryZ: true,
       maxAuxiliary: chainAuxiliaryCount,
-      audit: options.audit === true,
+      audit: options.audit === true || includeHydra,
       maxResults: chainLimit,
     });
     const connectorChain = findAlsDofAuxiliary(cand, {
       ...options,
       requireAuxiliaryZ: false,
       maxAuxiliary: chainAuxiliaryCount,
-      audit: options.audit === true,
+      audit: options.audit === true || includeHydra,
       maxResults: chainLimit,
     });
     const pathChain = includePathChain
@@ -927,15 +928,24 @@
             truncated: false,
           },
         };
-    const results = [
+    const ordinaryResults = [
       ...chain.results,
       ...connectorChain.results,
       ...pathChain.results,
-    ].slice(0, maxResults);
+    ];
     const auditCandidates = [
       ...(chain.auditCandidates || []),
       ...(connectorChain.auditCandidates || []),
     ];
+    const hydra = includeHydra
+      ? core.findHydraAlsDofChains(cand, {
+          ...options,
+          chainReport: { results: ordinaryResults, auditCandidates },
+        })
+      : { results: [], stats: {} };
+    const results = hydra.results.length
+      ? [...ordinaryResults.slice(0, Math.max(0, maxResults - hydra.results.length)), ...hydra.results]
+      : ordinaryResults.slice(0, maxResults);
     return {
       results,
       stats: {
@@ -957,17 +967,20 @@
           + connectorChain.stats.duplicateCandidates,
         pathChainsEnabled: includePathChain,
         pathChains: pathChain.results.length,
+        ...hydra.stats,
+        hydraChainsEnabled: includeHydra,
         chainAuxiliaryCount,
         truncated: chain.stats.truncated
           || connectorChain.stats.truncated
           || pathChain.stats.truncated
-          || chain.results.length + connectorChain.results.length
-            + pathChain.results.length > maxResults,
+          || hydra.stats.truncated
+          || ordinaryResults.length + hydra.results.length > maxResults,
       },
       auditCandidates,
       options: {
         ...chain.options,
         includePathChain,
+        includeHydra,
         maxAuxiliary: chainAuxiliaryCount,
         audit: options.audit === true,
       },
@@ -1995,6 +2008,7 @@
   }
 
   function verifyAlsDofNet(cand, result, options = {}) {
+    if (result?.hasHydra) return core.verifyHydraAlsDofChain(cand, result, options);
     const errors = [];
     if (!result || !result.primaryA) {
       return { ok: false, errors: ['missing hub ALS'], expectedEliminations: [] };
@@ -2202,7 +2216,7 @@
           errors.push('ALS DOF chain endpoints must each retain residual DOF 1');
         }
       }
-      if (!errors.length) {
+      if (!errors.length && options.structuralOnly !== true) {
         const baseline = eliminationRecords(
           cand,
           hub,
@@ -2356,8 +2370,10 @@
       errors.push('unsupported ALS-DOF net form');
     }
 
-    errors.push(...verifyEliminationWitnesses(cand, result, options.alsList || null));
-    errors.push(...verifyEliminations(result.eliminations, expectedEliminations));
+    if (options.structuralOnly !== true) {
+      errors.push(...verifyEliminationWitnesses(cand, result, options.alsList || null));
+      errors.push(...verifyEliminations(result.eliminations, expectedEliminations));
+    }
     return {
       ok: errors.length === 0,
       errors,
@@ -2391,7 +2407,11 @@
     const sequence = objects
       .map((entry, index) => alsDofNotationNode(entry.node, index + 1, entry.rcc))
       .join(' - ');
-    return `${sequence}${record.isRing ? ' - ring' : ''} => ${eliminations || '?'}`;
+    const branches = (record.hydraBranches || []).map((branch, index) =>
+      `${String.fromCharCode(65 + index)}: ${branch.sourceRole} {${branch.ls.digits.join('')}}`
+      + `${core.cellGroupName(branch.ls.cells)} -> ${core.formatChainEureka(branch.chain)}`);
+    return `${sequence}${record.isRing ? ' - ring' : ''}`
+      + `${branches.length ? `; ${branches.join('; ')}` : ''} => ${eliminations || '?'}`;
   }
 
   core.findAlsDofAuxiliary = findAlsDofAuxiliary;

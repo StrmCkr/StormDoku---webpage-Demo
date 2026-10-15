@@ -584,6 +584,7 @@
     const includeStrong = options.includeStrong !== false;
     const includeAls = options.includeAls === true;
     const includeAhs = options.includeAhs === true;
+    const includeHydra = options.includeHydra === true;
     const strongSet = includeStrong
       ? (options.strongLinkSet || core.buildStrongLinks(cand, {
         includeAlmostFish: (options.strongLinkTypes ?? [0, 1, 2, 3, 4]).includes(7),
@@ -744,19 +745,24 @@
       });
     }
     const ahsLinks = flattenLinkSet(ahsSet, core.flattenAhsLinks);
+    const hydraLinks = includeHydra
+      ? flattenLinkSet(options.hydraLinkSet, links => links)
+      : [];
 
     return {
       links: [
         ...strongLinks.map((link, index) => normaliseLink(link, 'SL', index)),
         ...alsLinks.map((link, index) => normaliseLink(link, 'ALS', index)),
         ...ahsLinks.map((link, index) => normaliseLink(link, 'AHS', index)),
+        ...hydraLinks.map((link, index) => normaliseLink(link, 'HYDRA', index)),
       ],
       counts: {
         strong: strongLinks.length,
         als: alsLinks.length,
         ahs: ahsLinks.length,
+        hydra: hydraLinks.length,
       },
-      source: { strongSet, alsSet, ahsSet, alsList, ahsList },
+      source: { strongSet, alsSet, ahsSet, alsList, ahsList, hydraSet: hydraLinks },
     };
   }
 
@@ -906,11 +912,44 @@
   }
 
   function directConnection(fromView, toView) {
+    const hydra = hydraLinkConnection(fromView, toView);
+    if (hydra) return hydra;
     const modular = alsModuleConnection(fromView, toView);
     if (modular) return modular;
     if (alsModulesOverlap(fromView, toView)) return null;
     return localConnection(fromView, toView)
       || sectorConnection(fromView, toView);
+  }
+
+  // Hydra modules are opt-in AIC links. Their boundary interfaces are
+  // already reduced by the Hydra proof, so the graph only needs to validate
+  // the ordinary sector handoff between the exit and entry interfaces.
+  function hydraLinkConnection(fromView, toView) {
+    if (fromView.node.family !== 'HYDRA' && toView.node.family !== 'HYDRA') return null;
+    if (hasIntersection(fromView.node.allCells, toView.node.allCells)) return null;
+
+    const sharedDigits = intersection(fromView.exit.digits, toView.entry.digits);
+    for (const digit of sharedDigits) {
+      const leftSectors = fromView.exit.sectorsByDigit[digit] || [];
+      const rightSectors = toView.entry.sectorsByDigit[digit] || [];
+      const sharedSectors = intersection(leftSectors, rightSectors);
+      const leftElims = fromView.exit.potentialElimByDigit[digit] || [];
+      const rightElims = toView.entry.potentialElimByDigit[digit] || [];
+      if (!sharedSectors.length || !leftElims.length || !rightElims.length) continue;
+      if (!isSubsetOf(fromView.exit.cells, rightElims)
+        || !isSubsetOf(toView.entry.cells, leftElims)) continue;
+      return {
+        weakType: SECTOR_WEAK,
+        weakTypeName: WEAK_TYPE_NAMES[SECTOR_WEAK],
+        digit,
+        fromDigit: digit,
+        toDigit: digit,
+        cells: union(fromView.exit.cells, toView.entry.cells),
+        sectors: sharedSectors,
+        hydra: true,
+      };
+    }
+    return null;
   }
 
   // ALC is the mixed ALS/AHS bridge.  It is intentionally opt-in: ordinary
@@ -1931,6 +1970,10 @@
       originSectors: [...step.view.node.originSector],
       moduleLabel: moduleLabelForView(step.view, module),
       module,
+      ...(step.view.node.family === 'ALS' ? {
+        alsNodeIds: [raw.LS_L?.uniqueID, raw.LS_R?.uniqueID, raw.standaloneEntrySubset?.uniqueID]
+          .filter(id => id != null),
+      } : {}),
       direction: step.view.direction,
       entrySide: step.view.entry.name,
       exitSide: step.view.exit.name,
@@ -2770,6 +2813,11 @@
       alsList: options.alsList,
       ahsLinkSet: options.ahsLinkSet,
       ahsList: options.ahsList,
+      includeHydra: options.includeHydra === true,
+      hydraLinkSet: options.hydraLinkSet,
+      collectAlsBranches: options.collectAlsBranches === true,
+      excludePureAhs: options.excludePureAhs === true,
+      maxAlsBranches: Number.isInteger(options.maxAlsBranches) ? Math.max(1, options.maxAlsBranches) : 2000,
       resultFilter: typeof options.resultFilter === 'function' ? options.resultFilter : null,
       onProgress: typeof options.onProgress === 'function' ? options.onProgress : null,
     };
@@ -2781,10 +2829,12 @@
     const inventory = buildLinkInventory(cand, opts);
     const graph = buildChainGraph(inventory.links, opts.onProgress);
     const chainsByKey = new Map();
+    const alsBranches = new Map();
     const stats = {
       strongLinks: inventory.counts.strong,
       alsLinks: inventory.counts.als,
       ahsLinks: inventory.counts.ahs,
+      hydraLinks: inventory.counts.hydra,
       graphLinks: inventory.links.length,
       directedViews: graph.views.length,
       startViews: 0,
@@ -2800,7 +2850,8 @@
     };
 
     let stop = false;
-    const resultAllowed = steps => !opts.resultFilter || opts.resultFilter(steps);
+    const resultAllowed = steps => (!opts.excludePureAhs || steps.some(step => step.view.node.family !== 'AHS'))
+      && (!opts.resultFilter || opts.resultFilter(steps));
     const noteResult = outcome => {
       if (outcome === 'duplicate') stats.duplicatesSuppressed += 1;
       stats.chainsFound = chainsByKey.size;
@@ -2824,6 +2875,10 @@
 
     for (const start of graph.views) {
       if (stop) break;
+      // Generic AIC may enter AHS_RCC after an ordinary link, but pure AHS
+      // walks belong to the dedicated AHS phases. Skip those starts so they
+      // cannot consume the generic pass state budget before being rejected.
+      if (opts.excludePureAhs && start.node.family === 'AHS') continue;
       if (stats.startViews >= opts.maxStartViews) {
         stats.truncated = true;
         stats.stopReason = 'maxStartViews';
@@ -2870,10 +2925,10 @@
           || (rootBridgeWeak !== null && rootClosureDigit !== null);
         const rootEvaluation = evaluateChain(cand, root.steps, rootIsRing, rootRingWeak);
         root.eliminations = mergeEliminations(root.eliminations, rootEvaluation.eliminations);
-        if (rootEvaluation.eliminations.length) {
+        if (rootEvaluation.eliminations.length && resultAllowed(root.steps)) {
           stats.resultAttempts += 1;
           startResultAttempts += 1;
-          if (resultAllowed(root.steps) && noteStartResult(addChainResult(
+          if (noteStartResult(addChainResult(
             chainsByKey,
             root.steps,
             rootEvaluation.eliminations,
@@ -2938,6 +2993,19 @@
           if (nextDepth > opts.maxDepth) continue;
           const openEvaluation = evaluateOpenExtension(cand, nextSteps, edge);
           const openElims = mergeEliminations(current.eliminations, openEvaluation.eliminations);
+          if (opts.collectAlsBranches && alsBranches.size < opts.maxAlsBranches) {
+            const key = canonicalPathKey(nextSteps, false);
+            if (!alsBranches.has(key)) {
+              const steps = nextSteps.map(publicStep);
+              alsBranches.set(key, {
+                length: nextDepth,
+                structureName: classifyChain(steps, false),
+                isRing: false,
+                steps,
+                eliminations: openElims,
+              });
+            }
+          }
           const terminalClosure = sameCellClosure || ringOverlapElims !== null;
           const terminalStructureName = ringWeak || terminalClosure
             ? terminalEriStructureName(nextSteps, ringWeak, ringOverlapElims)
@@ -3020,18 +3088,43 @@
       }
     }
 
-    const chains = [...chainsByKey.values()]
+    let chains = [...chainsByKey.values()]
       .sort((a, b) =>
         a.chain.length - b.chain.length
         || a.chain.eliminations.length - b.chain.eliminations.length
         || a.rankKey.localeCompare(b.rankKey)
       )
       .map(entry => entry.chain);
+    const cellularAhsChains = chains.filter(chain => chain.steps.some(step => step.family === 'AHS'));
+    let rejectedChains = [];
+    if (cellularAhsChains.length) {
+      opts.onProgress?.({ stage: 'ahs-placements' });
+      const verified = verifyMixedChainByPlacement(cand, {
+        chains: cellularAhsChains,
+        linkSets: inventory.source,
+      }, {
+        requireAhsCellOccupancy: true,
+        maxStates: 20000,
+        maxTotalStates: Math.max(2000, Math.min(100000, opts.maxStates)),
+        onProgress: opts.onProgress,
+      });
+      const accepted = new Map(verified.chains.map(chain => [chain.steps, chain]));
+      const checked = new Set(cellularAhsChains);
+      chains = chains.flatMap(chain => checked.has(chain)
+        ? (accepted.has(chain.steps) ? [accepted.get(chain.steps)] : []) : [chain]);
+      rejectedChains = verified.rejectedChains;
+      stats.ahsPlacementChecks = cellularAhsChains.length;
+      stats.ahsPlacementRejected = rejectedChains.length;
+      stats.ahsPlacementStates = verified.placementStats.states;
+      if (verified.placementStats.truncated) stats.truncated = true;
+    }
     stats.chainsFound = chains.length;
     opts.onProgress?.({ stage: 'complete', statesVisited: stats.statesVisited });
 
     return {
       chains,
+      ...(rejectedChains.length ? { rejectedChains } : {}),
+      ...(opts.collectAlsBranches ? { alsBranches: [...alsBranches.values()] } : {}),
       stats,
       linkSets: inventory.source,
     };
@@ -3095,7 +3188,36 @@
   }
 
   function eurekaUnitText(unit) {
+    if (unit.ahsSubset) return ahsEurekaNodeText(unit.ahsSubset, [unit]);
     return unit.text || eurekaSideText(unit.side);
+  }
+
+  function ahsEurekaNodeText(subset, faces) {
+    const cells = asNumbers(subset.cells);
+    const digits = asNumbers(subset.digits);
+    const sector = Number.isInteger(subset.sector) ? `@${core.sectorGroupName([subset.sector])}` : '';
+    const dof = Number.isInteger(subset.dof) ? subset.dof : cells.length - digits.length;
+    const body = faces.map(face => {
+      const rccGroups = new Map();
+      for (const cell of face.side.rccCells || []) {
+        const rccDigits = asNumbers(face.ahsRccDigitsByCell?.[cell]);
+        if (!rccDigits.length) continue;
+        const key = rccDigits.join('');
+        if (!rccGroups.has(key)) rccGroups.set(key, []);
+        rccGroups.get(key).push(cell);
+      }
+      const rcc = [...rccGroups].map(([values, positions]) =>
+        `(${values})${core.cellGroupName(positions)}`).join(', ');
+      return `${eurekaSideText(face.side)}${rcc ? ` {RCC ${rcc}}` : ''}`;
+    }).join(' - ');
+    return `AHS {${digits.join('')}}${core.cellGroupName(cells)}${sector} DOF:${dof} [${body}]`;
+  }
+
+  function sameAhsEurekaSubset(left, right) {
+    return left?.ahsSubset && right?.ahsSubset
+      && left.ahsSubset.sector === right.ahsSubset.sector
+      && cellsKey(left.ahsSubset.cells) === cellsKey(right.ahsSubset.cells)
+      && asNumbers(left.ahsSubset.digits).join(',') === asNumbers(right.ahsSubset.digits).join(',');
   }
 
   function sameEurekaLocation(left, right) {
@@ -3208,6 +3330,19 @@
     ];
   }
 
+  function ahsCellularEurekaUnits(step) {
+    const module = step.module;
+    if (step.family !== 'AHS' || step.linkTypeName !== 'AHS_RCC'
+      || !module?.common || ['AHS_XZ', 'AHS_XZ_RING'].includes(module.moduleKind)) return null;
+    const entrySubset = module.entrySideSubset || module.entrySideHs;
+    const exitSubset = module.exitSideSubset || module.exitSideHs;
+    if (!entrySubset || !exitSubset) return null;
+    return [
+      { side: step.entry, ahsSubset: entrySubset, ahsRccDigitsByCell: module.entrySideRccDigitsByCell },
+      { side: step.exit, ahsSubset: exitSubset, ahsRccDigitsByCell: module.exitSideRccDigitsByCell },
+    ];
+  }
+
   function compactEurekaUnits(nodes, connectors) {
     const units = [];
 
@@ -3215,7 +3350,15 @@
       const unit = nodes[index];
       const next = nodes[index + 1];
 
-      if (next && sameEurekaUnitLocation(unit, next)) {
+      // Adjacent AHS modules share one parent set. Show its two reduced
+      // endpoints inside that set rather than hiding the cellular handoff.
+      if (connectors[index] === '-' && sameAhsEurekaSubset(unit, next)) {
+        units.push({ text: ahsEurekaNodeText(unit.ahsSubset, [unit, next]), endIndex: index + 1 });
+        index += 1;
+        continue;
+      }
+
+      if (next && !unit.ahsSubset && !next.ahsSubset && sameEurekaUnitLocation(unit, next)) {
         const side = unit.side;
         const leftDigits = eurekaDigitsText(side.digits);
         const rightDigits = eurekaDigitsText(next.side.digits);
@@ -3272,6 +3415,7 @@
       return;
     }
     const ahsXz = ahsXzEurekaUnits(step);
+    const ahsCellular = ahsCellularEurekaUnits(step);
     const expandedSubset = rccSubsetEurekaUnits(step);
     const weakConnector = index === 0 ? null : '-';
 
@@ -3280,6 +3424,12 @@
       pushEurekaUnit(nodes, connectors, ahsXz[1], '=');
       pushEurekaUnit(nodes, connectors, ahsXz[2], '-');
       pushEurekaUnit(nodes, connectors, ahsXz[3], '=');
+      return;
+    }
+
+    if (ahsCellular) {
+      pushEurekaUnit(nodes, connectors, ahsCellular[0], weakConnector);
+      pushEurekaUnit(nodes, connectors, ahsCellular[1], '=');
       return;
     }
 
@@ -3384,8 +3534,9 @@
   core.LOCAL_WEAK = LOCAL_WEAK;
   core.SECTOR_WEAK = SECTOR_WEAK;
   core.WEAK_TYPE_NAMES = WEAK_TYPE_NAMES;
+  core.buildLinkInventory = buildLinkInventory;
   core.buildChainGraph = buildChainGraph;
-  function verifyMixedChainByPlacement(cand, report) {
+  function verifyMixedChainByPlacement(cand, report, options = {}) {
     const sources = report.linkSets || {};
     const links = new Map();
     for (const [family, set] of [
@@ -3402,7 +3553,16 @@
       ? left.digit === right.digit
       : left.digit !== right.digit || !peerSets[left.cell].has(right.cell);
     const result = [];
+    const rejectedChains = [];
+    let totalStates = 0;
+    let truncated = false;
+    const maxTotalStates = Number.isInteger(options.maxTotalStates) ? Math.max(1, options.maxTotalStates) : Infinity;
     for (const chain of report.chains || []) {
+      if (totalStates >= maxTotalStates) {
+        truncated = true;
+        rejectedChains.push({ ...chain, verification: { ok: false, errors: ['Placement search budget reached; removals are unproved'] } });
+        continue;
+      }
       const variables = new Map();
       const add = (key, choices) => {
         if (!variables.has(key)) variables.set(key, choices);
@@ -3415,7 +3575,8 @@
           if (step.linkType === 4) {
             for (const cell of cells) add(`cell:${cell}`, (cand[cell] || [])
               .map(digit => ({ cell, digit })));
-          } else if ([0, 1].includes(step.linkType)) {
+          } else if ([0, 1].includes(step.linkType)
+            || (options.requireAhsCellOccupancy && [2, 3, 7].includes(step.linkType))) {
             const digit = link.startingDigits?.[0];
             add(`strong:${link.id}`, cells.filter(cell => (cand[cell] || []).includes(digit))
               .map(cell => ({ cell, digit })));
@@ -3430,6 +3591,11 @@
         }
         if (step.family === 'AHS') {
           for (const subset of [link.HS_L, link.HS_R]) {
+            if (options.requireAhsCellOccupancy) {
+              for (const cell of subset?.cells || []) {
+                add(`cell:${cell}`, (cand[cell] || []).map(digit => ({ cell, digit })));
+              }
+            }
             for (const digit of subset?.digits || []) {
               const key = `hidden:${subset.sector}:${digit}`;
               add(key, (subset.cells || []).filter(cell => (cand[cell] || []).includes(digit))
@@ -3439,27 +3605,89 @@
         }
       }
       const ordered = [...variables.values()].sort((left, right) => left.length - right.length);
-      if (ordered.some(choices => !choices.length)) continue;
+      let states = 0;
+      const maxStates = Number.isInteger(options.maxStates) ? Math.max(1, options.maxStates) : Infinity;
+      const withinBudget = () => {
+        states += 1;
+        totalStates += 1;
+        if (states > maxStates || totalStates > maxTotalStates) {
+          truncated = true;
+          return false;
+        }
+        return true;
+      };
       const hasPlacement = forced => {
+        if (ordered.some(choices => !choices.length)) return false;
         const assigned = forced ? [forced] : [];
+        if (options.requireAhsCellOccupancy) {
+          const values = new Uint8Array(81);
+          const used = new Uint16Array(27);
+          const houses = cell => [Math.floor(cell / 9), 9 + cell % 9,
+            18 + Math.floor(cell / 27) * 3 + Math.floor(cell % 9 / 3)];
+          const clauses = ordered.map(choices => choices.map(choice => ({
+            ...choice, bit: 1 << choice.digit, houses: houses(choice.cell),
+          })));
+          const assign = (choice, entering) => {
+            values[choice.cell] = entering ? choice.digit : 0;
+            for (const house of choice.houses) used[house] ^= choice.bit;
+          };
+          if (forced) assign({ ...forced, bit: 1 << forced.digit, houses: houses(forced.cell) }, true);
+          const walkCells = () => {
+            if (!withinBudget()) return null;
+            let smallest = null;
+            for (const choices of clauses) {
+              let satisfied = false;
+              const possible = [];
+              for (const choice of choices) {
+                if (values[choice.cell] === choice.digit) {
+                  satisfied = true;
+                  break;
+                }
+                if (!values[choice.cell] && !choice.houses.some(house => used[house] & choice.bit)) {
+                  possible.push(choice);
+                }
+              }
+              if (satisfied) continue;
+              if (!possible.length) return false;
+              if (!smallest || possible.length < smallest.length) smallest = possible;
+            }
+            if (!smallest) return true;
+            for (const choice of smallest) {
+              assign(choice, true);
+              const possible = walkCells();
+              assign(choice, false);
+              if (possible !== false) return possible;
+            }
+            return false;
+          };
+          return walkCells();
+        }
         const walk = index => {
+          if (!withinBudget()) return null;
           if (index === ordered.length) return true;
           for (const choice of ordered[index]) {
             if (!assigned.every(previous => compatible(choice, previous))) continue;
             assigned.push(choice);
-            if (walk(index + 1)) return true;
+            const possible = walk(index + 1);
             assigned.pop();
+            if (possible !== false) return possible;
           }
           return false;
         };
         return walk(0);
       };
-      if (!hasPlacement(null)) continue;
+      if (hasPlacement(null) !== true) {
+        rejectedChains.push({ ...chain, verification: { ok: false, errors: ['AHS placement proof is inconsistent or incomplete'] } });
+        options.onProgress?.({ stage: 'ahs-placements', checked: result.length + rejectedChains.length });
+        continue;
+      }
       const eliminations = (chain.eliminations || []).filter(item =>
-        (cand[item.cell] || []).includes(item.digit) && !hasPlacement(item));
+        (cand[item.cell] || []).includes(item.digit) && hasPlacement(item) === false);
       if (eliminations.length) result.push({ ...chain, eliminations });
+      else rejectedChains.push({ ...chain, verification: { ok: false, errors: ['AHS candidate removals have no complete placement proof'] } });
+      options.onProgress?.({ stage: 'ahs-placements', checked: result.length + rejectedChains.length });
     }
-    return { ...report, chains: result };
+    return { ...report, chains: result, rejectedChains, placementStats: { states: totalStates, truncated } };
   }
 
   core.verifyMixedChainByPlacement = verifyMixedChainByPlacement;
