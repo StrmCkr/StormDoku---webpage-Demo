@@ -4142,7 +4142,7 @@
     <div class="header-brand">
       <h1>StormDoku: on-line | off-line</h1>
       <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo for regular Sudoku 9x9 grids.</p>
-      <p class="app-meta">Alpha v0.6.51 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <p class="app-meta">Alpha v0.6.52 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
     </div>
   </header>
 
@@ -4452,10 +4452,9 @@
               <input id="showFixedInVantage" type="checkbox" aria-label="Show givens and solved values in Rn, Cn, Bn space">
               <span>Show givens/solved in Rn,Cn,Bn space</span>
             </label>
-            <label class="player-controls-toggle" title="Allow Ctrl/Cmd plus a digit to remove that candidate from the selected cell">
-              <input id="ctrlDigitRemovesCandidate" type="checkbox" checked aria-label="Enable Ctrl or Cmd plus digit candidate removal">
-              <span>Ctrl/Cmd + 1-9 removes candidate</span>
-            </label>
+            <div class="overlay-key-item" title="Remove that candidate from the selected cell">
+              <kbd>Ctrl/Cmd + 1-9</kbd><span>Remove candidate from selected cell</span>
+            </div>
             <div class="overlay-key-item"><kbd>Left click cell</kbd><span>Select or focus cell</span></div>
             <div class="overlay-key-item"><kbd>Left click candidate</kbd><span>Add candidate</span></div>
             <div class="overlay-key-item"><kbd>Double-left-click candidate</kbd><span>Promote candidate to solved</span></div>
@@ -5675,7 +5674,6 @@
     const gridRowHeaderEl = document.getElementById('gridRowHeader');
     const gridViewSelector = document.getElementById('gridViewSelector');
     const showFixedInVantageEl = document.getElementById('showFixedInVantage');
-    const ctrlDigitRemovesCandidateEl = document.getElementById('ctrlDigitRemovesCandidate');
     const givensEl = document.getElementById('givens');
     const generationDifficultyEl = document.getElementById('generationDifficulty');
     const inputEl = document.getElementById('input');
@@ -20100,7 +20098,6 @@
           selectedChainIndex,
           gridView,
           showFixedInVantage,
-           ctrlDigitRemovesCandidate,
           selectedPlayerCell,
           selectedPlayerDigit,
           playerSolveBackups: clonePlayerSolveBackups(),
@@ -20173,8 +20170,6 @@
       gridView = visual.gridView || 'RC';
       showFixedInVantage = Boolean(visual.showFixedInVantage);
       showFixedInVantageEl.checked = showFixedInVantage;
-      ctrlDigitRemovesCandidate = visual.ctrlDigitRemovesCandidate !== false;
-      ctrlDigitRemovesCandidateEl.checked = ctrlDigitRemovesCandidate;
       selectedPlayerCell = visual.selectedPlayerCell ?? null;
       selectedPlayerDigit = visual.selectedPlayerDigit ?? null;
       restorePlayerSolveBackups(visual.playerSolveBackups);
@@ -22781,9 +22776,6 @@
     showFixedInVantageEl.addEventListener('change', () => {
       showFixedInVantage = showFixedInVantageEl.checked;
       renderBoard();
-    });
-    ctrlDigitRemovesCandidateEl.addEventListener('change', () => {
-      ctrlDigitRemovesCandidate = ctrlDigitRemovesCandidateEl.checked;
     });
     document.addEventListener('keydown', handlePlayerKeydown);
     for (const button of document.querySelectorAll('[data-example-puzzle], [data-example-key]')) {
