@@ -4142,7 +4142,7 @@
     <div class="header-brand">
       <h1>StormDoku: on-line | off-line</h1>
       <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo for regular Sudoku 9x9 grids.</p>
-      <p class="app-meta">Alpha v0.6.52 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <p class="app-meta">Alpha v0.6.53 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
     </div>
   </header>
 
@@ -8084,7 +8084,12 @@
       );
     }
 
-    function commitPlayerEdit(mutator, successMessage, failureMessage = 'That player edit could not be applied.') {
+      function commitPlayerEdit(
+        mutator,
+        successMessage,
+        failureMessage = 'That player edit could not be applied.',
+        options = {},
+      ) {
       if (busy) return false;
       leaveHistoryPreview();
       const before = snapshotState();
@@ -8094,10 +8099,10 @@
         return false;
       }
 
-      // A player candidate edit can invalidate the puzzle's previously
-      // computed solution.  Do not let that stale answer suppress later chain
-      // candidates through the safety filter.
-      solution = null;
+        // Candidate edits can invalidate the stored solution. A verified
+        // solution promotion is different: preserve it so subsequent correct
+        // promotions remain eligible in the same manual solve session.
+        if (options.preserveSolution !== true) solution = null;
       resetAnalysisAfterPlayerEdit();
       undoStack.push(before);
       redoStack = [];
@@ -8193,7 +8198,7 @@
         }
         playerSolveBackups.set(cell, { digit, entries });
         return true;
-      }, `${core.cellName(cell)} set to ${digit}.`);
+        }, `${core.cellName(cell)} set to ${digit}.`, undefined, { preserveSolution: true });
     }
 
     function clearPlayerSolvedCell(cell) {
