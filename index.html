@@ -3759,6 +3759,15 @@
       white-space: normal;
     }
 
+    /* Chromatic result rows use the same compact button sizing as the other
+       search-result controls. */
+    #chromaticGraphResults .chain-result,
+    #chromaticAlsGraphResults .chain-result {
+      padding: 5px 7px;
+      font-size: 12px;
+      line-height: 1.1;
+    }
+
     .chain-result.selected {
       border-color: var(--blue);
       background: #eff6ff;
@@ -4133,7 +4142,7 @@
     <div class="header-brand">
       <h1>StormDoku: on-line | off-line</h1>
       <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo for regular Sudoku 9x9 grids.</p>
-      <p class="app-meta">Alpha v0.6.44 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <p class="app-meta">Alpha v0.6.46 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
     </div>
   </header>
 
@@ -4252,7 +4261,7 @@
             </div>
               </div>
             </details>
-            <details class="example-group example-group-chromatic" data-experimental-hidden="true">
+            <details class="example-group example-group-chromatic">
               <summary><h3>Chromatic Graphs</h3></summary>
               <div class="report-subsection-body">
                 <div class="example-item">
@@ -4427,7 +4436,7 @@
             popovertarget="mslsSettingsPopover" popovertargetaction="toggle">
             MSLS
           </button>
-          <button id="chromaticSettingsButton" class="secondary" data-experimental-hidden="true" type="button"
+          <button id="chromaticSettingsButton" class="secondary" type="button"
             popovertarget="chromaticSettingsPopover" popovertargetaction="toggle">
             Chromatic
           </button>
@@ -5510,7 +5519,7 @@
             <div id="chainResults" class="pom-results">No chain search has been run.</div>
           </div>
         </details>
-        <details class="pom-panel" id="chromaticGraphPanel" data-experimental-hidden="true">
+        <details class="pom-panel" id="chromaticGraphPanel">
           <summary>
             <h2>Non-Colourable Chromatic Graphs</h2>
             <button id="chromaticGraphBuild" class="secondary search-action" type="button"
@@ -5520,7 +5529,7 @@
             <div id="chromaticGraphResults" class="pom-results">No chromatic graph search has been run.</div>
           </div>
         </details>
-        <details class="pom-panel" id="chromaticAlsGraphPanel" data-experimental-hidden="true">
+        <details class="pom-panel" id="chromaticAlsGraphPanel">
           <summary>
             <h2>Non-Colourable Chromatic Graphs 2 (ALS DOF 0/1)</h2>
             <button id="chromaticAlsGraphBuild" class="secondary search-action" type="button"
@@ -5648,12 +5657,12 @@
   <script src="./src/chromatic-core.js?v=20261015-1"></script>
   <script src="./src/chromatic-als-core.js?v=20261007-9"></script>
     <script src="./src/strong-link-core.js?v=20261015-1"></script>
-    <script src="./src/chain-core.js?v=20261016-10"></script>
+    <script src="./src/chain-core.js?v=20261016-12"></script>
   <script src="./src/alc-core.js?v=20261012-3"></script>
   <script src="./src/ahs-xy-core.js?v=20261001-4"></script>
   <script src="./src/ahs-dof-core.js?v=20261002-1"></script>
   <script src="./src/msls-core.js?v=20261004-1"></script>
-    <script src="./src/search-worker-source.js?v=20261016-10"></script>
+    <script src="./src/search-worker-source.js?v=20261016-12"></script>
   <script>
     const core = window.StormDoku;
     const boardEl = document.getElementById('board');
@@ -6088,7 +6097,7 @@
       }
 
       try {
-        const workerPath = './src/search-worker.js?v=20261016-10';
+        const workerPath = './src/search-worker.js?v=20261016-12';
         releaseSearchWorkerBlobUrl();
         let workerUrl = new URL(workerPath, document.baseURI);
         if (document.baseURI.startsWith('file:')) {
