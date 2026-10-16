@@ -69,12 +69,17 @@
   function chainEndpointAllowsElimination(chain, cell, digit) {
     const steps = chain?.steps || [];
     if (!steps.length) return false;
-    const endpoints = [steps[0]?.entry, steps[steps.length - 1]?.exit];
-    return endpoints.some(side => side
-      && (side.cells || []).includes(cell)
-      // The endpoint's chained digit must remain; another candidate in that
-      // endpoint cell can still be a valid consequence of the chain.
-      && !(side.digits || []).includes(digit));
+    // Every asserted side of the branch is a protected truth.  A terminal
+    // ALS/AIC cell can be represented by an entry on the final step and an
+    // exit on that same step, so checking only the outermost entry/exit lets
+    // the active terminal digit leak into Hydra eliminations.
+    const assertedSides = steps.flatMap(step => [step?.entry, step?.exit]);
+    const cellSides = assertedSides.filter(side => side
+      && (side.cells || []).includes(cell));
+    // The endpoint's chained digit must remain; another candidate in that
+    // endpoint cell can still be a valid consequence of the chain.
+    return cellSides.length > 0
+      && cellSides.every(side => !(side.digits || []).includes(digit));
   }
 
   function normaliseEliminations(cand, values, occupied, chain = null) {
@@ -202,6 +207,10 @@
     const output = [];
     for (const cell of boundary.opposite.cells || []) {
       for (const digit of missing) {
+        // The active endpoint digit is a required truth of the AIC boundary.
+        // It can never be one of the complementary eliminations, even when
+        // the opposite endpoint cell also contains that digit.
+        if (!chainEndpointAllowsElimination(chain, cell, digit)) continue;
         if ((cand[cell] || []).includes(digit)) {
           output.push({
             cell,
@@ -282,13 +291,15 @@
 
   function findHydraAlsDof(cand, options = {}) {
     const opts = normaliseOptions(options);
-    const source = options.alsList || core.alsConstructor?.(cand, {
+    const source = options.sourceNodes || options.alsList || core.alsConstructor?.(cand, {
       maxSizeDOF: opts.maxDigits - 1,
       maxSizeFox: opts.maxDigits - 1,
     }) || [];
     const nodes = source
       .filter(node => (node.alsDigits || node.digits || []).length >= 2)
       .filter(node => (node.alsDigits || node.digits || []).length <= opts.maxDigits)
+      .filter(node => !options.nodeFamilies?.length
+        || options.nodeFamilies.includes(node.family || 'ALS'))
       .map((node, index) => normaliseNode(node, `als-${index}`));
     const participants = (options.participants || [])
       .map((participant, index) => hydraParticipant(cand, participant, index));
@@ -349,8 +360,9 @@
                     );
                     results.push({
                       tech: 'hydra',
-                      name: 'Hydra ALS DOF',
-                      type: 'HYDRA_ALS_DOF',
+                      name: options.name || 'Hydra ALS DOF',
+                      type: options.type || 'HYDRA_ALS_DOF',
+                      family: options.family || 'ALS',
                       mode: 'hydra',
                       z,
                       size: primaryA.digits.length,
@@ -409,12 +421,13 @@
   // Build Hydra participants from already verified public AIC chains. A chain
   // is eligible only when it actually traversed an ALS link; this prevents a
   // free-standing AIC from being attached to an unrelated auxiliary ALS.
-  function hydraParticipantsFromAicChains(cand, chains, alsList, alsLinks, options = {}) {
-    const nodesById = new Map((alsList || []).map(node => [
+  function hydraParticipantsFromAicChains(cand, chains, sourceList, sourceLinks, options = {}) {
+    const family = options.family || 'ALS';
+    const nodesById = new Map((sourceList || []).map(node => [
       String(node.uniqueID ?? node.id), node,
     ]));
     const linksById = new Map();
-    const flatLinks = (alsLinks || []).flatMap(bucket => Array.isArray(bucket) ? bucket : [bucket]);
+    const flatLinks = (sourceLinks || []).flatMap(bucket => Array.isArray(bucket) ? bucket : [bucket]);
     for (const link of flatLinks) {
       if (link?.id != null) linksById.set(String(link.id), link);
     }
@@ -425,9 +438,13 @@
     const bestByNodeAndElimination = new Map();
     for (const chain of chains || []) {
       if (!chain?.steps?.length || (!options.forChaining && !(chain.eliminations || []).length)) continue;
-      const nodeIds = new Set(chain.steps.filter(step => step.family === 'ALS').flatMap(step => {
+      const nodeIds = new Set(chain.steps.filter(step => step.family === family).flatMap(step => {
         const link = linksById.get(String(step.linkId));
-        return [link?.LS_L?.uniqueID, link?.LS_R?.uniqueID, ...(step.alsNodeIds || [])]
+        return [
+          link?.LS_L?.uniqueID, link?.LS_R?.uniqueID,
+          link?.left?.uniqueID, link?.right?.uniqueID,
+          ...(step.alsNodeIds || []), ...(step.ahsNodeIds || []),
+        ]
           .filter(id => id != null);
       }));
       if (options.forChaining) {
@@ -437,7 +454,9 @@
       }
       for (const nodeId of nodeIds) {
         const node = nodesById.get(String(nodeId));
-        if (!node || node.alsDOF <= 0) continue;
+        if (!node) continue;
+        const nodeDof = node.alsDOF ?? node.ahsDOF ?? node.dof;
+        if (nodeDof <= 0) continue;
         const eliminationKey = (chain.eliminations || [])
           .map(item => `${item.cell}:${item.digit}`).sort().join(';');
         const boundaryKey = options.forChaining
@@ -447,7 +466,7 @@
         const key = `${nodeId}|${eliminationKey}|${boundaryKey}`;
         const participant = {
           id: `hydra-aic:${key}`,
-          family: 'ALS',
+          family,
           node,
           chain,
           verified: true,
@@ -772,6 +791,7 @@
   core.hydraParticipant = hydraParticipant;
   core.hydraBoundaryEliminations = hydraBoundaryEliminations;
   core.findHydraAlsDof = findHydraAlsDof;
+  core.findHydraDof = findHydraAlsDof;
   core.findHydraAlsDofChains = findHydraAlsDofChains;
   core.verifyHydraAlsDofChain = verifyHydraAlsDofChain;
   core.hydraParticipantsFromAicChains = hydraParticipantsFromAicChains;

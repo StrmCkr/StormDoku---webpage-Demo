@@ -283,6 +283,46 @@
       gap: 10px;
     }
 
+    .chromatic-range-grid {
+      display: grid;
+      grid-template-columns: minmax(110px, 1fr) minmax(88px, .8fr) minmax(88px, .8fr);
+      gap: 8px 10px;
+      align-items: center;
+      margin-top: 4px;
+    }
+
+    .chromatic-range-grid > span,
+    .chromatic-range-grid > label {
+      margin: 0;
+    }
+
+    .chromatic-range-grid .range-heading {
+      color: var(--muted);
+      font-size: .86rem;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .chromatic-range-grid .range-name {
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .chromatic-range-grid input {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .chromatic-range-grid .range-empty {
+      color: var(--muted);
+      text-align: center;
+    }
+
+    /* Experimental graph/link families stay local until their operations are validated. */
+    [data-experimental-hidden="true"] {
+      display: none !important;
+    }
+
     .storage-action {
       margin-bottom: 10px;
     }
@@ -4093,7 +4133,7 @@
     <div class="header-brand">
       <h1>StormDoku: on-line | off-line</h1>
       <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo for regular Sudoku 9x9 grids.</p>
-      <p class="app-meta">Alpha v0.6.24 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <p class="app-meta">Alpha v0.6.44 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
     </div>
   </header>
 
@@ -4108,6 +4148,8 @@
             title="Copy the current 729-candidate grid with cell and box borders">
             Copy 729
           </button>
+          <button id="copyPuzzle81Link" class="secondary" type="button" title="Copy a link that opens this 81-character puzzle">Link 81</button>
+          <button id="copyPuzzle729Link" class="secondary" type="button" title="Copy a link that opens this 729-candidate grid">Link 729</button>
         </div>
         <details class="solution-inline" id="solutionPanel">
           <summary>Solution</summary>
@@ -4210,7 +4252,7 @@
             </div>
               </div>
             </details>
-            <details class="example-group example-group-chromatic">
+            <details class="example-group example-group-chromatic" data-experimental-hidden="true">
               <summary><h3>Chromatic Graphs</h3></summary>
               <div class="report-subsection-body">
                 <div class="example-item">
@@ -4377,19 +4419,15 @@
             popovertarget="fishSettingsPopover" popovertargetaction="toggle">
             Fish
           </button>
-          <button id="alsDofSettingsButton" class="secondary" type="button"
-            popovertarget="alsDofSettingsPopover" popovertargetaction="toggle">
-            ALS-DOF
-          </button>
-          <button id="ahsDofSettingsButton" class="secondary" type="button"
-            popovertarget="ahsDofSettingsPopover" popovertargetaction="toggle">
-            AHS-DOF
+          <button id="alsAhsAlcSettingsButton" class="secondary" type="button"
+            popovertarget="alsAhsAlcSettingsPopover" popovertargetaction="toggle">
+            DOF: ALS / AHS / ALC
           </button>
           <button id="mslsSettingsButton" class="secondary" type="button"
             popovertarget="mslsSettingsPopover" popovertargetaction="toggle">
             MSLS
           </button>
-          <button id="chromaticSettingsButton" class="secondary" type="button"
+          <button id="chromaticSettingsButton" class="secondary" data-experimental-hidden="true" type="button"
             popovertarget="chromaticSettingsPopover" popovertargetaction="toggle">
             Chromatic
           </button>
@@ -4405,12 +4443,17 @@
               <input id="showFixedInVantage" type="checkbox" aria-label="Show givens and solved values in Rn, Cn, Bn space">
               <span>Show givens/solved in Rn,Cn,Bn space</span>
             </label>
+            <label class="player-controls-toggle" title="Allow Ctrl/Cmd plus a digit to remove that candidate from the selected cell">
+              <input id="ctrlDigitRemovesCandidate" type="checkbox" checked aria-label="Enable Ctrl or Cmd plus digit candidate removal">
+              <span>Ctrl/Cmd + 1-9 removes candidate</span>
+            </label>
             <div class="overlay-key-item"><kbd>Left click cell</kbd><span>Select or focus cell</span></div>
             <div class="overlay-key-item"><kbd>Left click candidate</kbd><span>Add candidate</span></div>
             <div class="overlay-key-item"><kbd>Double-left-click candidate</kbd><span>Promote candidate to solved</span></div>
             <div class="overlay-key-item"><kbd>Right click candidate</kbd><span>Remove candidate</span></div>
             <div class="overlay-key-item"><kbd>Long press candidate</kbd><span>Remove candidate digit</span></div>
             <div class="overlay-key-item"><kbd>1-9 / Numpad</kbd><span>Add candidate</span></div>
+            <div class="overlay-key-item"><kbd>Ctrl/Cmd + 1-9</kbd><span>Remove candidate from selected cell</span></div>
             <div class="overlay-key-item"><kbd>Spacebar + digit</kbd><span>Set solved value</span></div>
             <div class="overlay-key-item"><kbd>Spacebar + left click</kbd><span>Set clicked candidate solved</span></div>
             <div class="overlay-key-item"><kbd>Delete / Backspace</kbd><span>Remove or clear value</span></div>
@@ -4502,11 +4545,20 @@
               <option value="all">All units</option>
             </select>
           </label>
-          <label>Min Sectors <input id="chromaticMinSectors" type="number" min="2" max="5" value="4"></label>
-          <label>Max Sectors <input id="chromaticMaxSectors" type="number" min="2" max="6" value="6"></label>
-          <label>Min Digits <input id="chromaticMinDigits" type="number" min="2" max="6" value="2"></label>
-          <label>Max Digits <input id="chromaticMaxDigits" type="number" min="2" max="6" value="5"></label>
-          <label>Max Cells <input id="chromaticMaxCells" type="number" min="12" max="40" value="32"></label>
+          <div class="chromatic-range-grid" role="group" aria-label="Chromatic search ranges">
+            <span></span>
+            <span class="range-heading">Min</span>
+            <span class="range-heading">Max</span>
+            <span class="range-name">Sectors</span>
+            <input id="chromaticMinSectors" type="number" min="2" max="5" value="4" aria-label="Minimum sectors">
+            <input id="chromaticMaxSectors" type="number" min="2" max="6" value="6" aria-label="Maximum sectors">
+            <span class="range-name">Digits</span>
+            <input id="chromaticMinDigits" type="number" min="2" max="6" value="2" aria-label="Minimum digits">
+            <input id="chromaticMaxDigits" type="number" min="2" max="6" value="5" aria-label="Maximum digits">
+            <span class="range-name">Cells</span>
+            <span class="range-empty" aria-hidden="true">-</span>
+            <input id="chromaticMaxCells" type="number" min="12" max="40" value="32" aria-label="Maximum cells">
+          </div>
         </div>
       </div>
     </div>
@@ -4551,8 +4603,8 @@
                 <input id="chainStrongType4" type="checkbox" checked>
                 BIVALVE (Size-1 ALS)
               </label>
-              <label class="check" title="Almost Fish: a single digit XOR a genuine non-complete n x n+k fish">
-                <input id="chainStrongType7" type="checkbox">
+              <label class="check" data-experimental-hidden="true" title="Almost Fish: a single digit XOR a genuine non-complete n x n+k fish">
+                <input id="chainStrongType7" type="checkbox" disabled>
                 ALMOST FISH (AF)
               </label>
               <label class="check" title="Include ALS RCC links in the chain walk">
@@ -4562,6 +4614,10 @@
               <label class="check" title="Include AHS hidden-single links in the chain walk">
                 <input id="chainAhs" type="checkbox" checked>
                 AHS
+              </label>
+              <label class="check" data-experimental-hidden="true" title="Include verified non-colourable chromatic Type 3 XOR nodes in the chain walk">
+                <input id="chainChromaticType3" type="checkbox" disabled>
+                CHROMATIC T3
               </label>
             </div>
           </fieldset>
@@ -4745,7 +4801,7 @@
                 <label class="check"><input id="moveAlcXy" type="checkbox" checked> ALC - XY</label>
                 <label class="check"><input id="moveTAlcXy" type="checkbox" checked> T-ALC-XY</label>
                 <label class="check"><input id="moveAlcChain" type="checkbox" checked> ALC - Chain</label>
-                <label class="check"><input id="moveAlcDof" type="checkbox" checked> ALC - DOF</label>
+                <label class="check"><input id="moveAlcDof" type="checkbox" checked> ALC - DOF Chain</label>
               </div>
             </details>
             <details class="move-type-group">
@@ -4761,7 +4817,8 @@
     </div>
 
     <div class="settings-popover-holder">
-      <div id="alsDofSettingsPopover" class="chain-settings-popover" popover>
+      <div id="alsAhsAlcSettingsPopover" class="chain-settings-popover" popover>
+        <h2>Degrees of Freedom: ALS / AHS / ALC</h2>
         <div class="chain-settings-grid">
           <fieldset>
             <legend>ALS DOF Search Range</legend>
@@ -4770,11 +4827,15 @@
                 Maximum ALS Size / Digits
                 <input id="alsDofMaxDigits" type="number" min="2" max="9" step="1" value="5">
               </label>
-              <label title="Maximum number of auxiliary ALSs in one ALS-DOF collection.">
-                Maximum Auxiliary ALSs
+          <label title="Maximum number of auxiliary ALS in one ALS-DOF collection.">
+            Maximum Auxiliary ALS
                 <input id="alsDofMaxAuxiliary" type="number" min="1" max="9" step="1" value="5">
               </label>
             </div>
+            <label class="check" data-experimental-hidden="true" title="Allow verified ALS-DOF auxiliary chains to participate as Hydra branches and viable chain nodes.">
+              <input id="alsDofHydraEnabled" data-experimental-hidden="true" type="checkbox" disabled>
+              Enable Hydra ALS-DOF chaining
+            </label>
           </fieldset>
           <fieldset>
             <legend>ALS DOF Chain Search Range</legend>
@@ -4783,8 +4844,8 @@
                 Chain ALS Size / Digits
                 <input id="alsDofChainMaxDigits" type="number" min="2" max="9" step="1" value="5">
               </label>
-              <label title="Maximum auxiliary ALSs allowed in one ALS-DOF chain node.">
-                Chain Auxiliary ALSs
+          <label title="Maximum auxiliary ALS allowed in one ALS-DOF chain node.">
+            Chain Auxiliary ALS
                 <input id="alsDofChainMaxAuxiliary" type="number" min="1" max="9" step="1" value="5">
               </label>
               <label title="Maximum verified ALS-DOF chain results returned by one search.">
@@ -4794,11 +4855,6 @@
             </div>
           </fieldset>
         </div>
-      </div>
-    </div>
-
-    <div class="settings-popover-holder">
-      <div id="ahsDofSettingsPopover" class="chain-settings-popover" popover>
         <div class="chain-settings-grid">
           <fieldset>
             <legend>AHS DOF Search Range</legend>
@@ -4845,6 +4901,33 @@
                 <input id="ahsDofChainMaxResults" type="number" min="1" max="5000" step="1" value="500">
               </label>
             </div>
+            <label class="check" data-experimental-hidden="true" title="Allow verified AHS-DOF auxiliary chains to participate as Hydra branches and viable chain nodes.">
+              <input id="ahsDofHydraEnabled" data-experimental-hidden="true" type="checkbox" disabled>
+              Enable Hydra AHS-DOF chaining
+            </label>
+          </fieldset>
+        </div>
+        <div class="chain-settings-grid">
+          <fieldset>
+            <legend>ALC DOF / Hydra Search Range</legend>
+            <div class="chain-settings-row">
+              <label title="Maximum DOF digits used by ALS and AHS roots in the mixed ALC search.">
+                Maximum DOF Digits
+                <input id="alcDofMaxDigits" type="number" min="2" max="9" step="1" value="5">
+              </label>
+              <label title="Maximum auxiliary branches allowed in one ALC Hydra result.">
+                Maximum Auxiliary
+                <input id="alcDofMaxAuxiliary" type="number" min="1" max="9" step="1" value="5">
+              </label>
+              <label title="Maximum verified ALC Hydra results returned by one search.">
+                Maximum Results
+                <input id="alcDofMaxResults" type="number" min="1" max="5000" step="1" value="300">
+              </label>
+            </div>
+            <label class="check" data-experimental-hidden="true" title="Allow verified ALC DOF auxiliary chains to participate as Hydra branches and viable chain nodes.">
+              <input id="alcDofHydraEnabled" data-experimental-hidden="true" type="checkbox" disabled>
+              Enable Hydra ALC-DOF chaining
+            </label>
           </fieldset>
         </div>
       </div>
@@ -5329,7 +5412,7 @@
                 title="Search ALS-DOF hub, DDS, and Almost-DDS nets">ALS - DOF</button>
               <button id="alsDofChainBuild" class="secondary" type="button"
                 title="Search bridged ALS-DOF chains">ALS - DOF Chain</button>
-              <button id="alsHydraBuild" class="secondary" type="button"
+              <button id="alsHydraBuild" class="secondary" data-experimental-hidden="true" type="button"
                 title="Search ALS-DOF hubs whose auxiliary ALS carries a verified AIC chain">ALS - Hydra</button>
             </div>
           </summary>
@@ -5343,7 +5426,7 @@
               <h3>ALS - DOF Chains</h3>
               <div id="alsDofChainResults" class="pom-results">No ALS-DOF chain search has been run.</div>
             </section>
-            <section class="move-type-group">
+            <section class="move-type-group" data-experimental-hidden="true">
               <h3>ALS - Hydra</h3>
               <div id="alsHydraResults" class="pom-results">No ALS-Hydra search has been run.</div>
             </section>
@@ -5363,12 +5446,18 @@
                 title="Search verified AHS-DOF cell nets">AHS - DOF</button>
               <button id="ahsDofChainBuild" class="secondary" type="button"
                 title="Search verified AHS-DOF chains">AHS - DOF Chain</button>
+              <button id="ahsHydraBuild" class="secondary" data-experimental-hidden="true" type="button"
+                title="Search AHS-DOF hubs whose auxiliary AHS carries a verified AIC chain">AHS - Hydra</button>
             </div>
           </summary>
           <div class="pom-body">
             <div id="ahsSearchResults" class="pom-results">No AHS search has been run.</div>
             <div id="ahsDofResults" class="pom-results">No AHS-DOF search has been run.</div>
             <div id="ahsDofChainResults" class="pom-results">No AHS-DOF chain search has been run.</div>
+            <section class="move-type-group" data-experimental-hidden="true">
+              <h3>AHS - Hydra</h3>
+              <div id="ahsHydraResults" class="pom-results">No AHS-Hydra search has been run.</div>
+            </section>
           </div>
         </details>
         <details class="pom-panel" id="alcSearchPanel">
@@ -5382,11 +5471,17 @@
               <button id="alcChainBuild" class="secondary" type="button"
                 title="Search mixed ALS/AHS ALC chains">ALC - Chain</button>
               <button id="alcDofBuild" class="secondary" type="button"
-                title="Search ALC-DOF roots extended by ALS/AHS modules">ALC - DOF</button>
+                title="Search ALC-DOF chains rooted in ALS/AHS degree-of-freedom structures">ALC - DOF Chain</button>
+              <button id="alcHydraBuild" class="secondary" data-experimental-hidden="true" type="button"
+                title="Search mixed ALS/AHS DOF hubs whose auxiliary carries a verified AIC chain">ALC - Hydra</button>
             </div>
           </summary>
           <div class="pom-body">
             <div id="alcSearchResults" class="pom-results">No ALC search has been run.</div>
+            <section class="move-type-group" data-experimental-hidden="true">
+              <h3>ALC - Hydra</h3>
+              <div id="alcHydraResults" class="pom-results">No ALC-Hydra search has been run.</div>
+            </section>
           </div>
         </details>
         <details class="pom-panel" id="mslsPanel">
@@ -5415,7 +5510,7 @@
             <div id="chainResults" class="pom-results">No chain search has been run.</div>
           </div>
         </details>
-        <details class="pom-panel" id="chromaticGraphPanel">
+        <details class="pom-panel" id="chromaticGraphPanel" data-experimental-hidden="true">
           <summary>
             <h2>Non-Colourable Chromatic Graphs</h2>
             <button id="chromaticGraphBuild" class="secondary search-action" type="button"
@@ -5425,7 +5520,7 @@
             <div id="chromaticGraphResults" class="pom-results">No chromatic graph search has been run.</div>
           </div>
         </details>
-        <details class="pom-panel" id="chromaticAlsGraphPanel">
+        <details class="pom-panel" id="chromaticAlsGraphPanel" data-experimental-hidden="true">
           <summary>
             <h2>Non-Colourable Chromatic Graphs 2 (ALS DOF 0/1)</h2>
             <button id="chromaticAlsGraphBuild" class="secondary search-action" type="button"
@@ -5544,21 +5639,21 @@
   <script src="./src/pom-core.js?v=20261004-2"></script>
   <script src="./src/als-core.js?v=20260928-1"></script>
   <script src="./src/als-link-core.js?v=20260928-1"></script>
-  <script src="./src/als-dof-core.js?v=20261014-2"></script>
-  <script src="./src/hydra-core.js?v=20261014-2"></script>
+  <script src="./src/als-dof-core.js?v=20261015-3"></script>
+  <script src="./src/hydra-core.js?v=20261015-3"></script>
   <script src="./src/ahs-core.js?v=20260928-2"></script>
   <script src="./src/ahs-link-core.js?v=20261001-28"></script>
   <script src="./src/subset-report-core.js?v=20260928-2"></script>
   <script src="./src/mini-sectors-core.js?v=20260928-1"></script>
-  <script src="./src/chromatic-core.js?v=20261006-5"></script>
+  <script src="./src/chromatic-core.js?v=20261015-1"></script>
   <script src="./src/chromatic-als-core.js?v=20261007-9"></script>
-    <script src="./src/strong-link-core.js?v=20261006-2"></script>
-  <script src="./src/chain-core.js?v=20261014-4"></script>
+    <script src="./src/strong-link-core.js?v=20261015-1"></script>
+    <script src="./src/chain-core.js?v=20261016-10"></script>
   <script src="./src/alc-core.js?v=20261012-3"></script>
   <script src="./src/ahs-xy-core.js?v=20261001-4"></script>
   <script src="./src/ahs-dof-core.js?v=20261002-1"></script>
   <script src="./src/msls-core.js?v=20261004-1"></script>
-  <script src="./src/search-worker-source.js?v=20261014-5"></script>
+    <script src="./src/search-worker-source.js?v=20261016-10"></script>
   <script>
     const core = window.StormDoku;
     const boardEl = document.getElementById('board');
@@ -5571,6 +5666,7 @@
     const gridRowHeaderEl = document.getElementById('gridRowHeader');
     const gridViewSelector = document.getElementById('gridViewSelector');
     const showFixedInVantageEl = document.getElementById('showFixedInVantage');
+    const ctrlDigitRemovesCandidateEl = document.getElementById('ctrlDigitRemovesCandidate');
     const givensEl = document.getElementById('givens');
     const generationDifficultyEl = document.getElementById('generationDifficulty');
     const inputEl = document.getElementById('input');
@@ -5584,6 +5680,8 @@
     const puzzleStateMetaEl = document.getElementById('puzzleStateMeta');
     const copyPuzzle81El = document.getElementById('copyPuzzle81');
     const copyPuzzle729El = document.getElementById('copyPuzzle729');
+    const copyPuzzle81LinkEl = document.getElementById('copyPuzzle81Link');
+    const copyPuzzle729LinkEl = document.getElementById('copyPuzzle729Link');
     const solutionStringEl = document.getElementById('solutionString');
     const solutionPanelEl = document.getElementById('solutionPanel');
     const ratingSummaryEl = document.getElementById('ratingSummary');
@@ -5643,6 +5741,7 @@
     const ahsLinkResultsEl = document.getElementById('ahsLinkResults');
     const ahsDofResultsEl = document.getElementById('ahsDofResults');
     const ahsDofChainResultsEl = document.getElementById('ahsDofChainResults');
+    const ahsHydraResultsEl = document.getElementById('ahsHydraResults');
     const mslsResultsEl = document.getElementById('mslsResults');
     const mslsMinSizeEl = document.getElementById('mslsMinSize');
     const mslsMaxSizeEl = document.getElementById('mslsMaxSize');
@@ -5652,6 +5751,7 @@
     const alsDofResultsEl = document.getElementById('alsDofResults');
     const alsDofChainResultsEl = document.getElementById('alsDofChainResults');
     const alsHydraResultsEl = document.getElementById('alsHydraResults');
+    const alcHydraResultsEl = document.getElementById('alcHydraResults');
     const chainOutputEl = document.getElementById('chainOutput');
     const illegalChainAreaEl = document.getElementById('illegalChainArea');
     const illegalChainHeadingEl = document.getElementById('illegalChainHeading');
@@ -5685,12 +5785,15 @@
     const alcXyBuildEl = document.getElementById('alcXyBuild');
     const alcChainBuildEl = document.getElementById('alcChainBuild');
     const alcDofBuildEl = document.getElementById('alcDofBuild');
+    const alcHydraBuildEl = document.getElementById('alcHydraBuild');
+    const alsAhsAlcSettingsButtonEl = document.getElementById('alsAhsAlcSettingsButton');
     const ahsXyBuildEl = document.getElementById('ahsXyBuild');
     const ahsChainBuildEl = document.getElementById('ahsChainBuild');
     const mslsBuildEl = document.getElementById('mslsBuild');
     const ahsLinkBuildEl = document.getElementById('ahsLinkBuild');
     const ahsDofBuildEl = document.getElementById('ahsDofBuild');
     const ahsDofChainBuildEl = document.getElementById('ahsDofChainBuild');
+    const ahsHydraBuildEl = document.getElementById('ahsHydraBuild');
     const alsXyBuildEl = document.getElementById('alsXyBuild');
     const alsChainBuildEl = document.getElementById('alsChainBuild');
     const alsDofBuildEl = document.getElementById('alsDofBuild');
@@ -5698,6 +5801,7 @@
     const alsHydraBuildEl = document.getElementById('alsHydraBuild');
     const alsDofMaxDigitsEl = document.getElementById('alsDofMaxDigits');
     const alsDofMaxAuxiliaryEl = document.getElementById('alsDofMaxAuxiliary');
+    const alsDofHydraEnabledEl = document.getElementById('alsDofHydraEnabled');
     const alsDofChainMaxDigitsEl = document.getElementById('alsDofChainMaxDigits');
     const alsDofChainMaxAuxiliaryEl = document.getElementById('alsDofChainMaxAuxiliary');
     const alsDofChainMaxResultsEl = document.getElementById('alsDofChainMaxResults');
@@ -5710,9 +5814,15 @@
     const ahsDofChainMaxAuxiliaryEl = document.getElementById('ahsDofChainMaxAuxiliary');
     const ahsDofChainMaxDepthEl = document.getElementById('ahsDofChainMaxDepth');
     const ahsDofChainMaxResultsEl = document.getElementById('ahsDofChainMaxResults');
+    const ahsDofHydraEnabledEl = document.getElementById('ahsDofHydraEnabled');
+    const alcDofMaxDigitsEl = document.getElementById('alcDofMaxDigits');
+    const alcDofMaxAuxiliaryEl = document.getElementById('alcDofMaxAuxiliary');
+    const alcDofMaxResultsEl = document.getElementById('alcDofMaxResults');
+    const alcDofHydraEnabledEl = document.getElementById('alcDofHydraEnabled');
     const chainDepthEl = document.getElementById('chainDepth');
     const chainAlsRccEl = document.getElementById('chainAlsRcc');
     const chainAhsEl = document.getElementById('chainAhs');
+    const chainChromaticType3El = document.getElementById('chainChromaticType3');
     const chainUseAlsNodeLimitsEl = document.getElementById('chainUseAlsNodeLimits');
     const chainUseAhsNodeLimitsEl = document.getElementById('chainUseAhsNodeLimits');
     const chainUseAlcNodeLimitsEl = document.getElementById('chainUseAlcNodeLimits');
@@ -5721,6 +5831,13 @@
     const chainAlcMaxSizeEl = document.getElementById('chainAlcMaxSize');
     const chainStrongTypeEls = Array.from({ length: 8 }, (_, index) =>
       document.getElementById(`chainStrongType${index}`) || { checked: false });
+    // Keep unfinished graph extensions out of normal operations while their
+    // source remains available locally for continued development.
+    chainStrongTypeEls[7].checked = false;
+    chainChromaticType3El.checked = false;
+    alsDofHydraEnabledEl.checked = false;
+    ahsDofHydraEnabledEl.checked = false;
+    alcDofHydraEnabledEl.checked = false;
     const solverMoveTypeEls = new Map([
       ['last-man-standing', document.getElementById('moveLastManStanding')],
       ['hidden-single', document.getElementById('moveHiddenSingle')],
@@ -5853,6 +5970,9 @@
     let alsDofChainReport = null;
     let alsHydraReport = null;
     let selectedAlsHydraIndex = null;
+    let ahsHydraReport = null;
+    let alcHydraReport = null;
+    let selectedHydraFamily = null;
     let ahsReport = null;
     let alcXzReport = null;
     let alcXyReport = null;
@@ -5908,12 +6028,14 @@
     let selectedHiddenSubsetSize = null;
     let selectedHiddenSubsetKey = null;
     let chainReport = null;
+    let lastChainSelectionDiagnostics = null;
     let alsSearchFamily = null;
     let ahsSearchFamily = null;
     let selectedChainIndex = null;
     let ratingReport = null;
     let gridView = 'RC';
     let showFixedInVantage = false;
+    let ctrlDigitRemovesCandidate = true;
     let selectedPlayerCell = null;
     let selectedPlayerDigit = null;
     let playerPromotionMode = false;
@@ -5966,7 +6088,7 @@
       }
 
       try {
-        const workerPath = './src/search-worker.js?v=20261014-4';
+        const workerPath = './src/search-worker.js?v=20261016-10';
         releaseSearchWorkerBlobUrl();
         let workerUrl = new URL(workerPath, document.baseURI);
         if (document.baseURI.startsWith('file:')) {
@@ -6567,9 +6689,20 @@
       return report.results[selectedAlsDofIndex] || null;
     }
 
+    function selectedHydraRecord() {
+      const report = selectedHydraFamily === 'AHS'
+        ? ahsHydraReport
+        : selectedHydraFamily === 'ALC'
+          ? alcHydraReport
+          : alsHydraReport;
+      if (!report || selectedAlsHydraIndex === null) return null;
+      return report.results?.[selectedAlsHydraIndex] || null;
+    }
+
     function selectedAlsHydraRecord() {
-      if (!alsHydraReport || selectedAlsHydraIndex === null) return null;
-      return alsHydraReport.results?.[selectedAlsHydraIndex] || null;
+      return selectedHydraFamily === 'ALS' || selectedHydraFamily === null
+        ? selectedHydraRecord()
+        : null;
     }
 
     function formatHydraResult(result) {
@@ -6608,7 +6741,8 @@
         ? hydraBranches.join(' ; ')
         : 'No RCC-to-LS AIC branches';
       const terminal = endpoint.length ? `; terminal {${endpoint.join('')}}` : '';
-      return `Hydra ALS-DOF: Hub {${hub.join('')}}${core.cellGroupName(hubCells)}; `
+      const family = result?.family || (result?.type === 'HYDRA_AHS_DOF' ? 'AHS' : 'ALS');
+      return `Hydra ${family}-DOF: Hub {${hub.join('')}}${core.cellGroupName(hubCells)}; `
         + `${branchText}${terminal}`
         + ` [${chainCount} AIC branch${chainCount === 1 ? '' : 'es'}${aicChains.length && !hydraBranches.length ? `: ${aicChains.join(' || ')}` : ''}] => ${elims || '?'}`;
     }
@@ -6624,8 +6758,8 @@
       ];
       const step = {
         tech: 'als-hydra',
-        name: 'ALS - Hydra',
-        structureName: 'ALS - Hydra',
+        name: `Hydra ${result?.family || 'ALS'} - DOF`,
+        structureName: `Hydra ${result?.family || 'ALS'} - DOF`,
         hydraRecord: result,
         hydraIndex: index,
         desc: formatHydraResult({ ...result, eliminations: items }),
@@ -6663,7 +6797,14 @@
     function chainCandidateIsVisible(cell, digit) {
       if (cellHasCandidate(cell, digit)) return true;
       const dofRecord = selectedAlsDofRecord();
-      const displayed = selectedChain() || (dofRecord?.hasHydra ? dofRecord : selectedAlsHydraRecord());
+      const displayed = selectedChain() || (dofRecord?.hasHydra ? dofRecord : selectedHydraRecord());
+      // Hydra branch eliminations are shown as eliminations only; they must
+      // never reappear as live AIC node badges after the Hydra result applies.
+      if (displayed?.hasHydra || selectedHydraRecord()) return false;
+      // After applying a move, retain only candidates recorded in
+      // lastRemoved so the completed explanation stays anchored. Reported,
+      // not-yet-applied eliminations are rendered separately and stay hidden
+      // from live chain-node graphics.
       return lastRemoved.some(item => item.cell === cell && item.digit === digit)
         && (displayed?.eliminations || []).some(item =>
           item.cell === cell && item.digit === digit);
@@ -7946,6 +8087,10 @@
         return false;
       }
 
+      // A player candidate edit can invalidate the puzzle's previously
+      // computed solution.  Do not let that stale answer suppress later chain
+      // candidates through the safety filter.
+      solution = null;
       resetAnalysisAfterPlayerEdit();
       undoStack.push(before);
       redoStack = [];
@@ -8172,6 +8317,18 @@
       if (busy || selectedPlayerCell === null || isPlayerTextEntryTarget(event.target)) return;
 
       if (event.ctrlKey || event.metaKey) {
+        const ctrlDigitMatch = /^(?:Digit|Numpad)([1-9])$/.exec(event.code);
+        if (ctrlDigitRemovesCandidate && ctrlDigitMatch) {
+          event.preventDefault();
+          const digit = Number(ctrlDigitMatch[1]);
+          if (puzzle[selectedPlayerCell] || promotedValues[selectedPlayerCell]) {
+            setStatus('Solved cells cannot have candidates removed.', 'warn');
+          } else {
+            removePlayerDigit(selectedPlayerCell, digit);
+          }
+          playerPromotionMode = false;
+          return;
+        }
         if (event.key.toLowerCase() === 'z') {
           event.preventDefault();
           undoCycle();
@@ -8878,6 +9035,18 @@
       }
     }
 
+    function groupedSideDigits(side) {
+      return sideDigitGroups(side)
+        .filter(anchors => new Set(anchors.map(anchor => anchor.cell)).size > 1)
+        .map(anchors => anchors[0]?.digit)
+        .filter(digit => digit != null);
+    }
+
+    function drawGroupedEndpointBox(svg, side, className) {
+      const digits = groupedSideDigits(side);
+      if (digits.length) drawSideDigitBoxes(svg, side, className, null, digits);
+    }
+
     function drawAlmostFishOverlay(svg, step) {
       const construction = step.view?.node?.raw?.xorConstruction;
       if (construction?.kind !== 'almost-fish') return;
@@ -9073,6 +9242,25 @@
           }
           if (index < chain.steps.length - 1) {
             drawSideDigitBoxes(
+              svg,
+              step.exit,
+              'strong-link-side-box strong-link-end-box',
+            );
+          }
+        }
+        // A grouped endpoint needs one enclosing box for the whole link.
+        // Single-cell endpoints keep their existing green/blue node graphics;
+        // boxing those again would double-stamp the chain start/end.
+        if (!isAlsVisualStep(step) && !isPureXyChain) {
+          if (index === 0) {
+            drawGroupedEndpointBox(
+              svg,
+              step.entry,
+              'strong-link-side-box strong-link-start-box',
+            );
+          }
+          if (index === chain.steps.length - 1) {
+            drawGroupedEndpointBox(
               svg,
               step.exit,
               'strong-link-side-box strong-link-end-box',
@@ -10248,7 +10436,7 @@
 
     function currentHighlights() {
       const selectedDofRecord = selectedAlsDofRecord();
-      const hydraRecord = selectedDofRecord?.hasHydra ? selectedDofRecord : selectedAlsHydraRecord();
+      const hydraRecord = selectedDofRecord?.hasHydra ? selectedDofRecord : selectedHydraRecord();
       const hydraChains = [...new Set((hydraRecord?.hydraBranches || [])
         .map(branch => branch.chain).filter(Boolean))];
       if (!hydraChains.length) hydraChains.push(...(hydraRecord?.participants || [])
@@ -11168,6 +11356,25 @@
       }
     }
 
+    function puzzleLink(text) {
+      const url = new URL(window.location.href);
+      url.search = '';
+      url.hash = '';
+      url.searchParams.set('grid', text);
+      return url.toString();
+    }
+
+    function linkedPuzzleInput() {
+      const params = new URLSearchParams(window.location.search);
+      const queryValue = params.get('grid') ?? params.get('puzzle') ?? params.get('729');
+      if (queryValue !== null) return queryValue;
+
+      const hash = window.location.hash.replace(/^#/, '');
+      if (!hash) return null;
+      const hashParams = new URLSearchParams(hash);
+      return hashParams.get('grid') ?? hashParams.get('puzzle') ?? null;
+    }
+
     function solutionEurekaText() {
       return logEntries
         .map(entry => `${entry.cycle}. ${displayedStepDescription(entry)}`)
@@ -11223,7 +11430,7 @@
       if (ahsDof) return `AHS-DOF: ${core.formatAhsDofNet(ahsDof)}`;
       const alsDof = selectedAlsDofRecord();
       if (alsDof) return core.formatAlsDof(alsDof);
-      const hydra = selectedAlsHydraRecord();
+      const hydra = selectedHydraRecord();
       if (hydra) return formatHydraResult(hydra);
       return selectedFishEureka()
         || selectedSubsetEureka('hidden')
@@ -11255,7 +11462,7 @@
           ? alsDofStepFromResult(alsDof, alsDofChainReport, selectedAlsDofIndex, cand)
           : alsDofStepFromResult(alsDof, alsDofReport, selectedAlsDofIndex, cand);
       }
-      const hydra = selectedAlsHydraRecord();
+      const hydra = selectedHydraRecord();
       if (hydra) return alsHydraStepFromResult(hydra, selectedAlsHydraIndex, cand);
 
       const fish = selectedFishStep();
@@ -12060,6 +12267,26 @@
       return Number((baseScore + lengthExcess + digitExcess + closure).toFixed(3));
     }
 
+    function pureXyChainDepth(chain) {
+      const steps = chain?.steps || [];
+      if (steps.length < 2 || !steps.every(step =>
+        step.family === 'SL'
+        && Number(step.linkType) === 4
+        && (step.entry?.cells || []).length === 1
+        && (step.exit?.cells || []).length === 1)) return 0;
+      return chainLengthOf(chain);
+    }
+
+    function depthScaledChainRating(chain, label, minimumDepth = 3) {
+      const depth = Math.max(minimumDepth, chainLengthOf(chain));
+      const base = Math.min(7, depth);
+      const value = chainMathScore(base, chain, depth, 2);
+      return {
+        value,
+        label: `${label} (Depth ${depth})`,
+      };
+    }
+
     const CHAIN_LINK_SCORE_MODIFIERS = Object.freeze({
       0: 0.01,
       1: 0.03,
@@ -12265,7 +12492,8 @@
       const alsSizeOne = sizeOne;
       if (alsSizeOne) {
         if (alsSizeOne.remotePair) {
-          const value = chainMathScore(5, chain, 4, 2);
+          const scaled = depthScaledChainRating(chain, 'Remote Pair', 3);
+          const value = scaled.value;
           return define(ratingCategoryForValue(value), value, `Remote Pair${ringSuffix}`);
         }
         if (alsSizeOne.breakdown === 'XY-Wing') {
@@ -12279,8 +12507,20 @@
           const value = chainMathScore(4, chain, 4, 2);
           return define(ratingCategoryForValue(value), value, `XY-Chain${ringSuffix}`);
         }
-        const value = chainMathScore(5, chain, 4, 2);
-        return define(ratingCategoryForValue(value), value, `XY-Chain${ringSuffix}`);
+        const scaled = depthScaledChainRating(chain, 'XY-Chain', 3);
+        return define(ratingCategoryForValue(scaled.value), scaled.value,
+          `XY-Chain${ringSuffix}`);
+      }
+
+      // Pure type-4 paths can be emitted without the older ALS-size-one
+      // metadata. They are still XY-Chains, not multi-digit AICs. Score them
+      // by depth: 3=Moderate, 4=Challenging, 5=Irritating, 6=Frustrating,
+      // and 7+=Hard.
+      const pureXyDepth = pureXyChainDepth(chain);
+      if (pureXyDepth) {
+        const scaled = depthScaledChainRating(chain, 'XY-Chain', 3);
+        return define(ratingCategoryForValue(scaled.value), scaled.value,
+          `XY-Chain${ringSuffix}`);
       }
 
       // A named wing is more specific than the generic Hidden XY-Chain
@@ -12294,12 +12534,14 @@
 
       const hiddenXy = hiddenXyChainInfo(chain);
       if (hiddenXy?.remotePair) {
-        const value = chainMathScore(5, chain, 4, 2);
-        return define(ratingCategoryForValue(value), value, `Hidden Remote Pair${ringSuffix}`);
+        const scaled = depthScaledChainRating(chain, 'Hidden Remote Pair', 3);
+        return define(ratingCategoryForValue(scaled.value), scaled.value,
+          `Hidden Remote Pair${ringSuffix}`);
       }
       if (hiddenXy) {
-        const value = chainMathScore(5, chain, 4, 2);
-        return define(ratingCategoryForValue(value), value, `Hidden XY-Chain${ringSuffix}`);
+        const scaled = depthScaledChainRating(chain, 'Hidden XY-Chain', 3);
+        return define(ratingCategoryForValue(scaled.value), scaled.value,
+          `Hidden XY-Chain${ringSuffix}`);
       }
 
       if (/^XY-Wing$/i.test(name)) {
@@ -12334,10 +12576,13 @@
       const length = chainLengthOf(chain);
       if (length >= 2) {
         if (chainUniqueDigitCount(chain) !== 1) {
-          return define('Expert', 9 + ringBonus, `AIC (Depth ${length})${ringSuffix}`);
+          const base = Math.min(7, Math.max(3, length));
+          const value = chainMathScore(base, chain, base, 2);
+          return define(ratingCategoryForValue(value), value,
+            `AIC (Depth ${length})${ringSuffix}`);
         }
-        const base = length > 4 ? 5 : length;
-        const value = chainMathScore(base, chain, length > 4 ? 5 : length, length);
+        const base = Math.min(7, Math.max(3, length));
+        const value = chainMathScore(base, chain, base, 1);
         return define(ratingCategoryForValue(value), value,
           `X-Chain (Depth ${length})${ringSuffix}`);
       }
@@ -13467,6 +13712,7 @@
           maxAuxiliary: Math.max(1, Math.min(9, Number(ahsDofChainMaxAuxiliaryEl.value) || 2)),
           maxDepth: Math.max(2, Math.min(5, Number(ahsDofChainMaxDepthEl.value) || 3)),
           maxResults: Math.max(1, Math.min(5000, Number(ahsDofChainMaxResultsEl.value) || 500)),
+          includeHydra: ahsDofHydraEnabledEl.checked,
         };
         ahsDofChainMaxDofEl.value = String(payload.maxDof);
         ahsDofChainMaxCellsEl.value = String(payload.maxCells);
@@ -13474,7 +13720,9 @@
         ahsDofChainMaxDepthEl.value = String(payload.maxDepth);
         ahsDofChainMaxResultsEl.value = String(payload.maxResults);
         ahsDofChainReport = await runSearchWorker('ahs-dof-chain', payload);
+        ahsHydraReport = ahsDofChainReport.hydraReport || null;
         renderAhsDofChainResults(ahsDofChainReport);
+        renderAhsHydraReport();
         openReportPanel(ahsDofChainResultsEl);
         const count = (ahsDofChainReport.results || ahsDofChainReport.links || []).length;
         setStatus(`AHS-DOF chain search complete. ${count} chain${count === 1 ? '' : 's'} found.`, count ? 'ok' : 'warn');
@@ -13483,6 +13731,35 @@
         ahsDofChainReport = null;
         renderAhsDofChainResults(null);
         setStatus(`Could not search AHS-DOF chains: ${error.message || error}`, 'warn');
+      } finally {
+        setBusy(false, searchToken);
+      }
+    }
+
+    async function runAhsHydraBuild() {
+      const searchToken = setBusy(true);
+      setStatus('Searching AHS-Hydra continuations...');
+      try {
+        ahsHydraReport = await runSearchWorker('hydra-ahs-dof', {
+          candidateGrid: cand,
+          maxDigits: Math.max(2, Math.min(8, Number(ahsDofMaxDofEl.value) + 2 || 5)),
+          maxAuxiliary: Math.max(1, Math.min(9, Number(ahsDofChainMaxAuxiliaryEl.value) || 2)),
+          maxResults: Math.max(1, Math.min(5000, Number(ahsDofMaxResultsEl.value) || 500)),
+          maxParticipants: 1000,
+          aicDepth: Math.max(2, Math.min(7, Number(ahsDofChainMaxDepthEl.value) || 3)),
+          includeHydra: ahsDofHydraEnabledEl.checked,
+        });
+        selectedAlsHydraIndex = null;
+        selectedHydraFamily = null;
+        renderAhsHydraReport();
+        openReportPanel(ahsHydraResultsEl);
+        const count = (ahsHydraReport.results || []).length;
+        setStatus(`AHS-Hydra search complete. ${count} result${count === 1 ? '' : 's'} found.`, count ? 'ok' : 'warn');
+      } catch (error) {
+        if (isSearchCancelled(error)) return;
+        ahsHydraReport = null;
+        renderAhsHydraReport();
+        setStatus(`Could not search AHS-Hydra: ${error.message || error}`, 'warn');
       } finally {
         setBusy(false, searchToken);
       }
@@ -13858,7 +14135,7 @@
       }
 
       const summary = document.createElement('p');
-      summary.textContent = `${threeDMedusaReport.length} 3D-Medusa result${threeDMedusaReport.length === 1 ? '' : 's'}.`;
+      summary.textContent = `${threeDMedusaReport.length} 3D-Medusa {Simple} result${threeDMedusaReport.length === 1 ? '' : 's'}.`;
       threeDMedusaResultsEl.appendChild(summary);
       if (!threeDMedusaReport.length) {
         const empty = document.createElement('p');
@@ -14225,11 +14502,11 @@
       }
 
       const summary = document.createElement('p');
-      summary.textContent = `${multiColoringReport.length} Multi-colouring colour map${multiColoringReport.length === 1 ? '' : 's'}.`;
+      summary.textContent = `${multiColoringReport.length} Multi-colouring result${multiColoringReport.length === 1 ? '' : 's'}.`;
       multiColoringResultsEl.appendChild(summary);
       if (!multiColoringReport.length) {
         const empty = document.createElement('p');
-        empty.textContent = 'No Multi-colouring maps were found using type-0 strong-link nodes.';
+        empty.textContent = 'No Multi-colouring results were found using type-0 strong-link nodes.';
         multiColoringResultsEl.appendChild(empty);
         return;
       }
@@ -14295,11 +14572,11 @@
         return;
       }
       const summary = document.createElement('p');
-      summary.textContent = `${superMultiColoringReport.length} Super Multi-colouring map${superMultiColoringReport.length === 1 ? '' : 's'}.`;
+      summary.textContent = `${superMultiColoringReport.length} Super Multi-colouring result${superMultiColoringReport.length === 1 ? '' : 's'}.`;
       superMultiColoringResultsEl.appendChild(summary);
       if (!superMultiColoringReport.length) {
         const empty = document.createElement('p');
-        empty.textContent = 'No Super Multi-colouring maps were found using type 0, 1, 2, or 3 strong-link nodes.';
+        empty.textContent = 'No Super Multi-colouring results were found using type 0, 1, 2, or 3 strong-link nodes.';
         superMultiColoringResultsEl.appendChild(empty);
         return;
       }
@@ -14964,9 +15241,14 @@
 
     function alsChainNodes(chain) {
       const steps = chain.steps || [];
-      if (!steps.length || !steps.every(step =>
-        step.family === 'ALS' && String(step.linkTypeName || '').toUpperCase() === 'ALS_RCC'
-      )) return null;
+      const isAlsRcc = step => step.family === 'ALS'
+        && String(step.linkTypeName || '').toUpperCase() === 'ALS_RCC';
+      const isBivalentAls = step => step.family === 'SL'
+        && Number(step.linkType) === 4
+        && step.entry?.cells?.length === 1
+        && step.exit?.cells?.length === 1
+        && step.entry.cellKey === step.exit.cellKey;
+      if (!steps.length || !steps.every(step => isAlsRcc(step) || isBivalentAls(step))) return null;
 
       // One ALS_RCC record joins two ALS modules. Count the unique modules,
       // rather than the graph records, so XZ/XY classifications use the
@@ -14974,6 +15256,22 @@
       const nodes = [];
       const seen = new Set();
       for (const step of steps) {
+        if (isBivalentAls(step)) {
+          const cells = [...new Set([
+            ...(step.entry.cells || []),
+            ...(step.exit.cells || []),
+          ])].sort((a, b) => a - b);
+          const digits = [...new Set([
+            ...(step.entry.digits || []),
+            ...(step.exit.digits || []),
+          ])].sort((a, b) => a - b);
+          const key = `BIVALVE|${cells.join(',')}|${digits.join('')}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            nodes.push({ id: key, cells, digits });
+          }
+          continue;
+        }
         const module = step.module;
         for (const subset of chainModuleSubsets(module)) {
           if (!subset) return null;
@@ -15153,6 +15451,13 @@
       const steps = chain.steps || [];
       if (!steps.length) return null;
 
+      // XY-Chains and Remote Pairs are built only from type-4 bivalent
+      // strong links. ALS_RCC or any other node family belongs to AIC/ALS
+      // classification and must never be folded into this helper.
+      if (!steps.every(step =>
+        step.family === 'SL' && Number(step.linkType) === 4
+      )) return null;
+
       // A bivalent XY structure uses type-4 cell ALS links instead of
       // ALS_RCC modules. Build the same one-cell node view for both forms so
       // XY-Wing/XY-Chain classification does not discard pure bivalent paths.
@@ -15198,7 +15503,13 @@
       if (!nodes.length || nodes.some(node => node.cells.length !== 1)) return null;
 
       const nodeDigits = nodes.map(node => [...node.digits].sort((a, b) => a - b));
-      const remotePair = nodeDigits.every(digits =>
+      // Remote Pair is exclusively a type-4 bivalent strong-link chain.
+      // ALS_RCC sides can be single cells too, but they are not Remote Pair
+      // nodes and must never inherit this classification.
+      const pureType4 = steps.every(step =>
+        step.family === 'SL' && Number(step.linkType) === 4
+      );
+      const remotePair = pureType4 && nodeDigits.every(digits =>
         digits.length === 2
         && digits.join(',') === nodeDigits[0].join(',')
       );
@@ -15297,6 +15608,8 @@
       }
 
       const alsInfo = alsOnlyChainInfo(chain) || alsNamedChainInfo(chain);
+      // A B.A.R.N.S. chain is already filed beneath ALS - XZ below; adding
+      // the ordinary ALS-XZ membership as well creates a duplicate listing.
       if (alsInfo) {
         locations.push({
           family: 'Almost Locked Sets',
@@ -15325,7 +15638,6 @@
           path: [barnsInfo.sizeName],
         });
       }
-
       if (barnsTransportInfo) {
         locations.push({
           family: 'B.A.R.N.S',
@@ -15614,6 +15926,21 @@
       if (!Array.isArray(expectedSolution) || expectedSolution.length !== 81) return [];
 
       const remaining = candidateGrid.map(values => new Set(values || []));
+      // Candidate grids can be imported or edited independently of the puzzle
+      // solution.  In that case an old solution must not veto otherwise-valid
+      // chain eliminations merely because it contains a digit that the current
+      // candidate grid has already discarded.  Keep the independent empty-cell
+      // and unit checks below, but use solution-specific checks only when the
+      // solution is actually compatible with the current candidate state.
+      const solutionFitsCandidates = expectedSolution.every((digit, cell) => {
+        const values = candidateGrid[cell] || [];
+        return !values.length || values.includes(digit);
+      });
+      const fixedGridFitsCandidates = fixedGrid.every((digit, cell) => {
+        if (!digit) return true;
+        const values = candidateGrid[cell] || [];
+        return !values.length || values.includes(digit);
+      });
       const reasons = [];
       const seen = new Set();
       const addReason = (key, text) => {
@@ -15628,7 +15955,7 @@
         if (!Number.isInteger(cell) || cell < 0 || cell >= 81) continue;
         if (!Number.isInteger(digit) || digit < 1 || digit > 9) continue;
 
-        if (expectedSolution[cell] === digit) {
+        if (solutionFitsCandidates && expectedSolution[cell] === digit) {
           addReason(
             `solution:${cell}:${digit}`,
             `removes solution ${digit} from ${core.cellName(cell)}`,
@@ -15643,13 +15970,18 @@
         }
       }
 
-      for (let sector = 0; sector < core.UNITS.length; sector++) {
-        const unit = core.UNITS[sector];
-        for (let digit = 1; digit <= 9; digit++) {
-          if (unit.some(cell => fixedGrid[cell] === digit)) continue;
-          if (unit.some(cell => remaining[cell].has(digit))) continue;
-          const name = core.sectorGroupName([sector]);
-          addReason(`sector:${sector}:${digit}`, `leaves ${name} with no place for ${digit}`);
+      // Imported candidate grids may be edited independently of the original
+      // givens.  A stale fixed grid must not make a valid chain look unsafe by
+      // hiding a placement that the current candidate state still represents.
+      if (fixedGridFitsCandidates) {
+        for (let sector = 0; sector < core.UNITS.length; sector++) {
+          const unit = core.UNITS[sector];
+          for (let digit = 1; digit <= 9; digit++) {
+            if (unit.some(cell => fixedGrid[cell] === digit)) continue;
+            if (unit.some(cell => remaining[cell].has(digit))) continue;
+            const name = core.sectorGroupName([sector]);
+            addReason(`sector:${sector}:${digit}`, `leaves ${name} with no place for ${digit}`);
+          }
         }
       }
 
@@ -15845,7 +16177,8 @@
       const alsSearchLimit = phase?.alsSearchLimit ?? profile?.alsSearchLimit ?? false;
       const strongSet = buildSets ? core.buildStrongLinks(candidateGrid, {
         includeAlmostFish: strongLinkTypes.includes(7),
-        almostFish: { grid: [...(puzzle || [])], ...currentAlmostFishOptions() },
+        strongLinkTypes,
+        almostFish: { grid: [...(puzzle || [])], ...currentAlmostFishOptions(), fishXorOnly: true },
       }) : null;
       const allowedAlsCellCounts = Array.isArray(phase?.alsCellCounts)
         ? new Set(phase.alsCellCounts.map(Number))
@@ -15951,7 +16284,7 @@
           ? nodeLimits.ahsMaxFox
           : Math.min(nodeLimits.ahsMaxFox ?? effectiveAhsMaxCells - 1, effectiveAhsMaxCells - 1),
         strongLinkTypes,
-        almostFish: currentAlmostFishOptions(),
+        almostFish: { ...currentAlmostFishOptions(), fishXorOnly: true },
         maxDepth: profile?.maxDepth == null ? maxDepth : Math.min(maxDepth, profile.maxDepth),
         alsMaxDigits,
         alsCellCounts: Array.isArray(phase?.alsCellCounts) ? [...phase.alsCellCounts] : null,
@@ -16180,6 +16513,14 @@
 
     function chainMatchesSearchPhase(chain, phase) {
       const alsSteps = (chain?.steps || []).filter(step => step.family === 'ALS');
+      const ahsSteps = (chain?.steps || []).filter(step => step.family === 'AHS');
+      const alcSteps = (chain?.steps || []).filter(step => step.family === 'ALC');
+      // The generic AIC phases are ordinary-link passes.  The walker can
+      // still return a mixed node when its graph inventory was built broadly,
+      // so enforce the phase boundary here instead of relying only on the
+      // search options.  Dedicated ALS/AHS/ALC phases opt back in explicitly.
+      if (phase?.includeAls !== true && (alsSteps.length || alcSteps.length)) return false;
+      if (phase?.includeAhs !== true && (ahsSteps.length || alcSteps.length)) return false;
       if (phase.requireAls && !alsSteps.length) return false;
       if (phase.minDepth != null && Number(chain?.length) < phase.minDepth) return false;
       if (phase.maxDepth != null && Number(chain?.length) > phase.maxDepth) return false;
@@ -16283,6 +16624,16 @@
       maxDepth,
       profile,
     ) {
+      const diagnostics = {
+        phase: phase?.name || 'unknown',
+        received: Array.isArray(report?.chains) ? report.chains.length : 0,
+        phaseRejected: 0,
+        toggleRejected: 0,
+        noElimination: 0,
+        safetyRejected: 0,
+        ratingRejected: 0,
+        accepted: 0,
+      };
       const phaseTechniqueOrder = chain => {
         if (Array.isArray(phase?.allowedMoveGroups) && phase.allowedMoveGroups.length) {
           const keys = chainMoveKeys(chain);
@@ -16299,17 +16650,30 @@
         return index >= 0 ? index : Number.POSITIVE_INFINITY;
       };
       let best = null;
+      const acceptedChains = [];
       for (let index = 0; index < report.chains.length; index++) {
         const chain = displayChainForUi(report.chains[index]);
-        if (!chainMatchesSearchPhase(chain, phase)) continue;
-        if (!chainMoveEnabled(chain, enabledTypes)) continue;
+        if (!chainMatchesSearchPhase(chain, phase)) {
+          diagnostics.phaseRejected += 1;
+          continue;
+        }
+        if (!chainMoveEnabled(chain, enabledTypes)) {
+          diagnostics.toggleRejected += 1;
+          continue;
+        }
 
         const items = core.eliminationItems(
           { items: chain.eliminations || [] },
           candidateGrid,
         );
-        if (!items.length) continue;
-        if (chainSafetyFlags(chain, candidateGrid, expectedSolution, fixedGrid).length > 0) continue;
+        if (!items.length) {
+          diagnostics.noElimination += 1;
+          continue;
+        }
+        if (chainSafetyFlags(chain, candidateGrid, expectedSolution, fixedGrid).length > 0) {
+          diagnostics.safetyRejected += 1;
+          continue;
+        }
 
         const step = {
           ...chainStepFromResult(chain, report, index, candidateGrid),
@@ -16317,10 +16681,33 @@
           desc: chainText({ ...chain, eliminations: items }),
         };
         step.rating = ratingForStep(step);
-        if (profile?.maxRank !== undefined && step.rating.rank > profile.maxRank) continue;
+        if (profile?.maxRank !== undefined && step.rating.rank > profile.maxRank) {
+          diagnostics.ratingRejected += 1;
+          continue;
+        }
+        diagnostics.accepted += 1;
+        acceptedChains.push({ chain, items, rating: step.rating });
+      }
+
+      // The worker report can contain every chain reachable by the current
+      // graph walk, including depths and named families that belong to later
+      // hierarchy phases. Keep the report attached to Next/Run All scoped to
+      // the same accepted phase that selected the move.
+      const displayReport = {
+        ...report,
+        chains: acceptedChains.map(entry => entry.chain),
+      };
+      for (const [displayIndex, entry] of acceptedChains.entries()) {
+        const { chain, items, rating } = entry;
+        const step = {
+          ...chainStepFromResult(chain, displayReport, displayIndex, candidateGrid),
+          elim: { items },
+          desc: chainText({ ...chain, eliminations: items }),
+        };
+        step.rating = rating;
         const candidate = {
-          report,
-          index,
+          report: displayReport,
+          index: displayIndex,
           chain,
           step,
             // A phase is a conceptual hierarchy. Select its named move order
@@ -16332,11 +16719,12 @@
               // removes more candidates. This never crosses phase or class
               // boundaries because both are compared first.
               -items.length,
-              ...solverMovePriority(chain, step, maxDepth, index),
+              ...solverMovePriority(chain, step, maxDepth, displayIndex),
             ],
         };
         if (isHigherPriorityMove(candidate, best)) best = candidate;
       }
+      lastChainSelectionDiagnostics = diagnostics;
       return best;
     }
 
@@ -17399,6 +17787,7 @@
             excludePureAhs: search.includeAhs && !searchPhase.family,
             strongLinkTypes: search.strongLinkTypes,
             maxDepth: search.maxDepth,
+            minDepth: searchPhase.minDepth ?? 1,
             maxChains: search.maxChains,
             maxResultAttempts: search.maxResultAttempts,
             maxResultAttemptsPerStart: search.maxResultAttemptsPerStart,
@@ -17501,9 +17890,20 @@
         },
         chain: {
           maxDepth: search.maxDepth,
+          minDepth: phase?.minDepth ?? 1,
           fixedGrid: [...fixedGrid],
           includeAls: search.includeAlsRcc,
           includeAhs: search.includeAhs,
+          includeChromatic: chainChromaticType3El.checked,
+          chromaticOptions: {
+            unitType: chromaticUnitTypeEl.value,
+            minSectors: chromaticMinSectorsEl.value,
+            maxSectors: chromaticMaxSectorsEl.value,
+            minDigits: chromaticMinDigitsEl.value,
+            maxDigits: chromaticMaxDigitsEl.value,
+            maxCells: chromaticMaxCellsEl.value,
+            maxResults: 120,
+          },
           excludePureAhs: search.includeAhs && !phase?.family,
           strongLinkTypes: search.strongLinkTypes,
           almostFish: search.almostFish,
@@ -17890,15 +18290,14 @@
         });
         addChain('challenging-aic', {
           name: 'aic-depth-4',
-          includeAls: true,
-          includeAhs: true,
+          includeAls: false,
+          includeAhs: false,
           strongLinkTypes: [0, 1, 2, 3, 4],
           maxDepth: 4,
           minDepth: 4,
           requireAls: false,
           requireMixed: false,
           family: null,
-          alsLinkMode: 'rcc-only',
           searchLimits: {
             maxChains: 250,
             maxResultAttempts: 5000,
@@ -17961,15 +18360,14 @@
         });
         addChain('irritating-aic', {
           name: 'aic-depth-5',
-          includeAls: true,
-          includeAhs: true,
+          includeAls: false,
+          includeAhs: false,
           strongLinkTypes: [0, 1, 2, 3, 4],
           maxDepth: 8,
           minDepth: 5,
           requireAls: false,
           requireMixed: false,
           family: null,
-          alsLinkMode: 'rcc-only',
         });
         addChain('irritating-transport-wxyz', {
           name: 'barns-transport-wxyz',
@@ -18068,15 +18466,14 @@
         });
         addChain('frustrating-aic', {
           name: 'aic-depth-6',
-          includeAls: true,
-          includeAhs: true,
+          includeAls: false,
+          includeAhs: false,
           strongLinkTypes: [0, 1, 2, 3, 4],
           maxDepth: 8,
           minDepth: 6,
           requireAls: false,
           requireMixed: false,
           family: null,
-          alsLinkMode: 'rcc-only',
         });
         addDirect('frustrating-extended-fish', [
           { kind: 'fish', size: 6, k: [0], categories: ['Franken', 'Mutant'] },
@@ -18209,15 +18606,14 @@
         });
         addChain('hard-aic-full-depth', {
           name: 'aic-full-depth',
-          includeAls: true,
-          includeAhs: true,
+          includeAls: false,
+          includeAhs: false,
           strongLinkTypes: [0, 1, 2, 3, 4],
           maxDepth: 8,
           minDepth: 2,
           requireAls: false,
           requireMixed: false,
           family: null,
-          alsLinkMode: 'rcc-only',
           requiredTypes: ['chains'],
         });
         addDirect('hard-extended-fish', [
@@ -18372,8 +18768,8 @@
         ]);
         addChain('expert-generic-aic', {
           name: 'generic-aic-depth-5-plus',
-          includeAls: true,
-          includeAhs: true,
+          includeAls: false,
+          includeAhs: false,
           strongLinkTypes: [0, 1, 2, 3, 4],
           maxDepth: 8,
           minDepth: 5,
@@ -18381,7 +18777,6 @@
           requireAls: false,
           requireMixed: false,
           family: null,
-          alsLinkMode: 'rcc-only',
           requiredTypes: ['chains'],
         });
 
@@ -19325,12 +19720,12 @@
     function renderAlcDofResults() {
       alcSearchResultsEl.textContent = '';
       if (!alcDofReport) {
-        alcSearchResultsEl.textContent = 'No ALC-DOF search has been run.';
+        alcSearchResultsEl.textContent = 'No ALC-DOF Chain search has been run.';
         return;
       }
       const chains = alcDofReport.chains || [];
       const summary = document.createElement('p');
-      summary.textContent = `${chains.length} ALC-DOF result${chains.length === 1 ? '' : 's'} found.`
+      summary.textContent = `${chains.length} ALC-DOF Chain result${chains.length === 1 ? '' : 's'} found.`
         + (alcDofReport.stats?.truncated ? ' Search limit reached.' : '');
       alcSearchResultsEl.appendChild(summary);
       if (!chains.length) return;
@@ -19342,7 +19737,7 @@
         button.type = 'button';
         button.className = `chain-result${index === selectedChainIndex ? ' selected' : ''}`;
         button.textContent = `${index + 1}. ${chainText(chain)}`;
-        button.title = `ALC-DOF rooted in ${chain.alcDof?.rootType || 'DOF'} and extended with ALS/AHS modules`;
+        button.title = `ALC-DOF Chain rooted in ${chain.alcDof?.rootType || 'DOF'} and extended with ALS/AHS modules`;
         button.addEventListener('click', () => {
           selectedChainIndex = index;
           activeStep = null;
@@ -19576,22 +19971,22 @@
       renderAlsDofSection(alsDofChainResultsEl, alsDofChainReport, 'chain', 'ALS-DOF chains');
     }
 
-    function renderAlsHydraReport() {
-      alsHydraResultsEl.textContent = '';
-      if (!alsHydraReport) {
-        alsHydraResultsEl.textContent = 'No ALS-Hydra search has been run.';
+    function renderHydraReport(report, container, family) {
+      container.textContent = '';
+      if (!report) {
+        container.textContent = `No ${family}-Hydra search has been run.`;
         return;
       }
-      const results = alsHydraReport.results || [];
+      const results = report.results || [];
       const summary = document.createElement('p');
-      summary.textContent = `${results.length} ALS-Hydra result${results.length === 1 ? '' : 's'}. `
-        + `${alsHydraReport.stats?.aicChainsChecked || 0} verified AIC chain${(alsHydraReport.stats?.aicChainsChecked || 0) === 1 ? '' : 's'} checked; `
-        + `${alsHydraReport.stats?.hydraParticipants || 0} ALS-chain participant${(alsHydraReport.stats?.hydraParticipants || 0) === 1 ? '' : 's'} tested.`;
-      alsHydraResultsEl.appendChild(summary);
+      summary.textContent = `${results.length} ${family}-Hydra result${results.length === 1 ? '' : 's'}. `
+        + `${report.stats?.aicChainsChecked || 0} verified AIC chain${(report.stats?.aicChainsChecked || 0) === 1 ? '' : 's'} checked; `
+        + `${report.stats?.hydraParticipants || 0} ${family}-chain participant${(report.stats?.hydraParticipants || 0) === 1 ? '' : 's'} tested.`;
+      container.appendChild(summary);
       if (!results.length) {
         const empty = document.createElement('p');
         empty.textContent = 'No verified Hydra continuation was found.';
-        alsHydraResultsEl.appendChild(empty);
+        container.appendChild(empty);
         return;
       }
       const list = document.createElement('ul');
@@ -19601,10 +19996,16 @@
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'chain-result';
-        if (selectedAlsHydraIndex === index) button.classList.add('selected');
+        if (selectedHydraFamily === family && selectedAlsHydraIndex === index) {
+          button.classList.add('selected');
+        }
         button.textContent = `${index + 1}. ${formatHydraResult(result)}`;
-        button.title = 'Display this Hydra ALS-DOF continuation on the grid';
+        button.title = `Display this Hydra ${family}-DOF continuation on the grid`;
         button.addEventListener('click', () => {
+          if (family === 'AHS') ahsHydraReport = report;
+          else if (family === 'ALC') alcHydraReport = report;
+          else alsHydraReport = report;
+          selectedHydraFamily = family;
           selectedAlsHydraIndex = index;
           selectedAlsDof = null;
           selectedAlsDofIndex = null;
@@ -19616,14 +20017,26 @@
           activeStep = null;
           lastRemoved = [];
           renderBoard();
-          renderAlsHydraReport();
+          renderHydraReport(report, container, family);
           focusMap();
-          setStatus(`ALS-Hydra result ${index + 1} displayed.`, 'ok');
+          setStatus(`${family}-Hydra result ${index + 1} displayed.`, 'ok');
         });
         item.appendChild(button);
         list.appendChild(item);
       });
-      alsHydraResultsEl.appendChild(list);
+      container.appendChild(list);
+    }
+
+    function renderAlsHydraReport() {
+      renderHydraReport(alsHydraReport, alsHydraResultsEl, 'ALS');
+    }
+
+    function renderAhsHydraReport() {
+      renderHydraReport(ahsHydraReport, ahsHydraResultsEl, 'AHS');
+    }
+
+    function renderAlcHydraReport() {
+      renderHydraReport(alcHydraReport, alcHydraResultsEl, 'ALC');
     }
 
     function snapshotVisualState() {
@@ -19643,7 +20056,10 @@
           alsDofReport,
           alsDofChainReport,
           alsHydraReport,
+          ahsHydraReport,
+          alcHydraReport,
           selectedAlsHydraIndex,
+          selectedHydraFamily,
           ahsReport,
           ahsDofReport,
           ahsDofChainReport,
@@ -19675,6 +20091,7 @@
           selectedChainIndex,
           gridView,
           showFixedInVantage,
+           ctrlDigitRemovesCandidate,
           selectedPlayerCell,
           selectedPlayerDigit,
           playerSolveBackups: clonePlayerSolveBackups(),
@@ -19709,7 +20126,10 @@
       alsDofReport = visual.alsDofReport || null;
       alsDofChainReport = visual.alsDofChainReport || null;
       alsHydraReport = visual.alsHydraReport || null;
+      ahsHydraReport = visual.ahsHydraReport || null;
+      alcHydraReport = visual.alcHydraReport || null;
       selectedAlsHydraIndex = visual.selectedAlsHydraIndex ?? null;
+      selectedHydraFamily = visual.selectedHydraFamily ?? null;
       ahsReport = visual.ahsReport || null;
       ahsDofReport = visual.ahsDofReport || null;
       ahsDofChainReport = visual.ahsDofChainReport || null;
@@ -19744,6 +20164,8 @@
       gridView = visual.gridView || 'RC';
       showFixedInVantage = Boolean(visual.showFixedInVantage);
       showFixedInVantageEl.checked = showFixedInVantage;
+      ctrlDigitRemovesCandidate = visual.ctrlDigitRemovesCandidate !== false;
+      ctrlDigitRemovesCandidateEl.checked = ctrlDigitRemovesCandidate;
       selectedPlayerCell = visual.selectedPlayerCell ?? null;
       selectedPlayerDigit = visual.selectedPlayerDigit ?? null;
       restorePlayerSolveBackups(visual.playerSolveBackups);
@@ -19773,6 +20195,11 @@
         setStatus('This older step has no saved board snapshot.', 'warn');
         return;
       }
+
+      // A completed log can remain clickable while a worker is still winding
+      // down. Stop that stale search before entering preview mode, otherwise
+      // the global busy state leaves every other control disabled.
+      if (busy) cancelActiveSearches('Search stopped to view a solution step.');
 
       if (!historyPreview) {
         historyPreview = {
@@ -19811,7 +20238,10 @@
       alsDofReport = null;
       alsDofChainReport = null;
       alsHydraReport = null;
+      ahsHydraReport = null;
+      alcHydraReport = null;
       selectedAlsHydraIndex = null;
+      selectedHydraFamily = null;
       ahsReport = null;
       alcXzReport = null;
       ahsLinkReport = null;
@@ -19991,7 +20421,11 @@
           );
           return true;
         }
-        setStatus('No enabled move found. Candidate grid is current.', 'warn');
+        const diagnostics = lastChainSelectionDiagnostics;
+        const diagnosticText = diagnostics?.received
+          ? ` Chain filters: ${diagnostics.received} received, ${diagnostics.phaseRejected} phase, ${diagnostics.toggleRejected} toggle, ${diagnostics.noElimination} empty, ${diagnostics.safetyRejected} safety, ${diagnostics.ratingRejected} rating, ${diagnostics.accepted} accepted.`
+          : '';
+        setStatus(`No enabled move found. Candidate grid is current.${diagnosticText}`, 'warn');
         return false;
       }
 
@@ -20070,7 +20504,10 @@
       alsDofReport = null;
       alsDofChainReport = null;
       alsHydraReport = null;
+      ahsHydraReport = null;
+      alcHydraReport = null;
       selectedAlsHydraIndex = null;
+      selectedHydraFamily = null;
       ahsReport = null;
       ahsLinkReport = null;
       ahsDofReport = null;
@@ -20167,6 +20604,7 @@
       allowSynchronousFallback = false,
     } = {}) {
       lastInteractiveSearchError = null;
+      lastChainSelectionDiagnostics = null;
       const profile = interactiveTechniqueProfile();
       const fallback = () => chooseSolverStep(
         cand,
@@ -20198,10 +20636,16 @@
         });
         interactiveSearchProgress = refreshTimeout;
         try {
-          return await Promise.race([
+          const workerChoice = await Promise.race([
             chooseSolverStepInWorker(cand, puzzle, solution, profile, 'interactive'),
             timeout,
           ]);
+          // An empty worker result is not proof that the local chain walker
+          // found nothing. This can happen after a worker reload or when its
+          // cached graph inventory is stale. Reuse the synchronous path before
+          // reporting that no enabled move exists.
+          if (workerChoice?.step) return workerChoice;
+          return fallback();
         } finally {
           if (interactiveSearchProgress === refreshTimeout) interactiveSearchProgress = null;
           clearTimeout(timeoutId);
@@ -20233,7 +20677,7 @@
       const searchToken = setBusy(true);
       setStatus('Searching enabled moves...');
       try {
-        choice = await chooseInteractiveStep();
+        choice = await chooseInteractiveStep({ allowSynchronousFallback: true });
       } catch (error) {
         if (isSearchCancelled(error)) return false;
         throw error;
@@ -20389,7 +20833,7 @@
             setStatus('Run All search worker restarted; retrying the current cycle...', 'warn');
             await new Promise(resolve => setTimeout(resolve, 0));
             choice = await chooseInteractiveStep({
-              allowSynchronousFallback: false,
+              allowSynchronousFallback: true,
             });
           }
           if (!choice) {
@@ -20921,6 +21365,10 @@
           maxDigits,
           maxAuxiliary,
           maxResults: 5000,
+          includeHydra: alsDofHydraEnabledEl.checked,
+          aicDepth: Math.min(8, Math.max(2, Number(chainDepthEl.value) || 4)),
+          strongLinkTypes: [0, 1, 2, 3, 4],
+          includeAhs: true,
         });
         alsReport = null;
         alsDofReport = report;
@@ -20968,12 +21416,13 @@
             maxDigits,
             maxAuxiliary,
             maxResults,
-            includeHydra: true,
+            includeHydra: alsDofHydraEnabledEl.checked,
             aicDepth: Math.min(8, Math.max(2, Number(chainDepthEl.value) || 4)),
             strongLinkTypes: [0, 1, 2, 3, 4],
             includeAhs: true,
           });
           selectedAlsHydraIndex = null;
+          selectedHydraFamily = null;
           selectedAlsDof = null;
           selectedAlsDofIndex = null;
           selectedAlsDofSource = 'chain';
@@ -21013,9 +21462,12 @@
               Number(alsDofChainMaxResultsEl.value) || 500)),
             aicDepth: 4,
             strongLinkTypes: [0, 1, 2, 3, 4],
+            includeHydra: alsDofHydraEnabledEl.checked,
+            includeAhs: true,
           });
           selectedAlsHydraIndex = null;
-          selectedAlsDof = null;
+          selectedHydraFamily = null;
+           selectedAlsDof = null;
           selectedAlsDofIndex = null;
           selectedAlsDofSource = 'net';
           selectedAlsId = null;
@@ -21568,7 +22020,7 @@
 
     async function runAlcDofBuild() {
       const searchToken = setBusy(true);
-      setStatus('Searching ALC-DOF...');
+      setStatus('Searching ALC-DOF Chain...');
       scheduleSearch(async () => {
         try {
           const payload = {
@@ -21587,8 +22039,10 @@
             maxStates: 60000,
             maxQueue: 60000,
             maxBranching: 200,
+            includeHydra: alcDofHydraEnabledEl.checked,
           };
           alcDofReport = await runSearchWorker('alc-dof', payload);
+          alcHydraReport = alcDofReport.hydraReport || null;
           chainReport = alcDofReport;
           selectedChainIndex = alcDofReport.chains.length ? 0 : null;
           activeStep = null;
@@ -21597,21 +22051,51 @@
           ahsSearchFamily = null;
           renderChainReport();
           renderAlcDofResults();
+          renderAlcHydraReport();
           renderBoard();
           openReportPanel(alcSearchResultsEl);
           const count = alcDofReport.chains.length;
-          setStatus(`ALC-DOF search complete. ${count} result${count === 1 ? '' : 's'} found.`, count ? 'ok' : 'warn');
+          setStatus(`ALC-DOF Chain search complete. ${count} result${count === 1 ? '' : 's'} found.`, count ? 'ok' : 'warn');
         } catch (error) {
           if (isSearchCancelled(error)) return;
           alcDofReport = null;
           chainReport = null;
           selectedChainIndex = null;
           renderAlcDofResults();
-          setStatus(`Could not search ALC-DOF: ${error.message || error}`, 'warn');
+          setStatus(`Could not search ALC-DOF Chain: ${error.message || error}`, 'warn');
         } finally {
           setBusy(false, searchToken);
         }
       }, 20);
+    }
+
+    async function runAlcHydraBuild() {
+      const searchToken = setBusy(true);
+      setStatus('Searching ALC-Hydra continuations...');
+      try {
+        alcHydraReport = await runSearchWorker('hydra-alc-dof', {
+          candidateGrid: cand,
+          maxDigits: Math.max(2, Math.min(9, Number(alcDofMaxDigitsEl.value) || 5)),
+          maxAuxiliary: Math.max(1, Math.min(9, Number(alcDofMaxAuxiliaryEl.value) || 5)),
+          maxResults: Math.max(1, Math.min(5000, Number(alcDofMaxResultsEl.value) || 300)),
+          maxParticipants: 1000,
+          aicDepth: 4,
+          includeHydra: alcDofHydraEnabledEl.checked,
+        });
+         selectedAlsHydraIndex = null;
+         selectedHydraFamily = null;
+        renderAlcHydraReport();
+        openReportPanel(alcHydraResultsEl);
+        const count = (alcHydraReport.results || []).length;
+        setStatus(`ALC-Hydra search complete. ${count} result${count === 1 ? '' : 's'} found.`, count ? 'ok' : 'warn');
+      } catch (error) {
+        if (isSearchCancelled(error)) return;
+        alcHydraReport = null;
+        renderAlcHydraReport();
+        setStatus(`Could not search ALC-Hydra: ${error.message || error}`, 'warn');
+      } finally {
+        setBusy(false, searchToken);
+      }
     }
 
     function runChainBuild() {
@@ -21630,7 +22114,7 @@
           strongLinkReport = await runCoreSearch('buildStrongLinks', cand, {
             includeAlmostFish,
             almostFish: includeAlmostFish
-              ? { grid: [...(puzzle || [])], ...currentAlmostFishOptions() }
+              ? { grid: [...(puzzle || [])], ...currentAlmostFishOptions(), fishXorOnly: true }
               : {},
           });
           alsReport = includeAlsRcc ? (await runCoreSearch('alsConstructor', cand, {
@@ -21659,6 +22143,18 @@
             strictSingleCommon: false,
             maxLinks: 5000,
           }) : null;
+          const chromaticLinkSet = chainChromaticType3El.checked
+            ? (await runSearchWorker('chromatic-chain-links', {
+              candidateGrid: cand,
+              unitType: chromaticUnitTypeEl.value,
+              minSectors: chromaticMinSectorsEl.value,
+              maxSectors: chromaticMaxSectorsEl.value,
+              minDigits: chromaticMinDigitsEl.value,
+              maxDigits: chromaticMaxDigitsEl.value,
+              maxCells: chromaticMaxCellsEl.value,
+              maxResults: 200,
+            })).links
+            : [];
           selectedAhsId = null;
           renderAlsReport();
           renderAlsLinkReport();
@@ -21668,8 +22164,10 @@
             alsList: alsReport,
             alsLinkSet: alsLinkReport,
             ahsLinkSet,
+            chromaticLinkSet,
             includeAhs,
             includeAls: includeAlsRcc,
+            includeChromatic: chainChromaticType3El.checked,
             strongLinkTypes,
             maxDepth: Math.min(8, Math.max(2, Number(chainDepthEl.value) || 6)),
             maxChains: 5000,
@@ -21703,7 +22201,7 @@
           if (isSearchCancelled(error)) return;
           chainReport = null;
           renderChainReport();
-          setStatus('Could not walk chains.', 'warn');
+          setStatus(`Could not walk chains: ${error?.message || error}`, 'warn');
         } finally {
           setBusy(false, searchToken);
         }
@@ -22097,6 +22595,11 @@
       event.stopPropagation();
       runAlcDofBuild();
     });
+    alcHydraBuildEl.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      runAlcHydraBuild();
+    });
     ahsXyBuildEl.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -22116,6 +22619,11 @@
       event.preventDefault();
       event.stopPropagation();
       runAhsDofChainBuild();
+    });
+    ahsHydraBuildEl.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      runAhsHydraBuild();
     });
     ahsLinkBuildEl.addEventListener('click', (event) => {
       event.preventDefault();
@@ -22223,6 +22731,10 @@
     });
     copyPuzzle81El.addEventListener('click', () => copyPuzzleString(core.encode(originalPuzzle), '81-character puzzle'));
     copyPuzzle729El.addEventListener('click', () => copyPuzzleString(current729String(), '729 candidate grid'));
+    copyPuzzle81LinkEl.addEventListener('click', () =>
+      copyPuzzleString(puzzleLink(core.encode(originalPuzzle)), '81-character puzzle link'));
+    copyPuzzle729LinkEl.addEventListener('click', () =>
+      copyPuzzleString(puzzleLink(current729String()), '729 candidate grid link'));
     solutionCopyEurekaEl.addEventListener('click', event => {
       event.stopPropagation();
       const text = highlightedEurekaText();
@@ -22261,6 +22773,9 @@
       showFixedInVantage = showFixedInVantageEl.checked;
       renderBoard();
     });
+    ctrlDigitRemovesCandidateEl.addEventListener('change', () => {
+      ctrlDigitRemovesCandidate = ctrlDigitRemovesCandidateEl.checked;
+    });
     document.addEventListener('keydown', handlePlayerKeydown);
     for (const button of document.querySelectorAll('[data-example-puzzle], [data-example-key]')) {
       button.addEventListener('click', () => {
@@ -22284,8 +22799,16 @@
     renderDifficultyTable();
     renderGridViewHeaders();
     render();
-    // Paint the empty board first, then generate the default Any puzzle in the worker.
-    setTimeout(() => generatePuzzle(), 20);
+    const linkedInput = linkedPuzzleInput();
+    if (linkedInput !== null) {
+      inputEl.value = linkedInput;
+      // A linked grid follows the same validation, uniqueness, and 729-state
+      // loading path as the Load button.
+      setTimeout(() => loadPuzzle(), 20);
+    } else {
+      // Paint the empty board first, then generate the default Any puzzle in the worker.
+      setTimeout(() => generatePuzzle(), 20);
+    }
   </script>
 </body>
 </html>

@@ -328,7 +328,8 @@
       maxSize: options.maxSize ?? 4,
       minK: options.minK ?? 0,
       maxK: options.maxK ?? 2,
-      maxUncoveredCells: options.maxUncoveredCells ?? 3,
+      maxUncoveredCells: options.maxUncoveredCells
+        ?? (options.fishXorOnly === true ? 9 : 3),
       maxReportsPerDigit: options.maxReportsPerDigit
         ?? Math.max(20, Math.ceil((options.maxReports ?? 1500) / 75)),
       triggerMode: 'all-candidates',
@@ -384,14 +385,16 @@
         .filter(cell => !nextCycleCells.has(cell));
       if (!extraCells.length) continue;
 
-      const extraGroups = [
-        ...extraCells.map(cell => [cell]),
-        ...core.UNITS
-          .map(unit => extraCells.filter(cell => unit.includes(cell)))
-          .filter(group => group.length > 1)
-          .filter((group, index, groups) => groups.findIndex(other =>
-            other.join(',') === group.join(',')) === index),
-      ];
+      const extraGroups = options.fishXorOnly === true
+        ? [extraCells]
+        : [
+          ...extraCells.map(cell => [cell]),
+          ...core.UNITS
+            .map(unit => extraCells.filter(cell => unit.includes(cell)))
+            .filter(group => group.length > 1)
+            .filter((group, index, groups) => groups.findIndex(other =>
+              other.join(',') === group.join(',')) === index),
+        ];
 
       const fishElims = [...new Set(report.cells)]
         .filter(cell => (cand[cell] || []).includes(digit));
@@ -400,7 +403,8 @@
         addUnique(buckets, seen, {
           id: nextStrongLinkId++,
           linkType: AF,
-          linkTypeName: TYPE_NAMES[AF],
+          linkTypeName: options.fishXorOnly === true ? 'FISH_XOR' : TYPE_NAMES[AF],
+          secondaryTypes: options.fishXorOnly === true ? ['AF'] : [],
           originSector: commonSectors([...new Set([...extraGroup, ...fishCells])]),
           startingDigits: [digit],
           activeCells: extraGroup,
@@ -417,13 +421,13 @@
           conveyance: 'DIGITS',
           xorConstruction: {
             kind: 'almost-fish',
+            fishXor: options.fishXorOnly === true,
             digit,
             extraCells: [...extraGroup],
             fishCells: [...fishCells],
             fish: { ...report, cells: fishElims },
             uncoveredCells: [...extraGroup],
           },
-          secondaryTypes: [],
           secondaryXorConstruction: null,
         });
       }

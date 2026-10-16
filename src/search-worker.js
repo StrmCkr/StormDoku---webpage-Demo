@@ -8,20 +8,20 @@ importScripts(
   './set-tools-core.js?v=20260928-1',
   './pom-core.js?v=20261004-2',
   './als-core.js?v=20260928-1',
-  './als-dof-core.js?v=20261014-2',
-  './hydra-core.js?v=20261014-2',
+  './als-dof-core.js?v=20261015-3',
+  './hydra-core.js?v=20261015-3',
   './als-link-core.js?v=20260928-1',
   './ahs-core.js?v=20260928-2',
   './ahs-link-core.js?v=20261001-28',
   './subset-report-core.js?v=20260928-2',
   './mini-sectors-core.js?v=20260928-1',
-  './strong-link-core.js?v=20261006-2',
-  './chain-core.js?v=20261014-4',
+  './strong-link-core.js?v=20261015-1',
+  './chain-core.js?v=20261016-2',
   './alc-core.js?v=20261012-3',
   './ahs-xy-core.js?v=20261001-4',
   './ahs-dof-core.js?v=20261002-1',
   './msls-core.js?v=20261004-1',
-  './chromatic-core.js?v=20261006-5',
+  './chromatic-core.js?v=20261015-1',
   './chromatic-als-core.js?v=20261007-9',
 );
 
@@ -272,6 +272,13 @@ function runChains(payload, onProgress = null) {
   const scopedAlsLinkSet = payload.alsLinkMode === 'rcc-only' && filteredAlsLinkSet
     ? filteredAlsLinkSet.map((bucket, index) => index === core.ALS_RCC ? bucket : [])
     : filteredAlsLinkSet;
+  const chromaticLinkSet = payload.includeChromatic
+    ? (payload.chromaticLinkSet || runChromaticChainLinks({
+      candidateGrid,
+      ...(payload.chromaticOptions || {}),
+      maxResults: payload.chromaticOptions?.maxResults || 120,
+    }).links)
+    : [];
 
   const report = core.findAicChains(candidateGrid, {
     onProgress,
@@ -296,6 +303,8 @@ function runChains(payload, onProgress = null) {
     excludePureAhs: payload.excludePureAhs === true,
     includeHydra: payload.includeHydra === true,
     hydraLinkSet: payload.hydraLinkSet || [],
+    includeChromatic: payload.includeChromatic === true,
+    chromaticLinkSet,
   });
 
   // The UI only needs chain data and statistics for generator ranking. Keeping
@@ -303,6 +312,31 @@ function runChains(payload, onProgress = null) {
   return {
     chains: report.chains || [],
     stats: report.stats || {},
+  };
+}
+
+function runChromaticChainLinks(payload) {
+  const options = {
+    unitType: payload.unitType || 'box',
+    minSectors: Math.max(4, Number(payload.minSectors) || 4),
+    maxSectors: Math.min(6, Math.max(4, Number(payload.maxSectors) || 6)),
+    minDigits: Math.max(2, Number(payload.minDigits) || 2),
+    maxDigits: Math.min(6, Math.max(2, Number(payload.maxDigits) || 5)),
+    maxCells: Math.max(12, Number(payload.maxCells) || 32),
+    maxResults: Math.min(500, Math.max(1, Number(payload.maxResults) || 200)),
+  };
+  const plain = globalThis.StormChromaticCore.find(payload.candidateGrid, options);
+  const als = globalThis.StormChromaticAlsCore.find(payload.candidateGrid, options);
+  const records = [...(plain.results || []), ...(als.results || [])];
+  return {
+    links: globalThis.StormChromaticCore.buildChromaticType3Links(
+      payload.candidateGrid, records,
+    ),
+    stats: {
+      records: records.length,
+      plain: plain.results?.length || 0,
+      als: als.results?.length || 0,
+    },
   };
 }
 
@@ -329,31 +363,143 @@ function hydraAicParticipants(payload, alsList, onProgress = null, forChaining =
     strictSingleCommon: false,
     maxLinks: payload.maxAhsLinks || 5000,
   }) : [];
-  const aicReport = core.findAicChains(payload.candidateGrid, {
-    onProgress,
-    strongLinkSet,
-    alsList,
-    alsLinkSet,
-    includeAls: true,
-    ahsList,
-    ahsLinkSet,
-    includeAhs,
-    collectAlsBranches: forChaining,
-    maxAlsBranches: payload.maxParticipants,
-    strongLinkTypes,
-    maxDepth: Math.max(2, Number(payload.aicDepth) || 4),
-    maxChains: Math.min(2000, Math.max(1, Number(payload.maxAicChains) || 500)),
-  });
-  return {
-    participants: core.hydraParticipantsFromAicChains(
-      payload.candidateGrid,
-      [...aicReport.chains, ...(aicReport.alsBranches || [])],
+  const participants = [];
+  let aicChainsChecked = 0;
+  const maxParticipants = Math.max(1, Number(payload.maxParticipants) || 2000);
+  const maxChains = Math.min(2000, Math.max(1, Number(payload.maxAicChains) || 500));
+  for (const auxiliary of alsList) {
+    if (participants.length >= maxParticipants) break;
+    const aicReport = core.findAicChains(payload.candidateGrid, {
+      onProgress,
+      strongLinkSet,
       alsList,
       alsLinkSet,
-      { maxParticipants: payload.maxParticipants, forChaining },
-    ),
-    aicChainsChecked: (aicReport.chains?.length || 0) + (aicReport.alsBranches?.length || 0),
-  };
+      includeAls: true,
+      ahsList,
+      ahsLinkSet,
+      includeAhs,
+      collectAlsBranches: forChaining,
+      maxAlsBranches: maxParticipants,
+      strongLinkTypes,
+      startNodeIds: [auxiliary.uniqueID || auxiliary.id],
+      startNodeCells: auxiliary.alsAllCells || auxiliary.cells || [],
+      maxDepth: Math.max(2, Number(payload.aicDepth) || 4),
+      maxChains,
+    });
+    const chains = [...(aicReport.chains || []), ...(aicReport.alsBranches || [])];
+    aicChainsChecked += chains.length;
+    participants.push(...core.hydraParticipantsFromAicChains(
+      payload.candidateGrid,
+      chains,
+      [auxiliary],
+      alsLinkSet,
+      { maxParticipants: maxParticipants - participants.length, forChaining },
+    ));
+  }
+  return { participants, aicChainsChecked };
+}
+
+function normaliseHydraAhsNodes(ahsList = []) {
+  return ahsList.map((ahs, index) => ({
+    ...ahs,
+    family: 'AHS',
+    id: ahs.uniqueID || `ahs-${index}`,
+    uniqueID: ahs.uniqueID || `ahs-${index}`,
+    cells: [...(ahs.ahsAllCells || [])],
+    digits: [...(ahs.ahsDigits || [])],
+    dof: Number.isInteger(ahs.ahsDOF) ? ahs.ahsDOF : 0,
+    rccList: (ahs.rccList || []).flatMap(rcc =>
+      (rcc.rccDigits || []).map(digit => ({
+        digit,
+        cells: [rcc.rccCell],
+        sectors: [...(rcc.rccSectors || [])],
+      }))),
+  }));
+}
+
+function hydraFamilyParticipants(payload, family, sourceNodes, onProgress = null) {
+  const strongLinkTypes = Array.isArray(payload.strongLinkTypes) && payload.strongLinkTypes.length
+    ? payload.strongLinkTypes : [0, 1, 2, 3, 4];
+  const strongLinkSet = core.buildStrongLinks(payload.candidateGrid, { strongLinkTypes });
+  const isAhs = family === 'AHS';
+  const alsList = isAhs ? [] : sourceNodes.filter(node => node.family !== 'AHS');
+  const ahsList = isAhs ? sourceNodes : [];
+  const alsLinkSet = alsList.length ? core.buildAlsLinks(payload.candidateGrid, {
+    alsList, strictSingleCommon: true, maxLinks: payload.maxAlsLinks,
+  }) : [];
+  const ahsLinkSet = ahsList.length ? core.buildAhsLinks(payload.candidateGrid, {
+    ahsList: ahsList.map(node => node.source || node), strongLinkSet,
+    minDof: 1, maxDof: 3, strictSingleCommon: false,
+    maxLinks: payload.maxAhsLinks || 5000,
+  }) : [];
+  const links = family === 'AHS' ? ahsLinkSet : alsLinkSet;
+  const participants = [];
+  let aicChainsChecked = 0;
+  const maxParticipants = Math.max(1, Number(payload.maxParticipants) || 2000);
+  const maxChains = Math.min(2000, Math.max(1, Number(payload.maxAicChains) || 500));
+  for (const source of sourceNodes) {
+    if (participants.length >= maxParticipants) break;
+    const report = core.findAicChains(payload.candidateGrid, {
+      onProgress, strongLinkSet, alsList, alsLinkSet, includeAls: !!alsList.length,
+      ahsList: ahsList.map(node => node.source || node), ahsLinkSet,
+      includeAhs: !!ahsList.length, collectAlsBranches: true,
+      maxAlsBranches: maxParticipants, strongLinkTypes,
+      startNodeIds: [source.uniqueID || source.id],
+      startNodeCells: source.ahsAllCells || source.alsAllCells || source.cells || [],
+      maxDepth: Math.max(2, Number(payload.aicDepth) || 4),
+      maxChains,
+    });
+    const chains = [...(report.chains || []), ...(report.alsBranches || [])]
+      .filter(chain => chain.steps?.some(step => step.family === family));
+    aicChainsChecked += chains.length;
+    participants.push(...core.hydraParticipantsFromAicChains(
+      payload.candidateGrid, chains, [source], links,
+      { maxParticipants: maxParticipants - participants.length, forChaining: true, family },
+    ));
+  }
+  return { participants, aicChainsChecked };
+}
+
+function runHydraFamily(payload, family, onProgress = null) {
+  const maxDigits = Math.min(9, Math.max(2, Number(payload.maxDigits) || 9));
+  const maxAuxiliary = Math.min(9, Math.max(1, Number(payload.maxAuxiliary) || 9));
+  const alsList = core.alsConstructor(payload.candidateGrid, {
+    maxSizeDOF: maxDigits - 1, maxSizeFox: maxDigits - 1,
+  }).map(node => ({ ...node, family: 'ALS', cells: node.alsAllCells, digits: node.alsDigits,
+    dof: node.alsDOF, id: node.uniqueID }));
+  const ahsList = normaliseHydraAhsNodes(core.ahsConstructor(payload.candidateGrid, {
+    maxSize: Math.min(8, maxDigits), maxSizeFox: Math.min(7, maxDigits - 1),
+  }));
+  const sourceNodes = family === 'ALS' ? alsList : family === 'AHS' ? ahsList : [...alsList, ...ahsList];
+  const participantFamily = family === 'ALC' ? null : family;
+  const aic = participantFamily
+    ? hydraFamilyParticipants(payload, participantFamily, sourceNodes, onProgress)
+    : {
+      participants: [
+        ...hydraFamilyParticipants(payload, 'ALS', alsList, onProgress).participants,
+        ...hydraFamilyParticipants(payload, 'AHS', ahsList, onProgress).participants,
+      ],
+      aicChainsChecked: 0,
+    };
+  const report = core.findHydraDof(payload.candidateGrid, {
+    sourceNodes,
+    participants: aic.participants,
+    nodeFamilies: family === 'ALC' ? ['ALS', 'AHS'] : [family],
+    families: family === 'ALC' ? ['ALS', 'AHS'] : [family],
+    maxDigits, maxAuxiliary, maxResults: payload.maxResults,
+    requireVerifiedParticipants: payload.requireVerifiedParticipants !== false,
+    name: `Hydra ${family} DOF`, type: `HYDRA_${family}_DOF`, family,
+  });
+  return { ...report, stats: { ...(report.stats || {}), aicChainsChecked: aic.aicChainsChecked,
+    hydraParticipants: aic.participants.length } };
+}
+
+function runHydraAhsDof(payload, onProgress = null) {
+  return runHydraFamily(payload, 'AHS', onProgress);
+}
+
+function runHydraAlcDof(payload, onProgress = null) {
+  return runHydraFamily(payload, 'ALC', onProgress);
 }
 
 function runHydraAlsDof(payload, onProgress = null) {
@@ -363,7 +509,10 @@ function runHydraAlsDof(payload, onProgress = null) {
     maxSizeDOF: maxDigits - 1,
     maxSizeFox: maxDigits - 1,
   });
-  const aic = hydraAicParticipants(payload, alsList, onProgress);
+  const includeHydra = payload.includeHydra !== false;
+  const aic = includeHydra
+    ? hydraAicParticipants(payload, alsList, onProgress, true)
+    : { participants: [], aicChainsChecked: 0 };
   const participants = aic.participants;
   const report = core.findHydraAlsDof(payload.candidateGrid, {
     alsList,
@@ -373,6 +522,7 @@ function runHydraAlsDof(payload, onProgress = null) {
     maxResults: payload.maxResults,
     requireVerifiedParticipants: payload.requireVerifiedParticipants !== false,
     families: payload.families,
+    includeHydra,
   });
   return {
     ...report,
@@ -392,12 +542,18 @@ function runAlsDof(payload) {
     maxSizeDOF: maxDigits - 1,
     maxSizeFox: maxDigits - 1,
   });
+  const includeHydra = payload.includeHydra === true;
+  const aic = includeHydra
+    ? hydraAicParticipants(payload, alsList, null, true)
+    : { participants: [], aicChainsChecked: 0 };
   const raw = core.findAlsDofNets(payload.candidateGrid, {
     alsList,
     maxAuxiliary,
     maxDigits,
     maxResults: payload.maxResults || 5000,
     includeChain: true,
+    includeHydra,
+    participants: aic.participants,
   });
   const accepted = [];
   const rejected = [];
@@ -412,6 +568,7 @@ function runAlsDof(payload) {
     rejectedResults: rejected,
     stats: {
       ...(raw.stats || {}),
+      aicChainsChecked: aic.aicChainsChecked,
       verifierChecked: (raw.results || []).length,
       verifierRejected: rejected.length,
     },
@@ -521,9 +678,13 @@ function runAhsDofChain(payload) {
     if (verification.ok) accepted.push({ ...result, verification });
     else rejected.push({ result, verification });
   }
+  const hydraReport = payload.includeHydra === true
+    ? runHydraAhsDof({ ...payload, maxDigits: payload.maxAhsSize || 8 })
+    : null;
   return {
     ...raw,
     results: accepted,
+    hydraReport,
     rejectedResults: rejected,
     stats: {
       ...(raw.stats || {}),
@@ -546,7 +707,10 @@ function runAlcChain(payload, onProgress = null) {
 }
 
 function runAlcDof(payload, onProgress = null) {
-  return core.findAlcDofChains(payload.candidateGrid, { ...payload, onProgress });
+  const report = core.findAlcDofChains(payload.candidateGrid, { ...payload, onProgress });
+  return payload.includeHydra === true
+    ? { ...report, hydraReport: runHydraAlcDof({ ...payload, maxDigits: payload.maxAlsDigits || 5 }, onProgress) }
+    : report;
 }
 
 function runMsls(payload) {
@@ -604,7 +768,10 @@ self.onmessage = event => {
     if (type === 'simple') result = runSimple(payload || {});
     else if (type === 'fish') result = runFish(payload || {});
     else if (type === 'chains') result = runChains(payload || {}, onProgress);
+    else if (type === 'chromatic-chain-links') result = runChromaticChainLinks(payload || {});
     else if (type === 'hydra-als-dof') result = runHydraAlsDof(payload || {}, onProgress);
+    else if (type === 'hydra-ahs-dof') result = runHydraAhsDof(payload || {}, onProgress);
+    else if (type === 'hydra-alc-dof') result = runHydraAlcDof(payload || {}, onProgress);
     else if (type === 'als-dof') result = runAlsDof(payload || {});
     else if (type === 'als-dof-chain') result = runAlsDofChain(payload || {}, onProgress);
     else if (type === 'ahs-dof') result = runAhsDof(payload || {});

@@ -119,6 +119,47 @@ test('Hydra exposes the complementary LS digit at the opposite AIC endpoint', ()
   assert.deepEqual(eliminations.map(item => [item.cell, item.digit]), [[27, 8]]);
 });
 
+test('Hydra does not remove the active AIC endpoint digit', () => {
+  const cand = Array.from({ length: 81 }, () => []);
+  cand[27] = [1, 8];
+  const auxiliary = core.hydraParticipant(cand, {
+    node: node('S', [18], [1, 4], 1),
+    verified: true,
+    chain: {
+      verified: true,
+      steps: [
+        {
+          entry: { cells: [27], digits: [1] },
+          exit: { cells: [18], digits: [4] },
+        },
+      ],
+    },
+  });
+  const eliminations = core.hydraBoundaryEliminations(cand, auxiliary, {
+    digit: 4,
+    rightCells: [18],
+  });
+  assert.deepEqual(eliminations, []);
+});
+
+test('Hydra does not remove an asserted digit on a terminal chain step', () => {
+  const cand = Array.from({ length: 81 }, () => []);
+  cand[72] = [2];
+  const participant = core.hydraParticipant(cand, {
+    node: node('S', [72], [2, 6, 9], 2),
+    verified: true,
+    chain: {
+      verified: true,
+      steps: [
+        { entry: { cells: [10], digits: [8] }, exit: { cells: [11], digits: [2] } },
+        { entry: { cells: [72], digits: [2] }, exit: { cells: [72], digits: [9] } },
+      ],
+      eliminations: [{ cell: 72, digit: 2 }],
+    },
+  });
+  assert.deepEqual(participant.eliminations, []);
+});
+
 test('Hydra ALS-DOF exposes an explicit AIC link boundary', () => {
   const record = {
     mode: 'hydra',
@@ -255,12 +296,12 @@ test('AIC collection preserves a branch with no standalone elimination', () => {
     && !participant.eliminations.length));
 });
 
-test('the existing ALS DOF chain worker searches and returns Hydra paths without a prior Hydra search', async t => {
+test('the existing ALS DOF chain worker searches and returns Hydra paths without a prior Hydra search', async () => {
   const { createSolverHarness } = require('./helpers/solver-harness');
   const solver = createSolverHarness();
-  t.after(() => solver.close());
-  const { cand } = dofChainFixture();
-  const report = await solver.evaluate(`runSearchWorker('als-dof-chain', {
+  try {
+    const { cand } = dofChainFixture();
+    const report = await solver.evaluate(`runSearchWorker('als-dof-chain', {
     candidateGrid: ${JSON.stringify(cand)}, maxDigits: 3, maxAuxiliary: 1,
     maxResults: 30, aicDepth: 3, includeAhs: false,
   })`);
@@ -281,14 +322,17 @@ test('the existing ALS DOF chain worker searches and returns Hydra paths without
   assert.ok(solver.evaluate('currentHighlights().hydraChains.length') > 0);
   assert.ok(solver.evaluate('window.hydraStep.elim.items.some(item => item.cell === 2 && item.digit === 1)'));
   solver.evaluate('lastRemoved = core.applyEliminations(cand, window.hydraStep.elim);');
-  assert.equal(solver.evaluate('cand[2].includes(1)'), false);
+    assert.equal(solver.evaluate('cand[2].includes(1)'), false);
+  } finally {
+    await solver.close();
+  }
 });
 
-test('Hydra chain selection highlights every branch', async t => {
+test('Hydra chain selection highlights every branch', async () => {
   const { createSolverHarness } = require('./helpers/solver-harness');
   const solver = createSolverHarness();
-  t.after(() => solver.close());
-  solver.evaluate(`
+  try {
+    solver.evaluate(`
     puzzle = new Array(81).fill(0);
     cand = Array.from({ length: 81 }, () => []);
     cand[0] = [1,2]; cand[1] = [2,3]; cand[40] = [4,5]; cand[41] = [5,6];
@@ -304,7 +348,10 @@ test('Hydra chain selection highlights every branch', async t => {
     selectedAlsDofSource = 'chain'; selectedAlsDofIndex = 0;
   `);
   assert.equal(solver.evaluate('currentHighlights().hydraChains.length'), 2);
-  for (const atom of ['0:1', '1:3', '40:4', '41:6']) {
-    assert.equal(solver.evaluate(`currentHighlights().chainMarks.has('${atom}')`), true);
+    for (const atom of ['0:1', '1:3', '40:4', '41:6']) {
+      assert.equal(solver.evaluate(`currentHighlights().chainMarks.has('${atom}')`), true);
+    }
+  } finally {
+    await solver.close();
   }
 });

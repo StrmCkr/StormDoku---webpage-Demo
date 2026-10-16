@@ -75,6 +75,78 @@
     return edges;
   }
 
+  function commonSectors(cells) {
+    if (!cells.length) return [];
+    return units
+      .map((unit, sector) => cells.every(cell => unit.includes(cell)) ? sector : -1)
+      .filter(sector => sector >= 0);
+  }
+
+  function peerEnvelope(cand, cells, digits) {
+    const source = new Set(cells);
+    const output = {};
+    for (const digit of digits) {
+      output[digit] = [];
+      for (let cell = 0; cell < 81; cell += 1) {
+        if (source.has(cell) || !(cand[cell] || []).includes(digit)) continue;
+        if (cells.every(sourceCell => peers[sourceCell].has(cell))) output[digit].push(cell);
+      }
+    }
+    return output;
+  }
+
+  // A Type 3 chromatic node is the XOR boundary between the graph side and
+  // its guardian side.  Each side carries its own digit group plus the cells
+  // that are peers of that group; the chain walk uses those peer envelopes as
+  // the two NAND gates.
+  function chromaticType3Link(record, cand, index) {
+    const sideACells = [...new Set(record.coreCells || [])];
+    const sideBCells = [...new Set(record.guardians || [])];
+    const sideADigits = [...new Set(record.digits || [])].sort((a, b) => a - b);
+    // The opposite side is the guardian/extra-digit side.  Selected graph
+    // digits belong only to A; only candidates outside A can carry B.
+    const sideBDigits = [...new Set(sideBCells.flatMap(cell =>
+      (cand[cell] || []).filter(digit => !sideADigits.includes(digit))))]
+      .sort((a, b) => a - b);
+    if (!sideACells.length || !sideBCells.length || !sideADigits.length || !sideBDigits.length) {
+      return null;
+    }
+    const sideAPeers = peerEnvelope(cand, sideACells, sideADigits);
+    const sideBPeers = peerEnvelope(cand, sideBCells, sideBDigits);
+    return {
+      id: `chromatic-type3:${index}`,
+      linkType: 8,
+      linkTypeName: 'CHROMATIC_TYPE_3',
+      secondaryTypes: [],
+      chromaticRecord: record,
+      chromaticType: 3,
+      originSector: commonSectors([...sideACells, ...sideBCells]),
+      startingDigits: sideADigits,
+      activeCells: sideACells,
+      linkedCells: sideBCells,
+      linkDigits: sideBDigits,
+      startCellsSector: Object.fromEntries(sideADigits.map(digit => [digit, commonSectors(sideACells)])),
+      linkCellsSector: Object.fromEntries(sideBDigits.map(digit => [digit, commonSectors(sideBCells)])),
+      startDigitSwapAvailable: [],
+      endDigitSwapAvailable: [],
+      potentialElimStart: sideAPeers,
+      potentialElimEnd: sideBPeers,
+      rightWeakLinks: [],
+      leftWeakLinks: [],
+      xorConstruction: {
+        kind: 'chromatic-type-3',
+        sideA: { cells: sideACells, digits: sideADigits },
+        sideB: { cells: sideBCells, digits: sideBDigits },
+      },
+    };
+  }
+
+  function buildChromaticType3Links(cand, records = []) {
+    return records
+      .map((record, index) => chromaticType3Link(record, cand, index))
+      .filter(Boolean);
+  }
+
   function find(cand, options = {}) {
     const minSectors = Math.max(2, Number(options.minSectors) || 4);
     const maxSectors = Math.min(9, Math.max(minSectors, Number(options.maxSectors) || 5));
@@ -139,5 +211,7 @@
     }
     return { tech: 'non-colourable-chromatic-graph', results, stats: { tested, truncated } };
   }
-  global.StormChromaticCore = { find, units, unitNames, peers };
+  global.StormChromaticCore = {
+    find, units, unitNames, peers, buildChromaticType3Links,
+  };
 }(typeof window !== 'undefined' ? window : globalThis));

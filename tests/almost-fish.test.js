@@ -32,3 +32,18 @@ const disabled = core.buildStrongLinks(cand, {
 assert.equal(disabled[7].length, 0, 'AF formation toggles can disable every fish family');
 
 console.log(`Almost Fish: ${strongLinks[7].length} type-7 links validated.`);
+
+const fishXorLinks = core.buildStrongLinks(cand, {
+  includeAlmostFish: true,
+  almostFish: {
+    grid, minSize: 2, maxSize: 2, maxK: 1, maxReports: 100,
+    fishXorOnly: true,
+  },
+})[7];
+assert.ok(fishXorLinks.length > 0, 'the row/column fish XOR pass creates links');
+for (const link of fishXorLinks) {
+  assert.ok(link.xorConstruction.extraCells.length >= 1);
+  assert.ok(link.xorConstruction.extraCells.length <= 9);
+  assert.equal(link.xorConstruction.fishXor, true);
+  assert.equal(link.linkTypeName, 'FISH_XOR');
+}

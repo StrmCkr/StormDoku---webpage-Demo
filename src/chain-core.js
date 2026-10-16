@@ -514,6 +514,22 @@
     return node;
   }
 
+  function linkSourceIds(node) {
+    const raw = node?.raw || {};
+    return [
+      raw.LS_L?.uniqueID, raw.LS_R?.uniqueID,
+      raw.HS_L?.uniqueID, raw.HS_R?.uniqueID,
+      raw.left?.uniqueID, raw.right?.uniqueID,
+      raw.left?.id, raw.right?.id,
+    ].filter(value => value != null).map(String);
+  }
+
+  function startMatchesNode(node, startNodeIds) {
+    if (!startNodeIds?.ids?.size && !startNodeIds?.cells?.size) return true;
+    return linkSourceIds(node).some(id => startNodeIds.ids.has(id))
+      || [...(startNodeIds.cells || [])].some(cell => node.allCells.includes(cell));
+  }
+
   function directedView(node, forward) {
     const entry = forward ? node.left : node.right;
     const exit = forward ? node.right : node.left;
@@ -584,15 +600,17 @@
     const includeStrong = options.includeStrong !== false;
     const includeAls = options.includeAls === true;
     const includeAhs = options.includeAhs === true;
+    const includeChromatic = options.includeChromatic === true;
     const includeHydra = options.includeHydra === true;
     const strongSet = includeStrong
       ? (options.strongLinkSet || core.buildStrongLinks(cand, {
         includeAlmostFish: (options.strongLinkTypes ?? [0, 1, 2, 3, 4]).includes(7),
         strongLinkTypes: options.strongLinkTypes,
+        almostFish: options.almostFish,
       }))
       : [];
     const selectedStrongTypes = new Set(options.strongLinkTypes ?? [0, 1, 2, 3, 4]);
-    const strongLinks = flattenLinkSet(strongSet, core.flattenStrongLinks)
+    let strongLinks = flattenLinkSet(strongSet, core.flattenStrongLinks)
       .filter(link => selectedStrongTypes.has(Number(link.linkType)));
 
     let alsSet = [];
@@ -745,6 +763,9 @@
       });
     }
     const ahsLinks = flattenLinkSet(ahsSet, core.flattenAhsLinks);
+    const chromaticLinks = includeChromatic
+      ? flattenLinkSet(options.chromaticLinkSet, links => links)
+      : [];
     const hydraLinks = includeHydra
       ? flattenLinkSet(options.hydraLinkSet, links => links)
       : [];
@@ -754,15 +775,17 @@
         ...strongLinks.map((link, index) => normaliseLink(link, 'SL', index)),
         ...alsLinks.map((link, index) => normaliseLink(link, 'ALS', index)),
         ...ahsLinks.map((link, index) => normaliseLink(link, 'AHS', index)),
+        ...chromaticLinks.map((link, index) => normaliseLink(link, 'CHROMATIC', index)),
         ...hydraLinks.map((link, index) => normaliseLink(link, 'HYDRA', index)),
       ],
       counts: {
         strong: strongLinks.length,
         als: alsLinks.length,
         ahs: ahsLinks.length,
+        chromatic: chromaticLinks.length,
         hydra: hydraLinks.length,
       },
-      source: { strongSet, alsSet, ahsSet, alsList, ahsList, hydraSet: hydraLinks },
+      source: { strongSet, alsSet, ahsSet, alsList, ahsList, chromaticSet: chromaticLinks, hydraSet: hydraLinks },
     };
   }
 
@@ -775,6 +798,8 @@
     const alcAlsViews = [];
     const alcAhsViews = [];
     const alcStrongViews = [];
+    const chromaticViews = [];
+    const chromaticByEntryDigit = new Map();
 
     for (const node of linkNodes) {
       if (onProgress && views.length % 256 === 0) {
@@ -788,6 +813,14 @@
           || (node.family === 'SL' && node.linkType === 4)) alcAlsViews.push(view);
         if (node.linkTypeName === 'AHS_RCC') alcAhsViews.push(view);
         if (node.family === 'SL' && [0, 1].includes(node.linkType)) alcStrongViews.push(view);
+        if (node.family === 'CHROMATIC') {
+          chromaticViews.push(view);
+          for (const digit of view.entry.digits) {
+            const bucket = chromaticByEntryDigit.get(digit) || [];
+            bucket.push(view);
+            chromaticByEntryDigit.set(digit, bucket);
+          }
+        }
 
         const localBucket = entryByCells.get(view.entry.cellKey) || [];
         localBucket.push(view);
@@ -825,13 +858,36 @@
       alcAlsViews,
       alcAhsViews,
       alcStrongViews,
+      chromaticViews,
+      chromaticByEntryDigit,
     };
   }
 
-  function localConnection(fromView, toView) {
+  function localConnection(fromView, toView, cand = null) {
     const exit = fromView.exit;
     const entry = toView.entry;
-    if (exit.cellKey !== entry.cellKey) return null;
+    const overlap = intersection(exit.cells, entry.cells);
+
+    // A grouped-to-cell NAND is only valid at a real shared cell.  Do not
+    // infer it from the group's sector metadata: both displayed digits must
+    // still be live candidates in that overlap cell.
+    if (exit.cellKey !== entry.cellKey) {
+      if (!overlap.length || exit.digits.length !== 1 || entry.digits.length !== 1) return null;
+      const fromDigit = exit.digits[0];
+      const toDigit = entry.digits[0];
+      if (fromDigit === toDigit || !cand
+        || !overlap.some(cell => (cand[cell] || []).includes(fromDigit)
+          && (cand[cell] || []).includes(toDigit))) return null;
+      return {
+        weakType: LOCAL_WEAK,
+        weakTypeName: WEAK_TYPE_NAMES[LOCAL_WEAK],
+        digit: toDigit,
+        fromDigit,
+        toDigit,
+        cells: overlap,
+        sectors: [],
+      };
+    }
     // AHS_RCC endpoints convey a hidden-single cell set. Their local weak
     // connection is cellular: the same reduced HS side may be entered from
     // either direction without requiring a digit swap on a single cell.
@@ -857,6 +913,8 @@
     // same digit on the same cell is a self-edge, not a NAND connection;
     // accepting it creates bogus output such as `(5-5)r1c6`.
     if (fromDigit == null || toDigit == null || fromDigit === toDigit) return null;
+    if (cand && !exit.cells.some(cell => (cand[cell] || []).includes(fromDigit)
+      && (cand[cell] || []).includes(toDigit))) return null;
 
     return {
       weakType: LOCAL_WEAK,
@@ -911,14 +969,47 @@
     return null;
   }
 
-  function directConnection(fromView, toView) {
+  function directConnection(fromView, toView, cand = null) {
     const hydra = hydraLinkConnection(fromView, toView);
     if (hydra) return hydra;
     const modular = alsModuleConnection(fromView, toView);
     if (modular) return modular;
+    const chromatic = chromaticLinkConnection(fromView, toView);
+    if (chromatic) return chromatic;
     if (alsModulesOverlap(fromView, toView)) return null;
-    return localConnection(fromView, toView)
+    return localConnection(fromView, toView, cand)
       || sectorConnection(fromView, toView);
+  }
+
+  // A Type 3 chromatic node is a set-to-set XOR boundary.  Its sides expose
+  // the cells that can see every cell on that side, so the handoff is proved
+  // by reciprocal peer containment rather than by requiring both sets to
+  // occupy one common Sudoku sector.
+  function chromaticLinkConnection(fromView, toView) {
+    if (fromView.node.family !== 'CHROMATIC' && toView.node.family !== 'CHROMATIC') return null;
+    if (hasIntersection(fromView.node.allCells, toView.node.allCells)) return null;
+
+    const left = fromView.exit;
+    const right = toView.entry;
+    const sharedDigits = intersection(left.digits, right.digits);
+    for (const digit of sharedDigits) {
+      const leftPeers = left.potentialElimByDigit[digit] || [];
+      const rightPeers = right.potentialElimByDigit[digit] || [];
+      if (!leftPeers.length || !rightPeers.length) continue;
+      if (!isSubsetOf(left.cells, rightPeers)) continue;
+      if (!isSubsetOf(right.cells, leftPeers)) continue;
+      return {
+        weakType: SECTOR_WEAK,
+        weakTypeName: WEAK_TYPE_NAMES[SECTOR_WEAK],
+        digit,
+        fromDigit: digit,
+        toDigit: digit,
+        cells: union(left.cells, right.cells),
+        sectors: [],
+        chromatic: true,
+      };
+    }
+    return null;
   }
 
   // Hydra modules are opt-in AIC links. Their boundary interfaces are
@@ -1498,10 +1589,26 @@
       }
     }
 
+    // Chromatic Type 3 nodes can span several sectors, so their sides are
+    // intentionally not indexed by one sector.  Probe the XOR peer-envelope
+    // relation directly whenever a chromatic node is involved.
+    if (view.node.family === 'CHROMATIC' || graph.chromaticViews.length) {
+      const targets = view.node.family === 'CHROMATIC'
+        ? graph.views.filter(target => intersection(view.exit.digits, target.entry.digits).length)
+        : [...new Set(view.exit.digits.flatMap(digit =>
+          graph.chromaticByEntryDigit.get(digit) || []))];
+      for (const target of targets) {
+        if (target.node.graphId === view.node.graphId) continue;
+        stats.transitionsChecked += 1;
+        add(target, directConnection(view, target, options.candidateGrid));
+        if (out.length >= options.maxBranching) return out;
+      }
+    }
+
     for (const target of graph.entryByCells.get(view.exit.cellKey) || []) {
       if (target.node.graphId === view.node.graphId) continue;
       stats.transitionsChecked += 1;
-      add(target, localConnection(view, target));
+      add(target, localConnection(view, target, options.candidateGrid));
       if (out.length >= options.maxBranching) return out;
     }
 
@@ -1654,7 +1761,7 @@
       const left = steps[index].view;
       const right = steps[(index + 1) % steps.length].view;
       const weak = index + 1 < steps.length
-        ? (alcMixedConnection(cand, left, right) || directConnection(left, right))
+        ? (alcMixedConnection(cand, left, right) || directConnection(left, right, cand))
         : ringWeak;
       if (weak?.alc) {
         // The mixed edge is only the NAND connector between two XOR nodes.
@@ -1875,7 +1982,7 @@
         const nextIndex = (index + 1) % steps.length;
         const right = steps[nextIndex].view;
         const weak = index + 1 < steps.length
-          ? directConnection(left, right)
+          ? directConnection(left, right, cand)
           : ringWeak;
         computeLockedWeak(cand, left, right, weak, out);
         if (evenRing) computeEvenRingCellularWeak(cand, left, right, weak, out);
@@ -1988,7 +2095,9 @@
   }
 
   function chainValueToken(step) {
-    return step.family !== 'SL' || step.linkType === 4 || step.linkTypeName === 'ALS'
+    return step.family !== 'SL'
+      || (step.linkType === 4 && isBivalveStep(step))
+      || step.linkTypeName === 'ALS'
       ? 'V'
       : 'L';
   }
@@ -2501,7 +2610,10 @@
       // A pure bivalve cycle is still an XY structure.  The ring state is
       // carried separately, so keep the XY-Chain name and let the formatter
       // append the ring marker and the folder classifier place it in Ring.
-      if (pattern && pattern.split('').every(token => token === 'V') && steps.length >= 3) {
+      if (pattern
+        && pattern.split('').every(token => token === 'V')
+        && steps.length >= 3
+        && steps.every(isBivalveStep)) {
         return prefixedStructureName(steps.length === 3 ? 'XY-Wing' : 'XY-Chain', steps);
       }
       return groupedPrefix ? `${groupedPrefix} - Ring` : 'AIC Ring';
@@ -2550,7 +2662,9 @@
     if (isPureRemotePairChain(steps)) {
       return prefixedStructureName('Remote Pair', steps);
     }
-    if (pattern.split('').every(token => token === 'V') && steps.length >= 3) {
+    if (pattern.split('').every(token => token === 'V')
+      && steps.length >= 3
+      && steps.every(isBivalveStep)) {
       return prefixedStructureName('XY-Chain', steps);
     }
     return groupedPrefix || 'AIC';
@@ -2789,6 +2903,7 @@
       maxAhsDof: Number.isInteger(options.maxAhsDof) ? Math.max(1, Math.min(3, options.maxAhsDof)) : 3,
       strictAhsSingleCommon: options.strictAhsSingleCommon ?? false,
       maxDepth: Number.isInteger(options.maxDepth) ? Math.max(1, options.maxDepth) : 6,
+      minDepth: Number.isInteger(options.minDepth) ? Math.max(1, options.minDepth) : 1,
       alsMaxSizeDOF: Number.isInteger(options.alsMaxSizeDOF)
         ? Math.max(0, options.alsMaxSizeDOF) : null,
       alsMaxSizeFox: Number.isInteger(options.alsMaxSizeFox)
@@ -2815,6 +2930,12 @@
       ahsList: options.ahsList,
       includeHydra: options.includeHydra === true,
       hydraLinkSet: options.hydraLinkSet,
+      includeChromatic: options.includeChromatic === true,
+      chromaticLinkSet: options.chromaticLinkSet,
+      startNodeIds: {
+        ids: new Set((options.startNodeIds || []).map(String)),
+        cells: new Set((options.startNodeCells || []).map(Number)),
+      },
       collectAlsBranches: options.collectAlsBranches === true,
       excludePureAhs: options.excludePureAhs === true,
       maxAlsBranches: Number.isInteger(options.maxAlsBranches) ? Math.max(1, options.maxAlsBranches) : 2000,
@@ -2834,6 +2955,7 @@
       strongLinks: inventory.counts.strong,
       alsLinks: inventory.counts.als,
       ahsLinks: inventory.counts.ahs,
+      chromaticLinks: inventory.counts.chromatic,
       hydraLinks: inventory.counts.hydra,
       graphLinks: inventory.links.length,
       directedViews: graph.views.length,
@@ -2850,7 +2972,8 @@
     };
 
     let stop = false;
-    const resultAllowed = steps => (!opts.excludePureAhs || steps.some(step => step.view.node.family !== 'AHS'))
+    const resultAllowed = steps => logicalDepth(steps) >= opts.minDepth
+      && (!opts.excludePureAhs || steps.some(step => step.view.node.family !== 'AHS'))
       && (!opts.resultFilter || opts.resultFilter(steps));
     const noteResult = outcome => {
       if (outcome === 'duplicate') stats.duplicatesSuppressed += 1;
@@ -2875,6 +2998,7 @@
 
     for (const start of graph.views) {
       if (stop) break;
+      if (!startMatchesNode(start.node, opts.startNodeIds)) continue;
       // Generic AIC may enter AHS_RCC after an ordinary link, but pure AHS
       // walks belong to the dedicated AHS phases. Skip those starts so they
       // cannot consume the generic pass state budget before being rejected.
@@ -2958,9 +3082,7 @@
         if (currentDepth >= opts.maxDepth) continue;
 
         for (const edge of expandFrom(current.view, graph, stats, opts)) {
-          if (current.visited.has(edge.target.node.graphId)) continue;
-
-          const ringWeak = directConnection(edge.target, start);
+          const ringWeak = directConnection(edge.target, start, cand);
           const ringOverlapElims = !ringWeak && current.steps.length + 1 > 2
             ? computeOverlapRingEliminations(cand, edge.target, start)
             : null;
@@ -2972,6 +3094,10 @@
             .filter(atom => current.usedAtoms.has(atom));
           const reusesNonStartAtom = sharedKnownAtoms.some(atom => !startAtoms.has(atom));
           const closesToStart = ringWeak || ringOverlapElims !== null;
+          // The start node is intentionally revisited only when this edge
+          // proves a real ring closure. Other repeated nodes remain invalid.
+          if (current.visited.has(edge.target.node.graphId)
+            && edge.target.node.graphId !== start.node.graphId) continue;
           if (reusesNonStartAtom || (sharedKnownAtoms.length && !closesToStart)) continue;
 
           stats.transitionsAccepted += 1;
