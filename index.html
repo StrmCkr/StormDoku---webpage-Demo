@@ -4142,7 +4142,7 @@
     <div class="header-brand">
       <h1>StormDoku: on-line | off-line</h1>
       <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo for regular Sudoku 9x9 grids.</p>
-      <p class="app-meta">Alpha v0.6.47 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <p class="app-meta">Alpha v0.6.51 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
     </div>
   </header>
 
@@ -5656,13 +5656,13 @@
   <script src="./src/mini-sectors-core.js?v=20260928-1"></script>
   <script src="./src/chromatic-core.js?v=20261015-1"></script>
   <script src="./src/chromatic-als-core.js?v=20261007-9"></script>
-    <script src="./src/strong-link-core.js?v=20261015-1"></script>
-    <script src="./src/chain-core.js?v=20261016-13"></script>
+    <script src="./src/strong-link-core.js?v=20261016-17"></script>
+    <script src="./src/chain-core.js?v=20261016-17"></script>
   <script src="./src/alc-core.js?v=20261012-3"></script>
   <script src="./src/ahs-xy-core.js?v=20261001-4"></script>
   <script src="./src/ahs-dof-core.js?v=20261002-1"></script>
   <script src="./src/msls-core.js?v=20261004-1"></script>
-    <script src="./src/search-worker-source.js?v=20261016-13"></script>
+    <script src="./src/search-worker-source.js?v=20261016-17"></script>
   <script>
     const core = window.StormDoku;
     const boardEl = document.getElementById('board');
@@ -6097,7 +6097,7 @@
       }
 
       try {
-        const workerPath = './src/search-worker.js?v=20261016-13';
+        const workerPath = './src/search-worker.js?v=20261016-17';
         releaseSearchWorkerBlobUrl();
         let workerUrl = new URL(workerPath, document.baseURI);
         if (document.baseURI.startsWith('file:')) {

@@ -878,6 +878,14 @@
       if (fromDigit === toDigit || !cand
         || !overlap.some(cell => (cand[cell] || []).includes(fromDigit)
           && (cand[cell] || []).includes(toDigit))) return null;
+      // A grouped side cannot use a partial overlap as a local NAND. If its
+      // digit can also live in a non-overlapping member, the group may be
+      // true without the overlapping cell taking that digit, so the apparent
+      // cell-to-group handoff is not a proved weak link.
+      const fromCells = exit.cells.filter(cell => (cand[cell] || []).includes(fromDigit));
+      const toCells = entry.cells.filter(cell => (cand[cell] || []).includes(toDigit));
+      if (!fromCells.every(cell => overlap.includes(cell))
+        || !toCells.every(cell => overlap.includes(cell))) return null;
       return {
         weakType: LOCAL_WEAK,
         weakTypeName: WEAK_TYPE_NAMES[LOCAL_WEAK],
@@ -2109,7 +2117,13 @@
   function chainDigits(steps) {
     const digits = [];
     for (const step of steps) {
-      digits.push(...step.entry.digits, ...step.exit.digits);
+      // Classifiers are called with both public steps and the walker's
+      // internal steps.  Internal steps keep their sides under `view`; do
+      // not let that representation abort the whole hierarchy search.
+      const entry = step.entry || step.view?.entry;
+      const exit = step.exit || step.view?.exit;
+      if (!entry || !exit) return [];
+      digits.push(...(entry.digits || []), ...(exit.digits || []));
       if (step.weakDigit != null) digits.push(step.weakDigit);
     }
     return sortedUnique(digits);
@@ -2214,6 +2228,9 @@
 
   function classifyThreeLinkEri(steps, isRing) {
     if (steps.length !== 3 || steps.some((step) => step.family !== 'SL')) return null;
+    // ERI structures are single-digit links. A mixed-digit chain may share
+    // the same 0/3/0 shape, but it is not a Dual Empty Rectangle.
+    if (chainDigits(steps).length !== 1) return null;
     const types = steps.map(strongLinkTypeNumber);
     if (types.some(type => type < 0 || type > 3)) return null;
 
@@ -2240,6 +2257,7 @@
 
   function classifyAllEriChain(steps) {
     if (steps.length < 3 || steps.some(step => step.family !== 'SL')) return null;
+    if (chainDigits(steps).length !== 1) return null;
     const types = steps.map(strongLinkTypeNumber);
     if (types.every(type => type === core.ERI)) return `${steps.length}x ERI`;
     return null;
@@ -2247,6 +2265,7 @@
 
   function classifyEriWingSubclass(steps) {
     if (steps.length !== 3 || steps.some(step => step.family !== 'SL')) return null;
+    if (chainDigits(steps).length !== 1) return null;
     const pattern = steps.map(strongLinkTypeNumber).join('');
     if (['130', '031', '131'].includes(pattern)) return "Rec'T Kite";
     if (pattern === '030') return 'Dual Empty Rectangle';
@@ -2770,6 +2789,7 @@
     if ((ringWeak === null && ringOverlapElims === null) || steps.length !== 3) return null;
     const nodes = steps.map(step => step.view?.node || step);
     if (!nodes.every(node => node.family === 'SL')) return null;
+    if (chainDigits(steps).length !== 1) return null;
 
     const isEriStep = node => node.linkType === core.ERI
       || node.linkTypeName === 'ERI'
