@@ -4142,7 +4142,7 @@
     <div class="header-brand">
       <h1>StormDoku: on-line | off-line</h1>
       <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo for regular Sudoku 9x9 grids.</p>
-      <p class="app-meta">Alpha v0.6.54 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <p class="app-meta">Alpha v0.6.58 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
     </div>
   </header>
 
@@ -5655,13 +5655,13 @@
   <script src="./src/mini-sectors-core.js?v=20260928-1"></script>
   <script src="./src/chromatic-core.js?v=20261015-1"></script>
   <script src="./src/chromatic-als-core.js?v=20261007-9"></script>
-    <script src="./src/strong-link-core.js?v=20261016-17"></script>
-    <script src="./src/chain-core.js?v=20261016-17"></script>
+    <script src="./src/strong-link-core.js?v=20261016-21"></script>
+    <script src="./src/chain-core.js?v=20261016-21"></script>
   <script src="./src/alc-core.js?v=20261012-3"></script>
   <script src="./src/ahs-xy-core.js?v=20261001-4"></script>
   <script src="./src/ahs-dof-core.js?v=20261002-1"></script>
   <script src="./src/msls-core.js?v=20261004-1"></script>
-    <script src="./src/search-worker-source.js?v=20261016-17"></script>
+    <script src="./src/search-worker-source.js?v=20261016-21"></script>
   <script>
     const core = window.StormDoku;
     const boardEl = document.getElementById('board');
@@ -6095,7 +6095,7 @@
       }
 
       try {
-        const workerPath = './src/search-worker.js?v=20261016-17';
+      const workerPath = './src/search-worker.js?v=20261016-21';
         releaseSearchWorkerBlobUrl();
         let workerUrl = new URL(workerPath, document.baseURI);
         if (document.baseURI.startsWith('file:')) {
@@ -12185,7 +12185,9 @@
         score.textContent = group.score;
         const count = document.createElement('span');
         count.textContent = `${group.items.length} ${group.items.length === 1 ? 'item' : 'items'}`;
-        summary.append(category, score, count);
+        summary.appendChild(category);
+        summary.appendChild(score);
+        summary.appendChild(count);
         details.appendChild(summary);
 
         const items = document.createElement('div');
@@ -12211,7 +12213,9 @@
             noteEl.textContent = ` ${note}`;
             itemScoreEl.appendChild(noteEl);
           }
-          item.append(itemIndex, itemName, itemScoreEl);
+          item.appendChild(itemIndex);
+          item.appendChild(itemName);
+          item.appendChild(itemScoreEl);
           items.appendChild(item);
         });
         details.appendChild(items);
@@ -14745,7 +14749,8 @@
         const categoryCount = document.createElement('span');
         categoryCount.className = 'chain-category-count';
         categoryCount.textContent = `${records.length} ${records.length === 1 ? 'fish' : 'fish'}`;
-        categorySummary.append(categoryName, categoryCount);
+        categorySummary.appendChild(categoryName);
+        categorySummary.appendChild(categoryCount);
         categoryPanel.appendChild(categorySummary);
 
         if (!records.length) {
@@ -14768,7 +14773,8 @@
           const sizeCount = document.createElement('span');
           sizeCount.className = 'chain-category-count';
           sizeCount.textContent = `${sizeRecords.length} ${sizeRecords.length === 1 ? 'fish' : 'fish'}`;
-          sizeSummary.append(sizeName, sizeCount);
+          sizeSummary.appendChild(sizeName);
+          sizeSummary.appendChild(sizeCount);
           sizePanel.appendChild(sizeSummary);
 
           const list = document.createElement('ul');
@@ -14888,7 +14894,8 @@
         const sizeCount = document.createElement('span');
         sizeCount.className = 'chain-category-count';
         sizeCount.textContent = `${records.length} ${records.length === 1 ? 'subset' : 'subsets'}`;
-        sizeSummary.append(sizeName, sizeCount);
+        sizeSummary.appendChild(sizeName);
+        sizeSummary.appendChild(sizeCount);
         sizePanel.appendChild(sizeSummary);
 
         const list = document.createElement('ul');
@@ -15873,7 +15880,8 @@
         const subCount = document.createElement('span');
         subCount.className = 'chain-category-count';
         subCount.textContent = `${subclassEntries.length} ${subclassEntries.length === 1 ? 'chain' : 'chains'}`;
-        subSummary.append(subName, subCount);
+        subSummary.appendChild(subName);
+        subSummary.appendChild(subCount);
         subcategory.appendChild(subSummary);
         appendChainList(subcategory, subclassEntries);
         subclasses.appendChild(subcategory);
@@ -15917,7 +15925,8 @@
         const count = document.createElement('span');
         count.className = 'chain-category-count';
         count.textContent = `${branchEntries.length} ${branchEntries.length === 1 ? 'chain' : 'chains'}`;
-        summary.append(name, count);
+        summary.appendChild(name);
+        summary.appendChild(count);
         panel.appendChild(summary);
 
         const terminal = branchEntries.filter(entry => entry.path.length <= depth + 1);
@@ -19522,7 +19531,8 @@
         const categoryCount = document.createElement('span');
         categoryCount.className = 'chain-category-count';
         categoryCount.textContent = `${entries.length} ${entries.length === 1 ? 'chain' : 'chains'}`;
-        categorySummary.append(categoryName, categoryCount);
+        categorySummary.appendChild(categoryName);
+        categorySummary.appendChild(categoryCount);
         category.appendChild(categorySummary);
 
         const folderTree = document.createElement('div');
@@ -19825,7 +19835,8 @@
         const familyCount = document.createElement('span');
         familyCount.className = 'chain-category-count';
         familyCount.textContent = `${familyEntries.length} ${familyEntries.length === 1 ? 'result' : 'results'}`;
-        familySummary.append(familyLabel, familyCount);
+        familySummary.appendChild(familyLabel);
+        familySummary.appendChild(familyCount);
         familyPanel.appendChild(familySummary);
 
         const forms = document.createElement('div');
@@ -19843,7 +19854,8 @@
           const formCount = document.createElement('span');
           formCount.className = 'chain-category-count';
           formCount.textContent = `${formEntries.length} ${formEntries.length === 1 ? 'result' : 'results'}`;
-          formSummary.append(formLabel, formCount);
+          formSummary.appendChild(formLabel);
+          formSummary.appendChild(formCount);
           formPanel.appendChild(formSummary);
 
           const dofPanels = document.createElement('div');
@@ -19860,7 +19872,8 @@
             const dofCount = document.createElement('span');
             dofCount.className = 'chain-category-count';
             dofCount.textContent = `${entries.length} ${entries.length === 1 ? 'result' : 'results'}`;
-            dofSummary.append(dofLabel, dofCount);
+            dofSummary.appendChild(dofLabel);
+            dofSummary.appendChild(dofCount);
             dofPanel.appendChild(dofSummary);
 
             const list = document.createElement('ul');

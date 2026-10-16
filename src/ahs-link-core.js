@@ -558,11 +558,6 @@
           const leftBridge = left.ahsDigits.filter(digit => (cand[bridgeCell] || []).includes(digit));
           const rightBridge = right.ahsDigits.filter(digit => (cand[bridgeCell] || []).includes(digit));
 
-          // The shared RCC cell is neutral.  AHS-XZ requires opposite
-          // assignments at that cell; common parent digits are not a valid
-          // bridge and must never be allowed to form an AHS-XZ link.
-          if (intersection(left.ahsDigits, right.ahsDigits).length) continue;
-
           // A shared-cell AHS pair is a valid XZ bridge even when the digit
           // sets overlap. The shared cell carries the common bridge digits;
           // digits present only on one side remain exclusive to that AHS.
@@ -1337,6 +1332,152 @@
     return pairs;
   }
 
+  // Distributed AHS-XZ: the two DOF-1 AHSs need not share a cell.  A
+  // common X digit can be carried by mutually seeing candidate cells on the
+  // two AHS sides, while a second common digit is eliminated wherever every
+  // occurrence in either AHS sees the target.  This is the AHS counterpart
+  // of the disjoint ALS-XZ pass; keeping it here makes the link available to
+  // every consumer of the AHS link inventory.
+  function buildAhsDistributedXzLinks(cand, ahsList, strongLinks, bucket, seen, maxLinks) {
+    const pairable = ahsList.filter(ahs =>
+      ahs.ahsDOF === 1
+      && (ahs.ahsDigits || []).length >= 2
+      && (ahs.ahsAllCells || []).length > 0,
+    );
+
+    const peerElims = (digit, cells) => {
+      if (!cells.length || !core.setTools.peerPotentialEliminations) return [];
+      return core.setTools.peerPotentialEliminations(cand, digit, cells)
+        .filter(cell => !cells.includes(cell));
+    };
+
+    const bridgeSectors = (leftCells, rightCells) => sortedUnique(
+      [...leftCells, ...rightCells].flatMap(left =>
+        rightCells.flatMap(right => commonSectors([left, right]))),
+    );
+
+    for (let leftIndex = 0; leftIndex < pairable.length; leftIndex++) {
+      if (maxLinks !== undefined && seen.size >= maxLinks) return false;
+      const left = pairable[leftIndex];
+      for (let rightIndex = leftIndex + 1; rightIndex < pairable.length; rightIndex++) {
+        if (maxLinks !== undefined && seen.size >= maxLinks) return false;
+        const right = pairable[rightIndex];
+        if (left.ahsSector === right.ahsSector) continue;
+
+        const overlap = intersection(left.ahsAllCells, right.ahsAllCells);
+        if (overlap.length > 1) continue;
+        const commonDigits = intersection(left.ahsDigits, right.ahsDigits);
+        if (commonDigits.length < 2) continue;
+
+        for (const x of commonDigits) {
+          const leftXCells = left.ahsAllCells.filter(cell => (cand[cell] || []).includes(x));
+          const rightXCells = right.ahsAllCells.filter(cell => (cand[cell] || []).includes(x));
+          if (!leftXCells.length || !rightXCells.length) continue;
+
+          // The X bridge is cellular, not a grouped all-occurrences bridge.
+          // AHS-XZ may select one witness on each side even when another
+          // occurrence of X exists elsewhere in either AHS.
+          for (const leftXCell of leftXCells) {
+            for (const rightXCell of rightXCells) {
+              if (!cellsSeeEachOther([leftXCell], [rightXCell])) continue;
+
+              for (const z of commonDigits) {
+                if (z === x) continue;
+                const leftZ = left.ahsAllCells.filter(cell => (cand[cell] || []).includes(z));
+                const rightZ = right.ahsAllCells.filter(cell => (cand[cell] || []).includes(z));
+                if (!leftZ.length || !rightZ.length) continue;
+
+                // The Eureka link names selected Z witnesses. A target only
+                // needs to see one witness on each side; requiring it to see
+                // every Z occurrence rejects valid distributed AHS-XZs.
+                const witnessPairs = [];
+                for (const leftZCell of leftZ) {
+                  for (const rightZCell of rightZ) {
+                    const leftElims = peerElims(z, [leftZCell]);
+                    const rightElims = peerElims(z, [rightZCell]);
+                    const cells = intersection(leftElims, rightElims)
+                      .filter(cell => !left.ahsAllCells.includes(cell)
+                        && !right.ahsAllCells.includes(cell));
+                    if (cells.length) witnessPairs.push({
+                      leftZCell,
+                      rightZCell,
+                      cells,
+                    });
+                  }
+                }
+                if (!witnessPairs.length) continue;
+                const intrinsicEliminations = sortedUnique(
+                  witnessPairs.flatMap(pair => pair.cells),
+                ).map(cell => ({ cell, digit: z }));
+
+                // The distributed form carries one ordinary type-0/1
+                // continuation from an AHS witness to the outside.  This is
+                // the second parenthesised link in the Eureka notation; it
+                // prevents a bare pair of peer cells from being promoted to
+                // an AHS-XZ without the required strong-link support.
+                const supportingStrongLink = (strongLinks || []).find(link => {
+                  if (![0, 1].includes(Number(link.linkType))) return false;
+                  const digit = Number(link.startingDigits?.[0]);
+                  if (![x, z].includes(digit)
+                    || link.linkDigits?.length !== 1
+                    || Number(link.linkDigits[0]) !== digit) return false;
+                  const sides = [link.activeCells || [], link.linkedCells || []];
+                  return sides.some((inside, index) => {
+                    const outside = sides[index ^ 1];
+                    return inside.some(cell => left.ahsAllCells.includes(cell)
+                      || right.ahsAllCells.includes(cell))
+                      && outside.some(cell => !left.ahsAllCells.includes(cell)
+                        && !right.ahsAllCells.includes(cell));
+                  });
+                });
+                if (!supportingStrongLink) continue;
+
+                const leftEndpoint = directAhsEndpoint(left);
+                const rightEndpoint = directAhsEndpoint(right);
+                const bridge = {
+                  conveyance: 'CELLS',
+                  digit: x,
+                  digits: [x],
+                  restrictedDigits: [x],
+                  leftCells: [leftXCell],
+                  rightCells: [rightXCell],
+                  sectors: bridgeSectors([leftXCell], [rightXCell]),
+                };
+                const link = buildLink(
+                  cand,
+                  leftEndpoint,
+                  rightEndpoint,
+                  directAhsNode(left),
+                  bridge,
+                  directAhsNode(right),
+                );
+                link.moduleKind = 'AHS_XZ';
+                link.entrySideSubset = directAhsNode(left);
+                link.exitSideSubset = directAhsNode(right);
+                link.rccBridgeCells = [leftXCell, rightXCell];
+                link.rccStartCells = [leftXCell];
+                link.rccLinkedCells = [rightXCell];
+                link.rccStartDigitsByCell = { [leftXCell]: [x] };
+                link.rccLinkedDigitsByCell = { [rightXCell]: [x] };
+                link.zWitnessPairs = witnessPairs.map(pair => ({
+                  leftCell: pair.leftZCell,
+                  rightCell: pair.rightZCell,
+                }));
+                link.displayLeftRcc = x;
+                link.displayRightRcc = z;
+                link.intrinsicEliminations = intrinsicEliminations;
+                link.distributed = true;
+                link.supportingStrongLinkId = supportingStrongLink.id;
+                if (!addUnique(bucket, seen, link, maxLinks)) return false;
+              }
+            }
+          }
+        }
+      }
+    }
+    return true;
+  }
+
   function buildAhsLinks(cand, options = {}) {
     nextAhsLinkId = 0;
     const opts = {
@@ -1366,6 +1507,14 @@
     const seen = new Set();
 
     if (opts.mode !== 'xy') {
+      if (!buildAhsDistributedXzLinks(
+        cand,
+        ahsList,
+        strongLinks,
+        buckets[AHS_RCC],
+        seen,
+        opts.maxLinks,
+      )) return buckets;
       if (!buildAhsTwoRccBranchXzLinks(cand, ahsList, buckets[AHS_RCC], seen, opts.maxLinks)) return buckets;
       if (!buildAhsTwoRccXzLinks(cand, ahsList, buckets[AHS_RCC], seen, opts.maxLinks)) return buckets;
       if (!buildAhsXzLinks(cand, ahsList, buckets[AHS_RCC], seen, opts.maxLinks)) return buckets;
