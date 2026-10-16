@@ -4142,7 +4142,7 @@
     <div class="header-brand">
       <h1>StormDoku: on-line | off-line</h1>
       <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo for regular Sudoku 9x9 grids.</p>
-      <p class="app-meta">Alpha v0.6.53 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <p class="app-meta">Alpha v0.6.54 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
     </div>
   </header>
 
@@ -8142,7 +8142,7 @@
       return commitPlayerEdit(() => {
         cand[cell] = [...values, digit].sort((left, right) => left - right);
         return true;
-      }, `Candidate ${digit} added to ${core.cellName(cell)}.`);
+      }, `Candidate ${digit} added to ${core.cellName(cell)}.`, undefined, { preserveSolution: true });
     }
 
     function solvePlayerCell(cell, digit) {
@@ -8273,7 +8273,7 @@
       return commitPlayerEdit(() => {
         cand[cell] = values.filter(value => value !== digit);
         return true;
-      }, `Candidate ${digit} removed from ${core.cellName(cell)}.`);
+        }, `Candidate ${digit} removed from ${core.cellName(cell)}.`, undefined, { preserveSolution: true });
     }
 
     function handlePlayerDigitClick(event, cell, digit, remove = false) {
