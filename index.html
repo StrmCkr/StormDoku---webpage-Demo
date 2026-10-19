@@ -5305,10 +5305,12 @@
             <button data-sector-kind="baseSectors" data-sector-start="9" data-sector-end="18" data-sector-on="true" class="secondary" type="button">Col On</button>
             <button data-sector-kind="baseSectors" data-sector-start="18" data-sector-end="27" data-sector-on="true" class="secondary" type="button">Box On</button>
             <button data-sector-kind="baseSectors" data-sector-variants="diagonal,antiDiagonal" data-sector-on="true" class="secondary" type="button">Diagonal On</button>
+            <button data-sector-kind="baseSectors" data-sector-variants="windoku" data-sector-on="true" class="secondary" type="button">Windoku On</button>
             <button data-sector-kind="baseSectors" data-sector-start="0" data-sector-end="9" data-sector-on="false" class="secondary" type="button">Row Off</button>
             <button data-sector-kind="baseSectors" data-sector-start="9" data-sector-end="18" data-sector-on="false" class="secondary" type="button">Col Off</button>
             <button data-sector-kind="baseSectors" data-sector-start="18" data-sector-end="27" data-sector-on="false" class="secondary" type="button">Box Off</button>
             <button data-sector-kind="baseSectors" data-sector-variants="diagonal,antiDiagonal" data-sector-on="false" class="secondary" type="button">Diagonal Off</button>
+            <button data-sector-kind="baseSectors" data-sector-variants="windoku" data-sector-on="false" class="secondary" type="button">Windoku Off</button>
           </div>
         </fieldset>
 
@@ -5320,10 +5322,12 @@
             <button data-sector-kind="coverSectors" data-sector-start="9" data-sector-end="18" data-sector-on="true" class="secondary" type="button">Col On</button>
             <button data-sector-kind="coverSectors" data-sector-start="18" data-sector-end="27" data-sector-on="true" class="secondary" type="button">Box On</button>
             <button data-sector-kind="coverSectors" data-sector-variants="diagonal,antiDiagonal" data-sector-on="true" class="secondary" type="button">Diagonal On</button>
+            <button data-sector-kind="coverSectors" data-sector-variants="windoku" data-sector-on="true" class="secondary" type="button">Windoku On</button>
             <button data-sector-kind="coverSectors" data-sector-start="0" data-sector-end="9" data-sector-on="false" class="secondary" type="button">Row Off</button>
             <button data-sector-kind="coverSectors" data-sector-start="9" data-sector-end="18" data-sector-on="false" class="secondary" type="button">Col Off</button>
             <button data-sector-kind="coverSectors" data-sector-start="18" data-sector-end="27" data-sector-on="false" class="secondary" type="button">Box Off</button>
             <button data-sector-kind="coverSectors" data-sector-variants="diagonal,antiDiagonal" data-sector-on="false" class="secondary" type="button">Diagonal Off</button>
+            <button data-sector-kind="coverSectors" data-sector-variants="windoku" data-sector-on="false" class="secondary" type="button">Windoku Off</button>
           </div>
         </fieldset>
       </div>
@@ -6689,8 +6693,9 @@
         sectorToggleLabel,
         fishSettingsChanged,
       );
-      for (const button of document.querySelectorAll('[data-sector-variants="diagonal,antiDiagonal"]')) {
-        button.hidden = !(variantSettings.diagonal || variantSettings.antiDiagonal);
+      for (const button of document.querySelectorAll('[data-sector-variants]')) {
+        const variants = button.dataset.sectorVariants.split(',');
+        button.hidden = !variants.some(name => variantSettings[name]);
       }
     }
 
@@ -7327,6 +7332,61 @@
       return permutation;
     }
 
+    function toyPermutationPreservesActiveVariants(permutation) {
+      const sameSet = (left, right) => left.size === right.size
+        && [...left].every(value => right.has(value));
+      const unitKey = unit => unit.slice().sort((a, b) => a - b).join(',');
+      const activeUnitKinds = ['diagonal', 'antiDiagonal', 'windoku']
+        .filter(name => variantSettings[name]);
+
+      for (const kind of activeUnitKinds) {
+        const original = new Set((core.VARIANT_UNITS[kind] || []).map(unitKey));
+        const transformed = new Set((core.VARIANT_UNITS[kind] || [])
+          .map(unit => unitKey(unit.map(cell => permutation[cell]))));
+        if (!sameSet(original, transformed)) return false;
+      }
+
+      const relationPairs = predicate => {
+        const pairs = new Set();
+        for (let first = 0; first < 81; first += 1) {
+          const firstRow = Math.floor(first / 9);
+          const firstColumn = first % 9;
+          for (let second = first + 1; second < 81; second += 1) {
+            const secondRow = Math.floor(second / 9);
+            const secondColumn = second % 9;
+            if (predicate(
+              Math.abs(firstRow - secondRow),
+              Math.abs(firstColumn - secondColumn),
+            )) pairs.add(`${first}:${second}`);
+          }
+        }
+        return pairs;
+      };
+      const mappedPairs = pairs => new Set([...pairs].map(pair => {
+        const [first, second] = pair.split(':').map(Number);
+        const mapped = [permutation[first], permutation[second]].sort((a, b) => a - b);
+        return `${mapped[0]}:${mapped[1]}`;
+      }));
+      const relations = [];
+      if (variantSettings.antiKing) relations.push((dr, dc) => dr === 1 && dc === 1);
+      if (variantSettings.antiKnight) relations.push((dr, dc) => (dr === 1 && dc === 2) || (dr === 2 && dc === 1));
+      if (variantSettings.nonConsecutive) relations.push((dr, dc) => (dr === 1 && dc === 0) || (dr === 0 && dc === 1));
+      for (const relation of relations) {
+        const original = relationPairs(relation);
+        if (!sameSet(original, mappedPairs(original))) return false;
+      }
+      return true;
+    }
+
+    function toyVariantTransformMessage() {
+      const active = Object.entries(variantSettings)
+        .filter(([, enabled]) => enabled)
+        .map(([name]) => name);
+      return active.length
+        ? `The transformation is not compatible with active variations: ${active.join(', ')}.`
+        : 'The transformation is not a valid Sudoku permutation.';
+    }
+
     function toyMapValues(values, permutation) {
       if (!Array.isArray(values)) return values;
       const mapped = new Array(81).fill(0);
@@ -7450,6 +7510,10 @@
 
     function applyToyCellTransform(label, mapper) {
       const permutation = toyCellPermutation(mapper);
+      if (!toyPermutationPreservesActiveVariants(permutation)) {
+        setStatus(toyVariantTransformMessage(), 'warn');
+        return false;
+      }
       return applyToyStateChange(label, () => {
         originalPuzzle = toyMapValues(originalPuzzle, permutation);
         puzzle = toyMapValues(puzzle, permutation);
@@ -8112,10 +8176,12 @@
         for (const rowMap of rowMaps) {
           for (const columnMap of columnMaps) {
             tested++;
+            const permutation = toyStructuralPermutation(rowMap, columnMap, transposed);
+            if (!toyPermutationPreservesActiveVariants(permutation)) continue;
             const mapping = toyStructuralDigitMap(values, rowMap, columnMap, transposed);
             if (!mapping) continue;
             records.push({
-              permutation: toyStructuralPermutation(rowMap, columnMap, transposed),
+              permutation,
               mapping,
               transposed,
               rowMap: [...rowMap],
@@ -8498,6 +8564,7 @@
         const familyMatches = [];
         for (const record of records[family]) {
           if (toyIsIdentityPermutation(record.permutation)) continue;
+          if (!toyPermutationPreservesActiveVariants(record.permutation)) continue;
           namedTested++;
           const transformed = toyMapValues(namedSource, record.permutation);
           let mapping = null;
