@@ -290,7 +290,7 @@ interface OmissionFishCandidate {
   vertices: number[];
 }
 
-const ALL_SECTORS = Array.from({ length: 27 }, (_, index) => index);
+const allSectors = () => Array.from({ length: UNITS.length }, (_, index) => index);
 const POM_FISH_NAMES: Record<number, string> = {
   1: 'Cyclops',
   2: 'X-Wing',
@@ -349,10 +349,10 @@ function normaliseOmissionFishOptions(
   const maxK = options.maxK ?? 0;
   const cleanDigits = (options.digits ?? [1, 2, 3, 4, 5, 6, 7, 8, 9])
     .filter(digit => Number.isInteger(digit) && digit >= 1 && digit <= 9);
-  const cleanBaseSectors = (options.baseSectors ?? ALL_SECTORS)
-    .filter(sector => Number.isInteger(sector) && sector >= 0 && sector < 27);
-  const cleanCoverSectors = (options.coverSectors ?? ALL_SECTORS)
-    .filter(sector => Number.isInteger(sector) && sector >= 0 && sector < 27);
+  const cleanBaseSectors = (options.baseSectors ?? allSectors())
+    .filter(sector => Number.isInteger(sector) && sector >= 0 && sector < UNITS.length);
+  const cleanCoverSectors = (options.coverSectors ?? allSectors())
+    .filter(sector => Number.isInteger(sector) && sector >= 0 && sector < UNITS.length);
 
   return {
     minSize: Math.min(minSize, maxSize) as PomFishSize,
@@ -893,10 +893,10 @@ function findOmissionFishPass(
 
     const activeSectors = state.activeSectorsByDigit[digit - 1];
     const usableBaseSectors = baseSearchSectors(
-        ALL_SECTORS.filter(sector => activeSectors.has(sector) && opts.baseSectors.has(sector)),
+        allSectors().filter(sector => activeSectors.has(sector) && opts.baseSectors.has(sector)),
         opts,
       );
-      const usableCoverSectors = ALL_SECTORS.filter(sector =>
+      const usableCoverSectors = allSectors().filter(sector =>
         activeSectors.has(sector) && opts.coverSectors.has(sector)
       );
 

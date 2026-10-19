@@ -157,6 +157,56 @@
       gap: 6px;
     }
 
+    .ocr-dialog {
+      width: min(560px, calc(100vw - 28px));
+      max-width: 560px;
+      padding: 0;
+      border: 1px solid var(--gunmetal-line);
+      border-radius: 8px;
+      color: var(--gunmetal-ink);
+      background: var(--gunmetal-panel);
+      box-shadow: 0 18px 50px rgba(0, 0, 0, .36);
+    }
+
+    .ocr-dialog::backdrop {
+      background: rgba(15, 23, 42, .58);
+    }
+
+    .ocr-dialog-body {
+      display: grid;
+      gap: 10px;
+      padding: 16px;
+    }
+
+    .ocr-dialog h2 {
+      margin: 0;
+      font-size: 16px;
+    }
+
+    .ocr-preview {
+      display: block;
+      width: 100%;
+      max-height: 280px;
+      object-fit: contain;
+      border: 1px solid var(--gunmetal-line);
+      border-radius: 5px;
+      background: #111827;
+    }
+
+    .ocr-result {
+      width: 100%;
+      min-height: 54px;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      letter-spacing: .04em;
+      resize: vertical;
+    }
+
+    .ocr-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
     .header-tool-frame {
       width: max-content;
       max-width: 100%;
@@ -216,7 +266,7 @@
 
     .generator-actions {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 8px;
     }
 
@@ -1493,6 +1543,24 @@
       text-shadow: -1px 0 #111827, 0 1px #111827, 1px 0 #111827, 0 -1px #111827;
     }
 
+    .cell.variant-diagonal-cell,
+    .cell.variant-anti-diagonal-cell {
+      background: rgba(191, 219, 254, .58);
+    }
+
+    .cell.variant-windoku-cell {
+      background: rgba(167, 243, 208, .52);
+      box-shadow: inset 0 0 0 1px rgba(5, 150, 105, .34);
+    }
+
+    .cell.variant-diagonal-cell.variant-windoku-cell {
+      background: linear-gradient(135deg, rgba(191, 219, 254, .68) 0 50%, rgba(167, 243, 208, .58) 50% 100%);
+    }
+
+    .cell.variant-anti-diagonal-cell.variant-windoku-cell {
+      background: linear-gradient(45deg, rgba(191, 219, 254, .68) 0 50%, rgba(167, 243, 208, .58) 50% 100%);
+    }
+
     .cell.chromatic-core-cell {
       background: rgba(191, 219, 254, .58);
       box-shadow: inset 0 0 0 2px #2563eb;
@@ -2247,6 +2315,13 @@
       stroke-linejoin: round;
     }
 
+    .chain-sector-frame {
+      fill: rgba(37, 99, 235, .035);
+      stroke: rgba(37, 99, 235, .82);
+      stroke-width: .72;
+      stroke-dasharray: 1.4 1.1;
+    }
+
     .almost-fish-digit-box {
       fill: rgba(14, 116, 144, .08);
       stroke: #0e7490;
@@ -2562,6 +2637,73 @@
       line-height: 1;
     }
 
+    .variant-settings {
+      margin: 0;
+      padding: 10px 12px 11px;
+      border: 1px solid var(--gunmetal-line);
+      border-radius: 6px;
+      background: rgba(15, 23, 42, .18);
+    }
+
+    .variant-settings > summary {
+      padding: 0;
+      color: var(--gunmetal-ink);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 800;
+      list-style: none;
+    }
+
+    .variant-settings > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .variant-settings > summary::before {
+      display: inline-block;
+      width: 16px;
+      color: #93c5fd;
+      content: "+";
+    }
+
+    .variant-settings[open] > summary::before {
+      content: "-";
+    }
+
+    .variant-toggle-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px 12px;
+      margin-left: 0;
+    }
+
+    .variant-toggle {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+      color: rgba(243, 246, 248, .9);
+      cursor: pointer;
+      font-size: 12px;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+
+    .variant-toggle input {
+      width: auto;
+      flex: 0 0 auto;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      accent-color: var(--blue);
+      cursor: pointer;
+    }
+
+    @media (max-width: 560px) {
+      .variant-toggle-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
     #solutionStepsPanel > summary {
       display: grid;
       grid-template-columns: auto minmax(0, 1fr) auto;
@@ -2682,6 +2824,49 @@
       font-weight: 800;
     }
 
+    .toy-automorph-source-toggle {
+      display: inline-flex !important;
+      align-items: center;
+      gap: 4px;
+      min-height: 26px;
+      padding: 4px 6px;
+      border: 1px solid var(--gunmetal-line);
+      border-radius: 4px;
+      background: rgba(255, 255, 255, .08);
+      white-space: nowrap;
+    }
+
+    .toy-minimizer-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 7px;
+    }
+
+    .toy-minimizer-results {
+      max-height: 220px;
+      overflow: auto;
+      padding: 7px 9px;
+      border: 1px solid var(--gunmetal-line);
+      border-radius: 4px;
+      background: rgba(255, 255, 255, .06);
+      color: var(--gunmetal-ink);
+      font-size: 11px;
+    }
+
+    .toy-minimizer-results p {
+      margin: 0 0 6px;
+    }
+
+    .toy-minimizer-results ul {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));
+      gap: 3px 9px;
+      margin: 0;
+      padding-left: 18px;
+    }
+
     .toy-automorph-toolbar select {
       min-width: 142px;
       padding: 4px 6px;
@@ -2692,7 +2877,8 @@
     }
 
     .toy-automorph-toolbar button,
-    .toy-minilex-toolbar button {
+    .toy-minilex-toolbar button,
+    .toy-minimizer-toolbar button {
       padding: 5px 8px;
       font-size: 12px;
       line-height: 1;
@@ -4142,7 +4328,7 @@
     <div class="header-brand">
       <h1>StormDoku: on-line | off-line</h1>
       <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo for regular Sudoku 9x9 grids.</p>
-      <p class="app-meta">Alpha v0.6.58 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <p class="app-meta">Alpha v0.6.66 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
     </div>
   </header>
 
@@ -4176,13 +4362,42 @@
             <div id="ratingHardestMove" class="rating-hardest-move-value"></div>
           </details>
         </div>
+        <details class="variant-settings">
+        <summary>Variations</summary>
+        <div class="variant-toggle-grid" aria-label="Sudoku variations">
+          <label class="variant-toggle" title="Add the two main diagonal units.">
+            <input id="variantDiagonal" type="checkbox">
+            Diagonal
+          </label>
+          <label class="variant-toggle" title="Add the anti-diagonal unit.">
+            <input id="variantAntiDiagonal" type="checkbox">
+            Anti-Diagonal
+          </label>
+          <label class="variant-toggle" title="Add the four Windoku regions and five disjoint groups.">
+            <input id="variantWindoku" type="checkbox">
+            Windoku
+          </label>
+          <label class="variant-toggle" title="Prevent equal digits from touching diagonally.">
+            <input id="variantAntiKing" type="checkbox">
+            Anti-King
+          </label>
+          <label class="variant-toggle" title="Prevent equal digits from touching a chess-knight move away.">
+            <input id="variantAntiKnight" type="checkbox">
+            Anti-Knight
+          </label>
+          <label class="variant-toggle" title="Prevent consecutive digits from touching orthogonally.">
+            <input id="variantNonConsecutive" type="checkbox">
+            Non-Consecutive
+          </label>
+        </div>
+        </details>
       </div>
       <fieldset class="generator-panel">
         <legend>Generator</legend>
         <div class="generator-fields">
           <label title="Target starting clues. The generator begins with a solved grid and removes clues; it may stop above this number when uniqueness or the selected difficulty requires it.">
             Givens
-            <input id="givens" type="number" min="17" max="81" value="21"
+            <input id="givens" type="number" min="1" max="81" value="21"
               aria-label="Target number of starting clues">
           </label>
           <label>
@@ -4218,7 +4433,12 @@
             title="Import from the clipboard. Accepts 81-character puzzle strings or 729-bit candidate strings.">
             Import
           </button>
+          <button id="scanImage" class="secondary" type="button"
+            title="Scan Image uses Tesseract.js OCR on hosted pages and a bundled Ocrad fallback for direct file pages. Tesseract is provided under the Apache License 2.0.">
+            Scan Image
+          </button>
         </div>
+        <input id="ocrImageInput" type="file" accept="image/*" hidden>
         <div class="puzzle-input-group">
           <label>
             <textarea id="input" aria-label="Puzzle string" spellcheck="false"
@@ -4417,6 +4637,22 @@
         </div>
       </details>
       </fieldset>
+      <dialog id="ocrDialog" class="ocr-dialog" aria-labelledby="ocrDialogTitle">
+        <div class="ocr-dialog-body">
+          <h2 id="ocrDialogTitle">Scan Sudoku Image</h2>
+          <img id="ocrPreview" class="ocr-preview" alt="Selected Sudoku image preview">
+          <div id="ocrStatus" role="status">Choose an image to begin.</div>
+          <label>
+            Recognized givens
+            <textarea id="ocrResult" class="ocr-result" spellcheck="false"
+              aria-label="Recognized Sudoku givens"></textarea>
+          </label>
+          <div class="ocr-actions">
+            <button id="ocrCancel" class="secondary" type="button">Cancel</button>
+            <button id="ocrLoad" type="button" disabled>Load Grid</button>
+          </div>
+        </div>
+      </dialog>
       <fieldset class="settings-dock">
         <legend>Settings</legend>
         <div class="settings-dock-actions">
@@ -4840,8 +5076,8 @@
                 <input id="alsDofMaxAuxiliary" type="number" min="1" max="9" step="1" value="5">
               </label>
             </div>
-            <label class="check" data-experimental-hidden="true" title="Allow verified ALS-DOF auxiliary chains to participate as Hydra branches and viable chain nodes.">
-              <input id="alsDofHydraEnabled" data-experimental-hidden="true" type="checkbox" disabled>
+            <label class="check" title="Experimental Hydra feature. May not function correctly; work in progress. Allow verified ALS-DOF auxiliary chains to participate as Hydra branches and viable chain nodes.">
+              <input id="alsDofHydraEnabled" type="checkbox" checked>
               Enable Hydra ALS-DOF chaining
             </label>
           </fieldset>
@@ -4909,7 +5145,7 @@
                 <input id="ahsDofChainMaxResults" type="number" min="1" max="5000" step="1" value="500">
               </label>
             </div>
-            <label class="check" data-experimental-hidden="true" title="Allow verified AHS-DOF auxiliary chains to participate as Hydra branches and viable chain nodes.">
+            <label class="check" data-experimental-hidden="true" title="Experimental Hydra feature. May not function correctly; work in progress. Allow verified AHS-DOF auxiliary chains to participate as Hydra branches and viable chain nodes.">
               <input id="ahsDofHydraEnabled" data-experimental-hidden="true" type="checkbox" disabled>
               Enable Hydra AHS-DOF chaining
             </label>
@@ -4932,7 +5168,7 @@
                 <input id="alcDofMaxResults" type="number" min="1" max="5000" step="1" value="300">
               </label>
             </div>
-            <label class="check" data-experimental-hidden="true" title="Allow verified ALC DOF auxiliary chains to participate as Hydra branches and viable chain nodes.">
+            <label class="check" data-experimental-hidden="true" title="Experimental Hydra feature. May not function correctly; work in progress. Allow verified ALC DOF auxiliary chains to participate as Hydra branches and viable chain nodes.">
               <input id="alcDofHydraEnabled" data-experimental-hidden="true" type="checkbox" disabled>
               Enable Hydra ALC-DOF chaining
             </label>
@@ -5068,9 +5304,11 @@
             <button data-sector-kind="baseSectors" data-sector-start="0" data-sector-end="9" data-sector-on="true" class="secondary" type="button">Row On</button>
             <button data-sector-kind="baseSectors" data-sector-start="9" data-sector-end="18" data-sector-on="true" class="secondary" type="button">Col On</button>
             <button data-sector-kind="baseSectors" data-sector-start="18" data-sector-end="27" data-sector-on="true" class="secondary" type="button">Box On</button>
+            <button data-sector-kind="baseSectors" data-sector-variants="diagonal,antiDiagonal" data-sector-on="true" class="secondary" type="button">Diagonal On</button>
             <button data-sector-kind="baseSectors" data-sector-start="0" data-sector-end="9" data-sector-on="false" class="secondary" type="button">Row Off</button>
             <button data-sector-kind="baseSectors" data-sector-start="9" data-sector-end="18" data-sector-on="false" class="secondary" type="button">Col Off</button>
             <button data-sector-kind="baseSectors" data-sector-start="18" data-sector-end="27" data-sector-on="false" class="secondary" type="button">Box Off</button>
+            <button data-sector-kind="baseSectors" data-sector-variants="diagonal,antiDiagonal" data-sector-on="false" class="secondary" type="button">Diagonal Off</button>
           </div>
         </fieldset>
 
@@ -5081,9 +5319,11 @@
             <button data-sector-kind="coverSectors" data-sector-start="0" data-sector-end="9" data-sector-on="true" class="secondary" type="button">Row On</button>
             <button data-sector-kind="coverSectors" data-sector-start="9" data-sector-end="18" data-sector-on="true" class="secondary" type="button">Col On</button>
             <button data-sector-kind="coverSectors" data-sector-start="18" data-sector-end="27" data-sector-on="true" class="secondary" type="button">Box On</button>
+            <button data-sector-kind="coverSectors" data-sector-variants="diagonal,antiDiagonal" data-sector-on="true" class="secondary" type="button">Diagonal On</button>
             <button data-sector-kind="coverSectors" data-sector-start="0" data-sector-end="9" data-sector-on="false" class="secondary" type="button">Row Off</button>
             <button data-sector-kind="coverSectors" data-sector-start="9" data-sector-end="18" data-sector-on="false" class="secondary" type="button">Col Off</button>
             <button data-sector-kind="coverSectors" data-sector-start="18" data-sector-end="27" data-sector-on="false" class="secondary" type="button">Box Off</button>
+            <button data-sector-kind="coverSectors" data-sector-variants="diagonal,antiDiagonal" data-sector-on="false" class="secondary" type="button">Diagonal Off</button>
           </div>
         </fieldset>
       </div>
@@ -5277,6 +5517,10 @@
                 <button id="toyAutomorphSearch" class="secondary" type="button"
                   title="Search the R1-anchored Mini-lex grid for digit-renamed matches">Search</button>
                 <button id="toyAutomorphClear" class="secondary" type="button">Clear</button>
+                <label class="toy-automorph-source-toggle" title="Compare the solved grid instead of the loaded grid string">
+                  <input id="toyAutomorphUseSolution" type="checkbox">
+                  Use solution
+                </label>
                 <button id="toyAutomorphLegend" class="secondary" type="button"
                   aria-expanded="false" title="Explain automorphic identity results">Legend <span class="toy-automorph-legend-symbol" aria-hidden="true">+</span></button>
               </div>
@@ -5374,6 +5618,18 @@
                 <div id="toyMiniLexGrid" class="toy-minilex-grid" aria-label="Mini-lex graphical grid"></div>
               </details>
             </fieldset>
+            <fieldset>
+              <legend>Clue Minimizer</legend>
+              <div class="toy-minimizer-toolbar">
+                <button id="toyMinimizerSearch" class="secondary" type="button"
+                  title="Find clues that can be removed while preserving a unique solution">Find Extra Clues</button>
+                <button id="toyMinimizerReplace" class="secondary" type="button"
+                  title="Replace the current grid with the minimized clue set" disabled>Replace with Reduced Grid</button>
+              </div>
+              <div id="toyMinimizerResults" class="toy-minimizer-results" aria-live="polite">
+                No clue minimization has been run.
+              </div>
+            </fieldset>
           </div>
         </details>
         <details class="pom-panel" id="hiddenSubsetPanel">
@@ -5420,8 +5676,8 @@
                 title="Search ALS-DOF hub, DDS, and Almost-DDS nets">ALS - DOF</button>
               <button id="alsDofChainBuild" class="secondary" type="button"
                 title="Search bridged ALS-DOF chains">ALS - DOF Chain</button>
-              <button id="alsHydraBuild" class="secondary" data-experimental-hidden="true" type="button"
-                title="Search ALS-DOF hubs whose auxiliary ALS carries a verified AIC chain">ALS - Hydra</button>
+              <button id="alsHydraBuild" class="secondary" type="button"
+                title="Experimental Hydra feature. May not function correctly; work in progress. Search ALS-DOF hubs whose auxiliary ALS carries a verified AIC chain">ALS - Hydra</button>
             </div>
           </summary>
           <div class="pom-body">
@@ -5434,7 +5690,7 @@
               <h3>ALS - DOF Chains</h3>
               <div id="alsDofChainResults" class="pom-results">No ALS-DOF chain search has been run.</div>
             </section>
-            <section class="move-type-group" data-experimental-hidden="true">
+            <section class="move-type-group">
               <h3>ALS - Hydra</h3>
               <div id="alsHydraResults" class="pom-results">No ALS-Hydra search has been run.</div>
             </section>
@@ -5455,7 +5711,7 @@
               <button id="ahsDofChainBuild" class="secondary" type="button"
                 title="Search verified AHS-DOF chains">AHS - DOF Chain</button>
               <button id="ahsHydraBuild" class="secondary" data-experimental-hidden="true" type="button"
-                title="Search AHS-DOF hubs whose auxiliary AHS carries a verified AIC chain">AHS - Hydra</button>
+                title="Experimental Hydra feature. May not function correctly; work in progress. Search AHS-DOF hubs whose auxiliary AHS carries a verified AIC chain">AHS - Hydra</button>
             </div>
           </summary>
           <div class="pom-body">
@@ -5481,7 +5737,7 @@
               <button id="alcDofBuild" class="secondary" type="button"
                 title="Search ALC-DOF chains rooted in ALS/AHS degree-of-freedom structures">ALC - DOF Chain</button>
               <button id="alcHydraBuild" class="secondary" data-experimental-hidden="true" type="button"
-                title="Search mixed ALS/AHS DOF hubs whose auxiliary carries a verified AIC chain">ALC - Hydra</button>
+                title="Experimental Hydra feature. May not function correctly; work in progress. Search mixed ALS/AHS DOF hubs whose auxiliary carries a verified AIC chain">ALC - Hydra</button>
             </div>
           </summary>
           <div class="pom-body">
@@ -5494,7 +5750,7 @@
         </details>
         <details class="pom-panel" id="mslsPanel">
           <summary>
-            <h2>MSLS</h2>
+            <h2>Multi Sector Locked Sets</h2>
             <button id="mslsBuild" class="secondary search-action" type="button"
               title="Search Multi-Sector Locked Sets">Search</button>
           </summary>
@@ -5642,26 +5898,28 @@
     </section>
   </main>
 
-  <script src="./src/browser-core.js?v=20261001-2"></script>
+  <script src="./src/browser-core.js?v=20261019-9"></script>
   <script src="./src/set-tools-core.js?v=20260928-1"></script>
   <script src="./src/pom-core.js?v=20261004-2"></script>
   <script src="./src/als-core.js?v=20260928-1"></script>
   <script src="./src/als-link-core.js?v=20260928-1"></script>
   <script src="./src/als-dof-core.js?v=20261015-3"></script>
-  <script src="./src/hydra-core.js?v=20261015-3"></script>
+  <script src="./src/hydra-core.js?v=20261019-2"></script>
   <script src="./src/ahs-core.js?v=20260928-2"></script>
   <script src="./src/ahs-link-core.js?v=20261001-28"></script>
   <script src="./src/subset-report-core.js?v=20260928-2"></script>
   <script src="./src/mini-sectors-core.js?v=20260928-1"></script>
   <script src="./src/chromatic-core.js?v=20261015-1"></script>
   <script src="./src/chromatic-als-core.js?v=20261007-9"></script>
-    <script src="./src/strong-link-core.js?v=20261016-21"></script>
-    <script src="./src/chain-core.js?v=20261016-21"></script>
+    <script src="./src/strong-link-core.js?v=20261016-22"></script>
+    <script src="./src/chain-core.js?v=20261019-24"></script>
   <script src="./src/alc-core.js?v=20261012-3"></script>
   <script src="./src/ahs-xy-core.js?v=20261001-4"></script>
   <script src="./src/ahs-dof-core.js?v=20261002-1"></script>
   <script src="./src/msls-core.js?v=20261004-1"></script>
-    <script src="./src/search-worker-source.js?v=20261016-21"></script>
+    <script src="./src/search-worker-source.js?v=20261019-9"></script>
+  <script src="./src/ocr/tesseract.min.js?v=5.1.1"></script>
+  <script src="./src/ocr/ocrad.js?v=0.25"></script>
   <script>
     const core = window.StormDoku;
     const boardEl = document.getElementById('board');
@@ -5682,6 +5940,14 @@
     const loadEl = document.getElementById('load');
     const resetEl = document.getElementById('reset');
     const importEl = document.getElementById('import');
+    const scanImageEl = document.getElementById('scanImage');
+    const ocrImageInputEl = document.getElementById('ocrImageInput');
+    const ocrDialogEl = document.getElementById('ocrDialog');
+    const ocrPreviewEl = document.getElementById('ocrPreview');
+    const ocrStatusEl = document.getElementById('ocrStatus');
+    const ocrResultEl = document.getElementById('ocrResult');
+    const ocrCancelEl = document.getElementById('ocrCancel');
+    const ocrLoadEl = document.getElementById('ocrLoad');
     const statusEl = document.getElementById('status');
     const puzzleStringEl = document.getElementById('puzzleString');
     const puzzleStateMetaEl = document.getElementById('puzzleStateMeta');
@@ -5702,6 +5968,12 @@
     const solutionCopyListEl = document.getElementById('solutionCopyList');
     const applyHighlightedMoveEl = document.getElementById('applyHighlightedMove');
     const clearHighlightEl = document.getElementById('clearHighlight');
+    const variantDiagonalEl = document.getElementById('variantDiagonal');
+    const variantAntiDiagonalEl = document.getElementById('variantAntiDiagonal');
+    const variantWindokuEl = document.getElementById('variantWindoku');
+    const variantAntiKingEl = document.getElementById('variantAntiKing');
+    const variantAntiKnightEl = document.getElementById('variantAntiKnight');
+    const variantNonConsecutiveEl = document.getElementById('variantNonConsecutive');
     const toyStackSwapEl = document.getElementById('toyStackSwap');
     const toyBandSwapEl = document.getElementById('toyBandSwap');
     const toyRowSwapEl = document.getElementById('toyRowSwap');
@@ -5715,6 +5987,10 @@
     const toyDigitSwapButtonEl = document.getElementById('toyDigitSwapButton');
     const toyAutomorphSearchEl = document.getElementById('toyAutomorphSearch');
     const toyAutomorphClearEl = document.getElementById('toyAutomorphClear');
+    const toyAutomorphUseSolutionEl = document.getElementById('toyAutomorphUseSolution');
+    const toyMinimizerSearchEl = document.getElementById('toyMinimizerSearch');
+    const toyMinimizerReplaceEl = document.getElementById('toyMinimizerReplace');
+    const toyMinimizerResultsEl = document.getElementById('toyMinimizerResults');
     const toyAutomorphLegendEl = document.getElementById('toyAutomorphLegend');
     const toyAutomorphLegendPanelEl = document.getElementById('toyAutomorphLegendPanel');
     const toyAutomorphLegendCloseEl = document.getElementById('toyAutomorphLegendClose');
@@ -5726,6 +6002,7 @@
     const toyMiniLexGridEl = document.getElementById('toyMiniLexGrid');
     let toyAutomorphFamilyCache = null;
     let toyMiniLexLayoutCache = null;
+    let toyMinimizerReport = null;
     const logEl = document.getElementById('log');
     const pomResultsEl = document.getElementById('pomResults');
     const alsResultsEl = document.getElementById('alsResults');
@@ -5842,7 +6119,7 @@
     // source remains available locally for continued development.
     chainStrongTypeEls[7].checked = false;
     chainChromaticType3El.checked = false;
-    alsDofHydraEnabledEl.checked = false;
+    alsDofHydraEnabledEl.checked = true;
     ahsDofHydraEnabledEl.checked = false;
     alcDofHydraEnabledEl.checked = false;
     const solverMoveTypeEls = new Map([
@@ -5961,6 +6238,14 @@
     let promotedValues = new Array(81).fill(0);
     let solution = null;
     let promotionSecurityDisabled = false;
+    const variantSettings = {
+      diagonal: false,
+      antiDiagonal: false,
+      windoku: false,
+      antiKing: false,
+      antiKnight: false,
+      nonConsecutive: false,
+    };
     let cand = core.allCandidates(puzzle);
     let cycle = 0;
     let lastInteractiveSearchError = null;
@@ -6095,7 +6380,7 @@
       }
 
       try {
-      const workerPath = './src/search-worker.js?v=20261016-21';
+      const workerPath = './src/search-worker.js?v=20261019-9';
         releaseSearchWorkerBlobUrl();
         let workerUrl = new URL(workerPath, document.baseURI);
         if (document.baseURI.startsWith('file:')) {
@@ -6156,11 +6441,14 @@
       if (!worker) return Promise.reject(new Error('Search worker unavailable.'));
 
       const id = ++searchWorkerJobId;
+      const workerPayload = payload && typeof payload === 'object'
+        ? { ...payload, variantSettings: { ...variantSettings } }
+        : payload;
       return new Promise((resolve, reject) => {
         searchWorkerJobs.set(id, { resolve, reject });
         try {
           interactiveSearchProgress?.();
-          worker.postMessage({ id, type, payload });
+          worker.postMessage({ id, type, payload: workerPayload });
         } catch (error) {
           searchWorkerJobs.delete(id);
           reject(error);
@@ -6195,7 +6483,7 @@
     function runPuzzleGenerator(givens) {
       if (location.protocol === 'file:') return runCoreSearch('generate', givens);
       return new Promise((resolve, reject) => {
-      const workerPath = './src/generator-worker.js?v=20261006-1';
+      const workerPath = './src/generator-worker.js?v=20261019-2';
         const workerUrl = document.baseURI.startsWith('file:')
           ? workerPath
           : new URL(workerPath, document.baseURI);
@@ -6228,7 +6516,7 @@
           ].filter(Boolean).join(' ');
           finish(reject, new Error(details || 'Puzzle generator worker failed.'));
         };
-        worker.postMessage({ givens });
+        worker.postMessage({ givens, variantSettings: { ...variantSettings } });
       });
     }
 
@@ -6343,7 +6631,20 @@
     function sectorToggleLabel(index) {
       if (index < 9) return `r${index + 1}`;
       if (index < 18) return `c${index - 8}`;
-      return `b${index - 17}`;
+      if (index < 27) return `b${index - 17}`;
+      return core.variantUnitName(index) || `s${index + 1}`;
+    }
+
+    function syncFishVariantSectors() {
+      const activeVariantSectors = new Set(
+        Array.from({ length: Math.max(0, core.UNITS.length - 27) }, (_, index) => index + 27),
+      );
+      for (const sectors of [pomFishSettings.baseSectors, pomFishSettings.coverSectors]) {
+        for (let sector = 27; sector < 64; sector++) {
+          if (activeVariantSectors.has(sector)) sectors.add(sector);
+          else sectors.delete(sector);
+        }
+      }
     }
 
     function setToggleButton(button, selected) {
@@ -6371,14 +6672,37 @@
     }
 
     function renderFishSectorGrid(kind) {
+      syncFishVariantSectors();
       const container = kind === 'baseSectors' ? fishBaseSectorsEl : fishCoverSectorsEl;
+      const variantSectors = Array.from(
+        { length: Math.max(0, core.UNITS.length - 27) },
+        (_, index) => index + 27,
+      );
+      const sectors = [
+        ...Array.from({ length: 27 }, (_, index) => index),
+        ...variantSectors,
+      ];
       buildToggleGrid(
         container,
-        Array.from({ length: 27 }, (_, index) => index),
+        sectors,
         pomFishSettings[kind],
         sectorToggleLabel,
         fishSettingsChanged,
       );
+      for (const button of document.querySelectorAll('[data-sector-variants="diagonal,antiDiagonal"]')) {
+        button.hidden = !(variantSettings.diagonal || variantSettings.antiDiagonal);
+      }
+    }
+
+    function setVariantSectorRange(kind, names, on) {
+      const wanted = new Set(names);
+      for (let sector = 27; sector < core.UNITS.length; sector++) {
+        if (!wanted.has(core.variantUnitName(sector))) continue;
+        if (on) pomFishSettings[kind].add(sector);
+        else pomFishSettings[kind].delete(sector);
+      }
+      renderFishSectorGrid(kind);
+      fishSettingsChanged();
     }
 
     function setSectorRange(kind, start, end, on) {
@@ -6626,9 +6950,12 @@
         const house =
           ref.type === 'row' ? core.Rset[index] :
           ref.type === 'col' ? core.Cset[index] :
-          core.Bset[index];
+          ref.type === 'box' ? core.Bset[index] :
+          ref.type === 'variant-sector' || ref.type === 'diagonal' || ref.type === 'anti-diagonal'
+            ? core.UNITS[index]
+            : null;
 
-        for (const cell of house) cells.add(cell);
+        for (const cell of house || []) cells.add(cell);
       }
 
       return cells;
@@ -6645,6 +6972,41 @@
     function sectorFrameRects(ref) {
       if (!ref) return [];
       const one = 100 / 9;
+
+      if (['variant-sector', 'diagonal', 'anti-diagonal'].includes(ref.type)) {
+        const cells = ref.indices.flatMap(index => core.UNITS[index] || []);
+        if (!cells.length) return [];
+
+        const rows = cells.map(cell => Math.floor(cell / 9));
+        const cols = cells.map(cell => cell % 9);
+        const minRow = Math.min(...rows);
+        const maxRow = Math.max(...rows);
+        const minCol = Math.min(...cols);
+        const maxCol = Math.max(...cols);
+        const rectangle = [];
+        for (let row = minRow; row <= maxRow; row++) {
+          for (let col = minCol; col <= maxCol; col++) rectangle.push(row * 9 + col);
+        }
+
+        // W1-W4 are contiguous 3x3 sectors. Draw one clean frame for them;
+        // diagonal and disjoint sectors use one frame per member cell.
+        if (rectangle.length === cells.length
+          && rectangle.every(cell => cells.includes(cell))) {
+          return [{
+            left: minCol * one,
+            top: minRow * one,
+            width: (maxCol - minCol + 1) * one,
+            height: (maxRow - minRow + 1) * one,
+          }];
+        }
+
+        return [...new Set(cells)].map(cell => ({
+          left: (cell % 9) * one,
+          top: Math.floor(cell / 9) * one,
+          width: one,
+          height: one,
+        }));
+      }
 
       return ref.indices.map(index => {
         if (ref.type === 'row') {
@@ -6860,6 +7222,28 @@
       }
     }
 
+    function applyVariantSettings() {
+      core.configureVariants(variantSettings);
+      syncFishVariantSectors();
+      renderFishSectorGrid('baseSectors');
+      renderFishSectorGrid('coverSectors');
+      cand = core.allCandidates(puzzle);
+      solution = core.solveFully(puzzle);
+      resetAnalysisAfterPlayerEdit();
+      undoStack = [];
+      redoStack = [];
+      render();
+      const active = Object.entries(variantSettings)
+        .filter(([, enabled]) => enabled)
+        .map(([name]) => name);
+      setStatus(
+        solution
+          ? `Variations updated${active.length ? `: ${active.join(', ')}.` : '.'}`
+          : 'Variations updated. The current givens have no solution under these rules.',
+        solution ? 'ok' : 'warn',
+      );
+    }
+
     function resetAnalysisAfterPlayerEdit() {
       cycle = 0;
       activeStep = null;
@@ -7051,6 +7435,7 @@
       resetAnalysisAfterPlayerEdit();
       clearToyAutomorphResults();
       clearToyMiniLex();
+      clearToyMinimizerResults();
       playerSolveBackups = new Map();
       selectedPlayerCell = null;
       selectedPlayerDigit = null;
@@ -7567,7 +7952,17 @@
     }
 
     function toyAutomorphSource() {
-      return { source: originalPuzzle, target: originalPuzzle };
+      const useSolution = Boolean(toyAutomorphUseSolutionEl?.checked);
+      const hasSolution = Array.isArray(solution)
+        && solution.length === 81
+        && solution.every(digit => Number.isInteger(digit) && digit >= 1 && digit <= 9);
+      const values = useSolution && hasSolution ? solution : originalPuzzle;
+      return {
+        source: [...values],
+        target: [...values],
+        mode: useSolution && hasSolution ? 'solution' : 'grid string',
+        hasSolution,
+      };
     }
 
     function toyDigitNormalizeDetails(values) {
@@ -7905,8 +8300,9 @@
         key: bestKey,
         values: bestValues,
         label: bestOrientation ? 'Transpose + full structural search' : 'Full structural search',
+        sourceMode: comparison.mode,
       };
-      toyMiniLexSummaryEl.textContent = `${best.label}; R1 anchor; clue pattern first; 3,359,232 layouts.`;
+      toyMiniLexSummaryEl.textContent = `${best.label}; ${best.sourceMode}; R1 anchor; clue pattern first; 3,359,232 layouts.`;
       toyMiniLexStringEl.textContent = best.key;
       toyMiniLexGridEl.textContent = '';
       for (const digit of best.values) {
@@ -7931,6 +8327,119 @@
       toyAutomorphResultsEl.textContent = 'No automorphic identity search has been run.';
     }
 
+    function clearToyMinimizerResults() {
+      toyMinimizerReport = null;
+      toyMinimizerResultsEl.textContent = 'No clue minimization has been run.';
+      toyMinimizerReplaceEl.disabled = true;
+    }
+
+    function toyMinimizerCellLabel(cell, digit) {
+      const row = Math.floor(cell / 9) + 1;
+      const column = (cell % 9) + 1;
+      return `r${row}c${column}=${digit}`;
+    }
+
+    function renderToyMinimizerReport(report) {
+      toyMinimizerResultsEl.textContent = '';
+      const summary = document.createElement('p');
+      summary.textContent = report
+        ? `Unique solution preserved. ${report.removed.length} of ${report.sourceGivenCount} clues can be removed in this reduction order; ${report.reducedGivenCount} clues remain.`
+        : 'No clue minimization has been run.';
+      toyMinimizerResultsEl.appendChild(summary);
+      if (!report) {
+        toyMinimizerReplaceEl.disabled = true;
+        return;
+      }
+      const note = document.createElement('p');
+      note.textContent = report.removed.length
+        ? 'Accepted removals are listed below. The displayed reduced grid is the state that can be replaced.'
+        : 'No clue was removable while preserving uniqueness.';
+      toyMinimizerResultsEl.appendChild(note);
+      if (report.removed.length) {
+        const list = document.createElement('ul');
+        for (const item of report.removed) {
+          const entry = document.createElement('li');
+          entry.textContent = toyMinimizerCellLabel(item.cell, item.digit);
+          list.appendChild(entry);
+        }
+        toyMinimizerResultsEl.appendChild(list);
+      }
+      toyMinimizerReplaceEl.disabled = !report.removed.length;
+    }
+
+    function toyMinimizerSolutionCount(grid) {
+      if (typeof core.countSolutionsDlx === 'function') return core.countSolutionsDlx([...grid], 2);
+      return core.solveDlx([...grid], 2).count;
+    }
+
+    async function runToyMinimizer() {
+      if (busy) return;
+      const source = [...originalPuzzle];
+      const sourceGivenCount = source.filter(Boolean).length;
+      const sourceCount = toyMinimizerSolutionCount(source);
+      if (sourceCount !== 1) {
+        clearToyMinimizerResults();
+        toyMinimizerResultsEl.textContent = sourceCount === 0
+          ? 'This grid has no solution, so no clue can be minimized.'
+          : 'This grid has more than one solution, so clue minimization is unavailable.';
+        setStatus('Clue minimizer requires a uniquely solvable grid.', 'warn');
+        return;
+      }
+
+      const epoch = setBusy(true);
+      const working = [...source];
+      const removed = [];
+      try {
+        let changed = true;
+        while (changed) {
+          changed = false;
+          for (let cell = 0; cell < 81; cell += 1) {
+            if (!busy || epoch !== searchEpoch) return;
+            const digit = working[cell];
+            if (!digit) continue;
+            working[cell] = 0;
+            await new Promise(resolve => setTimeout(resolve, 0));
+            if (toyMinimizerSolutionCount(working) === 1) {
+              removed.push({ cell, digit });
+              changed = true;
+            } else {
+              working[cell] = digit;
+            }
+          }
+        }
+        toyMinimizerReport = {
+          sourceKey: source.join(''),
+          sourceGivenCount,
+          reducedGivenCount: working.filter(Boolean).length,
+          reduced: working,
+          removed,
+        };
+        renderToyMinimizerReport(toyMinimizerReport);
+        setStatus(`Clue minimizer found ${removed.length} removable clue${removed.length === 1 ? '' : 's'}.`, 'ok');
+      } catch (error) {
+        clearToyMinimizerResults();
+        setStatus(`Clue minimizer failed: ${error.message || error}`, 'warn');
+      } finally {
+        setBusy(false, epoch);
+      }
+    }
+
+    function replaceWithToyMinimizedGrid() {
+      const report = toyMinimizerReport;
+      if (!report || !report.removed.length) return;
+      if (report.sourceKey !== originalPuzzle.join('')) {
+        clearToyMinimizerResults();
+        setStatus('The grid changed; run the clue minimizer again.', 'warn');
+        return;
+      }
+      applyToyStateChange('Reduced clue grid', () => {
+        originalPuzzle = [...report.reduced];
+        puzzle = [...report.reduced];
+        promotedValues = new Array(81).fill(0);
+        cand = core.allCandidates(puzzle);
+      });
+    }
+
     function appendToyAutomorphResult(list, entry, description) {
       const item = document.createElement('li');
       item.appendChild(document.createTextNode(description));
@@ -7947,6 +8456,11 @@
       }
 
       const comparison = toyAutomorphSource();
+      if (toyAutomorphUseSolutionEl?.checked && !comparison.hasSolution) {
+        toyAutomorphResultsEl.textContent = 'No complete solution is available for this grid. Use the grid string or solve the puzzle first.';
+        setStatus('Automorphic search needs a complete solution.', 'warn');
+        return;
+      }
       const occupied = comparison.source.some(value => toyCellDigits(value).length);
       if (!occupied) {
         toyAutomorphResultsEl.textContent = 'There is no given, solved, or candidate information to compare.';
@@ -7960,7 +8474,7 @@
         return;
       }
       // The exhaustive identity count uses the displayed canonical Mini-lex
-      // grid. Named classes must be checked in the loaded grid's coordinate
+      // source. Named classes must be checked in the selected source's coordinate
       // frame, otherwise canonicalization conjugates the operation and hides
       // its class name.
       const searchSource = miniLex.values;
@@ -8013,8 +8527,8 @@
         : namedTotal;
       const intro = document.createElement('p');
       intro.textContent = fullFamilySearch
-        ? `Tested ${tested.toLocaleString()} legal transformations against the Mini-lex grid; found ${total} complete automorphisms.`
-        : `Tested ${tested} named family transformations against Mini-lex givens; found ${total} ${total === 1 ? 'identity' : 'identities'}.`;
+        ? `Compared the ${comparison.mode}; tested ${tested.toLocaleString()} legal transformations against its Mini-lex grid; found ${total} complete automorphisms.`
+        : `Compared the ${comparison.mode}; tested ${tested} named family transformations against its Mini-lex grid; found ${total} ${total === 1 ? 'identity' : 'identities'}.`;
       toyAutomorphResultsEl.appendChild(intro);
       if (fullFamilySearch) {
         const shortcutSummary = document.createElement('p');
@@ -9191,6 +9705,28 @@
       }
     }
 
+    function drawChainSectorFrames(svg, sectors) {
+      for (const sector of sectors || []) {
+        const name = core.variantUnitName?.(sector);
+        if (!name) continue;
+        const type = name === 'D1'
+          ? 'diagonal'
+          : name === 'AD1'
+            ? 'anti-diagonal'
+            : 'variant-sector';
+        for (const rect of sectorFrameRects({ type, indices: [sector] })) {
+          const frame = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          frame.setAttribute('x', String(rect.left));
+          frame.setAttribute('y', String(rect.top));
+          frame.setAttribute('width', String(rect.width));
+          frame.setAttribute('height', String(rect.height));
+          frame.setAttribute('class', 'chain-sector-frame');
+          frame.dataset.sector = name;
+          svg.appendChild(frame);
+        }
+      }
+    }
+
     function renderChainOverlay(chain) {
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.setAttribute('class', 'chain-overlay');
@@ -9284,6 +9820,7 @@
           const toSide = visibleChainEntrySide(step);
           const weakFromDigit = step.weakFromDigit ?? step.weakDigit;
           const weakToDigit = step.weakToDigit ?? step.weakDigit;
+          drawChainSectorFrames(svg, step.weakSectors);
           drawWeakConnection(svg, fromSide, toSide, weakFromDigit, weakToDigit);
         }
         if (isAlsVisualStep(step) && step.module?.common) {
@@ -10584,6 +11121,19 @@
             for (const cell of cells) strongLinkPartitionByCell.set(cell, role);
           }
         }
+        if (construction?.kind === 'variant-sector-xor') {
+          for (const [index, cells] of (construction.partitionCells || []).entries()) {
+            const role = index === construction.activePartition
+              ? 'active'
+              : index === construction.linkedPartition
+                ? 'linked'
+                : index === construction.emptyPartition
+                  ? 'empty'
+                  : null;
+            if (!role) continue;
+            for (const cell of cells) strongLinkPartitionByCell.set(cell, role);
+          }
+        }
         if (construction?.kind === 'eri') {
           for (const cell of construction.emptyCells || []) {
             strongLinkPartitionByCell.set(cell, 'empty');
@@ -11066,6 +11616,19 @@
        el.className = 'cell';
        if (originalPuzzle[cell]) el.classList.add('given');
        if (promotedValues[cell]) el.classList.add('solved');
+       if (variantSettings.diagonal && cell % 10 === 0) {
+         el.classList.add('variant-diagonal-cell');
+       }
+       if (variantSettings.antiDiagonal && Math.floor(cell / 9) + (cell % 9) === 8) {
+         el.classList.add('variant-anti-diagonal-cell');
+       }
+       if (variantSettings.windoku) {
+         const row = Math.floor(cell / 9);
+         const col = cell % 9;
+         const inWindokuRegion = (row >= 1 && row <= 3 || row >= 5 && row <= 7)
+           && (col >= 1 && col <= 3 || col >= 5 && col <= 7);
+         if (inWindokuRegion) el.classList.add('variant-windoku-cell');
+       }
        if (highlights.candidateSizeFilterCells.has(cell)) {
          el.classList.add('candidate-size-filter-cell');
          applyCandidateSizeFilterStyle(el, highlights.candidateSizeFilterStyle);
@@ -14932,8 +15495,27 @@
 
     function subsetStepFromReport(kind, item) {
       const names = ['single', 'pair', 'triple', 'quad', 'quintuple', 'sextuple', 'septuple', 'octuple', 'nontuple'];
-      const sectorType = item.sector < 9 ? 'row' : item.sector < 18 ? 'col' : 'box';
-      const sectorIndex = item.sector < 9 ? item.sector : item.sector < 18 ? item.sector - 9 : item.sector - 18;
+      const sectorType = item.sector < 9
+        ? 'row'
+        : item.sector < 18
+          ? 'col'
+          : item.sector < 27
+            ? 'box'
+            : (() => {
+              const name = core.variantUnitName(item.sector);
+              return name === 'D1'
+                ? 'diagonal'
+                : name === 'AD1'
+                  ? 'anti-diagonal'
+                  : 'variant-sector';
+            })();
+      const sectorIndex = item.sector < 9
+        ? item.sector
+        : item.sector < 18
+          ? item.sector - 9
+          : item.sector < 27
+            ? item.sector - 18
+            : item.sector;
       const removals = item.removals.map(removal => ({ ...removal }));
       const label = `${item.locked ? 'Locked ' : ''}${kind === 'hidden' ? 'Hidden' : 'Naked'} ${subsetSizeName(item.size)}`;
       return {
@@ -20242,6 +20824,7 @@
       leaveHistoryPreview();
       clearToyAutomorphResults();
       clearToyMiniLex();
+      clearToyMinimizerResults();
       setManualMode(false, false);
       puzzle = [...originalPuzzle];
       promotedValues = new Array(81).fill(0);
@@ -20347,6 +20930,8 @@
               ? 9 + Number(step.base.indices?.[0])
               : step.base?.type === 'box'
                 ? 18 + Number(step.base.indices?.[0])
+                : ['variant-sector', 'diagonal', 'anti-diagonal'].includes(step.base?.type)
+                  ? Number(step.base.indices?.[0])
                 : -1;
         const unit = unitIndex >= 0 && unitIndex < core.UNITS.length
           ? core.UNITS[unitIndex]
@@ -22232,7 +22817,7 @@
 
     function generatePuzzle() {
       leaveHistoryPreview();
-      const givens = Math.min(81, Math.max(17, Number(givensEl.value) || 21));
+      const givens = Math.min(81, Math.max(1, Number(givensEl.value) || 21));
       givensEl.value = String(givens);
       const targetCategory = generationDifficultyEl.value;
       const isAnyTarget = normalizeRatingCategory(targetCategory) === 'Any';
@@ -22357,6 +22942,329 @@
           setStatus(`Could not generate a puzzle: ${error.message || error}`, 'warn');
         });
       }, 20);
+    }
+
+    let ocrImageUrl = null;
+    let tesseractPromise = null;
+
+    function loadTesseract() {
+      if (window.Tesseract) return Promise.resolve(window.Tesseract);
+      if (tesseractPromise) return tesseractPromise;
+      tesseractPromise = Promise.reject(new Error('The local OCR library did not load.'));
+      return tesseractPromise;
+    }
+
+    function withOcrTimeout(promise, message, timeout = 15000) {
+      let timer;
+      const timeoutPromise = new Promise((resolve, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), timeout);
+      });
+      return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timer));
+    }
+
+    function ocrProjectionLines(values, threshold, minimumGap = 3) {
+      const groups = [];
+      let start = -1;
+      for (let index = 0; index <= values.length; index++) {
+        const active = index < values.length && values[index] >= threshold;
+        if (active && start < 0) start = index;
+        if ((!active || index === values.length) && start >= 0) {
+          if (index - start >= 1) groups.push(Math.round((start + index - 1) / 2));
+          start = -1;
+        }
+      }
+      const merged = [];
+      for (const point of groups) {
+        if (!merged.length || point - merged[merged.length - 1] >= minimumGap) merged.push(point);
+        else merged[merged.length - 1] = Math.round((merged[merged.length - 1] + point) / 2);
+      }
+      return merged;
+    }
+
+    function detectOcrGridBounds(image) {
+      const maxSide = 1400;
+      const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      const data = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      const gray = (x, y) => {
+        const offset = (y * canvas.width + x) * 4;
+        return (data[offset] * 299 + data[offset + 1] * 587 + data[offset + 2] * 114) / 1000;
+      };
+      const vertical = Array.from({ length: canvas.width }, (_, x) => {
+        let count = 0;
+        for (let y = 0; y < canvas.height; y += 2) if (gray(x, y) < 230) count += 1;
+        return count;
+      });
+      const horizontal = Array.from({ length: canvas.height }, (_, y) => {
+        let count = 0;
+        for (let x = 0; x < canvas.width; x += 2) if (gray(x, y) < 230) count += 1;
+        return count;
+      });
+      const verticalLines = ocrProjectionLines(vertical, canvas.height * .24);
+      const horizontalLines = ocrProjectionLines(horizontal, canvas.width * .24);
+      const chooseTen = (lines, size) => {
+        if (lines.length < 10) return null;
+        let best = null;
+        for (let start = 0; start + 9 < lines.length; start++) {
+          const sample = lines.slice(start, start + 10);
+          const gaps = sample.slice(1).map((value, index) => value - sample[index]);
+          const average = gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length;
+          const variance = gaps.reduce((sum, gap) => sum + (gap - average) ** 2, 0) / gaps.length;
+          const score = variance / Math.max(1, average * average) + Math.abs((sample[9] - sample[0]) / size - .75);
+          if (!best || score < best.score) best = { sample, score };
+        }
+        return best?.sample || null;
+      };
+      const xs = chooseTen(verticalLines, canvas.width);
+      const ys = chooseTen(horizontalLines, canvas.height);
+      const fallbackSize = Math.min(canvas.width, canvas.height) * .82;
+      const fallbackLeft = (canvas.width - fallbackSize) / 2;
+      const fallbackTop = (canvas.height - fallbackSize) / 2;
+      return {
+        canvas,
+        scale,
+        xs: xs || Array.from({ length: 10 }, (_, index) => fallbackLeft + fallbackSize * index / 9),
+        ys: ys || Array.from({ length: 10 }, (_, index) => fallbackTop + fallbackSize * index / 9),
+      };
+    }
+
+    async function recognizeSudokuImage(file) {
+      const image = new Image();
+      const url = URL.createObjectURL(file);
+      try {
+        await new Promise((resolve, reject) => {
+          image.onload = resolve;
+          image.onerror = () => reject(new Error('The selected image could not be read.'));
+          image.src = url;
+        });
+        const detected = detectOcrGridBounds(image);
+        const Tesseract = await withOcrTimeout(
+          loadTesseract(),
+          'The local OCR library could not start.',
+        );
+        const worker = await withOcrTimeout(Tesseract.createWorker('eng', 1, {
+          workerPath: './src/ocr/worker.min.js',
+          langPath: './src/ocr',
+          corePath: './src/ocr/tesseract-core.wasm.js',
+          // Blob workers are blocked by some browsers for file:// pages.
+          // Use the bundled worker directly in that mode.
+          workerBlobURL: location.protocol !== 'file:',
+          logger: message => {
+            if (message.status) ocrStatusEl.textContent = `OCR: ${message.status} ${Math.round((message.progress || 0) * 100)}%`;
+          },
+          errorHandler: error => {
+            ocrStatusEl.textContent = `OCR worker error: ${error.message || error}`;
+          },
+        }), 'The OCR worker could not start. Direct file pages may block browser workers.');
+        await worker.setParameters({
+          tessedit_char_whitelist: '123456789',
+          tessedit_pageseg_mode: '10',
+        });
+        const result = [];
+        for (let row = 0; row < 9; row++) {
+          for (let col = 0; col < 9; col++) {
+            const left = detected.xs[col];
+            const top = detected.ys[row];
+            const width = detected.xs[col + 1] - left;
+            const height = detected.ys[row + 1] - top;
+            const crop = document.createElement('canvas');
+            // Sudoku screenshots often contain pencilmarks around the cell
+            // edges. Large givens are centered, so isolate the middle glyph
+            // before sending each cell to OCR.
+            const padX = width * .24;
+            const padY = height * .24;
+            const scale = 4;
+            crop.width = Math.max(32, Math.round((width - padX * 2) * scale));
+            crop.height = Math.max(32, Math.round((height - padY * 2) * scale));
+            const cropContext = crop.getContext('2d');
+            cropContext.fillStyle = '#ffffff';
+            cropContext.fillRect(0, 0, crop.width, crop.height);
+            cropContext.drawImage(detected.canvas, left + padX, top + padY,
+              width - padX * 2, height - padY * 2, 0, 0, crop.width, crop.height);
+            const pixels = cropContext.getImageData(0, 0, crop.width, crop.height).data;
+            let ink = 0;
+            for (let pixel = 0; pixel < pixels.length; pixel += 4) {
+              const gray = (pixels[pixel] * 299 + pixels[pixel + 1] * 587 + pixels[pixel + 2] * 114) / 1000;
+              if (gray < 170) ink += 1;
+            }
+            // Pencilmarks are much smaller than the centered given glyph.
+            // Skip low-ink cells so a single candidate cannot become a clue.
+            if (ink / (crop.width * crop.height) < .025) {
+              result.push('.');
+              continue;
+            }
+            const recognized = await worker.recognize(crop);
+            const digit = (recognized.data.text || '').replace(/[^1-9]/g, '');
+            result.push(digit.length === 1 ? digit : '.');
+          }
+        }
+        await worker.terminate();
+        return result.join('');
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    }
+
+    async function recognizeSudokuImageWithOcrad(file) {
+      if (typeof OCRAD !== 'function') throw new Error('The local file OCR engine did not load.');
+      const image = new Image();
+      const url = URL.createObjectURL(file);
+      try {
+        await new Promise((resolve, reject) => {
+          image.onload = resolve;
+          image.onerror = () => reject(new Error('The selected image could not be read.'));
+          image.src = url;
+        });
+        const detected = detectOcrGridBounds(image);
+        const result = [];
+        const readCrop = (left, top, width, height, padFraction) => {
+          const padX = width * padFraction;
+          const padY = height * padFraction;
+          const scale = 4;
+          const crop = document.createElement('canvas');
+          crop.width = Math.max(32, Math.round((width - padX * 2) * scale));
+          crop.height = Math.max(32, Math.round((height - padY * 2) * scale));
+          const context = crop.getContext('2d', { willReadFrequently: true });
+          context.fillStyle = '#ffffff';
+          context.fillRect(0, 0, crop.width, crop.height);
+          context.drawImage(detected.canvas, left + padX, top + padY,
+            width - padX * 2, height - padY * 2, 0, 0, crop.width, crop.height);
+          const pixels = context.getImageData(0, 0, crop.width, crop.height).data;
+          let ink = 0;
+          const dark = new Uint8Array(crop.width * crop.height);
+          for (let pixel = 0; pixel < pixels.length; pixel += 4) {
+            const gray = (pixels[pixel] * 299 + pixels[pixel + 1] * 587 + pixels[pixel + 2] * 114) / 1000;
+            if (gray < 170) {
+              const index = pixel / 4;
+              dark[index] = 1;
+              ink += 1;
+            }
+          }
+          let largestArea = 0;
+          let largestHeight = 0;
+          const visited = new Uint8Array(dark.length);
+          for (let start = 0; start < dark.length; start++) {
+            if (!dark[start] || visited[start]) continue;
+            const stack = [start];
+            visited[start] = 1;
+            let area = 0;
+            let minY = crop.height;
+            let maxY = -1;
+            while (stack.length) {
+              const index = stack.pop();
+              const x = index % crop.width;
+              const y = Math.floor(index / crop.width);
+              area += 1;
+              minY = Math.min(minY, y);
+              maxY = Math.max(maxY, y);
+              for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                  if (!dx && !dy) continue;
+                  const nx = x + dx;
+                  const ny = y + dy;
+                  if (nx < 0 || nx >= crop.width || ny < 0 || ny >= crop.height) continue;
+                  const neighbor = ny * crop.width + nx;
+                  if (dark[neighbor] && !visited[neighbor]) {
+                    visited[neighbor] = 1;
+                    stack.push(neighbor);
+                  }
+                }
+              }
+            }
+            largestArea = Math.max(largestArea, area);
+            largestHeight = Math.max(largestHeight, maxY - minY + 1);
+          }
+          if (ink / (crop.width * crop.height) < .04
+            || largestArea / (crop.width * crop.height) < .006
+            || largestHeight / crop.height < .30) return '';
+          const direct = OCRAD(crop).replace(/[^1-9]/g, '');
+          if (direct.length === 1) return direct;
+          const binary = document.createElement('canvas');
+          binary.width = crop.width;
+          binary.height = crop.height;
+          const binaryContext = binary.getContext('2d', { willReadFrequently: true });
+          binaryContext.drawImage(crop, 0, 0);
+          const binaryPixels = binaryContext.getImageData(0, 0, binary.width, binary.height);
+          for (let pixel = 0; pixel < binaryPixels.data.length; pixel += 4) {
+            const gray = (binaryPixels.data[pixel] * 299 + binaryPixels.data[pixel + 1] * 587 + binaryPixels.data[pixel + 2] * 114) / 1000;
+            const value = gray < 205 ? 0 : 255;
+            binaryPixels.data[pixel] = value;
+            binaryPixels.data[pixel + 1] = value;
+            binaryPixels.data[pixel + 2] = value;
+            binaryPixels.data[pixel + 3] = 255;
+          }
+          binaryContext.putImageData(binaryPixels, 0, 0);
+          return OCRAD(binary).replace(/[^1-9]/g, '');
+        };
+        for (let row = 0; row < 9; row++) {
+          for (let col = 0; col < 9; col++) {
+            const left = detected.xs[col];
+            const top = detected.ys[row];
+            const width = detected.xs[col + 1] - left;
+            const height = detected.ys[row + 1] - top;
+            const readings = [.20, .24, .28, .32, .36]
+              .map(pad => readCrop(left, top, width, height, pad));
+            const votes = new Map();
+            for (const reading of readings) {
+              if (reading.length === 1) votes.set(reading, (votes.get(reading) || 0) + 1);
+            }
+            let digit = '';
+            let voteCount = 0;
+            for (const [candidate, count] of votes) {
+              if (count > voteCount) {
+                digit = candidate;
+                voteCount = count;
+              }
+            }
+            result.push(voteCount >= 1 ? digit : '.');
+            ocrStatusEl.textContent = `OCR: scanning cell ${row * 9 + col + 1} of 81`;
+          }
+        }
+        return result.join('');
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    }
+
+    function ocrPuzzleIsLoadable(text) {
+      const grid = core.decode(text);
+      return Boolean(grid && core.countSolutionsDlx(grid, 1) > 0);
+    }
+
+    function openOcrDialog() {
+      ocrResultEl.value = '';
+      ocrLoadEl.disabled = true;
+      ocrStatusEl.textContent = 'Choose a Sudoku screenshot or image.';
+      if (typeof ocrDialogEl.showModal === 'function') ocrDialogEl.showModal();
+      else ocrDialogEl.setAttribute('open', '');
+      ocrImageInputEl.click();
+    }
+
+    async function handleOcrImage(file) {
+      if (!file) return;
+      if (ocrImageUrl) URL.revokeObjectURL(ocrImageUrl);
+      ocrImageUrl = URL.createObjectURL(file);
+      ocrPreviewEl.src = ocrImageUrl;
+      ocrStatusEl.textContent = location.protocol === 'file:'
+        ? 'Loading bundled OCR...'
+        : 'Loading OCR engine...';
+      ocrLoadEl.disabled = true;
+      try {
+        const text = location.protocol === 'file:'
+          ? await recognizeSudokuImageWithOcrad(file)
+          : await recognizeSudokuImage(file);
+        ocrResultEl.value = text;
+        ocrLoadEl.disabled = !ocrPuzzleIsLoadable(text);
+        ocrStatusEl.textContent = ocrLoadEl.disabled
+          ? 'The scan needs correction before loading. Large givens are kept; pencilmarks may need to be removed.'
+          : 'Review the recognized givens. Empty cells are shown as dots.';
+      } catch (error) {
+        ocrStatusEl.textContent = error.message || 'OCR failed.';
+      }
     }
 
     async function importPuzzle() {
@@ -22723,6 +23631,22 @@
       event.stopPropagation();
       clearToyAutomorphResults();
     });
+    toyMinimizerSearchEl.addEventListener('click', event => {
+      event.stopPropagation();
+      runToyMinimizer();
+    });
+    toyMinimizerReplaceEl.addEventListener('click', event => {
+      event.stopPropagation();
+      replaceWithToyMinimizedGrid();
+    });
+    toyAutomorphUseSolutionEl.addEventListener('change', () => {
+      clearToyAutomorphResults();
+      clearToyMiniLex();
+      const comparison = toyAutomorphSource();
+      if (toyAutomorphUseSolutionEl.checked && !comparison.hasSolution) {
+        setStatus('Use solution is selected, but this grid has no complete solution yet.', 'warn');
+      }
+    });
     toyAutomorphLegendEl.addEventListener('click', event => {
       event.stopPropagation();
       const open = toyAutomorphLegendPanelEl.hidden;
@@ -22781,6 +23705,14 @@
     document.getElementById('fishDigitsOff').addEventListener('click', () => setAllDigits(false));
     for (const button of document.querySelectorAll('[data-sector-kind]')) {
       button.addEventListener('click', () => {
+        if (button.dataset.sectorVariants) {
+          setVariantSectorRange(
+            button.dataset.sectorKind,
+            button.dataset.sectorVariants.split(','),
+            button.dataset.sectorOn === 'true',
+          );
+          return;
+        }
         setSectorRange(
           button.dataset.sectorKind,
           Number(button.dataset.sectorStart),
@@ -22791,10 +23723,46 @@
     }
     loadEl.addEventListener('click', loadPuzzle);
     importEl.addEventListener('click', importPuzzle);
+    scanImageEl.addEventListener('click', openOcrDialog);
+    ocrImageInputEl.addEventListener('change', () => {
+      void handleOcrImage(ocrImageInputEl.files?.[0]);
+      ocrImageInputEl.value = '';
+    });
+    ocrResultEl.addEventListener('input', () => {
+      ocrLoadEl.disabled = !ocrPuzzleIsLoadable(ocrResultEl.value.trim());
+    });
+    ocrCancelEl.addEventListener('click', () => {
+      ocrDialogEl.close?.();
+      ocrDialogEl.removeAttribute('open');
+    });
+    ocrLoadEl.addEventListener('click', () => {
+      const text = ocrResultEl.value.trim();
+      if (!ocrPuzzleIsLoadable(text)) {
+        ocrStatusEl.textContent = 'OCR result must be an 81-character grid with at least one valid solution.';
+        return;
+      }
+      inputEl.value = text;
+      ocrDialogEl.close?.();
+      ocrDialogEl.removeAttribute('open');
+      loadPuzzle();
+    });
     showFixedInVantageEl.addEventListener('change', () => {
       showFixedInVantage = showFixedInVantageEl.checked;
       renderBoard();
     });
+    for (const [key, input] of [
+      ['diagonal', variantDiagonalEl],
+      ['antiDiagonal', variantAntiDiagonalEl],
+      ['windoku', variantWindokuEl],
+      ['antiKing', variantAntiKingEl],
+      ['antiKnight', variantAntiKnightEl],
+      ['nonConsecutive', variantNonConsecutiveEl],
+    ]) {
+      input.addEventListener('change', () => {
+        variantSettings[key] = input.checked;
+        applyVariantSettings();
+      });
+    }
     document.addEventListener('keydown', handlePlayerKeydown);
     for (const button of document.querySelectorAll('[data-example-puzzle], [data-example-key]')) {
       button.addEventListener('click', () => {

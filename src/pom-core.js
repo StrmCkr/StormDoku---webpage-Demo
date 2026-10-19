@@ -136,7 +136,10 @@
     return visit(0, new Set(occupied));
   }
 
-  const ALL_SECTORS = Array.from({ length: 27 }, (_, index) => index);
+  // The active unit list includes classic units plus enabled variant units.
+  // Keep this dynamic because Windoku contributes nine additional non-net
+  // sectors, while diagonal variants contribute one each.
+  const allSectors = () => Array.from({ length: core.UNITS.length }, (_, index) => index);
   const POM_FISH_NAMES = {
     1: 'Cyclops',
     2: 'X-Wing',
@@ -195,10 +198,10 @@
     const maxK = options.maxK ?? 0;
     const cleanDigits = (options.digits || [1, 2, 3, 4, 5, 6, 7, 8, 9])
       .filter(digit => Number.isInteger(digit) && digit >= 1 && digit <= 9);
-    const cleanBaseSectors = (options.baseSectors || ALL_SECTORS)
-      .filter(sector => Number.isInteger(sector) && sector >= 0 && sector < 27);
-    const cleanCoverSectors = (options.coverSectors || ALL_SECTORS)
-      .filter(sector => Number.isInteger(sector) && sector >= 0 && sector < 27);
+    const cleanBaseSectors = (options.baseSectors || allSectors())
+      .filter(sector => Number.isInteger(sector) && sector >= 0 && sector < core.UNITS.length);
+    const cleanCoverSectors = (options.coverSectors || allSectors())
+      .filter(sector => Number.isInteger(sector) && sector >= 0 && sector < core.UNITS.length);
 
     return {
       minSize: Math.min(minSize, maxSize),
@@ -222,7 +225,7 @@
 
   function buildDigitSectorState(cand) {
     const cellsByDigit = Array.from({ length: 9 }, () =>
-      Array.from({ length: 27 }, () => new Set())
+      Array.from({ length: core.UNITS.length }, () => new Set())
     );
     const activeSectorsByDigit = Array.from({ length: 9 }, () => new Set());
 
@@ -742,10 +745,10 @@
 
       const activeSectors = state.activeSectorsByDigit[digit - 1];
       const usableBaseSectors = baseSearchSectors(
-        ALL_SECTORS.filter(sector => activeSectors.has(sector) && opts.baseSectors.has(sector)),
+        allSectors().filter(sector => activeSectors.has(sector) && opts.baseSectors.has(sector)),
         opts,
       );
-      const usableCoverSectors = ALL_SECTORS.filter(sector =>
+      const usableCoverSectors = allSectors().filter(sector =>
         activeSectors.has(sector) && opts.coverSectors.has(sector)
       );
 

@@ -621,26 +621,31 @@
   function hydraChainEliminations(cand, record, options = {}) {
     const proof = hydraChainProof(cand, record, options);
     if (proof.canPlace(null) !== true) return [];
-    const proposed = mergeEliminations(
+    const verified = mergeEliminations(
       record.baseEliminations || record.eliminations,
       ...(record.hydraBranches || []).map(branch => branch.eliminations),
     );
-    const targets = new Map(proposed.map(item => [eliminationKey(item), item]));
-    for (const source of proof.cells) {
-      for (const digit of cand[source] || []) {
-        for (const cell of [source, ...core.peersOf(source)]) {
+    const projected = [];
+    for (const branch of record.hydraBranches || []) {
+      const steps = branch.chain?.steps || [];
+      const endpoints = [steps[0]?.entry, steps.at(-1)?.exit];
+      // Only a genuinely atomic endpoint is a forced placement.  Grouped
+      // ALS/AHS sides remain conditional and must keep their own two-node
+      // verifier; treating every member as forced recreates false Hydra ALS-XZ
+      // eliminations from the old footprint sweep.
+      for (const side of endpoints) {
+        if (side?.cells?.length !== 1 || side?.digits?.length !== 1) continue;
+        const [source] = side.cells;
+        const [digit] = side.digits;
+        if (!(cand[source] || []).includes(digit)) continue;
+        for (const cell of core.peersOf(source)) {
           if (!(cand[cell] || []).includes(digit)) continue;
-          const key = `${cell}:${digit}`;
-          if (!targets.has(key)) targets.set(key, { cell, digit, reasons: ['HYDRA DOF chain placement'] });
+          const item = { cell, digit, reasons: ['HYDRA atomic endpoint'] };
+          if (proof.canPlace(item) === false) projected.push(item);
         }
       }
     }
-    const eliminations = [];
-    for (const item of targets.values()) {
-      if (proof.canPlace(item) === false) eliminations.push(item);
-      if (proof.exhausted) break;
-    }
-    return mergeEliminations(eliminations);
+    return mergeEliminations(verified, projected);
   }
 
   function findHydraAlsDofChains(cand, options = {}) {
@@ -727,10 +732,17 @@
     }
     const proof = hydraChainProof(cand, record, options);
     if (proof.canPlace(null) !== true) errors.push('Hydra DOF chain has no complete placement witness');
+    const branchEliminations = new Set((record.hydraBranches || [])
+      .flatMap(branch => branch.eliminations || [])
+      .map(eliminationKey));
     const expectedEliminations = [];
     for (const item of record.eliminations || []) {
+      const key = eliminationKey(item);
+      const branchOwned = branchEliminations.has(key);
       if (!(cand[item.cell] || []).includes(item.digit)
-        || proof.canPlace(item) !== false) errors.push(`no Hydra chain witness for elimination ${eliminationKey(item)}`);
+        || (!branchOwned && proof.canPlace(item) !== false)) {
+        errors.push(`no Hydra chain witness for elimination ${key}`);
+      }
       else expectedEliminations.push(item);
     }
     return { ok: !errors.length, errors, expectedEliminations };

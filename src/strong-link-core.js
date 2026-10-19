@@ -248,6 +248,51 @@
     return geometries;
   }
 
+  function windokuEriGeometries(sector, digitCells, digit, requireCount) {
+    const unit = core.UNITS[sector] || [];
+    const rows = [...new Set(unit.map(cell => core.Rx[cell]))].sort((a, b) => a - b);
+    const cols = [...new Set(unit.map(cell => core.Cy[cell]))].sort((a, b) => a - b);
+    if (rows.length !== 3 || cols.length !== 3) return [];
+
+    const unitDigitCells = intersection(unit, digitCells[digit]);
+    if (requireCount && (unitDigitCells.length < 4 || unitDigitCells.length >= 6)) return [];
+
+    const geometries = [];
+    for (const row of rows) {
+      for (const col of cols) {
+        const intersectionCell = row * 9 + col;
+        const remainingCount = unitDigitCells.length
+          - (unitDigitCells.includes(intersectionCell) ? 1 : 0);
+        if (requireCount && remainingCount < 4) continue;
+
+        const emptyCells = unit.filter(cell => core.Rx[cell] !== row && core.Cy[cell] !== col);
+        if (intersection(unitDigitCells, emptyCells).length) continue;
+
+        const activeCells = intersection(unitDigitCells, core.UNITS[row]);
+        const linkedCells = intersection(unitDigitCells, core.UNITS[9 + col]);
+        if (!activeCells.length || !linkedCells.length) continue;
+
+        geometries.push({
+          unitCells: unitDigitCells,
+          activeCells,
+          linkedCells,
+          construction: {
+            kind: 'eri',
+            name: 'windoku-empty-rectangle',
+            baseSector: sector,
+            row,
+            col,
+            intersectionCell,
+            emptyCells,
+            activeCells: [...activeCells],
+            linkedCells: [...linkedCells],
+          },
+        });
+      }
+    }
+    return geometries;
+  }
+
   function buildSingleDigitStrongLinks(cand, mini, digit, buckets, seen) {
     for (let line = 0; line < 9; line++) {
       for (let type = 0; type < 4; type++) {
@@ -296,6 +341,114 @@
     }
   }
 
+  // A diagonal is a nine-cell sector, but its cells are partitioned across
+  // three boxes. When one box contributes no candidate for a digit, the two
+  // remaining box partitions are exhaustive alternatives for that digit.
+  // That is a grouped XOR gate suitable for the AIC walk.
+  function buildDiagonalSectorStrongLinks(cand, digitCells, digit, buckets, seen) {
+    const diagonalSectors = Array.from({ length: core.UNITS.length }, (_, sector) => sector)
+      .filter(sector => ['D1', 'AD1'].includes(core.variantUnitName?.(sector)));
+    for (const sector of diagonalSectors) {
+      const diagonal = core.UNITS[sector];
+      if (!diagonal) continue;
+
+      const boxGroups = new Map();
+      for (const cell of diagonal) {
+        if (!(cand[cell] || []).includes(digit + 1)) continue;
+        const box = core.Bxy[cell];
+        if (!boxGroups.has(box)) boxGroups.set(box, []);
+        boxGroups.get(box).push(cell);
+      }
+
+      const occupied = [...boxGroups.keys()].sort((a, b) => a - b);
+      if (occupied.length !== 2) continue;
+
+      const activeCells = boxGroups.get(occupied[0]) || [];
+      const linkedCells = boxGroups.get(occupied[1]) || [];
+      const linkType = determineLinkType(activeCells, linkedCells);
+      if (linkType < 0) continue;
+
+      const partitionBoxes = core.variantUnitName(sector) === 'D1' ? [0, 4, 8] : [2, 4, 6];
+      const construction = {
+        kind: 'variant-sector-xor',
+        name: core.variantUnitName(sector) === 'D1' ? 'diagonal-box-xor' : 'anti-diagonal-box-xor',
+        baseSector: sector,
+        partitionSectors: partitionBoxes.map(box => 18 + box),
+        partitionCells: partitionBoxes.map(box =>
+          diagonal.filter(cell => core.Bxy[cell] === box)),
+        activePartition: partitionBoxes.indexOf(occupied[0]),
+        linkedPartition: partitionBoxes.indexOf(occupied[1]),
+        emptyPartition: partitionBoxes.findIndex(box => !boxGroups.has(box)),
+        activeCells: [...activeCells],
+        linkedCells: [...linkedCells],
+      };
+      const link = buildLink(
+        cand,
+        digitCells,
+        digit,
+        linkType,
+        activeCells,
+        linkedCells,
+        construction,
+      );
+      link.secondaryTypes = ['DIAGONAL_XOR'];
+      addUnique(buckets, seen, link);
+    }
+  }
+
+  // The five uncoloured Windoku sectors are 3x3 products of selected rows
+  // and columns. Each can therefore be partitioned in either orientation
+  // into three exhaustive 3-cell groups. If one group is empty for a digit,
+  // the other two groups form a grouped XOR gate. These are not ERI boxes.
+  function buildWindokuSectorStrongLinks(cand, digitCells, digit, buckets, seen) {
+    for (let sector = 27; sector < core.UNITS.length; sector++) {
+      const name = core.variantUnitName?.(sector);
+      if (!/^WD[2-5]$/.test(name || '')) continue;
+
+      const unit = core.UNITS[sector];
+      const partitionAxes = [
+        { kind: 'row', values: [...new Set(unit.map(cell => core.Rx[cell]))].sort((a, b) => a - b) },
+        { kind: 'col', values: [...new Set(unit.map(cell => core.Cy[cell]))].sort((a, b) => a - b) },
+      ];
+
+      for (const axis of partitionAxes) {
+        if (axis.values.length !== 3) continue;
+        const groups = axis.values.map(value => unit
+          .filter(cell => (axis.kind === 'row' ? core.Rx[cell] : core.Cy[cell]) === value)
+          .filter(cell => digitCells[digit].includes(cell)));
+        const occupied = groups
+          .map((cells, index) => cells.length ? index : -1)
+          .filter(index => index >= 0);
+        if (occupied.length !== 2) continue;
+
+        const activeCells = groups[occupied[0]];
+        const linkedCells = groups[occupied[1]];
+        const linkType = determineLinkType(activeCells, linkedCells);
+        if (linkType < 0) continue;
+
+        const construction = {
+          kind: 'variant-sector-xor',
+          name: 'windoku-disjoint-xor',
+          baseSector: sector,
+          partitionKind: axis.kind,
+          partitionValues: [...axis.values],
+          partitionCells: axis.values.map(value => unit.filter(cell =>
+            (axis.kind === 'row' ? core.Rx[cell] : core.Cy[cell]) === value)),
+          activePartition: occupied[0],
+          linkedPartition: occupied[1],
+          emptyPartition: axis.values.findIndex((_, index) => !groups[index].length),
+          activeCells: [...activeCells],
+          linkedCells: [...linkedCells],
+        };
+        addUnique(
+          buckets,
+          seen,
+          buildLink(cand, digitCells, digit, linkType, activeCells, linkedCells, construction),
+        );
+      }
+    }
+  }
+
   function buildEriLinks(cand, digitCells, digit, buckets, seen) {
     for (let box = 0; box < 9; box++) {
       for (const geometry of eriGeometries(box, digitCells, digit, true)) {
@@ -312,6 +465,29 @@
               geometry.construction,
             ),
           );
+      }
+    }
+
+    // Windoku's four highlighted regions are box-shaped ERI spaces. The five
+    // uncoloured disjoint sectors are valid units for subsets/fish, but are
+    // deliberately not treated as ERI boxes.
+    for (let sector = 27; sector < core.UNITS.length; sector++) {
+      const name = core.variantUnitName?.(sector);
+      if (!/^W[1-4]$/.test(name || '')) continue;
+      for (const geometry of windokuEriGeometries(sector, digitCells, digit, true)) {
+        addUnique(
+          buckets,
+          seen,
+          buildLink(
+            cand,
+            digitCells,
+            digit,
+            ERI,
+            geometry.activeCells,
+            geometry.linkedCells,
+            geometry.construction,
+          ),
+        );
       }
     }
   }
@@ -448,6 +624,8 @@
 
     for (let digit = 0; digit < 9; digit++) {
       if (includeSingleDigit) buildSingleDigitStrongLinks(cand, mini, digit, buckets, seen);
+      if (includeSingleDigit) buildDiagonalSectorStrongLinks(cand, mini.digitCells, digit, buckets, seen);
+      if (includeSingleDigit) buildWindokuSectorStrongLinks(cand, mini.digitCells, digit, buckets, seen);
       if (selectedTypes.has(ERI)) buildEriLinks(cand, mini.digitCells, digit, buckets, seen);
     }
 

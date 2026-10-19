@@ -565,15 +565,15 @@ export function sectorGroupName(sectors: number[]): string {
   let lastType = -1;
 
   for (const sector of uniqueSorted(sectors)) {
-    const type = Math.floor(sector / 9);
+    const type = sector < 9 ? 0 : sector < 18 ? 1 : sector < 27 ? 2 : sector === 27 ? 3 : 4;
 
     if (type !== lastType) {
       lastType = type;
       if (out) out += ',';
-      out += type === 0 ? 'r' : type === 1 ? 'c' : 'b';
+      out += type === 0 ? 'r' : type === 1 ? 'c' : type === 2 ? 'b' : type === 3 ? 'd' : 'a';
     }
 
-    out += (sector % 9) + 1;
+    out += sector < 27 ? (sector % 9) + 1 : sector - 26;
   }
 
   return out;

@@ -2099,6 +2099,7 @@
       weakDigit: step.weakDigit,
       weakFromDigit: step.weakFromDigit ?? step.weakDigit,
       weakToDigit: step.weakToDigit ?? step.weakDigit,
+      weakSectors: [...(step.weakSectors || [])],
     };
   }
 
@@ -3133,6 +3134,7 @@
               weakDigit: edge.digit,
               weakFromDigit: edge.fromDigit ?? edge.digit,
               weakToDigit: edge.toDigit ?? edge.digit,
+              weakSectors: [...(edge.sectors || [])],
             },
           ];
           const nextDepth = logicalDepth(nextSteps);
@@ -3767,9 +3769,10 @@
         const assigned = forced ? [forced] : [];
         if (options.requireAhsCellOccupancy) {
           const values = new Uint8Array(81);
-          const used = new Uint16Array(27);
-          const houses = cell => [Math.floor(cell / 9), 9 + cell % 9,
-            18 + Math.floor(cell / 27) * 3 + Math.floor(cell % 9 / 3)];
+          const used = new Uint16Array(core.UNITS.length);
+          const houses = cell => core.UNITS
+            .map((unit, index) => unit.includes(cell) ? index : -1)
+            .filter(index => index >= 0);
           const clauses = ordered.map(choices => choices.map(choice => ({
             ...choice, bit: 1 << choice.digit, houses: houses(choice.cell),
           })));

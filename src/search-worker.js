@@ -4,7 +4,7 @@
  * the page and returns structured-cloneable search results to the UI thread.
  */
 importScripts(
-  './browser-core.js?v=20261016-20',
+  './browser-core.js?v=20261019-9',
   './set-tools-core.js?v=20261016-20',
   './pom-core.js?v=20261016-20',
   './als-core.js?v=20261016-20',
@@ -16,7 +16,7 @@ importScripts(
   './subset-report-core.js?v=20261016-20',
   './mini-sectors-core.js?v=20261016-20',
   './strong-link-core.js?v=20261016-20',
-  './chain-core.js?v=20261016-20',
+  './chain-core.js?v=20261019-24',
   './alc-core.js?v=20261016-20',
   './ahs-xy-core.js?v=20261016-20',
   './ahs-dof-core.js?v=20261016-20',
@@ -388,10 +388,13 @@ function hydraAicParticipants(payload, alsList, onProgress = null, forChaining =
     });
     const chains = [...(aicReport.chains || []), ...(aicReport.alsBranches || [])];
     aicChainsChecked += chains.length;
+    // Resolve every ALS touched by the walk.  A branch may start at an
+    // auxiliary and arrive at the hub or another auxiliary; limiting this
+    // list to the start node prevents those endpoints becoming Hydra nodes.
     participants.push(...core.hydraParticipantsFromAicChains(
       payload.candidateGrid,
       chains,
-      [auxiliary],
+      alsList,
       alsLinkSet,
       { maxParticipants: maxParticipants - participants.length, forChaining },
     ));
@@ -453,7 +456,7 @@ function hydraFamilyParticipants(payload, family, sourceNodes, onProgress = null
       .filter(chain => chain.steps?.some(step => step.family === family));
     aicChainsChecked += chains.length;
     participants.push(...core.hydraParticipantsFromAicChains(
-      payload.candidateGrid, chains, [source], links,
+      payload.candidateGrid, chains, sourceNodes, links,
       { maxParticipants: maxParticipants - participants.length, forChaining: true, family },
     ));
   }
@@ -749,6 +752,9 @@ self.onmessage = event => {
   }
 
   try {
+    if (payload?.variantSettings && typeof core.configureVariants === 'function') {
+      core.configureVariants(payload.variantSettings);
+    }
     if (cancelled.has(id)) {
       cancelled.delete(id);
       return;

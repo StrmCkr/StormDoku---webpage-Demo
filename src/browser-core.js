@@ -45,7 +45,8 @@
   const ROWS = Rset;
   const COLS = Cset;
   const BOXES = Bset;
-  const UNITS = [...ROWS, ...COLS, ...BOXES];
+  const CLASSIC_UNITS = [...ROWS, ...COLS, ...BOXES];
+  const UNITS = [...CLASSIC_UNITS];
 
   for (let i = 0; i < 81; i++) {
     const r = (i / 9) | 0;
@@ -64,6 +65,115 @@
     }
     return [...peers];
   });
+
+  const VARIANT_UNITS = {
+    diagonal: [[0,10,20,30,40,50,60,70,80]],
+    antiDiagonal: [[8,16,24,32,40,48,56,64,72]],
+    // Windoku's four highlighted regions and five uncoloured disjoint sectors.
+    // All nine are genuine 9-cell units; the first four are only a visual
+    // distinction for the board.
+    windoku: [
+      [10,11,12,19,20,21,28,29,30],
+      [14,15,16,23,24,25,32,33,34],
+      [46,47,48,55,56,57,64,65,66],
+      [50,51,52,59,60,61,68,69,70],
+      [0,4,8,36,40,44,72,76,80],
+      [1,2,3,37,38,39,73,74,75],
+      [5,6,7,41,42,43,77,78,79],
+      [9,13,17,18,22,26,27,31,35],
+      [45,49,53,54,58,62,63,67,71],
+    ],
+  };
+  const VARIANT_UNIT_NAMES = {
+    diagonal: ['D1'],
+    antiDiagonal: ['AD1'],
+    windoku: ['W1', 'W2', 'W3', 'W4', 'WD1', 'WD2', 'WD3', 'WD4', 'WD5'],
+  };
+  const uniqueEdges = (deltas, predicate = () => true) => {
+    const edges = [];
+    const seen = new Set();
+    for (let cell = 0; cell < 81; cell += 1) {
+      const row = Math.floor(cell / 9);
+      const col = cell % 9;
+      for (const [dr, dc] of deltas) {
+        const nextRow = row + dr;
+        const nextCol = col + dc;
+        if (nextRow < 0 || nextRow >= 9 || nextCol < 0 || nextCol >= 9) continue;
+        const other = nextRow * 9 + nextCol;
+        if (!predicate(row, col, nextRow, nextCol)) continue;
+        const a = Math.min(cell, other);
+        const b = Math.max(cell, other);
+        const key = `${a}:${b}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        edges.push([a, b]);
+      }
+    }
+    return edges;
+  };
+  const ANTI_KING_EDGES = uniqueEdges([
+    [-1, -1], [-1, 1], [1, -1], [1, 1],
+  ]);
+  const ANTI_KNIGHT_EDGES = uniqueEdges([
+    [-2, -1], [-2, 1], [-1, -2], [-1, 2],
+    [1, -2], [1, 2], [2, -1], [2, 1],
+  ]);
+  const NON_CONSECUTIVE_EDGES = uniqueEdges([
+    [-1, 0], [1, 0], [0, -1], [0, 1],
+  ]);
+  const variantState = {
+    diagonal: false,
+    antiDiagonal: false,
+    windoku: false,
+    antiKing: false,
+    antiKnight: false,
+    nonConsecutive: false,
+  };
+
+  function configureVariants(options = {}) {
+    variantState.diagonal = options.diagonal === true;
+    variantState.antiDiagonal = options.antiDiagonal === true;
+    variantState.windoku = options.windoku === true;
+    variantState.antiKing = options.antiKing === true;
+    variantState.antiKnight = options.antiKnight === true;
+    variantState.nonConsecutive = options.nonConsecutive === true;
+    const extraUnits = Object.entries(VARIANT_UNITS)
+      .filter(([name]) => variantState[name])
+      .flatMap(([, units]) => units);
+    UNITS.splice(0, UNITS.length, ...CLASSIC_UNITS, ...extraUnits);
+    for (let cell = 0; cell < 81; cell += 1) {
+      const peers = new Set();
+      for (const unit of UNITS) {
+        if (!unit.includes(cell)) continue;
+        for (const other of unit) if (other !== cell) peers.add(other);
+      }
+      if (variantState.antiKing) {
+        for (const [a, b] of ANTI_KING_EDGES) {
+          if (a === cell) peers.add(b);
+          if (b === cell) peers.add(a);
+        }
+      }
+      if (variantState.antiKnight) {
+        for (const [a, b] of ANTI_KNIGHT_EDGES) {
+          if (a === cell) peers.add(b);
+          if (b === cell) peers.add(a);
+        }
+      }
+      PEERS[cell] = [...peers];
+    }
+    return { ...variantState };
+  }
+
+  function variantUnitName(sector) {
+    if (sector < CLASSIC_UNITS.length) return null;
+    let offset = CLASSIC_UNITS.length;
+    for (const [name, units] of Object.entries(VARIANT_UNITS)) {
+      if (!variantState[name]) continue;
+      if (sector < offset + units.length) return VARIANT_UNIT_NAMES[name][sector - offset];
+      offset += units.length;
+    }
+    return null;
+  }
 
   const POPC = new Uint8Array(512);
   for (let i = 1; i < POPC.length; i++) POPC[i] = POPC[i >> 1] + (i & 1);
@@ -109,7 +219,15 @@
   function candidatesFor(grid, cell) {
     if (grid[cell]) return [];
     const used = new Set(PEERS[cell].map(peer => grid[peer]));
-    return DIGITS.filter(digit => !used.has(digit));
+    const adjacent = variantState.nonConsecutive
+      ? NON_CONSECUTIVE_EDGES
+        .flatMap(([a, b]) => a === cell ? [grid[b]] : b === cell ? [grid[a]] : [])
+        .filter(Boolean)
+      : [];
+    const adjacentSet = new Set(adjacent);
+    return DIGITS.filter(digit => !used.has(digit)
+      && (!variantState.nonConsecutive
+        || !adjacentSet.has(digit - 1) && !adjacentSet.has(digit + 1)));
   }
 
   function allCandidates(grid) {
@@ -117,10 +235,24 @@
   }
 
   function canPlace(grid, cell, digit) {
-    return PEERS[cell].every(peer => grid[peer] !== digit);
+    if (!PEERS[cell].every(peer => grid[peer] !== digit)) return false;
+    if (!variantState.nonConsecutive) return true;
+    return NON_CONSECUTIVE_EDGES.every(([a, b]) => {
+      if (a !== cell && b !== cell) return true;
+      const other = a === cell ? grid[b] : grid[a];
+      return !other || Math.abs(other - digit) !== 1;
+    });
+  }
+
+  function hasConflicts(grid) {
+    for (let cell = 0; cell < 81; cell += 1) {
+      if (grid[cell] && !canPlace(grid, cell, grid[cell])) return true;
+    }
+    return false;
   }
 
   function countSolutions(grid, limit = 2) {
+    if (hasConflicts(grid)) return 0;
     let bestCount = Infinity;
     let bestCell = -1;
 
@@ -161,16 +293,24 @@
     const rowCell = [];
     const rowDigit = [];
 
-    for (let index = 1; index <= 324; index++) {
+    const extraUnitCount = UNITS.length - CLASSIC_UNITS.length;
+    const antiKingConstraintStart = 324 + extraUnitCount * 9;
+    const antiKingConstraintCount = variantState.antiKing ? ANTI_KING_EDGES.length * 9 : 0;
+    const antiKnightConstraintStart = antiKingConstraintStart + antiKingConstraintCount;
+    const antiKnightConstraintCount = variantState.antiKnight ? ANTI_KNIGHT_EDGES.length * 9 : 0;
+    const nonConsecutiveConstraintStart = antiKnightConstraintStart + antiKnightConstraintCount;
+    const nonConsecutiveConstraintCount = variantState.nonConsecutive ? NON_CONSECUTIVE_EDGES.length * 8 : 0;
+    const constraintCount = nonConsecutiveConstraintStart + nonConsecutiveConstraintCount;
+    for (let index = 1; index <= constraintCount; index++) {
       left[index] = index - 1;
-      right[index] = index === 324 ? 0 : index + 1;
+      right[index] = index === constraintCount ? 0 : index + 1;
       up[index] = index;
       down[index] = index;
       column[index] = index;
       size[index] = 0;
     }
 
-    left[0] = 324;
+    left[0] = constraintCount;
     right[0] = 1;
 
     const addRow = (cell, digit, constraints) => {
@@ -211,12 +351,40 @@
       for (let digit = 1; digit <= 9; digit++) {
         if (grid[cell] && grid[cell] !== digit) continue;
         const d0 = digit - 1;
-        addRow(cell, digit, [
+        const constraints = [
           cell,
           81 + row * 9 + d0,
           162 + col * 9 + d0,
           243 + box * 9 + d0,
-        ]);
+        ];
+        for (let unitIndex = 0; unitIndex < extraUnitCount; unitIndex += 1) {
+          const unit = UNITS[CLASSIC_UNITS.length + unitIndex];
+          if (unit.includes(cell)) constraints.push(324 + unitIndex * 9 + d0);
+        }
+        if (variantState.antiKing) {
+          for (let edge = 0; edge < ANTI_KING_EDGES.length; edge += 1) {
+            const [a, b] = ANTI_KING_EDGES[edge];
+            if (a === cell || b === cell) constraints.push(antiKingConstraintStart + edge * 9 + d0);
+          }
+        }
+        if (variantState.antiKnight) {
+          for (let edge = 0; edge < ANTI_KNIGHT_EDGES.length; edge += 1) {
+            const [a, b] = ANTI_KNIGHT_EDGES[edge];
+            if (a === cell || b === cell) constraints.push(antiKnightConstraintStart + edge * 9 + d0);
+          }
+        }
+        if (variantState.nonConsecutive) {
+          for (let edge = 0; edge < NON_CONSECUTIVE_EDGES.length; edge += 1) {
+            const [a, b] = NON_CONSECUTIVE_EDGES[edge];
+            if (a !== cell && b !== cell) continue;
+            for (let lower = 1; lower <= 8; lower += 1) {
+              if (digit === lower || digit === lower + 1) {
+                constraints.push(nonConsecutiveConstraintStart + edge * 8 + lower - 1);
+              }
+            }
+          }
+        }
+        addRow(cell, digit, constraints);
       }
     }
 
@@ -292,6 +460,7 @@
   }
 
   function solveFully(grid) {
+    if (hasConflicts(grid)) return null;
     const work = [...grid];
 
     const fill = () => {
@@ -326,7 +495,7 @@
   }
 
   function generate(givens = 30) {
-    const targetGivens = Math.max(17, Math.min(81, Math.floor(givens)));
+    const targetGivens = Math.max(1, Math.min(81, Math.floor(givens)));
     const grid = new Array(81).fill(0);
 
     const fill = cell => {
@@ -364,6 +533,7 @@
       rows: new Array(9).fill(0),
       cols: new Array(9).fill(0),
       boxes: new Array(9).fill(0),
+      units: Array.from({ length: UNITS.length }, () => 0),
     };
 
     const addFixed = (cell, digit) => {
@@ -373,6 +543,9 @@
       state.rows[Rx[cell]] |= bit;
       state.cols[Cy[cell]] |= bit;
       state.boxes[Bxy[cell]] |= bit;
+      for (let unitIndex = 0; unitIndex < UNITS.length; unitIndex += 1) {
+        if (UNITS[unitIndex].includes(cell)) state.units[unitIndex] |= bit;
+      }
     };
 
     for (let cell = 0; cell < 81; cell++) addFixed(cell, grid[cell]);
@@ -380,7 +553,7 @@
   }
 
   function buildSpaces(cand, givenGrid = []) {
-    const M = Array.from({ length: 27 }, () => new Array(9).fill(0));
+    const M = Array.from({ length: UNITS.length }, () => new Array(9).fill(0));
     const given = fixedSectorState(givenGrid);
 
     for (let cell = 0; cell < 81; cell++) {
@@ -389,6 +562,17 @@
         M[Rx[cell]][d0] |= 1 << Cy[cell];
         M[9 + Cy[cell]][d0] |= 1 << Rx[cell];
         M[18 + Bxy[cell]][d0] |= 1 << BxyN[cell];
+      }
+    }
+
+    // Variant units use their own positional index. Keep the classic
+    // row/column/box slots unchanged so every existing search remains stable.
+    for (let unitIndex = 27; unitIndex < UNITS.length; unitIndex++) {
+      for (let position = 0; position < UNITS[unitIndex].length; position++) {
+        const cell = UNITS[unitIndex][position];
+        for (const digit of cand[cell] || []) {
+          M[unitIndex][digit - 1] |= 1 << position;
+        }
       }
     }
 
@@ -433,13 +617,20 @@
   function houseRef(unitIndex) {
     if (unitIndex < 9) return { type: 'row', indices: [unitIndex] };
     if (unitIndex < 18) return { type: 'col', indices: [unitIndex - 9] };
-    return { type: 'box', indices: [unitIndex - 18] };
+    if (unitIndex < 27) return { type: 'box', indices: [unitIndex - 18] };
+    const name = variantUnitName(unitIndex);
+    return {
+      type: name === 'D1' ? 'diagonal' : name === 'AD1' ? 'anti-diagonal' : 'variant-sector',
+      indices: [unitIndex],
+      name,
+    };
   }
 
   function houseLabel(unitIndex) {
     if (unitIndex < 9) return `row ${unitIndex + 1}`;
     if (unitIndex < 18) return `column ${unitIndex - 8}`;
-    return `box ${unitIndex - 17}`;
+    if (unitIndex < 27) return `box ${unitIndex - 17}`;
+    return variantUnitName(unitIndex) || `sector ${unitIndex + 1}`;
   }
 
   function houseRefLabel(ref) {
@@ -448,7 +639,8 @@
     const indexes = ref.indices.map(index => index + 1).join('/');
     if (ref.type === 'row') return ref.indices.length === 1 ? `row ${indexes}` : `rows ${indexes}`;
     if (ref.type === 'col') return ref.indices.length === 1 ? `column ${indexes}` : `columns ${indexes}`;
-    return ref.indices.length === 1 ? `box ${indexes}` : `boxes ${indexes}`;
+    if (ref.type === 'box') return ref.indices.length === 1 ? `box ${indexes}` : `boxes ${indexes}`;
+    return ref.name || ref.type;
   }
 
   function rowOf(cell) {
@@ -615,15 +807,22 @@
     let lastType = -1;
 
     for (const sector of uniqueSorted(sectors)) {
-      const type = Math.floor(sector / 9);
+      const variantName = variantUnitName(sector);
+      if (variantName) {
+        if (out) out += ',';
+        out += variantName;
+        lastType = -1;
+        continue;
+      }
+      const type = sector < 9 ? 0 : sector < 18 ? 1 : sector < 27 ? 2 : sector === 27 ? 3 : 4;
 
       if (type !== lastType) {
         lastType = type;
         if (out) out += ',';
-        out += type === 0 ? 'r' : type === 1 ? 'c' : 'b';
+        out += type === 0 ? 'r' : type === 1 ? 'c' : type === 2 ? 'b' : type === 3 ? 'd' : 'a';
       }
 
-      out += (sector % 9) + 1;
+      out += sector < 27 ? (sector % 9) + 1 : sector - 26;
     }
 
     return out;
@@ -669,7 +868,14 @@
   function positionalHouse(h) {
     if (h < 9) return { cells: Rset[h], label: `row ${h + 1}`, ref: { type: 'row', indices: [h] } };
     if (h < 18) return { cells: Cset[h - 9], label: `column ${h - 8}`, ref: { type: 'col', indices: [h - 9] } };
-    return { cells: Bset[h - 18], label: `box ${h - 17}`, ref: { type: 'box', indices: [h - 18] } };
+    if (h < 27) return { cells: Bset[h - 18], label: `box ${h - 17}`, ref: { type: 'box', indices: [h - 18] } };
+    const name = variantUnitName(h) || `sector ${h + 1}`;
+    const refType = name === 'D1'
+      ? 'diagonal'
+      : name === 'AD1'
+        ? 'anti-diagonal'
+        : 'variant-sector';
+    return { cells: UNITS[h], label: name, ref: { type: refType, indices: [h] } };
   }
 
   function nakedSingleStep(cand) {
@@ -751,7 +957,7 @@
   function hiddenStepM(cand, k) {
     const { M } = buildSpaces(cand);
 
-    for (let h = 0; h < 27; h++) {
+    for (let h = 0; h < UNITS.length; h++) {
       const currentHouse = positionalHouse(h);
 
       for (const digits of digitCombos(k)) {
@@ -1226,12 +1432,12 @@
     const conflicts = [];
 
     for (let cell = 0; cell < 81; cell++) {
-      const row = Math.floor(cell / 9);
-      const col = cell % 9;
-      const box = Math.floor(row / 3) * 3 + Math.floor(col / 3);
-      const boxPosition = (row % 3) * 3 + (col % 3);
       const forced = sourceCandidates[cell].filter(digit => {
         const d0 = digit - 1;
+        const row = Math.floor(cell / 9);
+        const col = cell % 9;
+        const box = Math.floor(row / 3) * 3 + Math.floor(col / 3);
+        const boxPosition = (row % 3) * 3 + (col % 3);
         return singletonMask(sourceSpaces[row][d0], col)
           && singletonMask(sourceSpaces[9 + col][d0], row)
           && singletonMask(sourceSpaces[18 + box][d0], boxPosition);
@@ -1280,6 +1486,9 @@
     Rsec,
     Csec,
     Bsec,
+    configureVariants,
+    VARIANT_UNITS,
+    variantUnitName,
     ROWS,
     COLS,
     BOXES,

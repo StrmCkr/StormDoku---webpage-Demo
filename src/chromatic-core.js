@@ -26,8 +26,23 @@
     }
   }
   const peers = Array.from({ length: 81 }, () => new Set());
-  for (const unit of units) for (const cell of unit) for (const peer of unit) {
-    if (peer !== cell) peers[cell].add(peer);
+  function syncVariantUnits() {
+    const sudokuCore = global.StormDoku;
+    if (!sudokuCore?.UNITS) return;
+
+    units.splice(0, units.length, ...sudokuCore.UNITS.map(unit => [...unit]));
+    unitNames.splice(0, unitNames.length,
+      ...units.map((_, index) => {
+        if (index < 9) return `r${index + 1}`;
+        if (index < 18) return `c${index - 8}`;
+        if (index < 27) return `b${index - 17}`;
+        return index === 27 ? 'diagonal' : 'anti-diagonal';
+      }),
+    );
+    for (const peerSet of peers) peerSet.clear();
+    for (const unit of units) for (const cell of unit) for (const peer of unit) {
+      if (peer !== cell) peers[cell].add(peer);
+    }
   }
 
   function combinations(values, size, start = 0, prefix = [], output = []) {
@@ -142,12 +157,14 @@
   }
 
   function buildChromaticType3Links(cand, records = []) {
+    syncVariantUnits();
     return records
       .map((record, index) => chromaticType3Link(record, cand, index))
       .filter(Boolean);
   }
 
   function find(cand, options = {}) {
+    syncVariantUnits();
     const minSectors = Math.max(2, Number(options.minSectors) || 4);
     const maxSectors = Math.min(9, Math.max(minSectors, Number(options.maxSectors) || 5));
     const minDigits = Math.max(2, Number(options.minDigits) || 2);
