@@ -4343,8 +4343,8 @@
             title="Copy the current 729-candidate grid with cell and box borders">
             Copy 729
           </button>
-          <button id="copyPuzzle81Link" class="secondary" type="button" title="Copy a link that opens this 81-character puzzle">Link 81</button>
-          <button id="copyPuzzle729Link" class="secondary" type="button" title="Copy a link that opens this 729-candidate grid">Link 729</button>
+          <button id="copyPuzzle81Link" class="secondary" type="button" title="Copy a link that opens this puzzle and its active variation settings">Link 81</button>
+          <button id="copyPuzzle729Link" class="secondary" type="button" title="Copy a link that opens this candidate grid and its active variation settings">Link 729</button>
         </div>
         <details class="solution-inline" id="solutionPanel">
           <summary>Solution</summary>
@@ -11936,7 +11936,31 @@
       url.search = '';
       url.hash = '';
       url.searchParams.set('grid', text);
+      const activeVariants = Object.entries(variantSettings)
+        .filter(([, enabled]) => enabled)
+        .map(([name]) => name);
+      if (activeVariants.length) url.searchParams.set('variants', activeVariants.join(','));
       return url.toString();
+    }
+
+    function linkedVariantSettings() {
+      const params = new URLSearchParams(window.location.search);
+      const hash = window.location.hash.replace(/^#/, '');
+      const hashParams = hash ? new URLSearchParams(hash) : null;
+      const value = params.get('variants') ?? params.get('variant')
+        ?? hashParams?.get('variants') ?? hashParams?.get('variant');
+      if (value == null) return false;
+      const active = new Set(value.split(',').map(name => name.trim()).filter(Boolean));
+      for (const name of Object.keys(variantSettings)) variantSettings[name] = active.has(name);
+      for (const [key, input] of [
+        ['diagonal', variantDiagonalEl],
+        ['antiDiagonal', variantAntiDiagonalEl],
+        ['windoku', variantWindokuEl],
+        ['antiKing', variantAntiKingEl],
+        ['antiKnight', variantAntiKnightEl],
+        ['nonConsecutive', variantNonConsecutiveEl],
+      ]) input.checked = variantSettings[key];
+      return true;
     }
 
     function linkedPuzzleInput() {
@@ -23780,6 +23804,10 @@
     initSearchStopButtons();
     initFishSettings();
     initToyControls();
+    if (linkedVariantSettings()) {
+      core.configureVariants(variantSettings);
+      syncFishVariantSectors();
+    }
     renderToyAutomorphCatalog();
     renderDigitFocusButtons();
     renderCandidateSizeFilterButtons();
