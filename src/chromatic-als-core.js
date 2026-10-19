@@ -7,11 +7,19 @@
   const core = global.StormDoku;
   if (!core) throw new Error('StormDoku core must load before chromatic-als-core.js');
   const units = core.UNITS || [];
-  const unitNames = units.map((_, index) => index < 9 ? `r${index + 1}`
-    : index < 18 ? `c${index - 8}` : `b${index - 17}`);
+  const unitNames = [];
   const peers = Array.from({ length: 81 }, () => new Set());
-  for (const unit of units) for (const cell of unit) for (const peer of unit) {
-    if (peer !== cell) peers[cell].add(peer);
+  function syncVariantUnits() {
+    unitNames.splice(0, unitNames.length, ...units.map((_, index) =>
+      core.variantUnitName?.(index)
+      || (index < 9 ? `r${index + 1}` : index < 18 ? `c${index - 8}` : `b${index - 17}`)));
+    for (const peerSet of peers) peerSet.clear();
+    for (const unit of units) for (const cell of unit) for (const peer of unit) {
+      if (peer !== cell) peers[cell].add(peer);
+    }
+    for (let cell = 0; cell < 81; cell += 1) {
+      for (const peer of core.peersOf?.(cell) || []) peers[cell].add(peer);
+    }
   }
 
   function combinations(values, size, start = 0, prefix = [], output = []) {
@@ -178,6 +186,7 @@
   }
 
   function find(cand, options = {}) {
+    syncVariantUnits();
     const minSectors = Math.max(2, Number(options.minSectors) || 4);
     const maxSectors = Math.min(units.length, Math.max(minSectors, Number(options.maxSectors) || 5));
     const minDigits = Math.max(2, Number(options.minDigits) || 2);

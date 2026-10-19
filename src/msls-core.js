@@ -5,25 +5,39 @@
   const cellName = id => `r${Math.floor(id / 9) + 1}c${id % 9 + 1}`;
   // Reuse the solver's canonical sector table when the browser/worker has
   // loaded it. The fallback keeps this core independently testable.
-  const houses = core.UNITS
+  let houses = core.UNITS
     ? core.UNITS.map(unit => [...unit])
     : Array.from({length:27}, (_, h) => Array.from({length:9}, (_, p) =>
       h < 9 ? h * 9 + p : h < 18 ? p * 9 + h - 9 :
         Math.floor((h - 18) / 3) * 27 + (h - 18) % 3 * 3 + Math.floor(p / 3) * 9 + p % 3));
-  const cellHouses = Array.from({length:81}, (_, id) => houses
+  let cellHouses = Array.from({length:81}, (_, id) => houses
     .map((unit, house) => unit.includes(id) ? house : -1)
     .filter(house => house >= 0));
+  const syncHouses = () => {
+    if (!core.UNITS) return;
+    houses = core.UNITS.map(unit => [...unit]);
+    cellHouses = Array.from({length:81}, (_, id) => houses
+      .map((unit, house) => unit.includes(id) ? house : -1)
+      .filter(house => house >= 0));
+  };
   const normalize = grid => (Array.isArray(grid[0]?.[0]) ? grid.flat() : grid)
     .map(values => values.length > 1 ? [...values] : []);
-  const sector = h => ({kind:h < 9 ? 'row' : h < 18 ? 'column' : 'box', index:h % 9});
-  const sectorName = h => `${h < 9 ? 'r' : h < 18 ? 'c' : 'b'}${h % 9 + 1}`;
+  const sector = h => core.variantUnitName?.(h)
+    ? {kind:'variant-sector', index:h, name:core.variantUnitName(h)}
+    : {kind:h < 9 ? 'row' : h < 18 ? 'column' : 'box', index:h % 9};
+  const sectorName = h => core.variantUnitName?.(h)
+    || `${h < 9 ? 'r' : h < 18 ? 'c' : 'b'}${h % 9 + 1}`;
   // Geometry is independent of the candidate grid. Build it once and reuse
   // it across searches; only candidate masks remain search-specific.
+  const familySectors = family => family < 3
+    ? Array.from({length:9}, (_, index) => family * 9 + index)
+    : Array.from({length:Math.max(0, houses.length - 27)}, (_, index) => index + 27);
+  const activeFamilies = () => [0, 1, 2, ...(houses.length > 27 ? [3] : [])];
   const geometryCombinations=new Map(), geometryCells=new Map();
   function sectorCombinations(families,size,requireEach=false){
-    const key=`${families.join(',')}:${size}:${requireEach}`;
+    const selectedHouses=families.flatMap(familySectors);
+    const key=`${selectedHouses.join(',')}:${size}:${requireEach}`;
     if(geometryCombinations.has(key)) return geometryCombinations.get(key);
-    const selectedHouses=families.flatMap(f=>Array.from({length:9},(_,i)=>f*9+i));
     const out=[];
     function walk(start,chosen,mask){
       if(chosen.length===size){
@@ -109,6 +123,7 @@
   }
 
   function findMsls(input, options={}) {
+    syncHouses();
     const grid=normalize(input), results=[], seen=new Set(), tested=new Set(), cache=new Map();
     const digitSectorCells=Array.from({length:9},(_,digit)=>houses.map(unit=>
       unit.filter(id=>grid[id].includes(digit+1))));
@@ -251,7 +266,8 @@
       // model below so its larger MSLS cores are not starved by this pass.
       const classicMax = maxBaseSectors >= 4 ? 0 : Math.min(3,maxBaseSectors);
       for(let size=minBaseSectors;size<=classicMax && !truncated;size++) {
-        for(let family=0;family<3 && !truncated;family++) {
+        for(const family of activeFamilies()) {
+          if (truncated) break;
           for(const selected of sectorCombinations([family],size)) {
             if(truncated) break;
             const cells=unionCells(selected).filter(id=>grid[id].length);
@@ -268,7 +284,8 @@
         .sort((a,b) => b - a);
       for(const baseSize of baseSizes) {
         if (truncated) break;
-        for(let baseFamily=0;baseFamily<3 && !truncated;baseFamily++) {
+        for(const baseFamily of activeFamilies()) {
+          if (truncated) break;
           function chooseBase(start, selectedBase) {
             if(truncated) return;
             if(selectedBase.length===baseSize) {
@@ -276,7 +293,8 @@
               const baseCellList=[...baseCells];
               const baseIntersection=selectedCover =>
                 intersectCells(baseCellList,unionCells(selectedCover));
-              for(let coverFamily=0;coverFamily<3 && !truncated;coverFamily++) {
+              for(const coverFamily of activeFamilies()) {
+                if (truncated) break;
                 if(coverFamily===baseFamily) continue;
                 for(let coverSize=maxCoverSectors;coverSize>=minCoverSectors && !truncated;coverSize--) {
                   const coverCandidates=sectorCombinations([coverFamily],coverSize).map(selectedCover=>({
@@ -297,7 +315,7 @@
                 }
               }
               if (allowMixedCovers && maxCoverSectors >= 2) {
-                const mixedFamilies=[0,1,2].filter(f=>f!==baseFamily);
+                const mixedFamilies=activeFamilies().filter(f=>f!==baseFamily);
                 for(let coverSize=maxCoverSectors;coverSize>=Math.max(2,minCoverSectors) && !truncated;coverSize--) {
                   const coverCandidates=sectorCombinations(mixedFamilies,coverSize,true).map(selectedCover=>({
                     selectedCover,

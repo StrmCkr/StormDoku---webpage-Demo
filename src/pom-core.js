@@ -11,9 +11,13 @@
     const columns = new Array(9).fill(-1);
     const usedColumns = new Set();
     const usedBoxes = new Set();
+    const variantUnits = core.UNITS.slice(27);
+    const usedVariantUnits = new Set();
+    const selectedCells = new Set();
 
     function visit(row) {
       if (row === 9) {
+        if (usedVariantUnits.size !== variantUnits.length) return;
         templates.push({
           id: templates.length,
           cells: columns.map((column, currentRow) => currentRow * 9 + column),
@@ -26,10 +30,28 @@
         const box = band * 3 + Math.floor(column / 3);
         if (usedColumns.has(column) || usedBoxes.has(box)) continue;
 
+        const cell = row * 9 + column;
+        if (core.peersOf(cell).some(peer => selectedCells.has(peer))) continue;
+        const matchingVariantUnits = [];
+        let blocked = false;
+        for (let index = 0; index < variantUnits.length; index += 1) {
+          if (!variantUnits[index].includes(cell)) continue;
+          if (usedVariantUnits.has(index)) {
+            blocked = true;
+            break;
+          }
+          matchingVariantUnits.push(index);
+        }
+        if (blocked) continue;
+
         columns[row] = column;
         usedColumns.add(column);
         usedBoxes.add(box);
+        selectedCells.add(cell);
+        for (const index of matchingVariantUnits) usedVariantUnits.add(index);
         visit(row + 1);
+        for (const index of matchingVariantUnits) usedVariantUnits.delete(index);
+        selectedCells.delete(cell);
         usedColumns.delete(column);
         usedBoxes.delete(box);
       }
@@ -39,8 +61,20 @@
     return templates;
   }
 
+  let catalogKey = '';
+
+  function currentCatalogKey() {
+    const units = core.UNITS.map(unit => unit.slice().sort((a, b) => a - b).join(',')).join('|');
+    const peers = Array.from({ length: 81 }, (_, cell) => core.peersOf(cell).slice().sort((a, b) => a - b).join(','));
+    return `${units}::${peers.join('|')}`;
+  }
+
   function allTemplates() {
-    if (!catalog) catalog = generateTemplates();
+    const nextKey = currentCatalogKey();
+    if (!catalog || catalogKey !== nextKey) {
+      catalog = generateTemplates();
+      catalogKey = nextKey;
+    }
     return catalog;
   }
 

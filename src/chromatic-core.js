@@ -36,12 +36,15 @@
         if (index < 9) return `r${index + 1}`;
         if (index < 18) return `c${index - 8}`;
         if (index < 27) return `b${index - 17}`;
-        return index === 27 ? 'diagonal' : 'anti-diagonal';
+        return sudokuCore.variantUnitName?.(index) || `s${index + 1}`;
       }),
     );
     for (const peerSet of peers) peerSet.clear();
     for (const unit of units) for (const cell of unit) for (const peer of unit) {
       if (peer !== cell) peers[cell].add(peer);
+    }
+    for (let cell = 0; cell < 81; cell += 1) {
+      for (const peer of sudokuCore.peersOf?.(cell) || []) peers[cell].add(peer);
     }
   }
 
