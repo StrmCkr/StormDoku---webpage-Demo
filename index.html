@@ -6645,8 +6645,11 @@
       );
       for (const sectors of [pomFishSettings.baseSectors, pomFishSettings.coverSectors]) {
         for (let sector = 27; sector < 64; sector++) {
-          if (addActive && activeVariantSectors.has(sector)) sectors.add(sector);
-          else sectors.delete(sector);
+          if (activeVariantSectors.has(sector)) {
+            if (addActive) sectors.add(sector);
+          } else {
+            sectors.delete(sector);
+          }
         }
       }
     }
@@ -6701,10 +6704,15 @@
 
     function setVariantSectorRange(kind, names, on) {
       const wanted = new Set(names);
-      for (let sector = 27; sector < core.UNITS.length; sector++) {
-        if (!wanted.has(core.variantUnitName(sector))) continue;
-        if (on) pomFishSettings[kind].add(sector);
-        else pomFishSettings[kind].delete(sector);
+      let sector = 27;
+      for (const [variantName, units] of Object.entries(core.VARIANT_UNITS || {})) {
+        if (variantSettings[variantName]) {
+          for (let offset = 0; offset < units.length; offset += 1, sector += 1) {
+            if (!wanted.has(variantName)) continue;
+            if (on) pomFishSettings[kind].add(sector);
+            else pomFishSettings[kind].delete(sector);
+          }
+        }
       }
       renderFishSectorGrid(kind);
       fishSettingsChanged();
