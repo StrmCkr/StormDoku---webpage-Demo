@@ -6639,13 +6639,13 @@
       return core.variantUnitName(index) || `s${index + 1}`;
     }
 
-    function syncFishVariantSectors() {
+    function syncFishVariantSectors(addActive = false) {
       const activeVariantSectors = new Set(
         Array.from({ length: Math.max(0, core.UNITS.length - 27) }, (_, index) => index + 27),
       );
       for (const sectors of [pomFishSettings.baseSectors, pomFishSettings.coverSectors]) {
         for (let sector = 27; sector < 64; sector++) {
-          if (activeVariantSectors.has(sector)) sectors.add(sector);
+          if (addActive && activeVariantSectors.has(sector)) sectors.add(sector);
           else sectors.delete(sector);
         }
       }
@@ -7229,7 +7229,7 @@
 
     function applyVariantSettings() {
       core.configureVariants(variantSettings);
-      syncFishVariantSectors();
+      syncFishVariantSectors(true);
       renderFishSectorGrid('baseSectors');
       renderFishSectorGrid('coverSectors');
       cand = core.allCandidates(puzzle);
@@ -23873,7 +23873,7 @@
     initToyControls();
     if (linkedVariantSettings()) {
       core.configureVariants(variantSettings);
-      syncFishVariantSectors();
+      syncFishVariantSectors(true);
     }
     renderToyAutomorphCatalog();
     renderDigitFocusButtons();

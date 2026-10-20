@@ -6,6 +6,29 @@
   const { combinations } = core.setTools;
   let catalog = null;
 
+  function boundedCombinations(values, size, limit = 10000) {
+    const out = [];
+    const current = [];
+    const max = Math.max(1, Number(limit) || 10000);
+    if (size < 0 || size > values.length) return out;
+
+    function visit(start) {
+      if (out.length >= max) return;
+      if (current.length === size) {
+        out.push([...current]);
+        return;
+      }
+      for (let index = start; index < values.length && out.length < max; index += 1) {
+        current.push(values[index]);
+        visit(index + 1);
+        current.pop();
+      }
+    }
+
+    visit(0);
+    return out;
+  }
+
   function generateTemplates() {
     const templates = [];
     const columns = new Array(9).fill(-1);
@@ -254,6 +277,10 @@
       enabledTechniques: options.enabledTechniques
         ? new Set(options.enabledTechniques)
         : null,
+      maxSearchCombinations: Math.max(1000, Math.min(
+        50000,
+        Number(options.maxSearchCombinations) || 10000,
+      )),
     };
   }
 
@@ -285,7 +312,10 @@
   }
 
   function isBasicBox(sectors) {
-    return sectors.length > 0 && sectors.every(sector => sector >= 18);
+    // Variant sectors are appended after the 27 classic units.  They are
+    // box-like for coverage, but they are not ordinary boxes and must not be
+    // classified as a basic box fish.
+    return sectors.length > 0 && sectors.every(sector => sector >= 18 && sector < 27);
   }
 
   function isImpossibleBoxFish(baseSectors, coverSectors) {
@@ -410,12 +440,30 @@
     const colBoxOverlap = setIntersection(colCells, boxCells);
     const rowBoxOverlap = setIntersection(rowCells, boxCells);
     const rcbOverlap = setIntersection(rowColOverlap, boxCells);
+    const sectorOverlaps = new Set();
+    for (let i = 0; i < sectors.length; i += 1) {
+      const cellsA = state.cellsByDigit[digit - 1][sectors[i]];
+      for (let j = i + 1; j < sectors.length; j += 1) {
+        for (const cell of setIntersection(cellsA, state.cellsByDigit[digit - 1][sectors[j]])) {
+          sectorOverlaps.add(cell);
+        }
+      }
+    }
 
     return {
       allUsedCells,
       rcbOverlap,
-      baseIntersections: setUnion(rcbOverlap, rowBoxOverlap, rowColOverlap, colBoxOverlap),
-      twoCoverIntersections: setUnion(rowBoxOverlap, rowColOverlap, colBoxOverlap),
+      // Keep the classic R/C/B fields for existing fin logic, while exposing
+      // intersections between any active sectors (including diagonal and
+      // Windoku units) as endo-fish intersections.
+      baseIntersections: setUnion(
+        rcbOverlap,
+        rowBoxOverlap,
+        rowColOverlap,
+        colBoxOverlap,
+        sectorOverlaps,
+      ),
+      twoCoverIntersections: setUnion(rowBoxOverlap, rowColOverlap, colBoxOverlap, sectorOverlaps),
     };
   }
 
@@ -585,7 +633,11 @@
   function filterOmissionFishBaseCombinations(state, digit, usableSectors, size, triggerCells, options) {
     const out = [];
 
-    for (const sectors of combinations(usableSectors, size)) {
+    for (const sectors of boundedCombinations(
+      usableSectors,
+      size,
+      options.maxSearchCombinations,
+    )) {
       if (!baseCombinationAllowed(sectors, options)) continue;
 
       const baseSaved = saveSectorCells(state, digit, sectors);
@@ -690,7 +742,11 @@
     // AF cover selection is deliberately evaluated from the candidate
     // geometry itself. The ordinary omission search's recursive trigger
     // pruning can discard the uncovered cell that AF is supposed to expose.
-    for (const chosen of combinations(candidates, coverSize)) {
+    for (const chosen of boundedCombinations(
+      candidates,
+      coverSize,
+      options.maxSearchCombinations,
+    )) {
       if (!fishTypeAllowed(fishType(baseSectors, chosen), options)) continue;
       const covered = setUnion(...chosen.map(sector => state.cellsByDigit[digit - 1][sector]));
       const missing = setDifference(baseSaved.allUsedCells, covered);
@@ -741,6 +797,7 @@
 
       const lastStart = candidates.length - remaining;
       for (let index = start; index <= lastStart; index++) {
+        if (out.length >= options.maxSearchCombinations) return;
         const sector = candidates[index];
         const cells = state.cellsByDigit[digit - 1][sector];
         const chosenCheck = chosen.map(item => state.cellsByDigit[digit - 1][item]);
@@ -1144,7 +1201,7 @@
         [...Array(81).keys()].filter(cell => (cand[cell] || []).includes(digit)),
       );
       for (let size = opts.minSize; size <= opts.maxSize && digitReports < maxReportsPerDigit; size++) {
-        const baseCombinations = combinations(
+        const baseCombinations = boundedCombinations(
           active
             .filter(sector => opts.baseSectors.has(sector))
             // Permit the bounded uncovered side to exist in the source
@@ -1152,6 +1209,7 @@
             // selected below.
             .filter(sector => state.cellsByDigit[digit - 1][sector].size <= size + 4),
           size,
+          opts.maxSearchCombinations,
         ).filter(sectors => {
           if (!baseCombinationAllowed(sectors, opts)) return false;
           return true;
