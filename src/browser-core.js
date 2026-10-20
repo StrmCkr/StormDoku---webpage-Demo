@@ -280,8 +280,60 @@
     return found;
   }
 
+  function solveVariantBacktracking(grid, limit = 2) {
+    if (!Array.isArray(grid) || grid.length !== 81 || hasConflicts(grid)) {
+      return { count: 0, solution: null };
+    }
+
+    const work = [...grid];
+    const maxSolutions = Math.max(1, Math.floor(limit));
+    let found = 0;
+    let firstSolution = null;
+
+    const search = () => {
+      if (found >= maxSolutions) return;
+      let bestCell = -1;
+      let bestCandidates = null;
+
+      for (let cell = 0; cell < 81; cell += 1) {
+        if (work[cell]) continue;
+        const candidates = candidatesFor(work, cell);
+        if (!bestCandidates || candidates.length < bestCandidates.length) {
+          bestCell = cell;
+          bestCandidates = candidates;
+          if (candidates.length <= 1) break;
+        }
+      }
+
+      if (bestCell < 0) {
+        if (!firstSolution) firstSolution = [...work];
+        found += 1;
+        return;
+      }
+      if (!bestCandidates.length) return;
+
+      for (const digit of bestCandidates) {
+        work[bestCell] = digit;
+        search();
+        work[bestCell] = 0;
+        if (found >= maxSolutions) return;
+      }
+    };
+
+    search();
+    return { count: found, solution: firstSolution };
+  }
+
   function solveDlx(grid, limit = 2) {
     if (!Array.isArray(grid) || grid.length !== 81) return { count: 0, solution: null };
+
+    // Edge rules are at-most-one/adjacency constraints, not exact-cover
+    // columns.  The DLX representation would incorrectly require every
+    // Anti-King/Anti-Knight edge to contain each digit, so use the same
+    // peer-aware legality checks as the ordinary solver for these variants.
+    if (variantState.antiKing || variantState.antiKnight || variantState.nonConsecutive) {
+      return solveVariantBacktracking(grid, limit);
+    }
 
     const maxSolutions = Math.max(1, Math.floor(limit));
     const left = [0];
