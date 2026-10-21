@@ -4,9 +4,9 @@
  * the page and returns structured-cloneable search results to the UI thread.
  */
 importScripts(
-  './browser-core.js?v=20261019-9',
+  './browser-core.js?v=20261020-1',
   './set-tools-core.js?v=20261016-20',
-  './pom-core.js?v=20261016-20',
+  './pom-core.js?v=20261020-1',
   './als-core.js?v=20261016-20',
   './als-dof-core.js?v=20261016-20',
   './hydra-core.js?v=20261016-20',

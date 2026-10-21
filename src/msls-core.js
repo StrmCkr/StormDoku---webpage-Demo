@@ -13,9 +13,21 @@
   let cellHouses = Array.from({length:81}, (_, id) => houses
     .map((unit, house) => unit.includes(id) ? house : -1)
     .filter(house => house >= 0));
+  // Sector indexes above the classic 27 are assigned in the current
+  // variation order.  When a variation is toggled, the same index can refer
+  // to a different unit, so geometry caches must not survive that transition.
+  const geometryCombinations=new Map(), geometryCells=new Map();
+  let houseSignature = houses.map(unit => unit.join(',')).join('|');
   const syncHouses = () => {
     if (!core.UNITS) return;
-    houses = core.UNITS.map(unit => [...unit]);
+    const nextHouses = core.UNITS.map(unit => [...unit]);
+    const nextSignature = nextHouses.map(unit => unit.join(',')).join('|');
+    if (nextSignature !== houseSignature) {
+      geometryCombinations.clear();
+      geometryCells.clear();
+      houseSignature = nextSignature;
+    }
+    houses = nextHouses;
     cellHouses = Array.from({length:81}, (_, id) => houses
       .map((unit, house) => unit.includes(id) ? house : -1)
       .filter(house => house >= 0));
@@ -33,7 +45,6 @@
     ? Array.from({length:9}, (_, index) => family * 9 + index)
     : Array.from({length:Math.max(0, houses.length - 27)}, (_, index) => index + 27);
   const activeFamilies = () => [0, 1, 2, ...(houses.length > 27 ? [3] : [])];
-  const geometryCombinations=new Map(), geometryCells=new Map();
   function sectorCombinations(families,size,requireEach=false){
     const selectedHouses=families.flatMap(familySectors);
     const key=`${selectedHouses.join(',')}:${size}:${requireEach}`;

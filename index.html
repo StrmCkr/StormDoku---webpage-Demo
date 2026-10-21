@@ -5916,12 +5916,12 @@
   <script src="./src/chromatic-core.js?v=20261015-1"></script>
   <script src="./src/chromatic-als-core.js?v=20261007-9"></script>
     <script src="./src/strong-link-core.js?v=20261016-22"></script>
-    <script src="./src/chain-core.js?v=20261019-24"></script>
+    <script src="./src/chain-core.js?v=20261020-2"></script>
   <script src="./src/alc-core.js?v=20261012-3"></script>
   <script src="./src/ahs-xy-core.js?v=20261001-4"></script>
   <script src="./src/ahs-dof-core.js?v=20261002-1"></script>
-  <script src="./src/msls-core.js?v=20261004-1"></script>
-    <script src="./src/search-worker-source.js?v=20261019-9"></script>
+  <script src="./src/msls-core.js?v=20261021-1"></script>
+    <script src="./src/search-worker-source.js?v=20261021-1"></script>
   <script src="./src/ocr/tesseract.min.js?v=5.1.1"></script>
   <script src="./src/ocr/ocrad.js?v=0.25"></script>
   <script>
@@ -6384,7 +6384,7 @@
       }
 
       try {
-      const workerPath = './src/search-worker.js?v=20261019-9';
+      const workerPath = './src/search-worker.js?v=20261021-1';
         releaseSearchWorkerBlobUrl();
         let workerUrl = new URL(workerPath, document.baseURI);
         if (document.baseURI.startsWith('file:')) {
@@ -16788,6 +16788,11 @@
       buildSets = true,
       phase = null,
     ) {
+      // Re-synchronise the core unit table before constructing any links.
+      // Variation toggles can change between searches while the same page and
+      // worker remain alive; without this, a previously enabled Windoku unit
+      // can leak into the next chain pass.
+      core.configureVariants(variantSettings);
       const nodeLimits = chainNodeLimitOptions('chain');
       const includeAlsRcc = profile?.includeAlsRcc ?? chainAlsRccEl.checked;
       const includeAhs = profile?.includeAhs ?? chainAhsEl.checked;
