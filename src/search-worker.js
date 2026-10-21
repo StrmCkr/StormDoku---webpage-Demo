@@ -4,7 +4,7 @@
  * the page and returns structured-cloneable search results to the UI thread.
  */
 importScripts(
-  './browser-core.js?v=20261021-3',
+  './browser-core.js?v=20261021-4',
   './set-tools-core.js?v=20261016-20',
   './pom-core.js?v=20261020-1',
   './als-core.js?v=20261016-20',
@@ -16,7 +16,7 @@ importScripts(
   './subset-report-core.js?v=20261016-20',
   './mini-sectors-core.js?v=20261016-20',
   './strong-link-core.js?v=20261016-20',
-  './chain-core.js?v=20261019-24',
+  './chain-core.js?v=20261021-4',
   './alc-core.js?v=20261016-20',
   './ahs-xy-core.js?v=20261016-20',
   './ahs-dof-core.js?v=20261016-20',

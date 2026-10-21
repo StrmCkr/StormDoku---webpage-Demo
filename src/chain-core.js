@@ -2075,6 +2075,21 @@
         exit.cells = [...exitCells];
       }
     }
+    const secondaryTypes = [
+      ...(Array.isArray(raw.secondaryTypes) ? raw.secondaryTypes : []),
+      ...(isGroupedAlsNodeStep({
+        family: step.view.node.family,
+        linkType: step.view.node.linkType,
+        entry,
+        exit,
+      }) ? ['ALS_NODE'] : []),
+      ...(isGroupedAhsNodeStep({
+        family: step.view.node.family,
+        linkType: step.view.node.linkType,
+        entry,
+        exit,
+      }) ? ['AHS_NODE'] : []),
+    ];
     return {
       family: step.view.node.family,
       linkId: step.view.node.id,
@@ -2082,6 +2097,7 @@
       linkType: step.view.node.linkType,
       linkTypeName: step.view.node.linkTypeName,
       linkTypeNames: [...step.view.node.linkTypeNames],
+      secondaryTypes: [...new Set(secondaryTypes)],
       originSectors: [...step.view.node.originSector],
       moduleLabel: moduleLabelForView(step.view, module),
       module,
@@ -2290,6 +2306,37 @@
       && step.exit.cells.length === 1;
   }
 
+  // Grouped type-4 edges can represent ALS nodes when their union has the
+  // defining N-cell / N+1-digit shape. Keep linkType 4 intact for AIC order;
+  // the semantic ALS role is classified separately.
+  function isGroupedAlsNodeStep(step) {
+    if (step.family !== 'SL' || step.linkType !== 4) return false;
+    const cells = sortedUnique([
+      ...(step.entry?.cells || []),
+      ...(step.exit?.cells || []),
+    ]);
+    const digits = sortedUnique([
+      ...(step.entry?.digits || []),
+      ...(step.exit?.digits || []),
+    ]);
+    return cells.length > 1 && digits.length === cells.length + 1;
+  }
+
+  // A grouped type-0..3 edge can represent an AHS node when its union has
+  // the complementary N-digit / N+1-cell shape.
+  function isGroupedAhsNodeStep(step) {
+    if (step.family !== 'SL' || ![0, 1, 2, 3].includes(step.linkType)) return false;
+    const cells = sortedUnique([
+      ...(step.entry?.cells || []),
+      ...(step.exit?.cells || []),
+    ]);
+    const digits = sortedUnique([
+      ...(step.entry?.digits || []),
+      ...(step.exit?.digits || []),
+    ]);
+    return digits.length > 0 && cells.length === digits.length + 1;
+  }
+
   function isPureRemotePairChain(steps) {
     if (steps.length < 2 || steps.some(step => !isBivalveStep(step))) return false;
     const digits = chainDigits(steps);
@@ -2309,8 +2356,12 @@
     return step.family === 'AHS' && step.linkTypeName === 'AHS_RCC';
   }
 
+  function isAhsNodeStep(step) {
+    return isGroupedAhsNodeStep(step) || isAhsRccStep(step);
+  }
+
   function isAlsNodeStep(step) {
-    return isBivalveStep(step) || isAlsRccStep(step);
+    return isBivalveStep(step) || isGroupedAlsNodeStep(step) || isAlsRccStep(step);
   }
 
   function isOrdinaryStrongLinkStep(step) {
@@ -2430,7 +2481,7 @@
 
   function structurePrefix(steps) {
     const hasAls = steps.some(step => isAlsRccStep(step));
-    const hasAhs = steps.some(step => isAhsRccStep(step));
+    const hasAhs = steps.some(step => isAhsNodeStep(step));
     // Mixed ALS/AHS structures use the named ALC prefix. This preserves
     // their classification without restoring the removed standalone ALC search.
     if (hasAls && hasAhs) return 'ALC';
@@ -2439,7 +2490,7 @@
       return hasNonAls ? 'AIC + ALS' : 'ALS';
     }
     if (hasAhs) {
-      const hasNonAhs = steps.some(step => !isAhsRccStep(step));
+      const hasNonAhs = steps.some(step => !isAhsNodeStep(step));
       return hasNonAhs ? 'AIC + AHS' : 'AHS';
     }
     return '';
@@ -2454,9 +2505,10 @@
     const seen = new Set();
     let nodeCount = 0;
     for (const step of steps) {
-      if (isBivalveStep(step)) {
+      if (isBivalveStep(step) || isGroupedAlsNodeStep(step)) {
+        const cells = sortedUnique([...step.entry.cells, ...step.exit.cells]);
         const digits = sortedUnique([...step.entry.digits, ...step.exit.digits]);
-        const key = `BIVALVE|${step.entry.cellKey}|${digits.join('')}`;
+        const key = `${isBivalveStep(step) ? 'BIVALVE' : 'ALS_NODE'}|${cells.join(',')}|${digits.join('')}`;
         if (!seen.has(key)) {
           seen.add(key);
           nodeCount += 1;
@@ -2488,11 +2540,21 @@
   // conveyance. Keep the classifier separate so an AHS chain can never be
   // mislabeled as an ALS result.
   function ahsOnlyStructureName(steps, isRing = false) {
-    if (!steps.length || !steps.every(step => isAhsRccStep(step))) return null;
+    if (!steps.length || !steps.every(step => isAhsNodeStep(step))) return null;
 
     const seen = new Set();
     let nodeCount = 0;
     for (const step of steps) {
+      if (isGroupedAhsNodeStep(step)) {
+        const cells = sortedUnique([...step.entry.cells, ...step.exit.cells]);
+        const digits = sortedUnique([...step.entry.digits, ...step.exit.digits]);
+        const key = `AHS_NODE|${cells.join(',')}|${digits.join('')}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          nodeCount += 1;
+        }
+        continue;
+      }
       const module = step.module;
       if (!module?.entrySubset || !module?.exitSubset) return null;
       for (const subset of [module.entrySubset, module.exitSubset]) {
