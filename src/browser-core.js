@@ -1069,6 +1069,68 @@
     return `Box - Line Reduction: (${digit}) ${sectorGroupName(base)} / ${sectorGroupName(cover)} => ${formatRemovals(removals)}`;
   }
 
+  // Variation units are houses too.  A digit confined to the intersection of
+  // a diagonal/Windoku unit and a classic row, column, or box has the same
+  // BLR consequence as an ordinary box-line interaction: remove it from the
+  // other cells in the classic house, or from the other cells in the
+  // variation unit.
+  function variantBoxLineStepM(cand) {
+    for (let sector = 27; sector < UNITS.length; sector += 1) {
+      const variantCells = UNITS[sector];
+      const name = variantUnitName(sector);
+      if (!variantCells || !name) continue;
+
+      for (let digit = 1; digit <= 9; digit += 1) {
+        const variantDigitCells = variantCells.filter(cell => cand[cell].includes(digit));
+        if (!variantDigitCells.length) continue;
+
+        for (let target = 0; target < 27; target += 1) {
+          const targetCells = UNITS[target];
+          const targetRef = houseRef(target);
+          const variantIntersection = variantDigitCells.filter(cell => targetCells.includes(cell));
+          if (variantIntersection.length === variantDigitCells.length) {
+            const eliminations = targetCells
+              .filter(cell => !variantCells.includes(cell) && cand[cell].includes(digit))
+              .map(cell => ({ cell, digit }));
+            if (eliminations.length) {
+              return {
+                tech: 'pointing',
+                desc: boxLineReport(digit, [sector], [target], eliminations),
+                elim: { items: eliminations },
+                digits: [digit],
+                at: variantIntersection,
+                base: houseRef(sector),
+                cover: targetRef,
+                vertices: variantIntersection,
+              };
+            }
+          }
+
+          const targetDigitCells = targetCells.filter(cell => cand[cell].includes(digit));
+          if (!targetDigitCells.length || !targetDigitCells.every(cell => variantCells.includes(cell))) continue;
+
+          const eliminations = variantCells
+            .filter(cell => !targetCells.includes(cell) && cand[cell].includes(digit))
+            .map(cell => ({ cell, digit }));
+          if (eliminations.length) {
+            return {
+              tech: 'claiming',
+              desc: boxLineReport(digit, [target], [sector], eliminations),
+              elim: { items: eliminations },
+              digits: [digit],
+              at: targetDigitCells,
+              base: targetRef,
+              cover: houseRef(sector),
+              vertices: targetDigitCells,
+            };
+          }
+        }
+      }
+    }
+
+    return null;
+  }
+
   function boxLineStepM(cand) {
     for (let digit = 1; digit <= 9; digit++) {
       for (let box = 0; box < 9; box++) {
@@ -1163,7 +1225,7 @@
       }
     }
 
-    return null;
+    return variantBoxLineStepM(cand);
   }
 
   function moveTypeEnabled(enabledTypes, type) {
