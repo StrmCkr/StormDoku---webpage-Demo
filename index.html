@@ -12272,6 +12272,10 @@
         (cand[item.cell] || []).includes(item.digit));
     }
 
+    function cleanCopiedEureka(text) {
+      return String(text || '').replace(/^AIC\s*\(Depth\s+\d+\)(?=\s*:)/i, 'AIC');
+    }
+
     function applyHighlightedMove() {
       const step = highlightedMoveStep();
       if (!highlightedMoveCanApply(step)) {
@@ -23972,7 +23976,7 @@
       copyPuzzleString(puzzleLink(current729String()), '729 candidate grid link'));
     solutionCopyEurekaEl.addEventListener('click', event => {
       event.stopPropagation();
-      const text = highlightedEurekaText();
+      const text = cleanCopiedEureka(highlightedEurekaText());
       if (text) void copyPuzzleString(text, 'Eureka');
     });
     solutionCopyListEl.addEventListener('click', event => {
