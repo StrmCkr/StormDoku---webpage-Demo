@@ -5916,12 +5916,12 @@
   <script src="./src/chromatic-core.js?v=20261015-1"></script>
   <script src="./src/chromatic-als-core.js?v=20261007-9"></script>
     <script src="./src/strong-link-core.js?v=20261016-22"></script>
-    <script src="./src/chain-core.js?v=20261021-4"></script>
+    <script src="./src/chain-core.js?v=20261021-5"></script>
   <script src="./src/alc-core.js?v=20261012-3"></script>
   <script src="./src/ahs-xy-core.js?v=20261001-4"></script>
   <script src="./src/ahs-dof-core.js?v=20261002-1"></script>
   <script src="./src/msls-core.js?v=20261021-1"></script>
-    <script src="./src/search-worker-source.js?v=20261021-2"></script>
+    <script src="./src/search-worker-source.js?v=20261021-3"></script>
   <script src="./src/ocr/tesseract.min.js?v=5.1.1"></script>
   <script src="./src/ocr/ocrad.js?v=0.25"></script>
   <script>
@@ -6384,7 +6384,7 @@
       }
 
       try {
-      const workerPath = './src/search-worker.js?v=20261021-2';
+      const workerPath = './src/search-worker.js?v=20261021-3';
         releaseSearchWorkerBlobUrl();
         let workerUrl = new URL(workerPath, document.baseURI);
         if (document.baseURI.startsWith('file:')) {

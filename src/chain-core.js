@@ -489,9 +489,18 @@
 
   function normaliseLink(link, family, index) {
     const id = link.id ?? index;
+    // RCC/node labels are annotations, not replacements for the ordinary
+    // strong-link type. Keep them in secondaryTypes for UI and diagnostics,
+    // but do not let them masquerade as the link's structural name.
+    const structuralSecondaryTypes = (Array.isArray(link.secondaryTypes)
+      ? link.secondaryTypes
+      : [])
+      .filter(name => !['ALS', 'ALS_RCC', 'AHS_RCC', 'ALS_NODE', 'AHS_NODE'].includes(
+        String(name || '').toUpperCase(),
+      ));
     const linkTypeNames = [...new Set([
       link.linkTypeName || family,
-      ...(Array.isArray(link.secondaryTypes) ? link.secondaryTypes : []),
+      ...structuralSecondaryTypes,
     ])];
     const node = {
       raw: link,
@@ -2481,7 +2490,10 @@
 
   function structurePrefix(steps) {
     const hasAls = steps.some(step => isAlsRccStep(step));
-    const hasAhs = steps.some(step => isAhsNodeStep(step));
+    // ALS_NODE/AHS_NODE are semantic markers for grouped links. They must
+    // not turn an ordinary grouped strong-link chain into an ALS/AHS
+    // structure; the search phase still owns that classification.
+    const hasAhs = steps.some(step => isAhsRccStep(step));
     // Mixed ALS/AHS structures use the named ALC prefix. This preserves
     // their classification without restoring the removed standalone ALC search.
     if (hasAls && hasAhs) return 'ALC';
@@ -2490,7 +2502,7 @@
       return hasNonAls ? 'AIC + ALS' : 'ALS';
     }
     if (hasAhs) {
-      const hasNonAhs = steps.some(step => !isAhsNodeStep(step));
+      const hasNonAhs = steps.some(step => !isAhsRccStep(step));
       return hasNonAhs ? 'AIC + AHS' : 'AHS';
     }
     return '';
@@ -2540,21 +2552,11 @@
   // conveyance. Keep the classifier separate so an AHS chain can never be
   // mislabeled as an ALS result.
   function ahsOnlyStructureName(steps, isRing = false) {
-    if (!steps.length || !steps.every(step => isAhsNodeStep(step))) return null;
+    if (!steps.length || !steps.every(step => isAhsRccStep(step))) return null;
 
     const seen = new Set();
     let nodeCount = 0;
     for (const step of steps) {
-      if (isGroupedAhsNodeStep(step)) {
-        const cells = sortedUnique([...step.entry.cells, ...step.exit.cells]);
-        const digits = sortedUnique([...step.entry.digits, ...step.exit.digits]);
-        const key = `AHS_NODE|${cells.join(',')}|${digits.join('')}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          nodeCount += 1;
-        }
-        continue;
-      }
       const module = step.module;
       if (!module?.entrySubset || !module?.exitSubset) return null;
       for (const subset of [module.entrySubset, module.exitSubset]) {
