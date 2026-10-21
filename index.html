@@ -7053,7 +7053,18 @@
 
     function selectedChain() {
       if (chainReport && selectedChainIndex !== null) {
-        return chainReport.chains[selectedChainIndex] || null;
+        const chain = chainReport.chains[selectedChainIndex] || null;
+        if (!chain) return null;
+        // Keep the board renderer on the same pre-application explanation
+        // snapshot used by the selected AIC result in the report panel. This
+        // matters when Next has already removed candidates from the live grid
+        // and the user opens a different chain returned by that same search.
+        return chainStepFromResult(
+          chain,
+          chainReport,
+          selectedChainIndex,
+          cand,
+        ).chain;
       }
       return null;
     }
@@ -9032,13 +9043,13 @@
       return atoms;
     }
 
-    function addWeakDigitMarks(weakMarks, side, digit) {
+    function addWeakDigitMarks(weakMarks, side, digit, existingOnly = true) {
       if (digit == null) return;
-      for (const atom of chainSideAtoms(side, digit, true)) weakMarks.add(atom);
+      for (const atom of chainSideAtoms(side, digit, existingOnly)) weakMarks.add(atom);
     }
 
-    function addChainSideMarks(side, marks, cells, orderByCell, order) {
-      for (const atom of chainSideAtoms(side, null, true)) marks.add(atom);
+    function addChainSideMarks(side, marks, cells, orderByCell, order, existingOnly = true) {
+      for (const atom of chainSideAtoms(side, null, existingOnly)) marks.add(atom);
       for (const cell of [...(side.cells || []), ...(side.rccCells || [])]) {
         cells.add(cell);
         const orders = orderByCell.get(cell) || [];
@@ -9464,9 +9475,15 @@
       return anchors;
     }
 
-    function closestAnchorPair(fromSide, toSide, forcedDigit = null, toDigit = forcedDigit) {
-      const fromAnchors = sideAnchors(fromSide, forcedDigit);
-      const toAnchors = sideAnchors(toSide, toDigit);
+    function closestAnchorPair(
+      fromSide,
+      toSide,
+      forcedDigit = null,
+      toDigit = forcedDigit,
+      existingOnly = true,
+    ) {
+      const fromAnchors = sideAnchors(fromSide, forcedDigit, existingOnly);
+      const toAnchors = sideAnchors(toSide, toDigit, existingOnly);
       let best = null;
 
       for (const from of fromAnchors) {
@@ -9727,8 +9744,15 @@
       return { ...fallback, x: center.x + dx * scale, y: center.y + dy * scale };
     }
 
-    function groupedAnchorPair(fromSide, toSide, forcedDigit = null, toDigit = forcedDigit) {
-      const pair = closestAnchorPair(fromSide, toSide, forcedDigit, toDigit);
+    function groupedAnchorPair(
+      fromSide,
+      toSide,
+      forcedDigit = null,
+      toDigit = forcedDigit,
+      allowMissing = false,
+    ) {
+      const existingOnly = !allowMissing;
+      const pair = closestAnchorPair(fromSide, toSide, forcedDigit, toDigit, existingOnly);
       if (!pair) return pair;
 
       // A grouped strong link must terminate at the group boundary rather
@@ -9742,8 +9766,8 @@
 
       const fromDigit = forcedDigit == null ? pair.from.digit : forcedDigit;
       const toDigitValue = toDigit == null ? pair.to.digit : toDigit;
-      const fromBox = digitBoundsFromAnchors(sideAnchors(fromSide, fromDigit, true));
-      const toBox = digitBoundsFromAnchors(sideAnchors(toSide, toDigitValue, true));
+      const fromBox = digitBoundsFromAnchors(sideAnchors(fromSide, fromDigit, existingOnly));
+      const toBox = digitBoundsFromAnchors(sideAnchors(toSide, toDigitValue, existingOnly));
       let from = pair.from;
       let to = pair.to;
       if (fromBox) from = boxEdgeAnchor(fromBox, to, from);
@@ -9751,15 +9775,28 @@
       return { from, to };
     }
 
-    function drawStrongConnection(svg, fromSide, toSide) {
-      const pair = groupedAnchorPair(fromSide, toSide);
+    function drawStrongConnection(svg, fromSide, toSide, allowMissing = false) {
+      const pair = groupedAnchorPair(fromSide, toSide, null, null, allowMissing);
       if (!pair) return;
       drawArc(svg, pair.from, pair.to, 'chain-strong-line', 5, -0.38);
       drawArc(svg, pair.from, pair.to, 'chain-strong-line', 5, 0.38);
     }
 
-    function drawWeakConnection(svg, fromSide, toSide, weakFromDigit = null, weakToDigit = weakFromDigit) {
-      const pair = groupedAnchorPair(fromSide, toSide, weakFromDigit, weakToDigit);
+    function drawWeakConnection(
+      svg,
+      fromSide,
+      toSide,
+      weakFromDigit = null,
+      weakToDigit = weakFromDigit,
+      allowMissing = false,
+    ) {
+      const pair = groupedAnchorPair(
+        fromSide,
+        toSide,
+        weakFromDigit,
+        weakToDigit,
+        allowMissing,
+      );
       if (!pair) return;
       drawArc(svg, pair.from, pair.to, 'chain-weak-line', -4.5, 0);
     }
@@ -9896,7 +9933,7 @@
           const weakFromDigit = step.weakFromDigit ?? step.weakDigit;
           const weakToDigit = step.weakToDigit ?? step.weakDigit;
           drawChainSectorFrames(svg, step.weakSectors);
-          drawWeakConnection(svg, fromSide, toSide, weakFromDigit, weakToDigit);
+          drawWeakConnection(svg, fromSide, toSide, weakFromDigit, weakToDigit, true);
         }
         if (isAlsVisualStep(step) && step.module?.common) {
           const moduleSides = moduleVisualSides(step);
@@ -9907,7 +9944,10 @@
           drawWeakConnections(svg, moduleSides.entry, moduleSides.exit, weakDigits);
         }
         if (!isAlsVisualStep(step) && !isAlmostFishVisualStep(step)) {
-          drawStrongConnection(svg, step.entry, step.exit);
+          // Keep the proof visible even when an earlier move removed a
+          // candidate that the selected chain still uses as an anchor. The
+          // fallback is only a geometric slot; it does not recreate the mark.
+          drawStrongConnection(svg, step.entry, step.exit, true);
         }
       }
 
@@ -10231,18 +10271,21 @@
       const alsColors = alsColorMapForChain(chain);
       for (let index = 0; index < chain.steps.length; index++) {
         const step = chain.steps[index];
-        addChainSideMarks(step.entry, marks, cells, orderByCell, index + 1);
-        addChainSideMarks(step.exit, marks, cells, orderByCell, index + 1);
-        for (const atom of chainSideAtoms(step.entry, null, true)) xorEntryMarks.add(atom);
-        for (const atom of chainSideAtoms(step.exit, null, true)) xorExitMarks.add(atom);
+        // The selected chain is an explanation of the pre-application state.
+        // Keep its node atoms visible even if Next already removed them from
+        // the live candidate grid; this does not mutate candidates.
+        addChainSideMarks(step.entry, marks, cells, orderByCell, index + 1, false);
+        addChainSideMarks(step.exit, marks, cells, orderByCell, index + 1, false);
+        for (const atom of chainSideAtoms(step.entry, null, false)) xorEntryMarks.add(atom);
+        for (const atom of chainSideAtoms(step.exit, null, false)) xorExitMarks.add(atom);
 
         if (index > 0) {
           const fromSide = visibleChainExitSide(chain.steps[index - 1]);
           const toSide = visibleChainEntrySide(step);
           const weakFromDigit = step.weakFromDigit ?? step.weakDigit;
           const weakToDigit = step.weakToDigit ?? step.weakDigit;
-          addWeakDigitMarks(weakMarks, fromSide, weakFromDigit);
-          addWeakDigitMarks(weakMarks, toSide, weakToDigit);
+          addWeakDigitMarks(weakMarks, fromSide, weakFromDigit, false);
+          addWeakDigitMarks(weakMarks, toSide, weakToDigit, false);
           const pair = groupedAnchorPair(
             fromSide,
             toSide,
@@ -10271,11 +10314,11 @@
             alsExitCells.add(cell);
             alsStyleByCell.set(cell, exitColor);
           }
-          for (const atom of chainSideAtoms(moduleSides.entry, null, true)) {
+          for (const atom of chainSideAtoms(moduleSides.entry, null, false)) {
             alsMarks.add(atom);
             alsStyleByAtom.set(atom, entryColor);
           }
-          for (const atom of chainSideAtoms(moduleSides.exit, null, true)) {
+          for (const atom of chainSideAtoms(moduleSides.exit, null, false)) {
             alsMarks.add(atom);
             alsStyleByAtom.set(atom, exitColor);
           }
@@ -10286,19 +10329,19 @@
               ? common.restrictedDigits
               : (common.digits || []);
             for (const digit of weakDigits) {
-              for (const atom of chainSideAtoms(moduleSides.entry, digit, true)) weakMarks.add(atom);
-              for (const atom of chainSideAtoms(moduleSides.exit, digit, true)) weakMarks.add(atom);
+              for (const atom of chainSideAtoms(moduleSides.entry, digit, false)) weakMarks.add(atom);
+              for (const atom of chainSideAtoms(moduleSides.exit, digit, false)) weakMarks.add(atom);
             }
           }
         }
       }
 
       const firstEntry = visibleChainEntrySide(chain.steps[0]) || {};
-      for (const atom of chainSideAtoms(firstEntry, null, true)) startMarks.add(atom);
+      for (const atom of chainSideAtoms(firstEntry, null, false)) startMarks.add(atom);
       for (const cell of firstEntry.cells || []) startCells.add(cell);
 
       const terminal = visibleChainExitSide(chain.steps[chain.steps.length - 1]) || {};
-      for (const atom of chainSideAtoms(terminal, null, true)) endMarks.add(atom);
+      for (const atom of chainSideAtoms(terminal, null, false)) endMarks.add(atom);
       for (const cell of terminal.cells || []) endCells.add(cell);
 
       if (chain.isRing && chain.steps.length) {
@@ -11805,7 +11848,10 @@
             const isFishDigit = isFishVertexDigit || isFishFinDigit
               || isFishBase || isFishBaseIntersection || isFishCover;
             const hasCandidate = cellHasCandidate(cell, digit);
-            const hasChainCandidate = highlights.isChain && chainCandidateIsVisible(cell, digit);
+            const isChainExplanation = highlights.isChain
+              && highlights.chainMarks.has(atomKey);
+            const hasChainCandidate = highlights.isChain
+              && (chainCandidateIsVisible(cell, digit) || isChainExplanation);
             const isChromaticDigit = highlights.isChromatic
               && highlights.chromaticCells.has(cell)
               && highlights.chromaticDigits.has(digit)
@@ -11851,11 +11897,14 @@
               !(cand[cell] || []).includes(digit) &&
               !isElim;
 
+            const chainDisplayDigit = isElim
+              || ((hasCandidate || isChainExplanation)
+                && (isFishDigit || isFishEndofinDigit || isChainDigit || isChainWeakDigit || isStrongLinkDigit
+                  || isAlsRecordDigit || isAlsDofDigit || isAhsRecordDigit || isAhsDofRecordDigit || isDigitFocus
+                  || isCandidateSizeFilter || isSimpleColoringDigit || isMultiColoringDigit || isThreeDMedusaDigit
+                  || isMslsDigit || isChromaticDigit));
             mark.textContent = markFor(cell, digit)
-              || (isElim || (hasCandidate && (isFishDigit || isFishEndofinDigit || isChainDigit || isChainWeakDigit || isStrongLinkDigit
-                || isAlsRecordDigit || isAlsDofDigit || isAhsRecordDigit || isAhsDofRecordDigit || isDigitFocus || isCandidateSizeFilter
-                || isSimpleColoringDigit || isMultiColoringDigit || isThreeDMedusaDigit || isMslsDigit
-                || isChromaticDigit)) ? digit : '');
+              || (chainDisplayDigit ? digit : '');
            if (isDigitFocus) mark.classList.add('digit-focus', 'digit-focus-' + digit);
            if (isCandidateSizeFilter) {
              mark.classList.add('candidate-size-filter-digit');
@@ -17454,23 +17503,31 @@
 
     function chainStepFromResult(chain, report, index, candidateGrid = cand) {
       chain = displayChainForUi(chain);
-      const items = core.eliminationItems({ items: chain.eliminations || [] }, candidateGrid);
+      const explanationGrid = report?.candidateGrid || candidateGrid;
+      const items = core.eliminationItems({ items: chain.eliminations || [] }, explanationGrid);
+      // The report may contain several alternatives from one search pass.
+      // Normalize each displayed chain against the same pre-apply grid so
+      // every alternative keeps all of its exclusions when selected later.
+      const displayedChain = {
+        ...chain,
+        eliminations: items,
+      };
       return {
         tech: 'chain',
-        name: chain.structureName,
-        structureName: chain.structureName,
-        chainLength: chain.length,
-        chain,
+        name: displayedChain.structureName,
+        structureName: displayedChain.structureName,
+        chainLength: displayedChain.length,
+        chain: displayedChain,
         chainReport: report,
         chainIndex: index,
-        desc: chainText(chain),
+        desc: chainText(displayedChain),
         elim: { items },
         digits: [...new Set(items.map(item => item.digit))],
-        at: [...new Set((chain.steps || []).flatMap(step => [
+        at: [...new Set((displayedChain.steps || []).flatMap(step => [
           ...(step.entry?.cells || []),
           ...(step.exit?.cells || []),
         ]))],
-        vertices: [...new Set((chain.steps || []).flatMap(step => [
+        vertices: [...new Set((displayedChain.steps || []).flatMap(step => [
           ...(step.entry?.cells || []),
           ...(step.exit?.cells || []),
         ]))],
@@ -21158,6 +21215,12 @@
       }
 
       const step = choice.step;
+      // Preserve the candidate state that produced the selected report. The
+      // live grid is about to advance, but the explanation panel must keep
+      // showing the complete proof that was returned for this move.
+      const reportCandidateGrid = choice.report
+        ? core.cloneCandidates(cand)
+        : null;
 
       const removed = core.applyEliminations(cand, step.elim);
       if (!removed.length) {
@@ -21207,7 +21270,9 @@
         selectedChainIndex = null;
       } else {
         selectedAlsDofIndex = null;
-        chainReport = choice.report || null;
+        chainReport = choice.report
+          ? { ...choice.report, candidateGrid: reportCandidateGrid }
+          : null;
         selectedChainIndex = choice.report ? choice.index : null;
       }
       undoStack.push(before);
