@@ -1545,7 +1545,7 @@
 
     .cell.variant-diagonal-cell,
     .cell.variant-anti-diagonal-cell {
-      background: #dbe5f0;
+      background: #b9c4cf;
     }
 
     .cell.variant-windoku-cell {
@@ -1554,11 +1554,11 @@
     }
 
     .cell.variant-diagonal-cell.variant-windoku-cell {
-      background: linear-gradient(135deg, #dbe5f0 0 50%, #d5f0df 50% 100%);
+      background: linear-gradient(135deg, #b9c4cf 0 50%, #d5f0df 50% 100%);
     }
 
     .cell.variant-anti-diagonal-cell.variant-windoku-cell {
-      background: linear-gradient(45deg, #dbe5f0 0 50%, #d5f0df 50% 100%);
+      background: linear-gradient(45deg, #b9c4cf 0 50%, #d5f0df 50% 100%);
     }
 
     .cell.chromatic-core-cell {
@@ -4328,7 +4328,7 @@
     <div class="header-brand">
       <h1>StormDoku: on-line | off-line</h1>
       <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo for regular Sudoku 9x9 grids.</p>
-      <p class="app-meta">Alpha v0.6.67 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <p class="app-meta">Alpha v0.6.68 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
     </div>
   </header>
 
@@ -5656,6 +5656,16 @@
             <div id="nakedSubsetResults" class="pom-results"></div>
           </div>
         </details>
+        <details class="pom-panel" id="boxLinePanel">
+          <summary>
+            <h2>Box Line Reduction</h2>
+            <button id="boxLineBuild" class="secondary search-action" type="button"
+              title="Search for all available Box Line Reduction moves">Search</button>
+          </summary>
+          <div class="pom-body">
+            <div id="boxLineResults" class="pom-results"></div>
+          </div>
+        </details>
         <details class="pom-panel" id="fishPanel">
           <summary>
             <h2>Fish: n x n+k</h2>
@@ -6067,6 +6077,8 @@
     const fishBuildEl = document.getElementById('fishBuild');
     const nakedSubsetBuildEl = document.getElementById('nakedSubsetBuild');
     const hiddenSubsetBuildEl = document.getElementById('hiddenSubsetBuild');
+    const boxLineBuildEl = document.getElementById('boxLineBuild');
+    const boxLineResultsEl = document.getElementById('boxLineResults');
     const alsXzBuildEl = document.getElementById('alsXzBuild');
     const ahsXzBuildEl = document.getElementById('ahsXzBuild');
     const alcXzBuildEl = document.getElementById('alcXzBuild');
@@ -6320,6 +6332,8 @@
     let nakedSubsetReport = null;
     let selectedNakedSubsetSize = null;
     let selectedNakedSubsetKey = null;
+    let boxLineReport = null;
+    let selectedBoxLineIndex = null;
     let hiddenSubsetReport = null;
     let selectedHiddenSubsetSize = null;
     let selectedHiddenSubsetKey = null;
@@ -12132,6 +12146,10 @@
       return selectedSubsetStep(kind)?.desc || '';
     }
 
+    function selectedBoxLineStep() {
+      return boxLineReport?.[selectedBoxLineIndex] || null;
+    }
+
     function selectedChainStep() {
       const chain = chainReport?.chains?.[selectedChainIndex];
       return chain ? chainStepFromResult(chain, chainReport, selectedChainIndex, cand) : null;
@@ -12156,6 +12174,7 @@
       const hydra = selectedHydraRecord();
       if (hydra) return formatHydraResult(hydra);
       return selectedFishEureka()
+        || selectedBoxLineStep()?.desc
         || selectedSubsetEureka('hidden')
         || selectedSubsetEureka('naked')
         || selectedChainEureka();
@@ -12190,6 +12209,8 @@
 
       const fish = selectedFishStep();
       if (fish) return fish;
+      const boxLine = selectedBoxLineStep();
+      if (boxLine) return boxLine;
       if (selectedChromaticGraphIndex !== null && chromaticGraphReport?.results?.[selectedChromaticGraphIndex]) {
         return chromaticStepFromResult(chromaticGraphReport.results[selectedChromaticGraphIndex]);
       }
@@ -12473,6 +12494,7 @@
       renderAlsDofReport();
       renderAlsHydraReport();
       renderNakedSubsetReport();
+      renderBoxLineReport();
       renderHiddenSubsetReport();
        renderChainReport();
       updateHistoryButtons();
@@ -14006,6 +14028,7 @@
       selectedStrongLinkType = null;
       selectedStrongLinkIndex = null;
       selectedFishKey = null;
+      selectedBoxLineIndex = null;
       selectedNakedSubsetKey = null;
       selectedHiddenSubsetKey = null;
       activeStep = null;
@@ -14501,6 +14524,7 @@
       selectedStrongLinkIndex = null;
       selectedFishKey = null;
       selectedNakedSubsetKey = null;
+      selectedBoxLineIndex = null;
       selectedHiddenSubsetKey = null;
       activeStep = null;
       lastRemoved = [];
@@ -15560,11 +15584,51 @@
       selectedChainIndex = null;
       selectedStrongLinkType = null;
       selectedStrongLinkIndex = null;
+      selectedBoxLineIndex = null;
       activeStep = fishStepFromReport(fish);
       lastRemoved = activeStep.elim.items;
       renderBoard();
       renderFishReport();
       setStatus(`Fish ${index + 1} selected.`, 'ok');
+      focusMap();
+    }
+
+    function renderBoxLineReport() {
+      boxLineResultsEl.textContent = '';
+      if (!boxLineReport) return;
+      const summary = document.createElement('p');
+      summary.textContent = `${boxLineReport.length} Box Line Reduction reports.`;
+      boxLineResultsEl.appendChild(summary);
+      const list = document.createElement('ul');
+      list.className = 'chain-list';
+      boxLineReport.forEach((step, index) => {
+        const item = document.createElement('li');
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'chain-result';
+        if (selectedBoxLineIndex === index) button.classList.add('selected');
+        button.textContent = `${index + 1}. ${step.desc}`;
+        button.addEventListener('click', () => selectBoxLineReport(index));
+        item.appendChild(button);
+        list.appendChild(item);
+      });
+      boxLineResultsEl.appendChild(list);
+    }
+
+    function selectBoxLineReport(index) {
+      if (!boxLineReport?.[index]) return;
+      selectedBoxLineIndex = index;
+      selectedAlsId = null;
+      selectedAhsId = null;
+      selectedChainIndex = null;
+      selectedFishKey = null;
+      selectedNakedSubsetKey = null;
+      selectedHiddenSubsetKey = null;
+      activeStep = boxLineReport[index];
+      lastRemoved = activeStep.elim?.items || [];
+      renderBoard();
+      renderBoxLineReport();
+      setStatus(`Box Line Reduction ${index + 1} selected.`, 'ok');
       focusMap();
     }
 
@@ -15695,6 +15759,7 @@
       selectedChainIndex = null;
       selectedStrongLinkType = null;
       selectedStrongLinkIndex = null;
+      selectedBoxLineIndex = null;
       activeStep = subsetStepFromReport(kind, item);
       lastRemoved = activeStep.elim.items;
       renderBoard();
@@ -20167,6 +20232,7 @@
       activeStep = null;
       lastRemoved = [];
       selectedFishKey = null;
+      selectedBoxLineIndex = null;
       selectedNakedSubsetKey = null;
       selectedHiddenSubsetKey = null;
       selectedStrongLinkType = null;
@@ -20198,6 +20264,7 @@
       renderBoard();
       renderFishReport();
       renderNakedSubsetReport();
+      renderBoxLineReport();
       renderHiddenSubsetReport();
       renderChainReport();
       if (alsSearchFamily) renderAlsSearchResults();
@@ -20850,6 +20917,8 @@
           ahsDofChainReport,
           strongLinkReport,
           fishReport,
+          boxLineReport,
+          selectedBoxLineIndex,
           nakedSubsetReport,
           hiddenSubsetReport,
           chainReport,
@@ -20919,6 +20988,8 @@
       ahsDofChainReport = visual.ahsDofChainReport || null;
       strongLinkReport = visual.strongLinkReport || null;
       fishReport = visual.fishReport || null;
+      boxLineReport = visual.boxLineReport || null;
+      selectedBoxLineIndex = visual.selectedBoxLineIndex ?? null;
       nakedSubsetReport = visual.nakedSubsetReport || null;
       hiddenSubsetReport = visual.hiddenSubsetReport || null;
       chainReport = visual.chainReport || null;
@@ -21317,6 +21388,7 @@
       multiColoringReport = null;
       superMultiColoringReport = null;
       fishReport = null;
+      boxLineReport = null;
       nakedSubsetReport = null;
       hiddenSubsetReport = null;
       chainReport = null;
@@ -22135,6 +22207,32 @@
             renderNakedSubsetReport();
           }
           setStatus(`Could not search ${hidden ? 'hidden' : 'naked'} subsets.`, 'warn');
+        } finally {
+          setBusy(false, searchToken);
+        }
+      }, 20);
+    }
+
+    function runBoxLineBuild() {
+      const searchToken = setBusy(true);
+      setStatus('Searching Box Line Reduction...');
+
+      scheduleSearch(async () => {
+        try {
+          boxLineReport = await runCoreSearch('findBoxLineReports', cand);
+          selectedBoxLineIndex = null;
+          renderBoxLineReport();
+          openReportPanel(boxLineResultsEl);
+          setStatus(
+            `Box Line Reduction search complete. ${boxLineReport.length} reports. Grid and solving history unchanged.`,
+            boxLineReport.length ? 'ok' : 'warn',
+          );
+        } catch (error) {
+          if (isSearchCancelled(error)) return;
+          boxLineReport = null;
+          selectedBoxLineIndex = null;
+          renderBoxLineReport();
+          setStatus('Could not search Box Line Reduction.', 'warn');
         } finally {
           setBusy(false, searchToken);
         }
@@ -23860,6 +23958,11 @@
       event.preventDefault();
       event.stopPropagation();
       runGenericSubsetBuild('hidden');
+    });
+    boxLineBuildEl.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      runBoxLineBuild();
     });
     copyPuzzle81El.addEventListener('click', () => copyPuzzleString(core.encode(originalPuzzle), '81-character puzzle'));
     copyPuzzle729El.addEventListener('click', () => copyPuzzleString(current729String(), '729 candidate grid'));
