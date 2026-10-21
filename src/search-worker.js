@@ -727,7 +727,7 @@ const coreSearchMethods = new Set([
   'pomCheck', 'alsConstructor', 'buildAlsLinks', 'ahsConstructor',
   'buildAhsLinks', 'buildStrongLinks', 'buildSimpleColoring',
   'buildThreeDMedusa', 'buildMultiColoring', 'buildThreeDMedusaMultiColoring',
-  'findGenericSubsetReports', 'findAicChains', 'findAhsXyChains',
+  'findBoxLineReports', 'findGenericSubsetReports', 'findAicChains', 'findAhsXyChains',
   'findAhsMixedChains', 'generate', 'solveDlx',
 ]);
 

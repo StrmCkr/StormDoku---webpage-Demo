@@ -1074,7 +1074,8 @@
   // BLR consequence as an ordinary box-line interaction: remove it from the
   // other cells in the classic house, or from the other cells in the
   // variation unit.
-  function variantBoxLineStepM(cand) {
+  function variantBoxLineStepsM(cand) {
+    const reports = [];
     for (let sector = 27; sector < UNITS.length; sector += 1) {
       const variantCells = UNITS[sector];
       const name = variantUnitName(sector);
@@ -1093,7 +1094,7 @@
               .filter(cell => !variantCells.includes(cell) && cand[cell].includes(digit))
               .map(cell => ({ cell, digit }));
             if (eliminations.length) {
-              return {
+              reports.push({
                 tech: 'pointing',
                 desc: boxLineReport(digit, [sector], [target], eliminations),
                 elim: { items: eliminations },
@@ -1102,7 +1103,7 @@
                 base: houseRef(sector),
                 cover: targetRef,
                 vertices: variantIntersection,
-              };
+              });
             }
           }
 
@@ -1113,7 +1114,7 @@
             .filter(cell => !targetCells.includes(cell) && cand[cell].includes(digit))
             .map(cell => ({ cell, digit }));
           if (eliminations.length) {
-            return {
+            reports.push({
               tech: 'claiming',
               desc: boxLineReport(digit, [target], [sector], eliminations),
               elim: { items: eliminations },
@@ -1122,13 +1123,116 @@
               base: targetRef,
               cover: houseRef(sector),
               vertices: targetDigitCells,
-            };
+            });
           }
         }
       }
     }
 
-    return null;
+    return reports;
+  }
+
+  function variantBoxLineStepM(cand) {
+    return variantBoxLineStepsM(cand)[0] || null;
+  }
+
+  function antiChessPeersOf(cell) {
+    const peers = new Set();
+    const edgeSets = [];
+    if (variantState.antiKing) edgeSets.push(ANTI_KING_EDGES);
+    if (variantState.antiKnight) edgeSets.push(ANTI_KNIGHT_EDGES);
+
+    for (const edges of edgeSets) {
+      for (const [a, b] of edges) {
+        if (a === cell) peers.add(b);
+        else if (b === cell) peers.add(a);
+      }
+    }
+
+    return peers;
+  }
+
+  function intersectPeerEnvelope(cells) {
+    if (!cells.length) return new Set();
+    const common = new Set(peersOf(cells[0]));
+    for (const cell of cells.slice(1)) {
+      const peers = new Set(peersOf(cell));
+      for (const peer of [...common]) {
+        if (!peers.has(peer)) common.delete(peer);
+      }
+    }
+    return common;
+  }
+
+  // Anti-King/Anti-Knight do not create houses. Their BLR form is built from
+  // the two sides of a sector XOR: intersect every cell's complete peer set
+  // within each side, then intersect the two side results. This preserves
+  // ordinary row/column/box peers while adding the active anti-chess peers.
+  function antiChessBoxLineStepsM(cand) {
+    if (!variantState.antiKing && !variantState.antiKnight) return null;
+    const reports = [];
+
+    const variantNames = [
+      variantState.antiKing ? 'Anti-King' : null,
+      variantState.antiKnight ? 'Anti-Knight' : null,
+    ].filter(Boolean).join('/');
+
+    for (let digit = 1; digit <= 9; digit += 1) {
+      for (let unitIndex = 0; unitIndex < UNITS.length; unitIndex += 1) {
+        const unit = UNITS[unitIndex];
+        const sourceCells = unit.filter(cell => cand[cell].includes(digit));
+        if (!sourceCells.length) continue;
+
+        // The sector itself supplies the exhaustive XOR. The split is only
+        // retained for the proof; the final intersection is independent of
+        // which side owns a candidate cell.
+        const leftCells = [sourceCells[0]];
+        const rightCells = sourceCells.slice(1);
+        if (!rightCells.length) continue;
+
+        const leftElims = intersectPeerEnvelope(leftCells);
+        const rightElims = intersectPeerEnvelope(rightCells);
+        const gateElims = new Set(
+          [...leftElims].filter(cell => rightElims.has(cell)),
+        );
+        const antiPeers = new Set([
+          ...antiChessPeersOf(leftCells[0]),
+          ...rightCells.flatMap(cell => [...antiChessPeersOf(cell)]),
+        ]);
+        const eliminations = [...gateElims]
+          .filter(cell => antiPeers.has(cell))
+          .filter(cell => !unit.includes(cell) && cand[cell].includes(digit))
+          .map(cell => ({ cell, digit }));
+
+        if (!eliminations.length) continue;
+
+        const sourceRef = houseRef(unitIndex);
+        reports.push({
+          tech: 'pointing',
+          desc: `Box - Line Reduction (${variantNames}): (${digit}) ${houseRefLabel(sourceRef)} XOR => ${formatRemovals(eliminations)}`,
+          elim: { items: eliminations },
+          digits: [digit],
+          at: sourceCells,
+          base: sourceRef,
+          cover: { type: 'anti-chess', indices: [], name: variantNames },
+          vertices: sourceCells,
+          antiChess: true,
+          antiChessGates: [{
+            leftCells,
+            rightCells,
+            leftEliminations: [...leftElims],
+            rightEliminations: [...rightElims],
+            gateEliminations: [...gateElims],
+          }],
+        });
+      }
+    }
+
+    return reports;
+  }
+
+  function antiChessBoxLineStepM(cand) {
+    return antiChessBoxLineStepsM(cand)?.[0] || null;
   }
 
   function boxLineStepM(cand) {
@@ -1225,7 +1329,9 @@
       }
     }
 
-    return variantBoxLineStepM(cand);
+    const variantStep = variantBoxLineStepM(cand);
+    if (variantStep) return variantStep;
+    return antiChessBoxLineStepM(cand);
   }
 
   function moveTypeEnabled(enabledTypes, type) {
@@ -1357,7 +1463,108 @@
   }
 
   function boxLineStep(cand) {
-    return withActualEliminations(boxLineStepM(cand), cand);
+    const reports = findBoxLineReports(cand);
+    if (!reports.length) return null;
+
+    // Prefer the most productive BLR.  Classic pointing/claiming remains
+    // ahead of variation BLR only when both moves remove the same number.
+    return reports
+      .map((step, index) => ({
+        step,
+        index,
+        eliminations: step.elim?.items?.length || 0,
+        variation: step.variant === true || step.antiChess === true,
+      }))
+      .sort((a, b) => b.eliminations - a.eliminations
+        || Number(a.variation) - Number(b.variation)
+        || a.index - b.index)[0].step;
+  }
+
+  // The hierarchy uses boxLineStep() because it must return one deterministic
+  // move.  The manual BLR panel needs the complete classic list, though, so
+  // keep that reporting search separate from the hierarchy path.
+  function findBoxLineReports(cand) {
+    const reports = [];
+    for (let digit = 1; digit <= 9; digit += 1) {
+      for (let box = 0; box < 9; box += 1) {
+        const boxCells = Bset[box].filter(cell => cand[cell].includes(digit));
+        if (!boxCells.length) continue;
+
+        const rows = uniqueSorted(boxCells.map(cell => Rx[cell]));
+        if (rows.length === 1) {
+          const row = rows[0];
+          const eliminations = Rset[row]
+            .filter(cell => Bxy[cell] !== box && cand[cell].includes(digit))
+            .map(cell => ({ cell, digit }));
+          if (eliminations.length) {
+            reports.push({
+              tech: 'pointing',
+              desc: boxLineReport(digit, [18 + box], [row], eliminations),
+              elim: { items: eliminations }, digits: [digit], at: boxCells,
+              base: { type: 'box', indices: [box] },
+              cover: { type: 'row', indices: [row] }, vertices: boxCells,
+            });
+          }
+        }
+
+        for (let row = 0; row < 9; row += 1) {
+          const rowCells = Rset[row].filter(cell => cand[cell].includes(digit));
+          if (!rowCells.length || !rowCells.every(cell => Bxy[cell] === box)) continue;
+          const eliminations = Bset[box]
+            .filter(cell => Rx[cell] !== row && cand[cell].includes(digit))
+            .map(cell => ({ cell, digit }));
+          if (eliminations.length) {
+            reports.push({
+              tech: 'claiming',
+              desc: boxLineReport(digit, [row], [18 + box], eliminations),
+              elim: { items: eliminations }, digits: [digit], at: rowCells,
+              base: { type: 'row', indices: [row] },
+              cover: { type: 'box', indices: [box] }, vertices: rowCells,
+            });
+          }
+        }
+
+        const cols = uniqueSorted(boxCells.map(cell => Cy[cell]));
+        if (cols.length === 1) {
+          const col = cols[0];
+          const eliminations = Cset[col]
+            .filter(cell => Bxy[cell] !== box && cand[cell].includes(digit))
+            .map(cell => ({ cell, digit }));
+          if (eliminations.length) {
+            reports.push({
+              tech: 'pointing',
+              desc: boxLineReport(digit, [18 + box], [9 + col], eliminations),
+              elim: { items: eliminations }, digits: [digit], at: boxCells,
+              base: { type: 'box', indices: [box] },
+              cover: { type: 'col', indices: [col] }, vertices: boxCells,
+            });
+          }
+        }
+
+        for (let col = 0; col < 9; col += 1) {
+          const colCells = Cset[col].filter(cell => cand[cell].includes(digit));
+          if (!colCells.length || !colCells.every(cell => Bxy[cell] === box)) continue;
+          const eliminations = Bset[box]
+            .filter(cell => Cy[cell] !== col && cand[cell].includes(digit))
+            .map(cell => ({ cell, digit }));
+          if (eliminations.length) {
+            reports.push({
+              tech: 'claiming',
+              desc: boxLineReport(digit, [9 + col], [18 + box], eliminations),
+              elim: { items: eliminations }, digits: [digit], at: colCells,
+              base: { type: 'col', indices: [col] },
+              cover: { type: 'box', indices: [box] }, vertices: colCells,
+            });
+          }
+        }
+      }
+    }
+
+    // The hierarchy still takes the first deterministic variation result;
+    // this manual report includes every result exposed by those engines.
+    reports.push(...variantBoxLineStepsM(cand).map(step => ({ ...step, variant: true })));
+    reports.push(...(antiChessBoxLineStepsM(cand) || []).map(step => ({ ...step, variant: true })));
+    return reports.map(step => withActualEliminations(step, cand));
   }
 
   function subsetStepForSizes(cand, sizes, enabledTypes = null) {
@@ -1623,6 +1830,7 @@
     hiddenSubsetStep,
     lastManStandingStep,
     boxLineStep,
+    findBoxLineReports,
     subsetStep,
     fishStep,
     subsetOrFishStep,
