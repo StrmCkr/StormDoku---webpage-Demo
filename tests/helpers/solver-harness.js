@@ -110,6 +110,7 @@ function createSolverHarness(protocol = 'file:') {
     localStorage: { getItem() { return null; }, setItem() {} },
   });
   context.window = context;
+  context.self = context;
   context.addEventListener = () => {};
   for (const match of html.matchAll(/<script src="\.\/([^"?]+)[^"]*"><\/script>/g)) {
     vm.runInContext(fs.readFileSync(path.join(root, match[1]), 'utf8'), context, {

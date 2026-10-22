@@ -1746,6 +1746,55 @@
     computeType2Sides(cand, left, right, out);
   }
 
+  // Non-connected nodes are an OR relation, not a single directed junction.
+  // Evaluate every endpoint-side pairing so an exit/exit consequence such as
+  // (2)r1c6 OR (9)r1c7 is retained by the same chain.
+  function computeNonConnectedOrEdges(cand, leftView, rightView, out, includeSameCell = true) {
+    for (const leftSide of ['entry', 'exit']) {
+      for (const rightSide of ['entry', 'exit']) {
+        const left = boundarySide(leftView, leftSide);
+        const right = boundarySide(rightView, rightSide);
+        computeType1Sides(cand, left, right, out);
+        computeType2Sides(cand, left, right, out);
+        if (!includeSameCell) continue;
+        for (const leftDigit of left.digits) {
+          const leftCells = left.cellsByDigit[leftDigit] || [];
+          const leftElims = new Set(left.potentialElimByDigit[leftDigit] || []);
+          for (const cell of leftCells) {
+            for (const digit of cand[cell] || []) {
+              if (digit !== leftDigit) leftElims.add(cell);
+            }
+          }
+          for (const rightDigit of right.digits) {
+            const rightCells = right.cellsByDigit[rightDigit] || [];
+            const rightElims = new Set(right.potentialElimByDigit[rightDigit] || []);
+            for (const cell of rightCells) {
+              for (const digit of cand[cell] || []) {
+                if (digit !== rightDigit) rightElims.add(cell);
+              }
+            }
+            for (const cell of intersection([...leftElims], [...rightElims])) {
+              for (const digit of cand[cell] || []) addElimination(out, cand, digit, [cell], 'or-edge');
+            }
+          }
+        }
+      }
+    }
+  }
+
+  function computeWeakLinkEliminations(cand, leftView, rightView, weak, out) {
+    if (!weak || weak.modular || weak.digit == null || weak.weakType === LOCAL_WEAK) return;
+    const left = leftView.exit;
+    const right = rightView.entry;
+    const endpoints = sortedUnique([...(left.cells || []), ...(right.cells || [])]);
+    const cells = cand
+      .map((values, cell) => ({ values, cell }))
+      .filter(({ values, cell }) => values.includes(weak.digit)
+        && endpoints.every(endpoint => endpoint !== cell && core.peersOf(endpoint).includes(cell)))
+      .map(({ cell }) => cell);
+    addElimination(out, cand, weak.digit, cells, 'weak-link');
+  }
+
   function computeAlcBridgeEliminations(cand, weak, out) {
     if (!weak?.alc) return;
     const bridgeCells = sortedUnique([
@@ -1786,7 +1835,27 @@
         continue;
       }
       if (weak?.modular) continue;
+      computeWeakLinkEliminations(cand, left, right, weak, out);
       computeNonConnectedEdge(cand, left, right, out);
+    }
+
+    // A valid AIC can expose an additional weak connection between two
+    // non-adjacent nodes. Those shortcut pairs produce their own Type 1/2
+    // trigger; they are especially important when an internal candidate is a
+    // peer of the second and second-to-last nodes rather than the outer ends.
+    for (let leftIndex = 0; leftIndex < steps.length; leftIndex++) {
+      for (let rightIndex = leftIndex + 2; rightIndex < steps.length; rightIndex++) {
+        const left = steps[leftIndex].view;
+        const right = steps[rightIndex].view;
+        const weak = alcMixedConnection(cand, left, right) || directConnection(left, right, cand);
+        if (weak && !weak.alc && !weak.modular) {
+          computeWeakLinkEliminations(cand, left, right, weak, out);
+        }
+        // The contiguous subchain between these two nodes is itself an AIC.
+        // Its endpoint Type 1/2 consequences do not require a direct weak
+        // edge between the two selected nodes.
+        computeNonConnectedOrEdges(cand, left, right, out, !isRing);
+      }
     }
   }
 
@@ -2042,7 +2111,7 @@
 
   function hasOpenTriggerEliminations(evaluation) {
     return evaluation.eliminations.some(item =>
-      item.reasons.some(reason => reason === 'type1' || reason === 'type2'));
+      item.reasons.some(reason => reason === 'type1' || reason === 'type2' || reason === 'or-edge'));
   }
 
   function publicSide(side) {
@@ -2138,6 +2207,44 @@
 
   function chainValuePattern(steps) {
     return steps.map(chainValueToken).join('');
+  }
+
+  function isExpandedPublicRccStep(step) {
+    return !!step.module?.common
+      && !!step.module.entrySideSubset
+      && !!step.module.exitSideSubset;
+  }
+
+  function publicRccNodeIds(step) {
+    return [step.module?.entrySideSubset?.id, step.module?.exitSideSubset?.id]
+      .filter(id => id != null)
+      .map(String);
+  }
+
+  // One RCC traversal is stored as one graph step but displays two LS
+  // equalities. Adjacent traversals share their middle LS, so count it once.
+  function semanticValuePattern(steps) {
+    const tokens = [];
+    for (let index = 0; index < steps.length; index++) {
+      const step = steps[index];
+      if (!isExpandedPublicRccStep(step)) {
+        tokens.push(chainValueToken(step));
+        continue;
+      }
+
+      const previous = steps[index - 1];
+      const sharesPrevious = previous && isExpandedPublicRccStep(previous)
+        && publicRccNodeIds(step).some(id => publicRccNodeIds(previous).includes(id));
+      tokens.push('V');
+      if (!sharesPrevious) tokens.push('V');
+    }
+    return tokens.join('');
+  }
+
+  function normalisedSemanticOpenPattern(steps) {
+    const pattern = semanticValuePattern(steps);
+    if (!pattern || pattern[0] === 'V' || pattern[pattern.length - 1] !== 'V') return pattern;
+    return [...pattern].reverse().join('');
   }
 
   function chainDigits(steps) {
@@ -2358,7 +2465,9 @@
   }
 
   function isAlsRccStep(step) {
-    return step.family === 'ALS' && step.linkTypeName === 'ALS_RCC';
+    const names = [step.linkTypeName, ...(step.linkTypeNames || [])]
+      .map(name => String(name || '').toUpperCase());
+    return names.includes('ALS_RCC');
   }
 
   function isAhsRccStep(step) {
@@ -2373,29 +2482,70 @@
     return isBivalveStep(step) || isGroupedAlsNodeStep(step) || isAlsRccStep(step);
   }
 
+  function isTransportAlsNodeStep(step) {
+    return isAlsNodeStep(step)
+      || step.family === 'ALS'
+      || step.linkTypeName === 'ALS_RCC'
+      || /^ALS(?:_|$)/i.test(String(step.module?.moduleKind || ''));
+  }
+
   function isOrdinaryStrongLinkStep(step) {
+    const names = [step.linkTypeName, ...(step.linkTypeNames || [])]
+      .map(name => String(name || '').toUpperCase());
     return step.family === 'SL'
       && step.linkType >= 0
       && step.linkType <= 3
       && !isBivalveStep(step)
-      && step.linkTypeName !== 'ALS';
+      && !names.includes('ALS')
+      && !names.includes('ALS_RCC');
   }
 
-  // A transported ALS-XY has the three ALS nodes of an ALS-XY structure,
-  // with one ordinary strong link carrying the endpoint inference away from
-  // the ALS chain. The graph stores links, so that shape is two ALS_RCC
-  // links plus one ordinary strong link: VVL (or its reverse).
+  function transportAlsNodeCount(steps) {
+    const nodes = new Set();
+    const addNode = subset => {
+      if (!subset) return;
+      const cells = sortedUnique(subset.cells || []);
+      const digits = sortedUnique(subset.digits || []);
+      if (cells.length && digits.length) nodes.add(`${cells.join(',')}|${digits.join('')}`);
+    };
+
+    for (const step of steps) {
+      if (isBivalveStep(step) || isGroupedAlsNodeStep(step)) {
+        addNode({
+          cells: [...(step.entry?.cells || []), ...(step.exit?.cells || [])],
+          digits: [...(step.entry?.digits || []), ...(step.exit?.digits || [])],
+        });
+      }
+      if (isAlsRccStep(step) || step.family === 'ALS') {
+        addNode(step.module?.entrySideSubset || step.module?.entrySubset);
+        addNode(step.module?.exitSideSubset || step.module?.exitSubset);
+      }
+    }
+    return nodes.size;
+  }
+
+  // A transported ALS-XY has three ALS nodes plus one ordinary strong link.
+  // The ordinary strong link may occur anywhere in the walk.
   function isTransportAlsXy(steps) {
-    if (steps.length !== 3 || normalisedOpenPattern(steps) !== 'VVL') return false;
-    return steps.filter(isAlsRccStep).length === 2
+    return transportAlsNodeCount(steps) === 3
       && steps.filter(isOrdinaryStrongLinkStep).length === 1;
   }
 
-  // The lower transport form is an ALS-XZ with one ordinary strong-link
-  // bridge: one ALS_RCC link plus one ordinary strong link, or its reverse.
+  // A closed transported ALS-XY has four stored nodes: three ALS nodes and
+  // one ordinary strong link. The final weak inference returns to the start
+  // and closes the ring; it is not an additional node. The strong link may
+  // occur anywhere.
+  function isTransportAlsXyRing(steps, isRing) {
+    if (!isRing) return false;
+    const alsCount = transportAlsNodeCount(steps);
+    const strongCount = steps.filter(isOrdinaryStrongLinkStep).length;
+    return alsCount === 3 && strongCount === 1;
+  }
+
+  // Transport ALS-XZ has two ALS nodes plus one ordinary strong-link bridge.
   function isTransportAlsXz(steps) {
-    if (steps.length !== 2 || normalisedOpenPattern(steps) !== 'VL') return false;
-    return steps.filter(isAlsRccStep).length === 1
+    if (steps.length !== 3) return false;
+    return transportAlsNodeCount(steps) === 2
       && steps.filter(isOrdinaryStrongLinkStep).length === 1;
   }
 
@@ -2639,7 +2789,7 @@
     return 'Strong-Wing';
   }
 
-  function classifyChain(steps, isRing, ringWeakDigit = null) {
+  function classifyChain(steps, isRing, ringWeakDigit = null, semanticDepth = steps.length) {
     if (steps.length === 1 && steps[0].module?.moduleKind) {
       const moduleKind = steps[0].module.moduleKind;
       if (moduleKind === 'AHS_XZ_RING') return 'AHS - XZ Ring';
@@ -2650,7 +2800,13 @@
     const alsStructureName = alsOnlyStructureName(steps);
     if (alsStructureName) return alsStructureName;
 
+    if (isTransportAlsXyRing(steps, isRing)) return 'T-ALS-XY Ring';
+
     const digits = chainDigits(steps);
+    const semanticPattern = isRing
+      ? semanticValuePattern(steps)
+      : normalisedSemanticOpenPattern(steps);
+    semanticDepth = semanticPattern.length;
     const groupedPrefix = structurePrefix(steps);
     if (isRing) {
       const pattern = chainValuePattern(steps);
@@ -2667,21 +2823,31 @@
       if (allEri) return prefixedStructureName(allEri, steps);
       const invertedRing = invertedRingName(steps, ringWeakDigit);
       if (invertedRing) return prefixedStructureName(invertedRing, steps);
-      if (ringPatternMatches(pattern, 'LVL') && isSplitWingRing(steps)) {
+      if (semanticDepth === 3
+        && ringPatternMatches(semanticPattern, 'LVL') && isSplitWingRing(steps)) {
         return prefixedNamedWingName('M(2)-Ring', steps);
       }
       if (ringPatternMatches(pattern, 'VVVVL')) return prefixedStructureName('Y-Ring', steps);
-      if (ringPatternMatches(pattern, 'VLVLL')) return prefixedStructureName('W-Ring', steps);
-      if (ringPatternMatches(pattern, 'VVLL')) return prefixedNamedWingName('H(2)-Ring', steps);
-      if (ringPatternMatches(pattern, 'VLL')) return prefixedNamedWingName('M(2)-Ring', steps);
-      if (ringPatternMatches(pattern, 'VLLL')) return prefixedNamedWingName('M(2)-Ring', steps);
-      if (ringPatternMatches(pattern, 'LVLV') && hasWRingValueNodes(steps)) {
+      if (semanticDepth === 3 && ringPatternMatches(semanticPattern, 'VLVLL')) {
         return prefixedStructureName('W-Ring', steps);
       }
-      if (pattern === 'LVV' && hasWRingValueNodes(steps)) {
+      // H-Rings are closed H-Wings and therefore retain the three-node wing
+      // shape. VVLL has four equality nodes, so it must never be classified
+      // as an H-Ring; let it fall through to the generic ring classifier.
+      if (semanticDepth === 3 && ringPatternMatches(semanticPattern, 'VLL')) {
+        return prefixedNamedWingName('M(2)-Ring', steps);
+      }
+      if (semanticDepth === 3
+        && ringPatternMatches(semanticPattern, 'LVLV') && hasWRingValueNodes(steps)) {
+        return prefixedStructureName('W-Ring', steps);
+      }
+      if (semanticDepth === 3
+        && semanticPattern === 'LVV'
+        && hasWRingValueNodes(steps)
+        && !steps.some(isTransportAlsNodeStep)) {
         return prefixedNamedWingName('H(2)-Ring', steps);
       }
-      if (pattern === 'VLV' && hasWRingValueNodes(steps)) {
+      if (semanticDepth === 3 && semanticPattern === 'VLV' && hasWRingValueNodes(steps)) {
         return prefixedStructureName('W-Ring', steps);
       }
       if (ringPatternMatches(pattern, 'LLLLV')) return prefixedStructureName('Strong-Ring', steps);
@@ -2721,16 +2887,18 @@
     const strongWing = classifyStrongWing(steps);
     if (strongWing) return prefixedStructureName(strongWing, steps);
     if (pattern === 'VVV' && digits.length === 3) return prefixedStructureName('XY-Wing', steps);
-    if (pattern === 'VLV' && digits.length === 2) return prefixedStructureName('W-Wing', steps);
+    if (semanticDepth === 3 && semanticPattern === 'VLV' && digits.length === 2) {
+      return prefixedStructureName('W-Wing', steps);
+    }
     if (pattern === 'VLLVLL') return prefixedStructureName('Transport', steps);
-    if (pattern === 'LVL' && (isBivalveSplitWing(steps)
+    if (semanticDepth === 3 && semanticPattern === 'LVL' && (isBivalveSplitWing(steps)
       || isAlsSplitWing(steps) || isAhsSplitWing(steps))) {
       return prefixedNamedWingName('S-Wing', steps);
     }
-    if (pattern === 'VVL' && digits.length >= 2) {
+    if (semanticDepth === 3 && semanticPattern === 'VVL' && digits.length >= 2) {
       return prefixedNamedWingName(`H(${Math.min(3, digits.length)})-Wing`, steps);
     }
-    if (pattern === 'VLL') {
+    if (semanticDepth === 3 && semanticPattern === 'VLL') {
       const oriented = orientedOpenSteps(steps);
       const shared = intersection(oriented[0].exit.digits, oriented[1].entry.digits)[0];
       const last = oriented[oriented.length - 1];
@@ -2740,7 +2908,7 @@
       }
       return prefixedNamedWingName(`M(${Math.min(3, Math.max(2, digits.length))})-Wing`, steps);
     }
-    if (pattern === 'LLL') {
+    if (semanticDepth === 3 && semanticPattern === 'LLL') {
       return prefixedNamedWingName(`L(${Math.min(3, Math.max(1, digits.length))})-Wing`, steps);
     }
     if (isPureRemotePairChain(steps)) {
@@ -2850,6 +3018,71 @@
       .join(';');
   }
 
+  function isDominatedPath(shorter, longer) {
+    const shortIds = shorter.steps.map(step => String(step.graphId ?? step.linkId));
+    const longIds = longer.steps.map(step => String(step.graphId ?? step.linkId));
+    if (shortIds.length >= longIds.length) return false;
+
+    const matches = (needle, offset) => needle.every((id, index) => id === longIds[offset + index]);
+    const isEndpointSubsequence = (needle) => {
+      if (needle[0] !== longIds[0] || needle[needle.length - 1] !== longIds[longIds.length - 1]) {
+        return false;
+      }
+      let index = 0;
+      for (const id of longIds) {
+        if (id === needle[index]) index += 1;
+        if (index === needle.length) return true;
+      }
+      return false;
+    };
+    for (const needle of [shortIds, [...shortIds].reverse()]) {
+      if (matches(needle, 0)
+        || matches(needle, longIds.length - needle.length)
+        || isEndpointSubsequence(needle)) return true;
+    }
+    return false;
+  }
+
+  function suppressRedundantOpenExtensions(chains) {
+    const groups = new Map();
+    for (const chain of chains) {
+      if (chain.isRing || chain.isTerminal) continue;
+      if (!chain.steps.some(step => step.family === 'ALS')
+        || chain.steps.some(step => step.family === 'AHS')) continue;
+      const key = eliminationsKey(chain.eliminations);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(chain);
+    }
+
+    const suppressed = new Set();
+    for (const group of groups.values()) {
+      group.sort((left, right) => left.steps.length - right.steps.length);
+      for (let index = 0; index < group.length; index++) {
+        const shorter = group[index];
+        for (let next = index + 1; next < group.length; next++) {
+          const longer = group[next];
+          if (isDominatedPath(shorter, longer)) suppressed.add(longer);
+        }
+      }
+    }
+    return chains.filter(chain => !suppressed.has(chain));
+  }
+
+  function preferNamedAlsClassifications(chains) {
+    const namedProofs = new Set();
+    const proofKey = chain => {
+      const text = formatChainEureka({ ...chain, structureName: '' });
+      return text.slice(text.indexOf(':') + 1).trim();
+    };
+    for (const chain of chains) {
+      if (/^AIC\s*\+\s*ALS\s*-\s*.+(?:Wing|Ring)$/i.test(chain.structureName || '')) {
+        namedProofs.add(proofKey(chain));
+      }
+    }
+    return chains.filter(chain => !/^AIC\s*\+\s*ALS$/i.test(chain.structureName || '')
+      || !namedProofs.has(proofKey(chain)));
+  }
+
   function terminalEriStructureName(steps, ringWeak, ringOverlapElims) {
     if ((ringWeak === null && ringOverlapElims === null) || steps.length !== 3) return null;
     const nodes = steps.map(step => step.view?.node || step);
@@ -2895,7 +3128,7 @@
     const eriSubclass = terminalStructureName
       || classifyEriWingSubclass(publicSteps);
     const structureName = terminalStructureName
-      || classifyChain(publicSteps, publicIsRing, ringWeak?.digit ?? null);
+      || classifyChain(publicSteps, publicIsRing, ringWeak?.digit ?? null, publicSteps.length);
     const terminalFamily = eriSubclass ? 'Local - Wing | Ring' : null;
     const terminalWing = eriSubclass ? (isRing ? 'Ring' : 'Wing') : null;
     const terminalRank = eriSubclass ? 'L(1)' : null;
@@ -3205,13 +3438,14 @@
           if (nextDepth > opts.maxDepth) continue;
           const openEvaluation = evaluateOpenExtension(cand, nextSteps, edge);
           const openElims = mergeEliminations(current.eliminations, openEvaluation.eliminations);
+
           if (opts.collectAlsBranches && alsBranches.size < opts.maxAlsBranches) {
             const key = canonicalPathKey(nextSteps, false);
             if (!alsBranches.has(key)) {
               const steps = nextSteps.map(publicStep);
               alsBranches.set(key, {
                 length: nextDepth,
-                structureName: classifyChain(steps, false),
+                structureName: classifyChain(steps, false, null, steps.length),
                 isRing: false,
                 steps,
                 eliminations: openElims,
@@ -3307,6 +3541,7 @@
         || a.rankKey.localeCompare(b.rankKey)
       )
       .map(entry => entry.chain);
+    chains = preferNamedAlsClassifications(suppressRedundantOpenExtensions(chains));
     const cellularAhsChains = chains.filter(chain => chain.steps.some(step => step.family === 'AHS'));
     let rejectedChains = [];
     if (cellularAhsChains.length) {

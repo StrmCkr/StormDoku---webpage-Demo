@@ -1217,6 +1217,7 @@ function computeAlsBoundary(
   leftView: DirectedView,
   rightView: DirectedView,
   out: Map<string, ChainElimination>,
+  includeSameCell = true,
 ): void {
   const leftDigits = endpointBoundaryDigits(leftView, 'entry');
   const rightDigits = endpointBoundaryDigits(rightView, 'exit');
@@ -1550,6 +1551,65 @@ function computeNonConnectedEdge(
   computeType2Sides(cand, left, right, out);
 }
 
+// Non-connected nodes are an OR relation, not a single directed junction.
+// Evaluate every endpoint-side pairing so exit/exit consequences are retained.
+function computeNonConnectedOrEdges(
+  cand: CandidateGrid,
+  leftView: DirectedView,
+  rightView: DirectedView,
+  out: Map<string, ChainElimination>,
+): void {
+  for (const leftSide of ['entry', 'exit'] as const) {
+    for (const rightSide of ['entry', 'exit'] as const) {
+      const left = boundarySide(leftView, leftSide);
+      const right = boundarySide(rightView, rightSide);
+      computeType1Sides(cand, left, right, out);
+      computeType2Sides(cand, left, right, out);
+      if (!includeSameCell) continue;
+      for (const leftDigit of left.digits) {
+        const leftCells = left.cellsByDigit?.[leftDigit] || [];
+        const leftElims = new Set(left.potentialElimByDigit[leftDigit] || []);
+        for (const cell of leftCells) {
+          for (const digit of cand[cell] || []) {
+            if (digit !== leftDigit) leftElims.add(cell);
+          }
+        }
+        for (const rightDigit of right.digits) {
+          const rightCells = right.cellsByDigit?.[rightDigit] || [];
+          const rightElims = new Set(right.potentialElimByDigit[rightDigit] || []);
+          for (const cell of rightCells) {
+            for (const digit of cand[cell] || []) {
+              if (digit !== rightDigit) rightElims.add(cell);
+            }
+          }
+          for (const cell of intersection([...leftElims], [...rightElims])) {
+            for (const digit of cand[cell] || []) addElimination(out, cand, digit, [cell], 'or-edge');
+          }
+        }
+      }
+    }
+  }
+}
+
+function computeWeakLinkEliminations(
+  cand: CandidateGrid,
+  leftView: DirectedView,
+  rightView: DirectedView,
+  weak: WeakConnection | null,
+  out: Map<string, ChainElimination>,
+): void {
+  if (!weak || weak.modular || weak.digit == null || weak.weakType === LOCAL_WEAK) return;
+  const left = leftView.exit;
+  const right = rightView.entry;
+  const endpoints = sortedUnique([...(left.cells || []), ...(right.cells || [])]);
+  const cells = cand
+    .map((values, cell) => ({ values, cell }))
+    .filter(({ values, cell }) => values.includes(weak.digit)
+      && endpoints.every(endpoint => endpoint !== cell && core.peersOf(endpoint).includes(cell)))
+    .map(({ cell }) => cell);
+  addElimination(out, cand, weak.digit, cells, 'weak-link');
+}
+
 function computeJunctionEliminations(
   cand: CandidateGrid,
   steps: SearchStep[],
@@ -1565,7 +1625,18 @@ function computeJunctionEliminations(
       ? directConnection(left, right)
       : ringWeak;
     if (weak?.modular) continue;
+    computeWeakLinkEliminations(cand, left, right, weak, out);
     computeNonConnectedEdge(cand, left, right, out);
+  }
+
+  for (let leftIndex = 0; leftIndex < steps.length; leftIndex++) {
+    for (let rightIndex = leftIndex + 2; rightIndex < steps.length; rightIndex++) {
+      const left = steps[leftIndex].view;
+      const right = steps[rightIndex].view;
+      const weak = directConnection(left, right);
+      if (weak && !weak.modular) computeWeakLinkEliminations(cand, left, right, weak, out);
+      computeNonConnectedOrEdges(cand, left, right, out, !isRing);
+    }
   }
 }
 
@@ -1820,7 +1891,7 @@ function mergeEliminations(previous: ChainElimination[], additions: ChainElimina
 
 function hasOpenTriggerEliminations(evaluation: ChainEvaluation): boolean {
   return evaluation.eliminations.some(item =>
-    item.reasons.some(reason => reason === 'type1' || reason === 'type2'));
+    item.reasons.some(reason => reason === 'type1' || reason === 'type2' || reason === 'or-edge'));
 }
 
 function publicSide(side: ChainSide): PublicChainSide {
@@ -1871,6 +1942,42 @@ function chainValueToken(step: PublicChainStep): 'V' | 'L' {
 
 function chainValuePattern(steps: readonly PublicChainStep[]): string {
   return steps.map(chainValueToken).join('');
+}
+
+function isExpandedPublicRccStep(step: PublicChainStep): boolean {
+  return !!step.module?.common
+    && !!step.module.entrySideSubset
+    && !!step.module.exitSideSubset;
+}
+
+function publicRccNodeIds(step: PublicChainStep): string[] {
+  return [step.module?.entrySideSubset?.id, step.module?.exitSideSubset?.id]
+    .filter((id): id is number | string => id != null)
+    .map(String);
+}
+
+function semanticValuePattern(steps: readonly PublicChainStep[]): string {
+  const tokens: string[] = [];
+  for (let index = 0; index < steps.length; index++) {
+    const step = steps[index];
+    if (!isExpandedPublicRccStep(step)) {
+      tokens.push(chainValueToken(step));
+      continue;
+    }
+
+    const previous = steps[index - 1];
+    const sharesPrevious = previous && isExpandedPublicRccStep(previous)
+      && publicRccNodeIds(step).some(id => publicRccNodeIds(previous).includes(id));
+    tokens.push('V');
+    if (!sharesPrevious) tokens.push('V');
+  }
+  return tokens.join('');
+}
+
+function normalisedSemanticOpenPattern(steps: readonly PublicChainStep[]): string {
+  const pattern = semanticValuePattern(steps);
+  if (!pattern || pattern[0] === 'V' || pattern[pattern.length - 1] !== 'V') return pattern;
+  return [...pattern].reverse().join('');
 }
 
 function chainDigits(steps: readonly PublicChainStep[]): number[] {
@@ -2016,36 +2123,80 @@ function isBivalveStep(step: PublicChainStep): boolean {
 }
 
 function isAlsRccStep(step: PublicChainStep): boolean {
-  return step.family === 'ALS' && step.linkTypeName === 'ALS_RCC';
+  const names = [step.linkTypeName, ...(step.linkTypeNames || [])]
+    .map(name => String(name || '').toUpperCase());
+  return names.includes('ALS_RCC');
 }
 
 function isAlsNodeStep(step: PublicChainStep): boolean {
   return isBivalveStep(step) || isAlsRccStep(step);
 }
 
+function isTransportAlsNodeStep(step: PublicChainStep): boolean {
+  return isAlsNodeStep(step)
+    || step.family === 'ALS'
+    || step.linkTypeName === 'ALS_RCC'
+    || /^ALS(?:_|$)/i.test(String(step.module?.moduleKind || ''));
+}
+
 function isOrdinaryStrongLinkStep(step: PublicChainStep): boolean {
+  const names = [step.linkTypeName, ...(step.linkTypeNames || [])]
+    .map(name => String(name || '').toUpperCase());
   return step.family === 'SL'
     && step.linkType >= 0
     && step.linkType <= 3
     && !isBivalveStep(step)
-    && step.linkTypeName !== 'ALS';
+    && !names.includes('ALS')
+    && !names.includes('ALS_RCC');
 }
 
-// A transported ALS-XY has the three ALS nodes of an ALS-XY structure,
-// with one ordinary strong link carrying the endpoint inference away from
-// the ALS chain. The graph stores links, so that shape is two ALS_RCC
-// links plus one ordinary strong link: VVL (or its reverse).
+function transportAlsNodeCount(steps: readonly PublicChainStep[]): number {
+  const nodes = new Set<string>();
+  const addNode = (subset: PublicSubsetModule | null | undefined): void => {
+    if (!subset) return;
+    const cells = sortedUnique(subset.cells || []);
+    const digits = sortedUnique(subset.digits || []);
+    if (cells.length && digits.length) nodes.add(`${cells.join(',')}|${digits.join('')}`);
+  };
+
+  for (const step of steps) {
+    if (isBivalveStep(step)) {
+      addNode({
+        id: null,
+        sector: null,
+        cells: [...step.entry.cells, ...step.exit.cells],
+        digits: [...step.entry.digits, ...step.exit.digits],
+        label: '',
+      });
+    }
+    if (isAlsRccStep(step) || step.family === 'ALS') {
+      addNode(step.module?.entrySideSubset || step.module?.entrySubset);
+      addNode(step.module?.exitSideSubset || step.module?.exitSubset);
+    }
+  }
+  return nodes.size;
+}
+
+// A transported ALS-XY has exactly three ALS nodes plus one ordinary strong
+// link. The strong link may occur anywhere in the walk.
 function isTransportAlsXy(steps: readonly PublicChainStep[]): boolean {
-  if (steps.length !== 3 || normalisedOpenPattern(steps) !== 'VVL') return false;
-  return steps.filter(isAlsRccStep).length === 2
+  return transportAlsNodeCount(steps) === 3
     && steps.filter(isOrdinaryStrongLinkStep).length === 1;
 }
 
-// The lower transport form is an ALS-XZ with one ordinary strong-link
-// bridge: one ALS_RCC link plus one ordinary strong link, or its reverse.
+function isTransportAlsXyRing(
+  steps: readonly PublicChainStep[],
+  isRing: boolean,
+): boolean {
+  return isRing
+    && transportAlsNodeCount(steps) === 3
+    && steps.filter(isOrdinaryStrongLinkStep).length === 1;
+}
+
+// Transport ALS-XZ has two ALS nodes plus one ordinary strong-link bridge.
 function isTransportAlsXz(steps: readonly PublicChainStep[]): boolean {
-  if (steps.length !== 2 || normalisedOpenPattern(steps) !== 'VL') return false;
-  return steps.filter(isAlsRccStep).length === 1
+  if (steps.length !== 3) return false;
+  return transportAlsNodeCount(steps) === 2
     && steps.filter(isOrdinaryStrongLinkStep).length === 1;
 }
 
@@ -2226,11 +2377,18 @@ function classifyChain(
   steps: readonly PublicChainStep[],
   isRing: boolean,
   ringWeakDigit: number | null = null,
+  semanticDepth: number = steps.length,
 ): string {
   const alsStructureName = alsOnlyStructureName(steps);
   if (alsStructureName) return alsStructureName;
 
+  if (isTransportAlsXyRing(steps, isRing)) return 'T-ALS-XY Ring';
+
   const digits = chainDigits(steps);
+  const semanticPattern = isRing
+    ? semanticValuePattern(steps)
+    : normalisedSemanticOpenPattern(steps);
+  semanticDepth = semanticPattern.length;
   const groupedPrefix = structurePrefix(steps);
 
   if (isRing) {
@@ -2242,15 +2400,21 @@ function classifyChain(
     if (threeLinkEri) return prefixedStructureName(threeLinkEri, steps);
     const invertedRing = invertedRingName(steps, ringWeakDigit);
     if (invertedRing) return prefixedStructureName(invertedRing, steps);
-    if (ringPatternMatches(pattern, 'LVL') && isSplitWingRing(steps)) {
+    if (semanticDepth === 3
+      && ringPatternMatches(semanticPattern, 'LVL') && isSplitWingRing(steps)) {
       return prefixedStructureName('M(2)-Ring', steps);
     }
     if (ringPatternMatches(pattern, 'VVVVL')) return prefixedStructureName('Y-Ring', steps);
-    if (ringPatternMatches(pattern, 'VLVLL')) return prefixedStructureName('W-Ring', steps);
-    if (ringPatternMatches(pattern, 'VVLL')) return prefixedStructureName('H(2)-Ring', steps);
-    if (ringPatternMatches(pattern, 'VLL')) return prefixedStructureName('M(2)-Ring', steps);
-    if (ringPatternMatches(pattern, 'VLLL')) return prefixedStructureName('M(2)-Ring', steps);
-    if (ringPatternMatches(pattern, 'LVLV') && hasWRingValueNodes(steps)) {
+    if (semanticDepth === 3 && ringPatternMatches(semanticPattern, 'VLVLL')) {
+      return prefixedStructureName('W-Ring', steps);
+    }
+    // A four-node VVLL ring is not an H-Ring. H-Rings retain the three-node
+    // H-Wing shape; the closing weak inference does not add a node.
+    if (semanticDepth === 3 && ringPatternMatches(semanticPattern, 'VLL')) {
+      return prefixedStructureName('M(2)-Ring', steps);
+    }
+    if (semanticDepth === 3
+      && ringPatternMatches(semanticPattern, 'LVLV') && hasWRingValueNodes(steps)) {
       return prefixedStructureName('W-Ring', steps);
     }
     if (ringPatternMatches(pattern, 'LLLLV')) return prefixedStructureName('Strong-Ring', steps);
@@ -2272,15 +2436,18 @@ function classifyChain(
   const threeLinkEri = classifyThreeLinkEri(steps, false);
   if (threeLinkEri) return prefixedStructureName(threeLinkEri, steps);
   if (pattern === 'VVV' && digits.length === 3) return prefixedStructureName('XY-Wing', steps);
-  if (pattern === 'VLV' && digits.length === 2) return prefixedStructureName('W-Wing', steps);
+  if (semanticDepth === 3 && semanticPattern === 'VLV' && digits.length === 2) {
+    return prefixedStructureName('W-Wing', steps);
+  }
   if (pattern === 'VLLVLL') return prefixedStructureName('Transport', steps);
-  if (pattern === 'LVL' && (isBivalveSplitWing(steps) || isAlsSplitWing(steps))) {
+  if (semanticDepth === 3
+    && semanticPattern === 'LVL' && (isBivalveSplitWing(steps) || isAlsSplitWing(steps))) {
     return prefixedStructureName('S-Wing', steps);
   }
-  if (pattern === 'VVL' && digits.length >= 2) {
+  if (semanticDepth === 3 && semanticPattern === 'VVL' && digits.length >= 2) {
     return prefixedStructureName(`H(${Math.min(3, digits.length)})-Wing`, steps);
   }
-  if (pattern === 'VLL') {
+  if (semanticDepth === 3 && semanticPattern === 'VLL') {
     const oriented = orientedOpenSteps(steps);
     const shared = intersection(oriented[0].exit.digits, oriented[1].entry.digits)[0];
     const last = oriented[oriented.length - 1];
@@ -2290,7 +2457,7 @@ function classifyChain(
     }
     return prefixedStructureName(`M(${Math.min(3, Math.max(2, digits.length))})-Wing`, steps);
   }
-  if (pattern === 'LLL') {
+  if (semanticDepth === 3 && semanticPattern === 'LLL') {
     return prefixedStructureName(`L(${Math.min(3, Math.max(1, digits.length))})-Wing`, steps);
   }
   if (pattern.split('').every(token => token === 'V') && steps.length >= 3) {
@@ -2393,6 +2560,71 @@ function eliminationsKey(eliminations: ChainElimination[]): string {
   return eliminations.map(item => `${item.digit}:${item.cell}`).join(';');
 }
 
+function isDominatedPath(shorter: ChainResult, longer: ChainResult): boolean {
+  const shortIds = shorter.steps.map(step => String(step.graphId ?? step.linkId));
+  const longIds = longer.steps.map(step => String(step.graphId ?? step.linkId));
+  if (shortIds.length >= longIds.length) return false;
+
+  const matches = (needle: string[], offset: number): boolean =>
+    needle.every((id, index) => id === longIds[offset + index]);
+  const isEndpointSubsequence = (needle: string[]): boolean => {
+    if (needle[0] !== longIds[0] || needle[needle.length - 1] !== longIds[longIds.length - 1]) {
+      return false;
+    }
+    let index = 0;
+    for (const id of longIds) {
+      if (id === needle[index]) index += 1;
+      if (index === needle.length) return true;
+    }
+    return false;
+  };
+  for (const needle of [shortIds, [...shortIds].reverse()]) {
+    if (matches(needle, 0)
+      || matches(needle, longIds.length - needle.length)
+      || isEndpointSubsequence(needle)) return true;
+  }
+  return false;
+}
+
+function suppressRedundantOpenExtensions(chains: ChainResult[]): ChainResult[] {
+  const groups = new Map<string, ChainResult[]>();
+  for (const chain of chains) {
+    if (chain.isRing || chain.isTerminal) continue;
+    if (!chain.steps.some(step => step.family === 'ALS')) continue;
+    const key = eliminationsKey(chain.eliminations);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(chain);
+  }
+
+  const suppressed = new Set<ChainResult>();
+  for (const group of groups.values()) {
+    group.sort((left, right) => left.steps.length - right.steps.length);
+    for (let index = 0; index < group.length; index++) {
+      const shorter = group[index];
+      for (let next = index + 1; next < group.length; next++) {
+        const longer = group[next];
+        if (isDominatedPath(shorter, longer)) suppressed.add(longer);
+      }
+    }
+  }
+  return chains.filter(chain => !suppressed.has(chain));
+}
+
+function preferNamedAlsClassifications(chains: ChainResult[]): ChainResult[] {
+  const namedProofs = new Set<string>();
+  const proofKey = (chain: ChainResult): string => {
+    const text = formatChainEureka({ ...chain, structureName: '' });
+    return text.slice(text.indexOf(':') + 1).trim();
+  };
+  for (const chain of chains) {
+    if (/^AIC\s*\+\s*ALS\s*-\s*.+(?:Wing|Ring)$/i.test(chain.structureName || '')) {
+      namedProofs.add(proofKey(chain));
+    }
+  }
+  return chains.filter(chain => !/^AIC\s*\+\s*ALS$/i.test(chain.structureName || '')
+    || !namedProofs.has(proofKey(chain)));
+}
+
 function terminalEriStructureName(
   steps: SearchStep[],
   ringWeak: WeakConnection | null,
@@ -2438,7 +2670,7 @@ function addChainResult(
   const publicSteps = steps.map(publicStep);
   const publicIsRing = isRing && !isTerminal;
   const structureName = terminalStructureName
-    || classifyChain(publicSteps, publicIsRing, ringWeak?.digit ?? null);
+    || classifyChain(publicSteps, publicIsRing, ringWeak?.digit ?? null, publicSteps.length);
   const terminalFamily = terminalStructureName ? 'Local - Wing | Ring' : null;
   const terminalWing = terminalStructureName ? (isRing ? 'Ring' : 'Wing') : null;
   const terminalRank = terminalStructureName ? 'L(1)' : null;
@@ -2745,13 +2977,13 @@ export function findAicChains(cand: CandidateGrid, options: ChainBuilderOptions 
     }
   }
 
-  const chains = [...chainsByKey.values()]
+  const chains = preferNamedAlsClassifications(suppressRedundantOpenExtensions([...chainsByKey.values()]
     .sort((a, b) =>
       a.chain.length - b.chain.length
       || a.chain.eliminations.length - b.chain.eliminations.length
       || a.rankKey.localeCompare(b.rankKey)
     )
-    .map(entry => entry.chain);
+    .map(entry => entry.chain)));
   stats.chainsFound = chains.length;
   opts.onProgress?.({ stage: 'complete', statesVisited: stats.statesVisited });
 

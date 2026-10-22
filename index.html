@@ -4733,7 +4733,7 @@
                   <li><strong>8. Challenging.</strong> <span>Execute in order: X-Chains using strong-link types 0-3 at depth 4; B.A.R.N.S. transport; B.A.R.N.S./WXYZ size 4; XY-Chain depth 4; Hidden XY-Chain depth 4 using types 0-3; AIC depth 4 using types 0-4 plus ALS_RCC and AHS_RCC expansion, including Inversion Wings/Rings; then 4x4 n×n+k Franken/Mutant fish. Stop at the first phase with a valid move.</span></li>
                   <li><strong>9. Irritating.</strong> <span>In order: X-Chains depth 5 using types 0-3; XY-Chain depth 5; Hidden XY-Chain depth 5 using types 0-3; AIC depth 5 using types 0-4 plus ALS_RCC and AHS_RCC expansion; WXYZ transport; B.A.R.N.S. size 5; then 5x5 Franken/Mutant fish, both off by default.</span></li>
                   <li><strong>10. Frustrating.</strong> <span>X-Chains depth 6, XY-Chains, Hidden XY-Chains, and AIC depth 6 using types 0-4 plus ALS_RCC and AHS_RCC expansion; then WXYZ transport, B.A.R.N.S. transport, and size-6 subsets/fish.</span></li>
-                  <li><strong>11. Hard.</strong> <span>Full ALS-XZ, AHS-XZ, and ALC-XZ at depth 2; then full-depth X-Chains, full-depth XY-Chains, full-depth Hidden XY-Chains, and full-depth AIC using types 0-4 plus ALS_RCC and AHS_RCC expansion; size-7 subsets and fish remain off by default.</span></li>
+                  <li><strong>11. Hard.</strong> <span>Full ALS-XZ, AHS-XZ, and ALC-XZ at depth 2; then full-depth ordinary X-Chains, XY-Chains, Hidden XY-Chains, and AIC using types 0-4 only; ALS/AHS/ALC nodes belong to their dedicated later phases.</span></li>
                   <li><strong>12. Demanding.</strong> <span>Named ALS/AHS/ALC Wings and Rings, Transport ALS-XZ, Transport AHS-XZ, Transport ALC-XZ, plus ALS-XY, AHS-XY, and ALC-XY at depth 3.</span></li>
                   <li><strong>13. Expert.</strong> <span>Transport ALS-XY, Transport AHS-XY, and Transport ALC-XY; size-9 subsets remain off by default.</span></li>
                   <li><strong>14. Brutal.</strong> <span>Full-scope ALS-Chains, AHS-Chains, and ALC-Chains beyond depth 3.</span></li>
@@ -5926,12 +5926,12 @@
   <script src="./src/chromatic-core.js?v=20261015-1"></script>
   <script src="./src/chromatic-als-core.js?v=20261007-9"></script>
     <script src="./src/strong-link-core.js?v=20261016-22"></script>
-    <script src="./src/chain-core.js?v=20261021-5"></script>
+      <script src="./src/chain-core.js?v=20261021-22"></script>
   <script src="./src/alc-core.js?v=20261012-3"></script>
   <script src="./src/ahs-xy-core.js?v=20261001-4"></script>
   <script src="./src/ahs-dof-core.js?v=20261002-1"></script>
   <script src="./src/msls-core.js?v=20261021-1"></script>
-    <script src="./src/search-worker-source.js?v=20261021-3"></script>
+      <script src="./src/search-worker-source.js?v=20261022-8"></script>
   <script src="./src/ocr/tesseract.min.js?v=5.1.1"></script>
   <script src="./src/ocr/ocrad.js?v=0.25"></script>
   <script>
@@ -6398,7 +6398,7 @@
       }
 
       try {
-      const workerPath = './src/search-worker.js?v=20261021-3';
+      const workerPath = './src/search-worker.js?v=20261022-8';
         releaseSearchWorkerBlobUrl();
         let workerUrl = new URL(workerPath, document.baseURI);
         if (document.baseURI.startsWith('file:')) {
@@ -9373,6 +9373,9 @@
     }
 
     function drawVantageWeakConnection(svg, fromSide, toSide, weakFromDigit = null, weakToDigit = weakFromDigit) {
+      ({ fromDigit: weakFromDigit, toDigit: weakToDigit } = resolvedWeakDigits(
+        fromSide, toSide, weakFromDigit, weakToDigit,
+      ));
       const pair = vantageClosestAnchorPair(fromSide, toSide, weakFromDigit, weakToDigit);
       if (!pair) return;
       drawArc(svg, pair.from, pair.to, 'chain-weak-line', -4.5, 0);
@@ -9510,6 +9513,19 @@
       }
 
       return best;
+    }
+
+    function resolvedWeakDigits(fromSide, toSide, fromDigit, toDigit) {
+      if (fromDigit == null || toDigit == null || fromDigit === toDigit) {
+        return { fromDigit, toDigit };
+      }
+      const fromDigits = new Set(fromSide?.digits || []);
+      const shared = [...new Set(toSide?.digits || [])]
+        .filter(digit => fromDigits.has(digit));
+      // A grouped endpoint may carry a stale source digit from another
+      // branch. Use the single shared candidate when the handoff is clear.
+      if (shared.length === 1) return { fromDigit: shared[0], toDigit: shared[0] };
+      return { fromDigit, toDigit };
     }
 
     function anchorRow(anchor) {
@@ -9765,8 +9781,12 @@
       toDigit = forcedDigit,
       allowMissing = false,
     ) {
-      const existingOnly = !allowMissing;
-      const pair = closestAnchorPair(fromSide, toSide, forcedDigit, toDigit, existingOnly);
+      let existingOnly = true;
+      let pair = closestAnchorPair(fromSide, toSide, forcedDigit, toDigit, true);
+      if (!pair && allowMissing) {
+        existingOnly = false;
+        pair = closestAnchorPair(fromSide, toSide, forcedDigit, toDigit, false);
+      }
       if (!pair) return pair;
 
       // A grouped strong link must terminate at the group boundary rather
@@ -9804,6 +9824,9 @@
       weakToDigit = weakFromDigit,
       allowMissing = false,
     ) {
+      ({ fromDigit: weakFromDigit, toDigit: weakToDigit } = resolvedWeakDigits(
+        fromSide, toSide, weakFromDigit, weakToDigit,
+      ));
       const pair = groupedAnchorPair(
         fromSide,
         toSide,
@@ -10298,13 +10321,14 @@
           const toSide = visibleChainEntrySide(step);
           const weakFromDigit = step.weakFromDigit ?? step.weakDigit;
           const weakToDigit = step.weakToDigit ?? step.weakDigit;
-          addWeakDigitMarks(weakMarks, fromSide, weakFromDigit, false);
-          addWeakDigitMarks(weakMarks, toSide, weakToDigit, false);
+          const resolved = resolvedWeakDigits(fromSide, toSide, weakFromDigit, weakToDigit);
+          addWeakDigitMarks(weakMarks, fromSide, resolved.fromDigit, false);
+          addWeakDigitMarks(weakMarks, toSide, resolved.toDigit, false);
           const pair = groupedAnchorPair(
             fromSide,
             toSide,
-            weakFromDigit,
-            weakToDigit,
+            resolved.fromDigit,
+            resolved.toDigit,
           );
           if (pair) {
             if (weakFromDigit == null && weakToDigit == null) {
@@ -12835,9 +12859,9 @@
         category: 'DEMANDING', score: '8 to 8.5', items: [
           ['Hidden Octuple (off by default)', '8'],
           ['Naked Octuple (off by default)', '8'],
-          ['Named ALS Wings/Rings, ALS transport, AIC depth 3', '8 + link / ALS_RCC modifiers'],
-          ['Named AHS Wings/Rings, AHS transport, AIC depth 3', '8 + link / AHS_RCC modifiers'],
-          ['Named ALC Wings/Rings + transport, AIC depth 3', '8 + link / ALS_RCC / AHS_RCC modifiers'],
+          ['Named ALS Wings/Rings, AIC depth 3', '8 + link / ALS_RCC modifiers'],
+          ['Named AHS Wings/Rings, AIC depth 3', '8 + link / AHS_RCC modifiers'],
+          ['Named ALC Wings/Rings, AIC depth 3', '8 + link / ALS_RCC / AHS_RCC modifiers'],
           ['Transport ALS-XZ', '8 + link / ALS_RCC modifiers'],
           ['Transport AHS-XZ', '8 + link / AHS_RCC modifiers'],
           ['Transport ALC-XZ', '8 + link / ALS_RCC / AHS_RCC modifiers'],
@@ -13106,10 +13130,48 @@
       return Number(modifier.toFixed(3));
     }
 
+    function isTransportAlsXyRingShape(chain) {
+      if (!chain?.isRing) return false;
+      const nodes = new Set();
+      const addNode = subset => {
+        const cells = [...new Set(subset?.cells || [])].sort((a, b) => a - b);
+        const digits = [...new Set(subset?.digits || [])].sort((a, b) => a - b);
+        if (cells.length && digits.length) nodes.add(`${cells.join(',')}|${digits.join('')}`);
+      };
+      for (const step of chain.steps || []) {
+        const bivalve = step?.family === 'SL'
+          && Number(step.linkType) === 4
+          && step.entry?.cells?.length === 1
+          && step.exit?.cells?.length === 1
+          && step.entry.cells[0] === step.exit.cells[0];
+        if (bivalve) {
+          addNode({
+            cells: [...step.entry.cells, ...step.exit.cells],
+            digits: [...(step.entry.digits || []), ...(step.exit.digits || [])],
+          });
+        }
+        if (step?.family === 'ALS' || step?.linkTypeName === 'ALS_RCC') {
+          addNode(step.module?.entrySideSubset || step.module?.entrySubset);
+          addNode(step.module?.exitSideSubset || step.module?.exitSubset);
+        }
+      }
+      const isOrdinaryStrong = step => step?.family === 'SL'
+        && Number(step.linkType) >= 0 && Number(step.linkType) <= 3
+        && step.linkTypeName !== 'ALS';
+      return nodes.size === 3
+        && chain.steps.filter(isOrdinaryStrong).length === 1;
+    }
+
+    function normalizedChainStructureName(chain) {
+      return isTransportAlsXyRingShape(chain)
+        ? 'T-ALS-XY Ring'
+        : String(chain?.structureName || 'AIC');
+    }
+
     function ratingForChain(chain, step = chain) {
       if (!chain) return unknownRating(step?.desc || '');
 
-      const fullName = String(chain.structureName || 'AIC');
+      const fullName = normalizedChainStructureName(chain);
       const isAicAls = /^AIC\s*\+\s*ALS(?:\s*-|$)/i.test(fullName);
       const name = fullName
         .replace(/^\s*(?:AIC\s*\+\s*ALS|ALS|AHS|ALC)\s*-\s*/i, '')
@@ -13125,6 +13187,15 @@
         hardestMove: step?.desc || '',
         };
       };
+
+      // Some worker records preserve the generic AIC structure name even
+      // though one of their links is an ALS_RCC expansion. Resolve that
+      // identity before the narrower wing/transport fallbacks can relabel it.
+      if (/^AIC$/i.test(fullName)
+        && (chain.steps || []).some(step => step?.family === 'ALS'
+          || String(step?.linkTypeName || '').toUpperCase() === 'ALS_RCC')) {
+        return define('Nightmare', 11 + ringBonus, `AIC + ALS Chain${ringSuffix}`);
+      }
 
       const sizeOne = alsSizeOneChainInfo(chain);
       if (sizeOne?.allBivalve && sizeOne.nodeCount === 3 && !sizeOne.remotePair) {
@@ -13165,11 +13236,11 @@
 
       // T-ALS-XY is the ALS-XY base (8) plus the transport modifier (+1).
       // Keep it separate from generic AIC + ALS and from B.A.R.N.S. transport.
-      if (/^T\s*-\s*ALS\s*-\s*XY$/i.test(fullName)) {
+      if (/^T\s*-\s*ALS\s*-\s*XY(?:\s+Ring)?$/i.test(fullName)) {
         return define('Expert', 9 + ringBonus, `T-ALS-XY${ringSuffix}`);
       }
       // T-ALS-XZ is the ALS-XZ base (7) plus the transport modifier (+1).
-      if (/^T\s*-\s*ALS\s*-\s*XZ$/i.test(fullName)) {
+      if (/^T\s*-\s*ALS\s*-\s*XZ(?:\s+Ring)?$/i.test(fullName)) {
         return define('Demanding', 8 + ringBonus, `T-ALS-XZ${ringSuffix}`);
       }
 
@@ -13217,7 +13288,7 @@
       const alsNamed = (isAicAls || /^ALS\s*-/i.test(fullName))
         && /(?:Wing|Ring)$/i.test(name);
       if (alsNamed && !/^ALS\s*-\s*(?:XZ|XY|Chain)$/i.test(fullName)) {
-        return define('Expert', 9 + ringBonus, `ALS - ${name}${ringSuffix}`);
+        return define('Demanding', 8 + ringBonus, `ALS - ${name}${ringSuffix}`);
       }
 
       const ahsNamed = /^AHS\s*-\s*/i.test(fullName)
@@ -13332,7 +13403,7 @@
           const base = Math.min(7, Math.max(3, length));
           const value = chainMathScore(base, chain, base, 2);
           return define(ratingCategoryForValue(value), value,
-            `AIC (Depth ${length})${ringSuffix}`);
+            `AIC${ringSuffix}`);
         }
         const base = Math.min(7, Math.max(3, length));
         const value = chainMathScore(base, chain, base, 1);
@@ -15857,8 +15928,10 @@
     }
 
     function displayChainForUi(chain) {
-      const structureName = String(chain?.structureName || '');
-      let displayChain = chain;
+      const structureName = normalizedChainStructureName(chain);
+      let displayChain = structureName === chain?.structureName
+        ? chain
+        : { ...chain, structureName };
       if (/^(?:X-Chain|AIC)$/i.test(structureName)) {
         const subclass = openXWingSubclass(chain);
         if (subclass) displayChain = { ...displayChain, structureName: subclass };
@@ -15882,7 +15955,7 @@
       }
 
       const name = String(chain.structureName || (chain.isRing ? 'Ring' : 'AIC'));
-      if (/^T\s*-\s*ALS\s*-\s*(?:XZ|XY)$/i.test(name)) {
+      if (/^T\s*-\s*ALS\s*-\s*(?:XZ|XY)(?:\s+Ring)?$/i.test(name)) {
         const suffix = /XY$/i.test(name) ? 'XY' : 'XZ';
         return {
           family: 'Transport',
@@ -17368,7 +17441,7 @@
       if (phase.maxDepth != null && Number(chain?.length) > phase.maxDepth) return false;
       if (phase.singleDigitOnly && chainUniqueDigitCount(chain) !== 1) return false;
       if (phase.genericAicOnly
-        && (!/^AIC$/i.test(String(chain?.structureName || '').trim())
+        && (!/^AIC(?:\s*\+\s*(?:ALS|AHS|ALC))?$/i.test(String(chain?.structureName || '').trim())
           || chainUniqueDigitCount(chain) <= 1)) return false;
       if (phase.requireMixed
         && (!alsSteps.length || !(chain?.steps || []).some(step => step.family === 'SL'))) return false;
@@ -17405,6 +17478,9 @@
       if (!phase.family) return true;
       if (phase.family === 'barns') return keys.has('barns');
       if (phase.family === 'barns-transport') return keys.has('barns-transport');
+      if (phase.family === 'als-named') return keys.has('als-named');
+      if (phase.family === 'ahs-named') return keys.has('ahs-named');
+      if (phase.family === 'alc-named') return keys.has('alc-named');
       if (phase.family === 'als-xz') {
         return keys.has('als-xz') || keys.has('t-als-xz')
           || keys.has('als-named') || alsNodeCount === 2;
@@ -17557,9 +17633,12 @@
             // cannot outrank an earlier X-chain/Skyscraper/Kite form.
             priority: [
               phaseTechniqueOrder(chain),
+              // Prefer the smallest valid proof within a hierarchy phase.
+              // A longer walk may contain this chain, but it must not hide it
+              // or win merely because it exposes more cumulative exclusions.
+              Number(chain.length) || Number(chain.steps?.length) || Number.POSITIVE_INFINITY,
               // Within the same named/classified move, prefer the proof that
-              // removes more candidates. This never crosses phase or class
-              // boundaries because both are compared first.
+              // removes more candidates after proof length has been compared.
               -items.length,
               ...solverMovePriority(chain, step, maxDepth, displayIndex),
             ],
@@ -17643,6 +17722,9 @@
       if (/^H(?:\(1\)|1)-(?:Wing|Ring)$/i.test(name)) keys.add('h1-wing');
       if (/^H(?:\(2\)|2)-(?:Wing|Ring)$/i.test(name)) keys.add('h2-wing');
       if (/^H(?:\(3\)|3)-(?:Wing|Ring)$/i.test(name)) keys.add('h3-wing');
+      if (/^L-(?:Wing|Ring)$/i.test(name)) keys.add('l-named');
+      if (/^M-(?:Wing|Ring)$/i.test(name)) keys.add('m-named');
+      if (/^H-(?:Wing|Ring)$/i.test(name)) keys.add('h-named');
       if (/^Strong[- ](?:Wing|Ring)/i.test(name)) keys.add('strong-wing');
       if (/^i[SWMLH]/i.test(name)) keys.add('inversion');
 
@@ -17654,7 +17736,7 @@
       if (/^ALC\s*-\s*.+(?:Wing|Ring)$/i.test(fullName)) keys.add('alc-named');
 
       if (/^ALS\s*-\s*XZ$/i.test(fullName)) keys.add('als-xz');
-      if (/^T\s*-\s*ALS\s*-\s*XZ$/i.test(fullName)) keys.add('t-als-xz');
+      if (/^T\s*-\s*ALS\s*-\s*XZ(?:\s+Ring)?$/i.test(fullName)) keys.add('t-als-xz');
       if (/^ALS\s*-\s*XY$/i.test(fullName)) keys.add('als-xy');
       if (/^ALC\s*-\s*XZ(?:\s+Ring)?$/i.test(fullName)) keys.add('alc-xz');
       if (/^ALC\s*-\s*XY(?:\s+Ring)?$/i.test(fullName)) keys.add('alc-xy');
@@ -17663,7 +17745,7 @@
       if (/^AHS\s*-\s*XZ(?:\s+Ring)?$/i.test(fullName)) keys.add('ahs-xz');
       if (/^AHS\s*-\s*XY(?:\s+Ring)?$/i.test(fullName)) keys.add('ahs-xy');
       if (/^AHS\s*-\s*Chain(?:\s+Ring)?$/i.test(fullName)) keys.add('ahs-chain');
-      if (/^T\s*-\s*ALS\s*-\s*XY$/i.test(fullName)) keys.add('t-als-xy');
+      if (/^T\s*-\s*ALS\s*-\s*XY(?:\s+Ring)?$/i.test(fullName)) keys.add('t-als-xy');
       if (/^ALS\s*-\s*Chain$/i.test(fullName)) keys.add('als-chain');
       if (/AIC\s*\+\s*ALS/i.test(fullName)) keys.add('aic-als');
 
@@ -17836,7 +17918,7 @@
       if (aicAlsNamed) return 'als-named';
       if (/^AIC\s*\+\s*ALS(?:\s*-\s*Chain)?$/i.test(fullName)) return 'aic-als';
       if (/^ALS\s*-\s*XZ$/i.test(fullName)) return 'als-xz';
-      if (/^T\s*-\s*ALS\s*-\s*XZ$/i.test(fullName)) return 't-als-xz';
+      if (/^T\s*-\s*ALS\s*-\s*XZ(?:\s+Ring)?$/i.test(fullName)) return 't-als-xz';
       if (/^ALS\s*-\s*XY$/i.test(fullName)) return 'als-xy';
       if (/^ALC\s*-\s*XZ(?:\s+Ring)?$/i.test(fullName)) return 'alc-xz';
       if (/^ALC\s*-\s*XY(?:\s+Ring)?$/i.test(fullName)) return 'alc-xy';
@@ -17845,7 +17927,7 @@
       if (/^AHS\s*-\s*XZ(?:\s+Ring)?$/i.test(fullName)) return 'ahs-xz';
       if (/^AHS\s*-\s*XY(?:\s+Ring)?$/i.test(fullName)) return 'ahs-xy';
       if (/^AHS\s*-\s*Chain(?:\s+Ring)?$/i.test(fullName)) return 'ahs-chain';
-      if (/^T\s*-\s*ALS\s*-\s*XY$/i.test(fullName)) return 't-als-xy';
+      if (/^T\s*-\s*ALS\s*-\s*XY(?:\s+Ring)?$/i.test(fullName)) return 't-als-xy';
       if (/^ALS\s*-\s*Chain$/i.test(fullName)) return 'als-chain';
       if (/^ALS\s*-/i.test(fullName) && /(?:Wing|Ring)$/i.test(name)) return 'als-named';
       if (/^AHS\s*-/i.test(fullName) && /(?:Wing|Ring)$/i.test(name)) return 'ahs-named';
@@ -19140,14 +19222,15 @@
         });
         addChain('challenging-aic', {
           name: 'aic-depth-4',
-          includeAls: false,
-          includeAhs: false,
+          includeAls: true,
+          includeAhs: true,
           strongLinkTypes: [0, 1, 2, 3, 4],
           maxDepth: 4,
           minDepth: 4,
           requireAls: false,
           requireMixed: false,
           family: null,
+          genericAicOnly: true,
           searchLimits: {
             maxChains: 250,
             maxResultAttempts: 5000,
@@ -19210,14 +19293,15 @@
         });
         addChain('irritating-aic', {
           name: 'aic-depth-5',
-          includeAls: false,
-          includeAhs: false,
+          includeAls: true,
+          includeAhs: true,
           strongLinkTypes: [0, 1, 2, 3, 4],
           maxDepth: 8,
           minDepth: 5,
           requireAls: false,
           requireMixed: false,
           family: null,
+          genericAicOnly: true,
         });
         addChain('irritating-transport-wxyz', {
           name: 'barns-transport-wxyz',
@@ -19316,14 +19400,15 @@
         });
         addChain('frustrating-aic', {
           name: 'aic-depth-6',
-          includeAls: false,
-          includeAhs: false,
+          includeAls: true,
+          includeAhs: true,
           strongLinkTypes: [0, 1, 2, 3, 4],
           maxDepth: 8,
           minDepth: 6,
           requireAls: false,
           requireMixed: false,
           family: null,
+          genericAicOnly: true,
         });
         addDirect('frustrating-extended-fish', [
           { kind: 'fish', size: 6, k: [0], categories: ['Franken', 'Mutant'] },
@@ -19456,14 +19541,15 @@
         });
         addChain('hard-aic-full-depth', {
           name: 'aic-full-depth',
-          includeAls: false,
-          includeAhs: false,
+          includeAls: true,
+          includeAhs: true,
           strongLinkTypes: [0, 1, 2, 3, 4],
           maxDepth: 8,
           minDepth: 2,
           requireAls: false,
           requireMixed: false,
           family: null,
+          genericAicOnly: true,
           requiredTypes: ['chains'],
         });
         addDirect('hard-extended-fish', [
@@ -19487,16 +19573,15 @@
           minDepth: 3,
           requireAls: true,
           requireMixed: true,
-          // Named ALS forms use the full ALS transport link set here:
-          // ordinary strong links 0-4 plus ALS_RCC/type 5.
+          // Named ALS forms use ordinary strong links 0-4 plus ALS_RCC.
           alsLinkMode: 'all',
-          family: 'als-xz',
+          family: 'als-named',
           allowedMoveGroups: [
-            ['l2-wing', 'l3-wing'],
+            ['l-named', 'l2-wing', 'l3-wing'],
             ['w-wing'],
             ['s-wing'],
-            ['m2-wing', 'm3-wing'],
-            ['h1-wing', 'h2-wing', 'h3-wing'],
+            ['m-named', 'm2-wing', 'm3-wing'],
+            ['h-named', 'h1-wing', 'h2-wing', 'h3-wing'],
             ['strong-wing'],
           ],
           requiredTypes: ['chains', 'als-named'],
@@ -19511,16 +19596,37 @@
           minDepth: 3,
           requireAls: false,
           requireMixed: false,
-          family: 'ahs-xy',
+          family: 'ahs-named',
           allowedMoveGroups: [
-            ['l2-wing', 'l3-wing'],
+            ['l-named', 'l2-wing', 'l3-wing'],
             ['w-wing'],
             ['s-wing'],
-            ['m2-wing', 'm3-wing'],
-            ['h1-wing', 'h2-wing', 'h3-wing'],
+            ['m-named', 'm2-wing', 'm3-wing'],
+            ['h-named', 'h1-wing', 'h2-wing', 'h3-wing'],
             ['strong-wing'],
           ],
-          requiredTypes: ['chains', 'ahs-xy'],
+          requiredTypes: ['chains', 'ahs-named'],
+        });
+        addChain('demanding-alc-named', {
+          name: 'named-alc-wings-rings-depth-3',
+          includeAls: true,
+          includeAhs: true,
+          ahsMaxCells: 9,
+          strongLinkTypes: [0, 1, 2, 3, 4],
+          maxDepth: 3,
+          minDepth: 3,
+          requireAls: true,
+          requireMixed: false,
+          family: 'alc-named',
+          allowedMoveGroups: [
+            ['l-named', 'l2-wing', 'l3-wing'],
+            ['w-wing'],
+            ['s-wing'],
+            ['m-named', 'm2-wing', 'm3-wing'],
+            ['h-named', 'h1-wing', 'h2-wing', 'h3-wing'],
+            ['strong-wing'],
+          ],
+          requiredTypes: ['chains', 'alc-named'],
         });
         addChain('demanding-transport-als-xz', {
           name: 'transport-als-xz',

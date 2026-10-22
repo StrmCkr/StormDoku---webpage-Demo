@@ -178,6 +178,30 @@ test('named L(2)-Wing keeps its designator over hidden XY fallback', () => withS
   assert.match(tag, /^L\(2\)-Wing$/);
 }));
 
+test('ALS-backed generic AIC records keep an ALS-aware solution label', () => withSolver('file:', async solver => {
+  const tag = solver.evaluate(
+    'ratingForChain({ structureName: "AIC", length: 3, steps: ['
+      + '{ family: "SL", linkType: 0, entry: { digits: [8] }, exit: { digits: [8] } },'
+      + '{ family: "ALS", linkType: 5, linkTypeName: "ALS_RCC",'
+      + ' entry: { digits: [8] }, exit: { digits: [6] },'
+      + ' module: { entrySubset: { cells: [0], digits: [8] },'
+      + ' exitSubset: { cells: [1, 2], digits: [6, 7] } } }'
+      + '] }).tag',
+  );
+  assert.equal(tag, 'AIC + ALS Chain');
+}));
+
+test('generic AIC solution labels omit internal depth', () => withSolver('file:', async solver => {
+  const tag = solver.evaluate(
+    'ratingForChain({ structureName: "AIC", length: 4, steps: ['
+      + '{ family: "SL", linkType: 0, entry: { digits: [4] }, exit: { digits: [4] } },'
+      + '{ family: "SL", linkType: 1, entry: { digits: [8] }, exit: { digits: [8] } },'
+      + '{ family: "SL", linkType: 2, entry: { digits: [6] }, exit: { digits: [6] } }'
+      + '] }).tag',
+  );
+  assert.equal(tag, 'AIC');
+}));
+
 test('chain priority uses elimination count only within the same class', () => withSolver('file:', async solver => {
   assert.equal(solver.evaluate(
     'isHigherPriorityMove({ priority: [4, -3, 9] }, { priority: [4, -2, 1] })',
