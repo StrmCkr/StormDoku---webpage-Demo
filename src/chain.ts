@@ -2439,7 +2439,7 @@ function classifyChain(
   if (semanticDepth === 3 && semanticPattern === 'VLV' && digits.length === 2) {
     return prefixedStructureName('W-Wing', steps);
   }
-  if (pattern === 'VLLVLL') return prefixedStructureName('Transport', steps);
+  if (pattern === 'VLLVLL') return prefixedStructureName('T-Transport', steps);
   if (semanticDepth === 3
     && semanticPattern === 'LVL' && (isBivalveSplitWing(steps) || isAlsSplitWing(steps))) {
     return prefixedStructureName('S-Wing', steps);

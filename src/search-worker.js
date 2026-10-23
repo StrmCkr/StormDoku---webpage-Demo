@@ -4,7 +4,7 @@
  * the page and returns structured-cloneable search results to the UI thread.
  */
 importScripts(
-  './browser-core.js?v=20261021-4',
+  './browser-core.js?v=20261022-1',
   './set-tools-core.js?v=20261016-20',
   './pom-core.js?v=20261020-1',
   './als-core.js?v=20261016-20',

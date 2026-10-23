@@ -983,6 +983,35 @@
       };
     }
 
+    // Anti-King and Anti-Knight are pairwise peer constraints, not sectors.
+    // A grouped weak handoff can therefore be valid even when the two sides
+    // have no common row/column/box/variation unit.  The side elimination
+    // envelopes already contain the complete active peer graph; use their
+    // reciprocal containment as the proof for this variation-only edge.
+    const variants = core.getVariantSettings?.() || {};
+    if (variants.antiKing || variants.antiKnight) {
+      for (const digit of digits) {
+        const aCells = aSide.cells.filter(cell => (aSide.digits || []).includes(digit));
+        const bCells = bSide.cells.filter(cell => (bSide.digits || []).includes(digit));
+        const aElims = aSide.potentialElimByDigit[digit] || [];
+        const bElims = bSide.potentialElimByDigit[digit] || [];
+        if (!aCells.length || !bCells.length
+          || !aCells.every(cell => bElims.includes(cell))
+          || !bCells.every(cell => aElims.includes(cell))) continue;
+
+        return {
+          weakType: SECTOR_WEAK,
+          weakTypeName: WEAK_TYPE_NAMES[SECTOR_WEAK],
+          digit,
+          fromDigit: digit,
+          toDigit: digit,
+          cells: union(aSide.cells, bSide.cells),
+          sectors: [],
+          variationPeer: true,
+        };
+      }
+    }
+
     return null;
   }
 
@@ -2890,7 +2919,7 @@
     if (semanticDepth === 3 && semanticPattern === 'VLV' && digits.length === 2) {
       return prefixedStructureName('W-Wing', steps);
     }
-    if (pattern === 'VLLVLL') return prefixedStructureName('Transport', steps);
+    if (pattern === 'VLLVLL') return prefixedStructureName('T-Transport', steps);
     if (semanticDepth === 3 && semanticPattern === 'LVL' && (isBivalveSplitWing(steps)
       || isAlsSplitWing(steps) || isAhsSplitWing(steps))) {
       return prefixedNamedWingName('S-Wing', steps);

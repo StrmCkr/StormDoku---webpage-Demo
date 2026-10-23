@@ -23,6 +23,21 @@
     const sourceSet = new Set(cells);
     const out = [];
     const seen = new Set();
+    const variantSettings = core.getVariantSettings?.() || {};
+    const nonConsecutive = variantSettings.nonConsecutive === true;
+    const peerSets = new Map(cells.map(cell => [cell, new Set(core.peersOf(cell))]));
+    const orthogonalSets = nonConsecutive
+      ? new Map(cells.map(cell => {
+        const row = Math.floor(cell / 9);
+        const col = cell % 9;
+        const neighbors = [];
+        if (row > 0) neighbors.push(cell - 9);
+        if (row < 8) neighbors.push(cell + 9);
+        if (col > 0) neighbors.push(cell - 1);
+        if (col < 8) neighbors.push(cell + 1);
+        return [cell, new Set(neighbors)];
+      }))
+      : null;
 
     for (const digit of digits) {
       const sourceCells = cells.filter(cell => (cand[cell] || []).includes(digit));
@@ -30,8 +45,20 @@
 
       for (let cell = 0; cell < 81; cell++) {
         if (sourceSet.has(cell) || !(cand[cell] || []).includes(digit)) continue;
-        if (!sourceCells.every(source => core.peersOf(source).includes(cell))) continue;
+        if (!sourceCells.every(source => peerSets.get(source)?.has(cell))) continue;
         addElimination(out, seen, cell, digit);
+      }
+
+      if (nonConsecutive) {
+        const adjacentDigits = [digit - 1, digit + 1]
+          .filter(value => value >= 1 && value <= 9);
+        for (const adjacent of adjacentDigits) {
+          for (let cell = 0; cell < 81; cell++) {
+            if (sourceSet.has(cell) || !(cand[cell] || []).includes(adjacent)) continue;
+            if (!sourceCells.every(source => orthogonalSets.get(source)?.has(cell))) continue;
+            addElimination(out, seen, cell, adjacent);
+          }
+        }
       }
     }
 

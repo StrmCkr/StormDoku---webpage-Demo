@@ -164,6 +164,10 @@
     return { ...variantState };
   }
 
+  function getVariantSettings() {
+    return { ...variantState };
+  }
+
   function variantUnitName(sector) {
     if (sector < CLASSIC_UNITS.length) return null;
     let offset = CLASSIC_UNITS.length;
@@ -912,9 +916,30 @@
         seen.add(key);
         eliminations.push({ cell, digit });
       }
+
+      if (variantState.nonConsecutive) {
+        const adjacentDigits = [digit - 1, digit + 1]
+          .filter(value => value >= 1 && value <= 9);
+        for (const adjacent of adjacentDigits) {
+          for (let cell = 0; cell < 81; cell += 1) {
+            if (sourceCellSet.has(cell) || !cand[cell].includes(adjacent)) continue;
+            if (!sourceCells.every(source => nonConsecutiveAdjacent(source, cell))) continue;
+
+            const key = `${cell}:${adjacent}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            eliminations.push({ cell, digit: adjacent });
+          }
+        }
+      }
     }
 
     return eliminations;
+  }
+
+  function nonConsecutiveAdjacent(a, b) {
+    return NON_CONSECUTIVE_EDGES.some(([left, right]) =>
+      (left === a && right === b) || (left === b && right === a));
   }
 
   function positionalHouse(h) {
@@ -1136,22 +1161,6 @@
     return variantBoxLineStepsM(cand)[0] || null;
   }
 
-  function antiChessPeersOf(cell) {
-    const peers = new Set();
-    const edgeSets = [];
-    if (variantState.antiKing) edgeSets.push(ANTI_KING_EDGES);
-    if (variantState.antiKnight) edgeSets.push(ANTI_KNIGHT_EDGES);
-
-    for (const edges of edgeSets) {
-      for (const [a, b] of edges) {
-        if (a === cell) peers.add(b);
-        else if (b === cell) peers.add(a);
-      }
-    }
-
-    return peers;
-  }
-
   function intersectPeerEnvelope(cells) {
     if (!cells.length) return new Set();
     const common = new Set(peersOf(cells[0]));
@@ -1177,33 +1186,21 @@
       variantState.antiKnight ? 'Anti-Knight' : null,
     ].filter(Boolean).join('/');
 
-    for (let digit = 1; digit <= 9; digit += 1) {
-      for (let unitIndex = 0; unitIndex < UNITS.length; unitIndex += 1) {
-        const unit = UNITS[unitIndex];
+    for (let unitIndex = 0; unitIndex < UNITS.length; unitIndex += 1) {
+      const unit = UNITS[unitIndex];
+      for (let digit = 1; digit <= 9; digit += 1) {
         const sourceCells = unit.filter(cell => cand[cell].includes(digit));
         if (!sourceCells.length) continue;
 
-        // The sector itself supplies the exhaustive XOR. The split is only
-        // retained for the proof; the final intersection is independent of
-        // which side owns a candidate cell.
         const leftCells = [sourceCells[0]];
         const rightCells = sourceCells.slice(1);
         if (!rightCells.length) continue;
-
         const leftElims = intersectPeerEnvelope(leftCells);
         const rightElims = intersectPeerEnvelope(rightCells);
-        const gateElims = new Set(
-          [...leftElims].filter(cell => rightElims.has(cell)),
-        );
-        const antiPeers = new Set([
-          ...antiChessPeersOf(leftCells[0]),
-          ...rightCells.flatMap(cell => [...antiChessPeersOf(cell)]),
-        ]);
+        const gateElims = new Set([...leftElims].filter(cell => rightElims.has(cell)));
         const eliminations = [...gateElims]
-          .filter(cell => antiPeers.has(cell))
           .filter(cell => !unit.includes(cell) && cand[cell].includes(digit))
           .map(cell => ({ cell, digit }));
-
         if (!eliminations.length) continue;
 
         const sourceRef = houseRef(unitIndex);
@@ -1212,14 +1209,14 @@
           desc: `Box - Line Reduction (${variantNames}): (${digit}) ${houseRefLabel(sourceRef)} XOR => ${formatRemovals(eliminations)}`,
           elim: { items: eliminations },
           digits: [digit],
-          at: sourceCells,
+          at: [...leftCells, ...rightCells],
           base: sourceRef,
           cover: { type: 'anti-chess', indices: [], name: variantNames },
-          vertices: sourceCells,
+          vertices: [...leftCells, ...rightCells],
           antiChess: true,
           antiChessGates: [{
-            leftCells,
-            rightCells,
+            leftCells: [...leftCells],
+            rightCells: [...rightCells],
             leftEliminations: [...leftElims],
             rightEliminations: [...rightElims],
             gateEliminations: [...gateElims],
@@ -1233,6 +1230,593 @@
 
   function antiChessBoxLineStepM(cand) {
     return antiChessBoxLineStepsM(cand)?.[0] || null;
+  }
+
+  // Non-Consecutive BLR for ordinary rows and columns.  The three-cell
+  function nonConsecutiveLineSets() {
+    return [
+      ...Rset.map((cells, index) => ({ type: 'row', index, cells })),
+      ...Cset.map((cells, index) => ({ type: 'col', index, cells })),
+    ];
+  }
+
+  function nonConsecutiveLineReport(line, window, sourceCells, eliminations, digit, label) {
+    return {
+      tech: 'non-consecutive-line',
+      desc: `Box - Line Reduction (Non-Consecutive): (${digit}) `
+        + `${cellGroupName(window)} ${label} => ${formatRemovals(eliminations)}`,
+      elim: { items: eliminations },
+      digits: [digit],
+      at: sourceCells,
+      base: { type: line.type, indices: [line.index] },
+      cover: { type: 'non-consecutive-line', indices: [], cells: window },
+      vertices: sourceCells,
+      variant: true,
+      nonConsecutive: true,
+      eri: false,
+    };
+  }
+
+  // Two-cell adjacent-sector rule: N is confined to an adjacent pair in the
+  // row/column, so neither cell may contain N-1 or N+1.
+  function nonConsecutiveAdjacentPairStepsM(cand) {
+    if (!variantState.nonConsecutive) return [];
+    const reports = [];
+    const seen = new Set();
+    for (const line of nonConsecutiveLineSets()) {
+      for (let start = 0; start <= 7; start += 1) {
+        const window = line.cells.slice(start, start + 2);
+        for (let digit = 1; digit <= 9; digit += 1) {
+          const sourceCells = line.cells.filter(cell => cand[cell].includes(digit));
+          if (sourceCells.length !== 2 || !sourceCells.every(cell => window.includes(cell))) continue;
+
+          const adjacentDigits = [digit - 1, digit + 1]
+            .filter(value => value >= 1 && value <= 9);
+          const eliminations = sourceCells.flatMap(cell => adjacentDigits
+            .filter(adjacent => cand[cell].includes(adjacent))
+            .map(adjacent => ({ cell, digit: adjacent })));
+          if (!eliminations.length) continue;
+
+          const key = `${line.type}:${line.index}:${sourceCells.join(',')}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          reports.push(nonConsecutiveLineReport(
+            line, window, sourceCells, eliminations, digit, 'adjacent N-pair',
+          ));
+        }
+      }
+    }
+    return reports;
+  }
+
+  // Three-cell rule: N is confined to a consecutive three-cell window.  The
+  // middle cell may be absent of N, but cannot contain an adjacent value.
+  function nonConsecutiveTripleLineStepsM(cand) {
+    if (!variantState.nonConsecutive) return [];
+    const reports = [];
+    const seen = new Set();
+    for (const line of nonConsecutiveLineSets()) {
+      for (let start = 0; start <= 6; start += 1) {
+        const window = line.cells.slice(start, start + 3);
+        const middleCell = window[1];
+        for (let digit = 1; digit <= 9; digit += 1) {
+          const sourceCells = line.cells.filter(cell => cand[cell].includes(digit));
+          const windowSources = window.filter(cell => cand[cell].includes(digit));
+          if (sourceCells.length !== windowSources.length
+            || (sourceCells.length !== 2 && sourceCells.length !== 3)) continue;
+
+          const adjacentPair = sourceCells.length === 2
+            && Math.abs(window.indexOf(sourceCells[0]) - window.indexOf(sourceCells[1])) === 1;
+          if (adjacentPair) continue;
+
+          const adjacentDigits = [digit - 1, digit + 1]
+            .filter(value => value >= 1 && value <= 9);
+          const eliminations = adjacentDigits
+            .filter(adjacent => cand[middleCell].includes(adjacent))
+            .map(adjacent => ({ cell: middleCell, digit: adjacent }));
+          if (!eliminations.length) continue;
+
+          const key = `${line.type}:${line.index}:${sourceCells.join(',')}:${middleCell}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          reports.push(nonConsecutiveLineReport(
+            line,
+            window,
+            sourceCells,
+            eliminations,
+            digit,
+            `N-${sourceCells.length === 2 ? 'pair' : 'triple'}`,
+          ));
+        }
+      }
+    }
+    return reports;
+  }
+
+  // Diagonal sectors are not physically adjacent in their listed order, so
+  // use their actual non-consecutive peer intersections rather than treating
+  // diagonal neighbors as a row/column window.
+  function nonConsecutiveDiagonalStepsM(cand) {
+    if (!variantState.nonConsecutive) return [];
+    const reports = [];
+    for (const name of ['D1', 'AD1']) {
+      const sector = UNITS.findIndex((unit, index) => variantUnitName(index) === name);
+      if (sector < 0) continue;
+      const cells = UNITS[sector] || [];
+      for (const sourceCount of [2, 3]) {
+        for (let start = 0; start < cells.length; start += 1) {
+          for (let digit = 1; digit <= 9; digit += 1) {
+            const sourceCells = cells.filter(cell => cand[cell].includes(digit));
+            if (sourceCells.length !== sourceCount || start !== 0) continue;
+            const targets = [];
+            for (let cell = 0; cell < 81; cell += 1) {
+              if (sourceCells.includes(cell) || !cand[cell]?.some(value =>
+                value === digit - 1 || value === digit + 1)) continue;
+              if (sourceCells.every(source => nonConsecutiveAdjacent(source, cell))) targets.push(cell);
+            }
+            const adjacentDigits = [digit - 1, digit + 1]
+              .filter(value => value >= 1 && value <= 9);
+            const eliminations = targets.flatMap(cell => adjacentDigits
+              .filter(value => cand[cell].includes(value))
+              .map(value => ({ cell, digit: value })));
+            if (!eliminations.length) continue;
+            reports.push({
+              tech: 'non-consecutive-line',
+              desc: `Box - Line Reduction (Non-Consecutive): (${digit}) ${name} `
+                + `${sourceCount === 2 ? 'N-pair' : 'N-triple'} => ${formatRemovals(eliminations)}`,
+              elim: { items: eliminations },
+              digits: [digit],
+              at: sourceCells,
+              base: { type: 'variant-sector', indices: [sector], name },
+              cover: { type: 'non-consecutive-line', indices: [], cells: [...sourceCells, ...targets] },
+              vertices: sourceCells,
+              variant: true,
+              nonConsecutive: true,
+            });
+            break;
+          }
+        }
+      }
+    }
+    return reports;
+  }
+
+  // Non-Consecutive ALS N-sets.  A bivalent consecutive set removes both of
+  // its values from visible peers; a trivalent consecutive set removes only
+  // its middle value.  This is intentionally separate from the physical
+  // adjacent-edge BLR rules above.
+  function nonConsecutiveAlsSetStepsM(cand) {
+    if (!variantState.nonConsecutive) return [];
+    const reports = [];
+    for (let cell = 0; cell < 81; cell += 1) {
+      const values = [...(cand[cell] || [])].sort((a, b) => a - b);
+      const isConsecutivePair = values.length === 2 && values[1] === values[0] + 1;
+      const isGappedPair = values.length === 2 && values[1] === values[0] + 2;
+      const isTriple = values.length === 3
+        && values[1] === values[0] + 1
+        && values[2] === values[1] + 1;
+      if (!isConsecutivePair && !isGappedPair && !isTriple) continue;
+
+      const blocked = isConsecutivePair
+        ? values
+        : [values[0] + 1];
+      const adjacentPeers = NON_CONSECUTIVE_EDGES.flatMap(([left, right]) =>
+        left === cell ? [right] : right === cell ? [left] : []);
+      const eliminations = adjacentPeers.flatMap(peer => blocked
+        .filter(digit => cand[peer]?.includes(digit))
+        .map(digit => ({ cell: peer, digit })));
+      if (!eliminations.length) continue;
+
+      const label = isConsecutivePair
+        ? 'consecutive N-pair'
+        : isGappedPair
+          ? 'gapped N-pair'
+          : 'consecutive N-triple';
+      reports.push({
+        tech: 'non-consecutive-als',
+        desc: `Box - Line Reduction (Non-Consecutive ALS): (${values.join('')}) `
+          + `${cellName(cell)} ${label} => ${formatRemovals(eliminations)}`,
+        elim: { items: eliminations },
+        digits: values,
+        at: [cell],
+        base: { type: 'cell', indices: [cell], cells: [cell] },
+        cover: { type: 'non-consecutive-als', indices: [], cells: [cell, ...adjacentPeers] },
+        vertices: [cell],
+        variant: true,
+        nonConsecutive: true,
+        als: true,
+      });
+    }
+    return reports;
+  }
+
+  // A sector candidate outside an ALS-DOF N-set would remove the shared digit
+  // from every source cell. If the remaining candidate sets have no legal
+  // Sudoku/Non-Consecutive assignment, that outside sector candidate is false.
+  function nonConsecutiveAlsDofStepsM(cand) {
+    if (!variantState.nonConsecutive) return [];
+    const reports = [];
+    const seen = new Set();
+
+    const hasLegalAssignment = (cells, remaining) => {
+      const ordered = [...cells].sort((left, right) =>
+        remaining.get(left).length - remaining.get(right).length);
+      const assigned = new Map();
+      const visit = index => {
+        if (index >= ordered.length) return true;
+        const cell = ordered[index];
+        for (const digit of remaining.get(cell)) {
+          let legal = true;
+          for (const [otherCell, otherDigit] of assigned) {
+            if (otherDigit === digit && peersOf(cell).includes(otherCell)) {
+              legal = false;
+              break;
+            }
+            if (nonConsecutiveAdjacent(cell, otherCell)
+              && Math.abs(digit - otherDigit) === 1) {
+              legal = false;
+              break;
+            }
+          }
+          if (!legal) continue;
+          assigned.set(cell, digit);
+          if (visit(index + 1)) return true;
+          assigned.delete(cell);
+        }
+        return false;
+      };
+      return visit(0);
+    };
+
+    const combinations = (items, size, start = 0, chosen = [], output = []) => {
+      if (chosen.length === size) {
+        output.push([...chosen]);
+        return output;
+      }
+      for (let index = start; index <= items.length - (size - chosen.length); index += 1) {
+        chosen.push(items[index]);
+        combinations(items, size, index + 1, chosen, output);
+        chosen.pop();
+      }
+      return output;
+    };
+
+    for (let box = 0; box < 9; box += 1) {
+      const sectorCells = Bset[box];
+      for (let digit = 1; digit <= 9; digit += 1) {
+        const digitCells = sectorCells.filter(cell => cand[cell].includes(digit));
+        if (digitCells.length < 3) continue;
+        const maxSize = Math.min(8, digitCells.length - 1);
+        for (let sourceSize = 2; sourceSize <= maxSize; sourceSize += 1) {
+          for (const sourceCells of combinations(digitCells, sourceSize)) {
+            const remaining = new Map(sourceCells.map(cell => [
+              cell,
+              cand[cell].filter(value => value !== digit),
+            ]));
+            if ([...remaining.values()].some(values => !values.length)) continue;
+            if (hasLegalAssignment(sourceCells, remaining)) continue;
+
+            const eliminations = digitCells
+              .filter(cell => !sourceCells.includes(cell))
+              .map(cell => ({ cell, digit }));
+            if (!eliminations.length) continue;
+
+            const key = `${box}:${digit}:${sourceCells.slice().sort((a, b) => a - b).join(',')}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            const boxRef = { type: 'box', indices: [box] };
+            const label = sourceSize === 2 ? 'pair' : `size-${sourceSize} set`;
+            reports.push({
+              tech: 'non-consecutive-als-dof',
+              desc: `Box - Line Reduction (Non-Consecutive ALS-DOF): N=${digit}, `
+                + `${houseRefLabel(boxRef)} outside ALS-DOF ${label} `
+                + `${cellGroupName(sourceCells)} => ${formatRemovals(eliminations)}`,
+              elim: { items: eliminations },
+              digits: [digit],
+              clause: { label: 'N', digit, cells: [...sourceCells] },
+              clauseLabel: 'N',
+              clauseDigit: digit,
+              at: sourceCells,
+              base: boxRef,
+              cover: { type: 'non-consecutive-als-dof', indices: [], cells: [...sourceCells, ...eliminations.map(item => item.cell)] },
+              vertices: sourceCells,
+              variant: true,
+              nonConsecutive: true,
+              alsDof: true,
+            });
+          }
+        }
+      }
+    }
+    return reports;
+  }
+
+  // Non-forcing ALS-DOF peer contradiction.  Evaluate the candidate clause
+  // directly: remove the values that N forbids from a peer ALS.  If the ALS
+  // then has fewer available values than cells, or no legal assignment under
+  // the active peer/edge rules, N is impossible in the outside cell.
+  function nonConsecutiveAlsDofPeerStepsM(cand) {
+    if (!variantState.nonConsecutive && !variantState.antiKing && !variantState.antiKnight) {
+      return [];
+    }
+    const reports = [];
+    const seen = new Set();
+    let searchBudget = 100000;
+    let assignmentBudget = 5000;
+    const maxPeerReports = 150;
+    const adjacentByCell = Array.from({ length: 81 }, () => []);
+    for (const [left, right] of NON_CONSECUTIVE_EDGES) {
+      adjacentByCell[left].push(right);
+      adjacentByCell[right].push(left);
+    }
+    const combinations = (items, size, start = 0, chosen = [], output = []) => {
+      if (chosen.length === size) {
+        output.push([...chosen]);
+        return output;
+      }
+      for (let index = start; index <= items.length - (size - chosen.length); index += 1) {
+        chosen.push(items[index]);
+        combinations(items, size, index + 1, chosen, output);
+        chosen.pop();
+      }
+      return output;
+    };
+    const hasLegalAssignment = (cells, domains) => {
+      const ordered = [...cells].sort((left, right) =>
+        domains.get(left).length - domains.get(right).length);
+      const assigned = new Map();
+      const visit = index => {
+        if (--assignmentBudget < 0) return true;
+        if (index >= ordered.length) return true;
+        const cell = ordered[index];
+        for (const digit of domains.get(cell)) {
+          let legal = true;
+          for (const [otherCell, otherDigit] of assigned) {
+            if (otherDigit === digit && peersOf(cell).includes(otherCell)) {
+              legal = false;
+              break;
+            }
+            if (nonConsecutiveAdjacent(cell, otherCell)
+              && Math.abs(digit - otherDigit) === 1) {
+              legal = false;
+              break;
+            }
+          }
+          if (!legal) continue;
+          assigned.set(cell, digit);
+          if (visit(index + 1)) return true;
+          assigned.delete(cell);
+        }
+        return false;
+      };
+      return visit(0);
+    };
+
+    const unitEntries = [
+      ...Rset.map((cells, index) => ({ cells, type: 'row', indices: [index] })),
+      ...Cset.map((cells, index) => ({ cells, type: 'column', indices: [index] })),
+      ...Bset.map((cells, index) => ({ cells, type: 'box', indices: [index] })),
+      ...UNITS.slice(CLASSIC_UNITS.length).map((cells, index) => ({
+        cells,
+        type: 'variant-sector',
+        indices: [index],
+        name: variantUnitName(CLASSIC_UNITS.length + index),
+      })),
+    ];
+
+    for (const unitRef of unitEntries) {
+      const unitCells = unitRef.cells.filter(cell => {
+        const values = cand[cell] || [];
+        // A fully open cell cannot participate in a useful reduced peer ALS;
+        // excluding it prevents dense candidate grids from generating the
+        // combinatorial full-domain cases that stall the browser.
+        return values.length > 0 && values.length < 9;
+      });
+      // Ordinary N-Peer retains the larger ALS forms.  Only the newer
+      // non-middle Gap branch is restricted below, because that is the
+      // expensive extension that caused the browser stall.
+      for (let sourceSize = 2; sourceSize <= Math.min(8, unitCells.length); sourceSize += 1) {
+        for (const sourceCells of combinations(unitCells, sourceSize)) {
+          if (--searchBudget < 0) return reports;
+          const sourceSet = new Set(sourceCells);
+          const sourceDigits = [...new Set(sourceCells.flatMap(cell => cand[cell] || []))];
+          const dof = sourceDigits.length - sourceSize;
+          if (dof !== 1 && dof !== 2) continue;
+          const initialMiddles = sourceDigits.filter(digit =>
+            digit > 1 && digit < 9
+            && sourceDigits.includes(digit - 1)
+            && sourceDigits.includes(digit + 1));
+
+          // Only cells that can actually affect this ALS are candidates for
+          // the outside N.  This avoids walking every cell of the grid for
+          // every source combination.
+          const originPool = new Set();
+          for (const cell of sourceCells) {
+            for (const peer of peersOf(cell)) originPool.add(peer);
+            for (const adjacent of adjacentByCell[cell]) originPool.add(adjacent);
+          }
+
+          for (const origin of originPool) {
+            if (sourceSet.has(origin)) continue;
+            const originPeers = new Set(peersOf(origin));
+            for (const n of cand[origin] || []) {
+              // A gapped-peer reduction starts from an N that is still
+              // represented in the ALS digit union.  This keeps the search
+              // focused on the intended reduction (for example 9 removes
+              // 9 by a peer relation and 8 by Non-Consecutive) instead of
+              // testing every unrelated origin digit against every ALS.
+              if (!sourceDigits.includes(n)) continue;
+              // A non-middle origin is the gapped two-digit-reduction form;
+              // keep that extension bounded to DOF=2.  The ordinary middle
+              // form remains available for both supported DOF values.
+              const gappedReduction = !initialMiddles.includes(n);
+              if (gappedReduction && (dof !== 2 || sourceSize > 6)) continue;
+              const reduced = new Map(sourceCells.map(cell => {
+                const equalPeer = originPeers.has(cell);
+                const adjacent = nonConsecutiveAdjacent(origin, cell);
+                const values = (cand[cell] || []).filter(value =>
+                  !(equalPeer && value === n)
+                  && !(adjacent && Math.abs(value - n) === 1));
+                return [cell, values];
+              }));
+              const hasEqualPeer = sourceCells.some(cell => originPeers.has(cell));
+              const hasAdjacentPeer = sourceCells.some(cell =>
+                nonConsecutiveAdjacent(origin, cell));
+              if (!hasEqualPeer || !hasAdjacentPeer) continue;
+              const nonConsecutiveReduction = sourceCells.some(cell => {
+                if (!nonConsecutiveAdjacent(origin, cell)) return false;
+                const before = cand[cell] || [];
+                const after = reduced.get(cell) || [];
+                return before.some(value => Math.abs(value - n) === 1)
+                  && after.length < before.length;
+              });
+              if (!nonConsecutiveReduction) continue;
+
+              // The origin value need not itself be the middle of the ALS
+              // digit set.  First apply its ordinary peer removals and its
+              // non-consecutive removals, then look for the consecutive
+              // middle digit in the reduced ALS (for example N=9 can remove
+              // 8 and leave a 4/5/6 contradiction).
+              const remainingDigits = new Set([...reduced.values()].flat());
+              const consecutiveMiddles = [...remainingDigits].filter(digit =>
+                digit > 1 && digit < 9
+                && remainingDigits.has(digit - 1)
+                && remainingDigits.has(digit + 1));
+              if (!consecutiveMiddles.length) continue;
+              const consecutiveSets = [...new Set(consecutiveMiddles.flatMap(digit =>
+                [digit - 1, digit, digit + 1]))].sort((left, right) => left - right);
+              if ([...reduced.values()].some(values => !values.length)) {
+                // An empty domain is an immediate contradiction.
+              } else if (remainingDigits.size >= sourceSize
+                && hasLegalAssignment(sourceCells, reduced)) continue;
+
+              const key = `${origin}:${n}:${sourceCells.join(',')}`;
+              if (seen.has(key)) continue;
+              seen.add(key);
+              if (reports.length >= maxPeerReports) return reports;
+              const removals = [{ cell: origin, digit: n }];
+              reports.push({
+                tech: 'non-consecutive-als-dof-peer',
+                desc: `Box - Line Reduction (Non-Consecutive ALS-DOF N-Peer): `
+                  + `N=(${n})${cellName(origin)} => peer ALS-DOF `
+                  + `${cellGroupName(sourceCells)} ${gappedReduction ? 'gapped ' : ''}consecutive `
+                  + `DOF=${dof} (${consecutiveSets.join(',')}) leaves ${sourceSize} cells `
+                  + `without a legal assignment `
+                  + `=> ${formatRemovals(removals)}`,
+                elim: { items: removals },
+                digits: [n],
+                clause: { label: 'N', digit: n, cells: [...sourceCells] },
+                at: [origin],
+                base: unitRef,
+                cover: { type: 'non-consecutive-als-dof-peer', indices: [], cells: [...sourceCells, origin] },
+                vertices: sourceCells,
+                alsDofPeer: true,
+                gapPeer: gappedReduction,
+                nonForcing: true,
+                forcing: false,
+                variant: true,
+                nonConsecutive: variantState.nonConsecutive,
+                antiKing: variantState.antiKing,
+                antiKnight: variantState.antiKnight,
+              });
+            }
+          }
+        }
+      }
+    }
+    return reports;
+  }
+
+  // Box-based non-consecutive ERI.  The ERI link builder is the authority for
+  // the box geometry; this layer applies the non-consecutive consequence to
+  // the 2-, 3-, 4-cell ERI forms, plus the one legal 5-cell form.  The
+  // 5-cell form is valid only when the occupied I cell is the exact center
+  // of a classic box.  For forms larger than the pair,
+  // the crossing cell is the occupied I cell and the other N cells must all
+  // be orthogonally adjacent to it.
+  function nonConsecutiveEriStepsM(cand, sourceCount) {
+    if (!variantState.nonConsecutive) return [];
+    const core = global.StormDoku;
+    if (typeof core?.findEriGeometries !== 'function') return [];
+    const reports = [];
+    const seen = new Set();
+
+    for (let digit = 1; digit <= 9; digit += 1) {
+      for (const geometry of core.findEriGeometries(cand, digit, { includeWindoku: true })) {
+        const boxCells = [...new Set(geometry.boxCells || geometry.unitCells || [])];
+        if (boxCells.length !== sourceCount) continue;
+
+        const intersectionCell = geometry.construction?.intersectionCell;
+        const intersectionOccupied = boxCells.includes(intersectionCell);
+        if (intersectionOccupied !== (sourceCount >= 3)) continue;
+        if (sourceCount === 5) {
+          const box = geometry.box;
+          if (box === undefined || intersectionCell !== Bset[box][4]) continue;
+        }
+
+        const sourceCells = boxCells.filter(cell => cell !== intersectionCell);
+        if (sourceCells.length !== sourceCount - (intersectionOccupied ? 1 : 0)
+          || !sourceCells.every(source => nonConsecutiveAdjacent(source, intersectionCell))) continue;
+
+        const adjacentDigits = [digit - 1, digit + 1]
+          .filter(value => value >= 1 && value <= 9);
+        const eliminations = adjacentDigits
+          .filter(value => cand[intersectionCell].includes(value))
+          .map(value => ({ cell: intersectionCell, digit: value }));
+        if (!eliminations.length) continue;
+
+        const box = geometry.box;
+        const sector = geometry.sector;
+        const key = `${box ?? `s${sector}`}:${digit}:${sourceCells.slice().sort((a, b) => a - b).join(',')}:${intersectionCell}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const boxRef = box === undefined
+          ? {
+            type: 'variant-sector',
+            indices: [sector],
+            name: variantUnitName(sector),
+          }
+          : { type: 'box', indices: [box] };
+        reports.push({
+          tech: 'non-consecutive-eri',
+          desc: `Box - Line Reduction (Non-Consecutive ERI): (${digit}) `
+            + `${houseRefLabel(boxRef)} ${['', 'N-single', 'N-pair', 'N-triple', 'N-quad', 'N-quint'][sourceCount]} `
+            + `=> ${formatRemovals(eliminations)}`,
+          elim: { items: eliminations },
+          digits: [digit],
+          at: [...sourceCells, intersectionCell],
+          base: boxRef,
+          cover: {
+            type: 'non-consecutive-eri',
+            indices: [],
+            cells: [...sourceCells, intersectionCell],
+          },
+          // The occupied intersection is the third N cell in the triple
+          // form and must be drawn with the two ERI arms.
+          vertices: [...sourceCells, intersectionCell],
+          variant: true,
+          nonConsecutive: true,
+          eri: true,
+        });
+      }
+    }
+    return reports;
+  }
+
+  function nonConsecutiveEriPairStepsM(cand) {
+    return nonConsecutiveEriStepsM(cand, 2);
+  }
+
+  function nonConsecutiveEriTripleStepsM(cand) {
+    return nonConsecutiveEriStepsM(cand, 3);
+  }
+
+  function nonConsecutiveEriQuadStepsM(cand) {
+    return nonConsecutiveEriStepsM(cand, 4);
+  }
+
+  function nonConsecutiveEriQuintStepsM(cand) {
+    return nonConsecutiveEriStepsM(cand, 5);
   }
 
   function boxLineStepM(cand) {
@@ -1463,21 +2047,29 @@
   }
 
   function boxLineStep(cand) {
-    const reports = findBoxLineReports(cand);
-    if (!reports.length) return null;
-
-    // Prefer the most productive BLR.  Classic pointing/claiming remains
-    // ahead of variation BLR only when both moves remove the same number.
-    return reports
-      .map((step, index) => ({
-        step,
-        index,
-        eliminations: step.elim?.items?.length || 0,
-        variation: step.variant === true || step.antiChess === true,
-      }))
-      .sort((a, b) => b.eliminations - a.eliminations
-        || Number(a.variation) - Number(b.variation)
-        || a.index - b.index)[0].step;
+    // The fast solver path must respect the BLR hierarchy instead of building
+    // every report (including the expensive Gap/N-Peer pass) before choosing
+    // one. The exhaustive list remains available through findBoxLineReports.
+    const stages = [
+      () => boxLineStepM(cand),
+      () => variantBoxLineStepM(cand),
+      () => antiChessBoxLineStepM(cand),
+      () => nonConsecutiveAdjacentPairStepsM(cand)[0],
+      () => nonConsecutiveTripleLineStepsM(cand)[0],
+      () => nonConsecutiveDiagonalStepsM(cand)[0],
+      () => nonConsecutiveEriPairStepsM(cand)[0],
+      () => nonConsecutiveEriTripleStepsM(cand)[0],
+      () => nonConsecutiveEriQuadStepsM(cand)[0],
+      () => nonConsecutiveEriQuintStepsM(cand)[0],
+      () => nonConsecutiveAlsSetStepsM(cand)[0],
+      () => nonConsecutiveAlsDofStepsM(cand)[0],
+      () => nonConsecutiveAlsDofPeerStepsM(cand)[0],
+    ];
+    for (const findStage of stages) {
+      const step = findStage();
+      if (step) return withActualEliminations(step, cand);
+    }
+    return null;
   }
 
   // The hierarchy uses boxLineStep() because it must return one deterministic
@@ -1497,12 +2089,13 @@
             .filter(cell => Bxy[cell] !== box && cand[cell].includes(digit))
             .map(cell => ({ cell, digit }));
           if (eliminations.length) {
+            const base = { type: 'box', indices: [box] };
+            const cover = { type: 'row', indices: [row] };
             reports.push({
               tech: 'pointing',
               desc: boxLineReport(digit, [18 + box], [row], eliminations),
               elim: { items: eliminations }, digits: [digit], at: boxCells,
-              base: { type: 'box', indices: [box] },
-              cover: { type: 'row', indices: [row] }, vertices: boxCells,
+              base, cover, vertices: boxCells,
             });
           }
         }
@@ -1514,12 +2107,13 @@
             .filter(cell => Rx[cell] !== row && cand[cell].includes(digit))
             .map(cell => ({ cell, digit }));
           if (eliminations.length) {
+            const base = { type: 'row', indices: [row] };
+            const cover = { type: 'box', indices: [box] };
             reports.push({
               tech: 'claiming',
               desc: boxLineReport(digit, [row], [18 + box], eliminations),
               elim: { items: eliminations }, digits: [digit], at: rowCells,
-              base: { type: 'row', indices: [row] },
-              cover: { type: 'box', indices: [box] }, vertices: rowCells,
+              base, cover, vertices: rowCells,
             });
           }
         }
@@ -1531,12 +2125,13 @@
             .filter(cell => Bxy[cell] !== box && cand[cell].includes(digit))
             .map(cell => ({ cell, digit }));
           if (eliminations.length) {
+            const base = { type: 'box', indices: [box] };
+            const cover = { type: 'col', indices: [col] };
             reports.push({
               tech: 'pointing',
               desc: boxLineReport(digit, [18 + box], [9 + col], eliminations),
               elim: { items: eliminations }, digits: [digit], at: boxCells,
-              base: { type: 'box', indices: [box] },
-              cover: { type: 'col', indices: [col] }, vertices: boxCells,
+              base, cover, vertices: boxCells,
             });
           }
         }
@@ -1548,22 +2143,39 @@
             .filter(cell => Cy[cell] !== col && cand[cell].includes(digit))
             .map(cell => ({ cell, digit }));
           if (eliminations.length) {
+            const base = { type: 'col', indices: [col] };
+            const cover = { type: 'box', indices: [box] };
             reports.push({
               tech: 'claiming',
               desc: boxLineReport(digit, [9 + col], [18 + box], eliminations),
               elim: { items: eliminations }, digits: [digit], at: colCells,
-              base: { type: 'col', indices: [col] },
-              cover: { type: 'box', indices: [box] }, vertices: colCells,
+              base, cover, vertices: colCells,
             });
           }
         }
       }
     }
 
-    // The hierarchy still takes the first deterministic variation result;
-    // this manual report includes every result exposed by those engines.
+    // Keep BLR families in increasing complexity order.  The report list is
+    // also the stable tie-break order used by Next and the manual BLR panel.
+    // Classic pointing/claiming was collected above.
     reports.push(...variantBoxLineStepsM(cand).map(step => ({ ...step, variant: true })));
     reports.push(...(antiChessBoxLineStepsM(cand) || []).map(step => ({ ...step, variant: true })));
+    reports.push(...nonConsecutiveAdjacentPairStepsM(cand));
+    reports.push(...nonConsecutiveTripleLineStepsM(cand));
+    reports.push(...nonConsecutiveDiagonalStepsM(cand));
+    reports.push(...nonConsecutiveEriPairStepsM(cand));
+    reports.push(...nonConsecutiveEriTripleStepsM(cand));
+    reports.push(...nonConsecutiveEriQuadStepsM(cand));
+    reports.push(...nonConsecutiveEriQuintStepsM(cand));
+    reports.push(...nonConsecutiveAlsSetStepsM(cand));
+    reports.push(...nonConsecutiveAlsDofStepsM(cand));
+    // Split ordinary N-Peer and Gap reports for hierarchy/display purposes,
+    // while retaining one shared enumeration so the expensive search is not
+    // performed twice.
+    const alsDofPeerReports = nonConsecutiveAlsDofPeerStepsM(cand);
+    reports.push(...alsDofPeerReports.filter(step => step.gapPeer !== true));
+    reports.push(...alsDofPeerReports.filter(step => step.gapPeer === true));
     return reports.map(step => withActualEliminations(step, cand));
   }
 
@@ -1571,26 +2183,34 @@
     for (const k of sizes) {
       const hiddenType = HIDDEN_TECH[k];
       if (moveTypeEnabled(enabledTypes, hiddenType)) {
-        const genericHidden = global.StormDoku.genericSubsetStep?.(cand, {
-          kind: 'hidden',
-          size: k,
-        });
-        if (genericHidden) return genericHidden;
-
         const hidden = hiddenSubsetStep(cand, k);
         if (hidden) return hidden;
+
+        // The generic ALS/AHS report remains available as a fallback, but it
+        // must not run before the bounded native subset search. On dense
+        // candidate grids its constructor can enumerate a very large number
+        // of sets before returning the same ordinary subset result.
+        if (k === 1) {
+          const genericHidden = global.StormDoku.genericSubsetStep?.(cand, {
+            kind: 'hidden',
+            size: k,
+          });
+          if (genericHidden) return genericHidden;
+        }
       }
 
       const nakedType = NAKED_TECH[k];
       if (moveTypeEnabled(enabledTypes, nakedType)) {
-        const genericNaked = global.StormDoku.genericSubsetStep?.(cand, {
-          kind: 'naked',
-          size: k,
-        });
-        if (genericNaked) return genericNaked;
-
         const naked = withActualEliminations(nakedSubsetStep(cand, k), cand);
         if (naked) return naked;
+
+        if (k === 1) {
+          const genericNaked = global.StormDoku.genericSubsetStep?.(cand, {
+            kind: 'naked',
+            size: k,
+          });
+          if (genericNaked) return genericNaked;
+        }
       }
     }
 
@@ -1774,6 +2394,28 @@
       candidates[cell] = [];
     }
 
+    // A 729 import can prove a value as a given from the sector spaces while
+    // still carrying that value in its peers. Normalize those pencilmarks
+    // before handing the state to the search worker.
+    for (let cell = 0; cell < 81; cell += 1) {
+      const digit = grid[cell];
+      if (!digit) continue;
+      for (const peer of PEERS[cell]) {
+        if (!grid[peer]) candidates[peer] = candidates[peer]
+          .filter(value => value !== digit);
+      }
+      if (variantState.nonConsecutive) {
+        const adjacentDigits = [digit - 1, digit + 1]
+          .filter(value => value >= 1 && value <= 9);
+        for (const [left, right] of NON_CONSECUTIVE_EDGES) {
+          const peer = left === cell ? right : right === cell ? left : -1;
+          if (peer < 0 || grid[peer]) continue;
+          candidates[peer] = candidates[peer]
+            .filter(value => !adjacentDigits.includes(value));
+        }
+      }
+    }
+
     const spaceState = buildSpaces(candidates, grid);
 
     return {
@@ -1808,6 +2450,7 @@
     Csec,
     Bsec,
     configureVariants,
+    getVariantSettings,
     VARIANT_UNITS,
     variantUnitName,
     ROWS,
@@ -1819,6 +2462,7 @@
     peersOf,
     shuffle,
     candidatesFor,
+    canPlace,
     allCandidates,
     countSolutions,
     countSolutionsDlx,

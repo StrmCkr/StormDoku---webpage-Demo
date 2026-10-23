@@ -1737,6 +1737,15 @@
       font-weight: 900;
     }
 
+    .vantage-position.als-dof-clause {
+      color: #075985;
+      background: #bae6fd;
+      border: 2px solid #0369a1;
+      border-radius: 2px;
+      font-weight: 900;
+    }
+
+
     .vantage-position.chain {
       color: #4c1d95;
       background: rgba(221, 214, 254, .72);
@@ -1811,6 +1820,15 @@
       outline: 3px solid var(--dark-green);
       outline-offset: -4px;
     }
+
+    .mark.als-dof-clause-digit {
+      color: #075985;
+      background: #bae6fd;
+      box-shadow: inset 0 0 0 1px #0369a1;
+      border-radius: 2px;
+      font-weight: 900;
+    }
+
 
     .cell.fish-vertex {
       background: #86efac;
@@ -4328,7 +4346,7 @@
     <div class="header-brand">
       <h1>StormDoku: on-line | off-line</h1>
       <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo for regular Sudoku 9x9 grids.</p>
-      <p class="app-meta">Alpha v0.6.68 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <p class="app-meta">Alpha v0.6.72 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
     </div>
   </header>
 
@@ -5912,7 +5930,7 @@
     </section>
   </main>
 
-    <script src="./src/browser-core.js?v=20261021-4"></script>
+    <script src="./src/browser-core.js?v=20261022-1"></script>
   <script src="./src/set-tools-core.js?v=20260928-1"></script>
   <script src="./src/pom-core.js?v=20261004-2"></script>
   <script src="./src/als-core.js?v=20260928-1"></script>
@@ -5931,7 +5949,7 @@
   <script src="./src/ahs-xy-core.js?v=20261001-4"></script>
   <script src="./src/ahs-dof-core.js?v=20261002-1"></script>
   <script src="./src/msls-core.js?v=20261021-1"></script>
-      <script src="./src/search-worker-source.js?v=20261022-8"></script>
+      <script src="./src/search-worker-source.js?v=20261022-9"></script>
   <script src="./src/ocr/tesseract.min.js?v=5.1.1"></script>
   <script src="./src/ocr/ocrad.js?v=0.25"></script>
   <script>
@@ -6454,6 +6472,8 @@
     }
 
     function runSearchWorker(type, payload) {
+      syncVariantSettingsFromControls();
+      core.configureVariants(variantSettings);
       const epoch = searchEpoch;
       const worker = ensureSearchWorker();
       if (!worker) return Promise.reject(new Error('Search worker unavailable.'));
@@ -6973,6 +6993,8 @@
       const cells = new Set();
       if (!ref) return cells;
 
+      for (const cell of ref.cells || []) cells.add(cell);
+
       for (const index of ref.indices) {
         const house =
           ref.type === 'row' ? core.Rset[index] :
@@ -7261,6 +7283,7 @@
     }
 
     function applyVariantSettings() {
+      syncVariantSettingsFromControls();
       core.configureVariants(variantSettings);
       syncFishVariantSectors(true);
       renderFishSectorGrid('baseSectors');
@@ -7280,6 +7303,19 @@
           : 'Variations updated. The current givens have no solution under these rules.',
         solution ? 'ok' : 'warn',
       );
+    }
+
+    function syncVariantSettingsFromControls() {
+      for (const [key, input] of [
+        ['diagonal', variantDiagonalEl],
+        ['antiDiagonal', variantAntiDiagonalEl],
+        ['windoku', variantWindokuEl],
+        ['antiKing', variantAntiKingEl],
+        ['antiKnight', variantAntiKnightEl],
+        ['nonConsecutive', variantNonConsecutiveEl],
+      ]) {
+        variantSettings[key] = Boolean(input?.checked);
+      }
     }
 
     function resetAnalysisAfterPlayerEdit() {
@@ -8781,29 +8817,44 @@
       if (core.peersOf(cell).some(peer => puzzle[peer] === digit)) {
         return commitPlayerEdit(() => false, '', `Digit ${digit} conflicts with a solved peer.`);
       }
+      if (typeof core.canPlace === 'function' && !core.canPlace(puzzle, cell, digit)) {
+        return commitPlayerEdit(
+          () => false,
+          '',
+          `Digit ${digit} conflicts with an active variation constraint.`,
+        );
+      }
 
       selectedPlayerCell = cell;
       selectedPlayerDigit = digit;
       return commitPlayerEdit(() => {
-        const affected = [cell, ...core.peersOf(cell)]
-          .filter(other => !originalPuzzle[other] && !puzzle[other] && !promotedValues[other]);
-        const entries = affected.map(other => ({
-          cell: other,
-          puzzle: puzzle[other],
-          promoted: promotedValues[other],
-          cand: [...(cand[other] || [])],
-          afterPuzzle: 0,
-          afterPromoted: 0,
-          afterCand: [],
-        }));
+        const beforeCandidates = cand.map(values => [...(values || [])]);
 
         puzzle[cell] = digit;
         promotedValues[cell] = digit;
         cand[cell] = [];
-        for (const peer of core.peersOf(cell)) {
-          if (puzzle[peer] || promotedValues[peer]) continue;
-          cand[peer] = (cand[peer] || []).filter(value => value !== digit);
+        for (let other = 0; other < 81; other += 1) {
+          if (other === cell || puzzle[other] || promotedValues[other]) continue;
+          const legal = new Set(core.candidatesFor(puzzle, other));
+          cand[other] = (cand[other] || []).filter(value => legal.has(value));
         }
+
+        const affected = [cell];
+        for (let other = 0; other < 81; other += 1) {
+          if (other === cell || originalPuzzle[other] || puzzle[other] || promotedValues[other]) continue;
+          const before = beforeCandidates[other];
+          const after = cand[other] || [];
+          if (!playerArraysEqual(before, after)) affected.push(other);
+        }
+        const entries = affected.map(other => ({
+          cell: other,
+          puzzle: puzzle[other],
+          promoted: promotedValues[other],
+          cand: beforeCandidates[other],
+          afterPuzzle: puzzle[other],
+          afterPromoted: promotedValues[other],
+          afterCand: [...(cand[other] || [])],
+        }));
 
         for (const entry of entries) {
           entry.afterPuzzle = puzzle[entry.cell];
@@ -11389,6 +11440,13 @@
         ...activeStepRemoved,
       ].map(item => `${item.cell}:${item.digit}`));
       const vertices = new Set(activeStep?.vertices || activeStep?.at || []);
+      const alsDofClause = activeStep?.clause || null;
+      const alsDofClauseCells = new Set(alsDofClause?.cells || []);
+      const alsDofClauseDigit = Number.isInteger(alsDofClause?.digit)
+        ? alsDofClause.digit
+        : Number.isInteger(activeStep?.clauseDigit) ? activeStep.clauseDigit : null;
+      const isNonConsecutiveAlsDof = activeStep?.tech === 'non-consecutive-als-dof'
+        || activeStep?.tech === 'non-consecutive-als-dof-peer';
       const isMsls = activeStep?.tech === 'msls';
       const mslsBaseCells = new Set(activeStep?.mslsBaseCells || []);
       const mslsCoverCells = new Set(activeStep?.mslsCoverCells || []);
@@ -11421,7 +11479,7 @@
       const fishPeersOfBaseIntersection = new Set(activeStep?.peersOfBaseIntersection || []);
       const fishDoubleCover = new Set(activeStep?.overcovered || []);
       const fishTripleCover = new Set(activeStep?.triCovered || []);
-      const isFish = ['fish', 'pointing', 'claiming'].includes(activeStep?.tech);
+      const isFish = ['fish', 'pointing', 'claiming', 'non-consecutive-line', 'non-consecutive-eri'].includes(activeStep?.tech);
       const isSubset = !!activeStep
         && activeStep.tech !== 'chain'
         && !isFish
@@ -11436,6 +11494,10 @@
         candidateSizeFilterStyle: candidateSizeFilterStyle(),
         removedMarks,
         vertices,
+        alsDofClause,
+        alsDofClauseCells,
+        alsDofClauseDigit,
+        isNonConsecutiveAlsDof,
         isMsls,
         mslsBaseCells,
         mslsCoverCells,
@@ -11637,6 +11699,9 @@
             const isSubsetDigit = highlights.isSubset
               && highlights.patternDigits.has(digit)
               && highlights.vertices.has(cell);
+            const isAlsDofClauseDigit = highlights.alsDofClauseDigit === digit
+              && highlights.alsDofClauseCells.has(cell)
+              && cellHasCandidate(cell, digit);
             const isChain = highlights.isChain && highlights.chainMarks.has(atom);
             const isChainXorEntry = highlights.isChain && highlights.chainXorEntryMarks.has(atom);
             const isChainXorExit = highlights.isChain && highlights.chainXorExitMarks.has(atom);
@@ -11679,6 +11744,7 @@
             if (isMslsDigit) mark.classList.add('fish');
             if (isFishEndofin) mark.classList.add('fish-endofin');
             if (isSubsetDigit) mark.classList.add('subset');
+            if (isAlsDofClauseDigit) mark.classList.add('als-dof-clause');
             if (isChain) mark.classList.add('chain');
             if (isChainXorEntry || isChainStart || strongLinkStart) {
               mark.classList.add(isChainXorEntry || isChainStart ? 'chain-xor-entry' : 'strong-start');
@@ -11820,6 +11886,9 @@
           el.classList.add('chain-als-cell');
           applyAlsPartitionColors(el, highlights.alsDofStylesByCell.get(cell));
         }
+        if (highlights.isNonConsecutiveAlsDof && highlights.alsDofClauseCells.has(cell)) {
+          el.classList.add('chain-als-cell');
+        }
         if (highlights.isAhsRecord && highlights.ahsRecordCells.has(cell)) {
           el.classList.add('ahs-record-cell');
           applyAhsColorVars(el, highlights.ahsRecordColor);
@@ -11862,6 +11931,9 @@
             const isElim = highlights.removedMarks.has(atomKey) || isAlsDofElim || isAhsDofElim || isSimpleColoringElim
               || isMultiColoringElim || isThreeDMedusaElim;
             const isSetDigit = highlights.isSubset && highlights.patternDigits.has(digit) && highlights.vertices.has(cell);
+            const isAlsDofClauseDigit = highlights.alsDofClauseDigit === digit
+              && highlights.alsDofClauseCells.has(cell)
+              && cellHasCandidate(cell, digit);
             const isFishVertexDigit = highlights.isFish && highlights.patternDigits.has(digit) && highlights.vertices.has(cell);
             const isFishFinDigit = highlights.isFish && highlights.patternDigits.has(digit)
               && highlights.fins.has(cell) && !highlights.vertices.has(cell);
@@ -11949,6 +12021,10 @@
              applyCandidateSizeFilterStyle(mark, highlights.candidateSizeFilterStyle);
            }
            if (isSetDigit) mark.classList.add('set-digit');
+           if (isAlsDofClauseDigit) {
+             mark.classList.add('als-dof-clause-digit');
+             mark.title = 'N clause';
+           }
            if (isHiddenGhostDigit) mark.classList.add('hidden-ghost-digit');
             if (isFishDigit) mark.classList.add('fish-digit');
             if (isFishFinDigit) mark.classList.add('fish-fin-digit');
@@ -12003,7 +12079,9 @@
             }
             if (isThreeDMedusaInvalid) mark.classList.add('simple-colouring-invalid-digit');
             if (isThreeDMedusaElim) mark.classList.add('simple-colouring-three-d-elim-digit');
-            if (isElim && !isThreeDMedusaElim && !isMultiColoringElim) mark.classList.add('elim-digit');
+            if (isElim && !isThreeDMedusaElim && !isMultiColoringElim) {
+              mark.classList.add('elim-digit');
+            }
             bindPlayerDigitElement(mark, cell, digit);
             marks.appendChild(mark);
           }
@@ -12098,9 +12176,17 @@
       url.search = '';
       url.hash = '';
       url.searchParams.set('grid', text);
+      const variantUrlNames = {
+        diagonal: 'diagonal',
+        antiDiagonal: 'anti-diagonal',
+        windoku: 'windoku',
+        antiKing: 'anti-king',
+        antiKnight: 'anti-knight',
+        nonConsecutive: 'non-consecutive',
+      };
       const activeVariants = Object.entries(variantSettings)
         .filter(([, enabled]) => enabled)
-        .map(([name]) => name);
+        .map(([name]) => variantUrlNames[name] || name);
       if (activeVariants.length) url.searchParams.set('variants', activeVariants.join(','));
       return url.toString();
     }
@@ -12112,7 +12198,17 @@
       const value = params.get('variants') ?? params.get('variant')
         ?? hashParams?.get('variants') ?? hashParams?.get('variant');
       if (value == null) return false;
-      const active = new Set(value.split(',').map(name => name.trim()).filter(Boolean));
+      const variantAliases = new Map([
+        ['diagonal', 'diagonal'],
+        ['antidiagonal', 'antiDiagonal'],
+        ['windoku', 'windoku'],
+        ['antiking', 'antiKing'],
+        ['antiknight', 'antiKnight'],
+        ['nonconsecutive', 'nonConsecutive'],
+      ]);
+      const active = new Set(value.split(',')
+        .map(name => variantAliases.get(name.trim().toLowerCase().replace(/[-_\s]/g, '')))
+        .filter(Boolean));
       for (const name of Object.keys(variantSettings)) variantSettings[name] = active.has(name);
       for (const [key, input] of [
         ['diagonal', variantDiagonalEl],
@@ -12529,7 +12625,9 @@
     }
 
     function displayTech(tech) {
-      if (tech === 'pointing' || tech === 'claiming') return 'Box - Line Reduction';
+      if (tech === 'pointing' || tech === 'claiming' || tech === 'non-consecutive-line' || tech === 'non-consecutive-eri' || tech === 'non-consecutive-als' || tech === 'non-consecutive-als-dof' || tech === 'non-consecutive-als-dof-peer') {
+        return 'Box - Line Reduction';
+      }
       return tech.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
     }
 
@@ -13209,7 +13307,7 @@
         const size = barnsTransport.sizeName.length;
         const value = size <= 3 ? 4.75 : size === 4 ? 5 : 6;
         return define(ratingCategoryForValue(value + ringBonus), value + ringBonus,
-          `${barnsTransport.sizeName.toUpperCase()} Transport${ringSuffix}`);
+          `T - ${barnsTransport.sizeName.toUpperCase()} ${barnsTransport.form}${ringSuffix}`);
       }
       if (barns) {
         const size = barns.sizeName.length;
@@ -13373,7 +13471,10 @@
         return define(ratingCategoryForValue(value), value, `XY-Wing${ringSuffix}`);
       }
       if (/^W\s*-?\s*Transport$/i.test(name) || /W\s*-?\s*Transport/i.test(fullName)) {
-        return define('Frustrating', 6.5 + ringBonus, `W Transport${ringSuffix}`);
+        return define('Frustrating', 6.5 + ringBonus, `T - W Transport${ringSuffix}`);
+      }
+      if (/^T\s*-\s*Transport(?:\s+Ring)?$/i.test(fullName)) {
+        return define('Frustrating', 6.5 + ringBonus, `T-Transport${ringSuffix}`);
       }
       if (/^(?:2-String Kite|Empty Rectangle|Skyscraper|Finned X-Wing|Sashimi X-Wing)$/i.test(name)) {
         const value = chainMathScore(2, chain, 2, 2);
@@ -13515,7 +13616,7 @@
         };
       }
 
-      if (tech === 'pointing' || tech === 'claiming') {
+      if (tech === 'pointing' || tech === 'claiming' || tech === 'non-consecutive-line' || tech === 'non-consecutive-eri' || tech === 'non-consecutive-als' || tech === 'non-consecutive-als-dof' || tech === 'non-consecutive-als-dof-peer') {
         return {
           ...ratingDefinition('Extremely Easy', 1, 'Box - Line Reduction'),
           hardestMove: step.desc || '',
@@ -16098,7 +16199,7 @@
       const name = chainNameWithoutAffix(chain);
       if (/^W-Wing$/i.test(name)) return 'Wing';
       if (/^W-Ring$/i.test(name)) return 'Ring';
-      if (/^Transport$/i.test(name)) return 'Transport';
+      if (/^(?:T\s*-\s*)?Transport$/i.test(name)) return 'Transport';
 
       return null;
     }
@@ -17857,7 +17958,7 @@
 
     function directMoveTieKey(step) {
       const tech = String(step?.tech || '');
-      if (tech === 'pointing' || tech === 'claiming') return 'box-line';
+      if (tech === 'pointing' || tech === 'claiming' || tech === 'non-consecutive-line' || tech === 'non-consecutive-eri' || tech === 'non-consecutive-als' || tech === 'non-consecutive-als-dof' || tech === 'non-consecutive-als-dof-peer') return 'box-line';
       if (tech === 'als-dof') return alsDofMoveKey(step);
       if (tech === 'fish') {
         const size = Number(step?.size);
@@ -19916,6 +20017,8 @@
     }
 
     function directSolverPhaseStep(candidateGrid, fixedGrid, phase, profile = null) {
+      syncVariantSettingsFromControls();
+      core.configureVariants(variantSettings);
       const enabledTypes = currentSolverMoveTypes(profile?.moveTypes);
       let best = null;
       for (const spec of phase.methods || []) {
@@ -21350,15 +21453,22 @@
         } else if ((cand[cell] || []).length !== 1 || cand[cell][0] !== digit) {
           continue;
         }
+        if (typeof core.canPlace === 'function' && !core.canPlace(puzzle, cell, digit)) {
+          continue;
+        }
 
         puzzle[cell] = digit;
         promotedValues[cell] = digit;
         cand[cell] = [];
         promoted.push(promotion);
 
-        for (const peer of core.peersOf(cell)) {
-          if (puzzle[peer] || !(cand[peer] || []).includes(digit)) continue;
-          cand[peer] = cand[peer].filter(value => value !== digit);
+        // Recompute the legal candidate envelope after every queued
+        // promotion. This keeps automatic promotions consistent with manual
+        // placement for Anti-King, Anti-Knight, and Non-Consecutive rules.
+        for (let other = 0; other < 81; other += 1) {
+          if (other === cell || puzzle[other] || promotedValues[other]) continue;
+          const legal = new Set(core.candidatesFor(puzzle, other));
+          cand[other] = (cand[other] || []).filter(value => legal.has(value));
         }
       }
 
@@ -21562,6 +21672,8 @@
     }
 
     function applyNextCycle() {
+      syncVariantSettingsFromControls();
+      core.configureVariants(variantSettings);
       const before = snapshotState();
       const promoted = applyQueuedPromotions();
       if (boardIsComplete()) return applyCycleChoice(before, promoted, null);
@@ -21578,6 +21690,8 @@
     async function chooseInteractiveStep({
       allowSynchronousFallback = false,
     } = {}) {
+      syncVariantSettingsFromControls();
+      core.configureVariants(variantSettings);
       lastInteractiveSearchError = null;
       lastChainSelectionDiagnostics = null;
       const profile = interactiveTechniqueProfile();
@@ -23673,6 +23787,8 @@
     }
 
     function loadPuzzle() {
+      syncVariantSettingsFromControls();
+      core.configureVariants(variantSettings);
       cancelActiveSearches('Search cancelled by puzzle reload.');
       leaveHistoryPreview();
       const input = inputEl.value;

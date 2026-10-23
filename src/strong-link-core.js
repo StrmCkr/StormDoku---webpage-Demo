@@ -3386,6 +3386,34 @@
   core.buildStrongLinks = buildStrongLinks;
   core.strongLinkConstructor = buildStrongLinks;
   core.flattenStrongLinks = flattenStrongLinks;
+  // Expose the same box ERI geometry used by ERI strong links so variant
+  // reductions can validate small (2/3-cell) ERI formations without making
+  // them ordinary strong-link nodes.
+  core.findEriGeometries = (cand, digit, options = {}) => {
+    const mini = core.buildMiniSectors(cand);
+    const zeroBasedDigit = Number(digit) - 1;
+    if (!Number.isInteger(zeroBasedDigit) || zeroBasedDigit < 0 || zeroBasedDigit > 8) return [];
+    const classic = Array.from({ length: 9 }, (_, box) => eriGeometries(
+      box,
+      mini.digitCells,
+      zeroBasedDigit,
+      false,
+    ).map(geometry => ({ ...geometry, box }))).flat();
+    if (options.includeWindoku !== true) return classic;
+
+    const windoku = [];
+    for (let sector = 27; sector < core.UNITS.length; sector += 1) {
+      const name = core.variantUnitName?.(sector);
+      if (!/^W[1-4]$/.test(name || '')) continue;
+      windoku.push(...windokuEriGeometries(
+        sector,
+        mini.digitCells,
+        zeroBasedDigit,
+        false,
+      ).map(geometry => ({ ...geometry, sector })));
+    }
+    return [...classic, ...windoku];
+  };
   core.buildSimpleColoring = buildSimpleColoring;
   core.buildMultiColoring = buildMultiColoringFullBreadth;
   core.buildThreeDMedusa = buildThreeDMedusa;
