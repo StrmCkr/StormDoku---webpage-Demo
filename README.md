@@ -1,12 +1,46 @@
 # StormDoku
 
-StormDoku is an online and offline, browser-first Sudoku solver and analysis workbench. It can
-load standard puzzles or candidate-space data, generate uniquely solvable
-puzzles, apply the retained basic solving cycle, and inspect candidate
-structures such as subsets, fish, links, ALS, AHS, and chains.
+StormDoku is an on-line | off-line, browser-first Sudoku solver and analysis
+workbench. It provides a generator, candidates, subsets, fish, chains, and
+structure demonstrator for regular Sudoku 9x9 grids, Sudoku X, Anti-Knight,
+Anti-King, Non-Consecutive, and Windoku. It can load standard puzzles or
+candidate-space data, generate uniquely solvable puzzles, apply the retained
+basic solving cycle, and inspect candidate structures such as subsets, fish,
+links, ALS, AHS, and chains.
 
 The application is intentionally a small local web app. It has no server,
 package manifest, or runtime dependency installation step.
+
+The optional OCR feature processes the selected image locally in the browser.
+StormDoku does not upload the image to a solver service. Hosted pages may load
+the pinned local OCR assets when the feature is used; direct `file://` pages use
+the bundled local fallback.
+
+“Offline” means that the repository can be opened locally, including directly
+from `file://`, using the bundled solver cores and worker bundle. It does not
+mean that StormDoku is packaged as an installable PWA or registered as a
+service worker.
+
+## Rating display
+
+The rating summary separates three measurements:
+
+- **Step count** is the number of solving steps in the reported path.
+- **Total score** is the cumulative score of all applicable rated moves in that
+  path, including link, RCC, and form modifiers.
+- **Hardest move** is the highest-rated individual technique encountered. It
+  is not the same thing as the total score.
+
+## Variation support
+
+The active variation checkboxes are the source of truth for solver searches.
+Diagonal, anti-diagonal, and Windoku sectors participate as additional units
+for singles, subsets, box-line reductions, fish, AIC, ALS/AHS/ALC, MSLS, and
+related sector searches. Anti-King, Anti-Knight, and Non-Consecutive add their
+cell-peer legality rules to candidate generation and applicable link, single,
+ALS/AHS/ALC, and box-line checks. Disabled variations are excluded from those
+searches. The generator and symmetry toys are separate tools and should not be
+read as solver-family support claims.
 
 ## Quick Start
 
@@ -70,6 +104,18 @@ and Run All can run the same searches without a server or internet connection.
 After editing `src/search-worker.js` or any of its imported solver cores,
 run `node scripts/build-search-worker.js` to update the committed offline
 bundle. `node scripts/build-search-worker.js --check` verifies it is current.
+The application scripts and both Workers share one cache-busting build ID;
+`node scripts/check-build-id.js` verifies that those URLs remain synchronized.
+OCR libraries are loaded only when `Scan Image` is used. The offline Worker
+bundle is loaded only for local-file Worker startup; hosted pages use the
+normal Worker imports without preloading the bundled source.
+
+GitHub Actions runs the repository gate on every push and pull request. The
+gate verifies the required application files, checks that the committed
+offline Worker bundle is current, syntax-checks the runtime JavaScript, and
+rejects patch formatting errors. The repository currently has no automated
+test suite; the gate does not pretend that diagnostic or intentionally failing
+cases are release tests.
 
 The `Solution` display is collapsed by default. `Solution Steps:` is also a
 collapsible report and shows the most recent applied step in its summary.

@@ -1633,6 +1633,10 @@
         add(target, alcMixedConnection(options.candidateGrid, view, target));
         if (out.length >= options.maxBranching) return out;
       }
+      // ALC-XZ/ALC-XY phases are dedicated module walks. Once their mixed
+      // ALS/AHS handoffs have been offered, do not spend the same breadth
+      // budget on unrelated ordinary-link continuations.
+      if (options.alcOnly) return out;
     }
 
     // Chromatic Type 3 nodes can span several sectors, so their sides are
@@ -2007,6 +2011,24 @@
     }
     // ALC bridge edges are NAND connectors only. The outer XOR edges below
     // provide the eliminations.
+
+    // Evaluate the newly introduced terminal against every earlier node, not
+    // only against its adjacent predecessor.  Type 1, Type 2, and OR-edge
+    // consequences can be caused by an internal pair of nodes (including the
+    // second/second-to-last pair).  Older pairs are already in
+    // `current.eliminations`; only these new terminal pairs need work here.
+    // This preserves the complete proof without repeating the whole O(n²)
+    // junction pass at every extension.
+    for (let leftIndex = 0; leftIndex < steps.length - 2; leftIndex++) {
+      const left = steps[leftIndex].view;
+      const right = terminal;
+      const terminalWeak = alcMixedConnection(cand, left, right)
+        || directConnection(left, right, cand);
+      if (terminalWeak && !terminalWeak.alc && !terminalWeak.modular) {
+        computeWeakLinkEliminations(cand, left, right, terminalWeak, out);
+      }
+      computeNonConnectedOrEdges(cand, left, right, out, true);
+    }
 
     if (allAls) {
       // Module and XY triggers belong to the newly reached ALS node, while the
@@ -2531,24 +2553,23 @@
 
   function transportAlsNodeCount(steps) {
     const nodes = new Set();
-    const addNode = subset => {
-      if (!subset) return;
-      const cells = sortedUnique(subset.cells || []);
-      const digits = sortedUnique(subset.digits || []);
-      if (cells.length && digits.length) nodes.add(`${cells.join(',')}|${digits.join('')}`);
-    };
-
+    // A transport node is the logical ALS link/module itself.  Its entry and
+    // exit subsets are the two sides of that one node, not two nodes.  Counting
+    // those subsets separately misclassifies
+    //   ALS - ALS - ordinary strong link
+    // as a larger transport and prevents the ALS-XZ transport classifier from
+    // recognizing the two ALS nodes in the chain.
     for (const step of steps) {
-      if (isBivalveStep(step) || isGroupedAlsNodeStep(step)) {
-        addNode({
-          cells: [...(step.entry?.cells || []), ...(step.exit?.cells || [])],
-          digits: [...(step.entry?.digits || []), ...(step.exit?.digits || [])],
-        });
-      }
-      if (isAlsRccStep(step) || step.family === 'ALS') {
-        addNode(step.module?.entrySideSubset || step.module?.entrySubset);
-        addNode(step.module?.exitSideSubset || step.module?.exitSubset);
-      }
+      if (!isTransportAlsNodeStep(step)) continue;
+      const identity = step.graphId ?? step.linkId
+        ?? step.module?.id
+        ?? step.module?.uniqueID;
+      if (identity != null) nodes.add(`${step.family || 'ALS'}:${identity}`);
+      else nodes.add(JSON.stringify({
+        family: step.family || 'ALS',
+        cells: sortedUnique([...(step.entry?.cells || []), ...(step.exit?.cells || [])]),
+        digits: sortedUnique([...(step.entry?.digits || []), ...(step.exit?.digits || [])]),
+      }));
     }
     return nodes.size;
   }
@@ -3283,6 +3304,10 @@
         ids: new Set((options.startNodeIds || []).map(String)),
         cells: new Set((options.startNodeCells || []).map(Number)),
       },
+      startFamilies: new Set((options.startFamilies || [])
+        .map(family => String(family).toUpperCase())),
+      alcOnly: options.alcOnly === true,
+      skipAhsPlacementVerification: options.skipAhsPlacementVerification === true,
       collectAlsBranches: options.collectAlsBranches === true,
       excludePureAhs: options.excludePureAhs === true,
       maxAlsBranches: Number.isInteger(options.maxAlsBranches) ? Math.max(1, options.maxAlsBranches) : 2000,
@@ -3346,6 +3371,8 @@
     for (const start of graph.views) {
       if (stop) break;
       if (!startMatchesNode(start.node, opts.startNodeIds)) continue;
+      if (opts.startFamilies.size
+        && !opts.startFamilies.has(String(start.node.family || '').toUpperCase())) continue;
       // Generic AIC may enter AHS_RCC after an ordinary link, but pure AHS
       // walks belong to the dedicated AHS phases. Skip those starts so they
       // cannot consume the generic pass state budget before being rejected.
@@ -3573,7 +3600,7 @@
     chains = preferNamedAlsClassifications(suppressRedundantOpenExtensions(chains));
     const cellularAhsChains = chains.filter(chain => chain.steps.some(step => step.family === 'AHS'));
     let rejectedChains = [];
-    if (cellularAhsChains.length) {
+    if (cellularAhsChains.length && !opts.skipAhsPlacementVerification) {
       opts.onProgress?.({ stage: 'ahs-placements' });
       const verified = verifyMixedChainByPlacement(cand, {
         chains: cellularAhsChains,
@@ -3964,7 +3991,6 @@
   }
 
   function formatChainEureka(chain) {
-    if (chain.alcXz && core.formatAlcXz) return core.formatAlcXz(chain);
     const nodes = [];
     const connectors = [];
     const ringMarker = chain.steps.length > 0 && (

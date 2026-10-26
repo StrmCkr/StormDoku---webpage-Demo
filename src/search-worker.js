@@ -4,25 +4,25 @@
  * the page and returns structured-cloneable search results to the UI thread.
  */
 importScripts(
-  './browser-core.js?v=20261022-1',
-  './set-tools-core.js?v=20261016-20',
-  './pom-core.js?v=20261020-1',
-  './als-core.js?v=20261016-20',
-  './als-dof-core.js?v=20261016-20',
-  './hydra-core.js?v=20261016-20',
-  './als-link-core.js?v=20261016-20',
-  './ahs-core.js?v=20261016-20',
-  './ahs-link-core.js?v=20261016-20',
-  './subset-report-core.js?v=20261016-20',
-  './mini-sectors-core.js?v=20261016-20',
-  './strong-link-core.js?v=20261016-20',
-  './chain-core.js?v=20261021-22',
-  './alc-core.js?v=20261016-20',
-  './ahs-xy-core.js?v=20261016-20',
-  './ahs-dof-core.js?v=20261016-20',
-  './msls-core.js?v=20261016-20',
-  './chromatic-core.js?v=20261016-20',
-  './chromatic-als-core.js?v=20261016-20',
+  './browser-core.js?v=20261026-1',
+  './set-tools-core.js?v=20261026-1',
+  './pom-core.js?v=20261026-1',
+  './als-core.js?v=20261026-1',
+  './als-dof-core.js?v=20261026-1',
+  './hydra-core.js?v=20261026-1',
+  './als-link-core.js?v=20261026-1',
+  './ahs-core.js?v=20261026-1',
+  './ahs-link-core.js?v=20261026-1',
+  './subset-report-core.js?v=20261026-1',
+  './mini-sectors-core.js?v=20261026-1',
+  './strong-link-core.js?v=20261026-1',
+  './chain-core.js?v=20261026-1',
+  './alc-core.js?v=20261026-1',
+  './ahs-xy-core.js?v=20261026-1',
+  './ahs-dof-core.js?v=20261026-1',
+  './msls-core.js?v=20261026-1',
+  './chromatic-core.js?v=20261026-1',
+  './chromatic-als-core.js?v=20261026-1',
 );
 
 const core = globalThis.StormDoku;
@@ -752,8 +752,8 @@ self.onmessage = event => {
   }
 
   try {
-    if (payload?.variantSettings && typeof core.configureVariants === 'function') {
-      core.configureVariants(payload.variantSettings);
+    if (typeof core.configureVariants === 'function') {
+      core.configureVariants(payload?.variantSettings || {});
     }
     if (cancelled.has(id)) {
       cancelled.delete(id);

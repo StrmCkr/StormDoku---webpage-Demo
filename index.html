@@ -6,7 +6,8 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>StormDoku: online and offline solver</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'nonce-StormDoku-20261026-1'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; worker-src 'self' blob:; connect-src 'self' blob:; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self';">
+  <title>StormDoku: on-line | off-line</title>
   <style>
     :root {
       color-scheme: light;
@@ -1522,6 +1523,13 @@
       font-weight: 800;
     }
 
+    .cell:focus-visible,
+    .board:focus-visible {
+      outline: 3px solid #2563eb;
+      outline-offset: -3px;
+      z-index: 20;
+    }
+
     .cell:nth-child(9n+3),
     .cell:nth-child(9n+6) {
       border-right: 4px solid var(--heavy);
@@ -2494,6 +2502,24 @@
     }
 
     .status.warn {
+      border-left-color: var(--red);
+    }
+
+    .search-diagnostics {
+      padding: 8px 12px;
+      border-left: 4px solid var(--muted);
+      background: color-mix(in srgb, var(--panel) 92%, var(--muted));
+      border-radius: 6px;
+      color: var(--muted);
+      font: 12px/1.35 Consolas, "Courier New", monospace;
+      white-space: pre-wrap;
+    }
+
+    .search-diagnostics.active {
+      border-left-color: var(--blue);
+    }
+
+    .search-diagnostics.warn {
       border-left-color: var(--red);
     }
 
@@ -3759,6 +3785,24 @@
       overflow-wrap: anywhere;
     }
 
+    .rating-summary-metric {
+      color: #cbd5e1;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .rating-summary-metrics {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 4px 8px;
+      margin-left: 12px;
+      white-space: nowrap;
+    }
+
+    .rating-summary-score {
+      margin-left: 24px;
+    }
+
     .rating-summary-line .rating-summary-label:nth-of-type(2) {
       margin-left: 12px;
     }
@@ -4344,9 +4388,9 @@
 <body>
   <header>
     <div class="header-brand">
-      <h1>StormDoku: on-line | off-line</h1>
-      <p class="topline">Generator, candidates, subsets, fish, chains, and structures demo for regular Sudoku 9x9 grids.</p>
-      <p class="app-meta">Alpha v0.6.72 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <h1>StormDoku: <span title="Hosted use: the page may load its normal worker scripts and OCR resources when available.">on-line</span> | <span title="Local use: open the repository's index.html directly from file:// and use the bundled solver worker without a server or internet connection.">off-line</span></h1>
+      <p class="topline">Generator, candidates, subsets, fish, chains, and structures demonstrator for regular Sudoku 9x9 grids, Sudoku X, Anti-Knight, Anti-King, Non-Consecutive, and Windoku.</p>
+      <p class="app-meta">Alpha v0.6.74 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
     </div>
   </header>
 
@@ -4372,11 +4416,15 @@
           <div class="rating-summary-line">
             <span class="rating-summary-label">Rating Category:</span>
             <strong id="ratingCategory" class="rating-summary-category"></strong>
-            <span class="rating-summary-label">Score:</span>
-            <span id="ratingDetail" class="rating-summary-detail"></span>
+            <span class="rating-summary-metrics">
+              <span class="rating-summary-label" title="Number of solving steps included in the rating">Steps:</span>
+              <span id="ratingStepCount" class="rating-summary-metric"></span>
+              <span class="rating-summary-label rating-summary-score" title="Cumulative score across all applicable rated steps">Score:</span>
+              <span id="ratingDetail" class="rating-summary-detail"></span>
+            </span>
           </div>
           <details class="rating-hardest-move">
-            <summary>Hardest Move</summary>
+            <summary title="Highest-rated individual technique encountered; separate from the cumulative score">Hardest move</summary>
             <div id="ratingHardestMove" class="rating-hardest-move-value"></div>
           </details>
         </div>
@@ -4660,6 +4708,7 @@
           <h2 id="ocrDialogTitle">Scan Sudoku Image</h2>
           <img id="ocrPreview" class="ocr-preview" alt="Selected Sudoku image preview">
           <div id="ocrStatus" role="status">Choose an image to begin.</div>
+          <p class="input-note">Privacy: OCR runs in this page using the bundled local engine or local Tesseract assets. The selected image is not uploaded by StormDoku.</p>
           <label>
             Recognized givens
             <textarea id="ocrResult" class="ocr-result" spellcheck="false"
@@ -4740,25 +4789,25 @@
                   <li><strong>2. Extremely Easy.</strong> <span>Hidden Single, Naked Single, then Box-Line Reduction.</span></li>
                   <li><strong>3. Very Easy.</strong> <span>Hidden Pair, Naked Pair, then basic X-Wing.</span></li>
                   <li><strong>4a. Modestly Easy chains.</strong> <span>Depth 2, strong-link types 0-3; tie order is Skyscraper, 2-String Kite, Finned X-Wing, Sashimi X-Wing, Empty Rectangle.</span></li>
-                  <li><strong>4b. Modestly Easy fish.</strong> <span>Franken and Mutant 2x2+K, K=0, 1, 2; lowest score first, then the listed tie order.</span></li>
+                  <li><strong>4b. Modestly Easy fish.</strong> <span>Sequentially: Franken K0, Mutant K0, Franken K1, Mutant K1, Franken K2, Mutant K2.</span></li>
                   <li><strong>5. Easy.</strong> <span>Hidden Triple, Naked Triple, then basic Swordfish.</span></li>
                   <li><strong>6a. Moderate chains.</strong> <span>Depth 3 only, strong-link types 0-3: X-Chains plus the L(1)-Wing and ERI subclasses.</span></li>
-                  <li><strong>6b. Moderate B.A.R.N.S.</strong> <span>Size 3, using the ALS-XZ/B.A.R.N.S. form for XYZ Wing/Ring.</span></li>
-                  <li><strong>6c. Moderate XY-Chains.</strong> <span>Depth 3, type 4 only, producing XY-Wing/Ring forms.</span></li>
-                  <li><strong>6d. Moderate named wings.</strong> <span>Depth 3; in order: L(2,3), W, S, M, H(1,2,3), and Strong wings/rings, after XY-Chains.</span></li>
-                  <li><strong>6e. Moderate fish.</strong> <span>Franken and Mutant 3x3+K, K=0, 1, 2.</span></li>
+                  <li><strong>6b. Moderate XY-Chains.</strong> <span>Depth 3, including XY-Wing/Ring forms.</span></li>
+                  <li><strong>6c. Moderate B.A.R.N.S.</strong> <span>Size 3 XYZ Wing/Ring, after the XY phase.</span></li>
+                  <li><strong>6d. Moderate named wings.</strong> <span>Depth 3; in order: L(2,3), W, S, M, H(1,2,3), and Strong wings/rings.</span></li>
+                  <li><strong>6e. Moderate fish.</strong> <span>Sequentially: Franken K0, Mutant K0, Franken K1, Mutant K1, Franken K2, Mutant K2.</span></li>
                   <li><strong>7. Tough.</strong> <span>Hidden Quad, Naked Quad, then basic Jellyfish.</span></li>
-                  <li><strong>8. Challenging.</strong> <span>Execute in order: X-Chains using strong-link types 0-3 at depth 4; B.A.R.N.S. transport; B.A.R.N.S./WXYZ size 4; XY-Chain depth 4; Hidden XY-Chain depth 4 using types 0-3; AIC depth 4 using types 0-4 plus ALS_RCC and AHS_RCC expansion, including Inversion Wings/Rings; then 4x4 n×n+k Franken/Mutant fish. Stop at the first phase with a valid move.</span></li>
-                  <li><strong>9. Irritating.</strong> <span>In order: X-Chains depth 5 using types 0-3; XY-Chain depth 5; Hidden XY-Chain depth 5 using types 0-3; AIC depth 5 using types 0-4 plus ALS_RCC and AHS_RCC expansion; WXYZ transport; B.A.R.N.S. size 5; then 5x5 Franken/Mutant fish, both off by default.</span></li>
-                  <li><strong>10. Frustrating.</strong> <span>X-Chains depth 6, XY-Chains, Hidden XY-Chains, and AIC depth 6 using types 0-4 plus ALS_RCC and AHS_RCC expansion; then WXYZ transport, B.A.R.N.S. transport, and size-6 subsets/fish.</span></li>
+                  <li><strong>8. Challenging.</strong> <span>Execute in order: X-Chains using strong-link types 0-3 at depth 4; B.A.R.N.S. transport; B.A.R.N.S./WXYZ size 4; XY-Chain depth 4; Hidden XY-Chain depth 4; ordinary AIC depth 4 with permitted Inversion Wings/Rings; then 4x4 Franken/Mutant fish in K0/K1/K2 order.</span></li>
+                  <li><strong>9. Irritating.</strong> <span>In order: X-Chains depth 5; XY-Chain depth 5; Hidden XY-Chain depth 5; ordinary AIC depth 5; WXYZ transport; B.A.R.N.S. size 5; then 5x5 Franken/Mutant fish, with the listed subset/basic fish options off by default.</span></li>
+                  <li><strong>10. Frustrating.</strong> <span>X-Chains depth 6, XY-Chains, Hidden XY-Chains, and AIC depth 6 with the configured ALS_RCC/AHS_RCC expansions; then B.A.R.N.S. transport size 5, B.A.R.N.S. size 6, Franken/Mutant 6x6 K0 fish, and W-Wing transport.</span></li>
                   <li><strong>11. Hard.</strong> <span>Full ALS-XZ, AHS-XZ, and ALC-XZ at depth 2; then full-depth ordinary X-Chains, XY-Chains, Hidden XY-Chains, and AIC using types 0-4 only; ALS/AHS/ALC nodes belong to their dedicated later phases.</span></li>
                   <li><strong>12. Demanding.</strong> <span>Named ALS/AHS/ALC Wings and Rings, Transport ALS-XZ, Transport AHS-XZ, Transport ALC-XZ, plus ALS-XY, AHS-XY, and ALC-XY at depth 3.</span></li>
                   <li><strong>13. Expert.</strong> <span>Transport ALS-XY, Transport AHS-XY, and Transport ALC-XY; size-9 subsets remain off by default.</span></li>
                   <li><strong>14. Brutal.</strong> <span>Full-scope ALS-Chains, AHS-Chains, and ALC-Chains beyond depth 3.</span></li>
                   <li><strong>15. Nightmare.</strong> <span>Full AIC with all available link types beyond depth 3.</span></li>
-                  <li><strong>16. Abyssal.</strong> <span>ALS-DOF, AHS-DOF, DDS, and ADDS with progressive DOF and digit scaling, followed by ALC-DOF.</span></li>
+                  <li><strong>16. Abyssal.</strong> <span>ALS-DOF, DDS, ADDS, AHS-DOF, then ALC-DOF with progressive DOF and digit scaling.</span></li>
                   <li><strong>17. Ascendant.</strong> <span>MSLS with progressively scaled multi-sector search.</span></li>
-                  <li><strong>18. Transcendent.</strong> <span>Highest-scope ALS-Chaining and AHS-DOF Chain with progressive depth, digit, DOF, and runtime scaling.</span></li>
+                  <li><strong>18. Transcendent.</strong> <span>ALS-DOF Chaining first, then AHS-DOF Chain, with progressive depth, digit, DOF, and runtime scaling.</span></li>
                 </ol>
                 <div class="difficulty-flow-rule"><strong>Selection rule:</strong> stop at the first phase with a valid move. Within that phase, choose the lowest final score, then the named tie order. A later phase never outranks an earlier phase.</div>
                 <div class="difficulty-flow-rule"><strong>Score rule:</strong> base technique score + link modifiers + ALS_RCC digit modifiers + AHS_RCC cell modifiers. Strong-link modifiers are type 0=0.01, type 1=0.03, type 2=0.04, type 3=0.05, and type 4=0.06; ALS_RCC adds 0.01 per distinct digit in each ALS set, while AHS_RCC adds 0.01 per cell in each unique AHS set.</div>
@@ -5094,7 +5143,7 @@
                 <input id="alsDofMaxAuxiliary" type="number" min="1" max="9" step="1" value="5">
               </label>
             </div>
-            <label class="check" title="Experimental Hydra feature. May not function correctly; work in progress. Allow verified ALS-DOF auxiliary chains to participate as Hydra branches and viable chain nodes.">
+            <label class="check" title="Allow verified ALS-DOF auxiliary chains to participate as Hydra branches and viable chain nodes.">
               <input id="alsDofHydraEnabled" type="checkbox" checked>
               Enable Hydra ALS-DOF chaining
             </label>
@@ -5464,6 +5513,7 @@
         <h2 id="solutionHeading" class="workspace-panel-heading visually-hidden">Solution</h2>
         <div class="panel solution-column">
         <div id="status" class="status" role="status" aria-live="polite" aria-atomic="true">Ready.</div>
+        <div id="searchDiagnostics" class="search-diagnostics" role="status" aria-live="polite" hidden></div>
         <details class="pom-panel solution-steps" id="solutionStepsPanel">
           <summary>
             <h2>Solution Steps:</h2>
@@ -5709,7 +5759,7 @@
               <button id="alsDofChainBuild" class="secondary" type="button"
                 title="Search bridged ALS-DOF chains">ALS - DOF Chain</button>
               <button id="alsHydraBuild" class="secondary" type="button"
-                title="Experimental Hydra feature. May not function correctly; work in progress. Search ALS-DOF hubs whose auxiliary ALS carries a verified AIC chain">ALS - Hydra</button>
+                title="Search ALS-DOF hubs whose auxiliary ALS carries a verified AIC chain">ALS - Hydra</button>
             </div>
           </summary>
           <div class="pom-body">
@@ -5930,29 +5980,26 @@
     </section>
   </main>
 
-    <script src="./src/browser-core.js?v=20261022-1"></script>
-  <script src="./src/set-tools-core.js?v=20260928-1"></script>
-  <script src="./src/pom-core.js?v=20261004-2"></script>
-  <script src="./src/als-core.js?v=20260928-1"></script>
-  <script src="./src/als-link-core.js?v=20260928-1"></script>
-  <script src="./src/als-dof-core.js?v=20261015-3"></script>
-  <script src="./src/hydra-core.js?v=20261019-2"></script>
-  <script src="./src/ahs-core.js?v=20260928-2"></script>
-  <script src="./src/ahs-link-core.js?v=20261001-28"></script>
-  <script src="./src/subset-report-core.js?v=20260928-2"></script>
-  <script src="./src/mini-sectors-core.js?v=20260928-1"></script>
-  <script src="./src/chromatic-core.js?v=20261015-1"></script>
-  <script src="./src/chromatic-als-core.js?v=20261007-9"></script>
-    <script src="./src/strong-link-core.js?v=20261016-22"></script>
-      <script src="./src/chain-core.js?v=20261021-22"></script>
-  <script src="./src/alc-core.js?v=20261012-3"></script>
-  <script src="./src/ahs-xy-core.js?v=20261001-4"></script>
-  <script src="./src/ahs-dof-core.js?v=20261002-1"></script>
-  <script src="./src/msls-core.js?v=20261021-1"></script>
-      <script src="./src/search-worker-source.js?v=20261022-9"></script>
-  <script src="./src/ocr/tesseract.min.js?v=5.1.1"></script>
-  <script src="./src/ocr/ocrad.js?v=0.25"></script>
-  <script>
+    <script src="./src/browser-core.js?v=20261026-1"></script>
+  <script src="./src/set-tools-core.js?v=20261026-1"></script>
+  <script src="./src/pom-core.js?v=20261026-1"></script>
+  <script src="./src/als-core.js?v=20261026-1"></script>
+  <script src="./src/als-link-core.js?v=20261026-1"></script>
+  <script src="./src/als-dof-core.js?v=20261026-1"></script>
+  <script src="./src/hydra-core.js?v=20261026-1"></script>
+  <script src="./src/ahs-core.js?v=20261026-1"></script>
+  <script src="./src/ahs-link-core.js?v=20261026-1"></script>
+  <script src="./src/subset-report-core.js?v=20261026-1"></script>
+  <script src="./src/mini-sectors-core.js?v=20261026-1"></script>
+  <script src="./src/chromatic-core.js?v=20261026-1"></script>
+  <script src="./src/chromatic-als-core.js?v=20261026-1"></script>
+    <script src="./src/strong-link-core.js?v=20261026-1"></script>
+      <script src="./src/chain-core.js?v=20261026-1"></script>
+  <script src="./src/alc-core.js?v=20261026-1"></script>
+  <script src="./src/ahs-xy-core.js?v=20261026-1"></script>
+  <script src="./src/ahs-dof-core.js?v=20261026-1"></script>
+  <script src="./src/msls-core.js?v=20261026-1"></script>
+  <script nonce="StormDoku-20261026-1">
     const core = window.StormDoku;
     const boardEl = document.getElementById('board');
     const digitFocusButtonsEl = document.getElementById('digitFocusButtons');
@@ -5981,6 +6028,7 @@
     const ocrCancelEl = document.getElementById('ocrCancel');
     const ocrLoadEl = document.getElementById('ocrLoad');
     const statusEl = document.getElementById('status');
+    const searchDiagnosticsEl = document.getElementById('searchDiagnostics');
     const puzzleStringEl = document.getElementById('puzzleString');
     const puzzleStateMetaEl = document.getElementById('puzzleStateMeta');
     const copyPuzzle81El = document.getElementById('copyPuzzle81');
@@ -5992,6 +6040,7 @@
     const ratingSummaryEl = document.getElementById('ratingSummary');
     const ratingCategoryEl = document.getElementById('ratingCategory');
     const ratingDetailEl = document.getElementById('ratingDetail');
+    const ratingStepCountEl = document.getElementById('ratingStepCount');
     const ratingHardestMoveEl = document.getElementById('ratingHardestMove');
     const difficultyTableEl = document.getElementById('difficultyTable');
     const solutionStepsPanelEl = document.getElementById('solutionStepsPanel');
@@ -6231,6 +6280,7 @@
       ['als-chain', document.getElementById('moveAlsChain')],
       ['aic-als', document.getElementById('moveAicAls')],
       ['als-dof', document.getElementById('moveAlsDof')],
+      ['als-dof-chain', document.getElementById('moveAlsDof')],
       ['dds', document.getElementById('moveDds')],
       ['adds', document.getElementById('moveAdds')],
       ['ahs-xz', document.getElementById('moveAhsXz')],
@@ -6387,8 +6437,151 @@
     let searchWorkerJobId = 0;
     let searchWorkerJobs = new Map();
     let searchWorkerDisabled = false;
+    let activeSearchDiagnostics = null;
+    let searchDiagnosticsTimer = null;
+    let activeHierarchyPhase = null;
     let generatorWorker = null;
     let generatorReject = null;
+    let offlineWorkerSourcePromise = null;
+    let ocradPromise = null;
+
+    function loadLocalScript(src, globalName, failureMessage) {
+      if (window[globalName]) return Promise.resolve(window[globalName]);
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.async = true;
+        script.onload = () => window[globalName]
+          ? resolve(window[globalName])
+          : reject(new Error(failureMessage));
+        script.onerror = () => reject(new Error(failureMessage));
+        document.head.appendChild(script);
+      });
+    }
+
+    function loadOfflineWorkerSource() {
+      if (typeof window.StormDokuSearchWorkerSource === 'string') {
+        return Promise.resolve(window.StormDokuSearchWorkerSource);
+      }
+      if (offlineWorkerSourcePromise) return offlineWorkerSourcePromise;
+      offlineWorkerSourcePromise = loadLocalScript(
+        './src/search-worker-source.js?v=20261026-1',
+        'StormDokuSearchWorkerSource',
+        'Offline search worker source could not be loaded.',
+      );
+      return offlineWorkerSourcePromise;
+    }
+
+    function searchDiagnosticNumber(value) {
+      return Number.isFinite(Number(value)) ? Number(value).toLocaleString() : null;
+    }
+
+    function searchDiagnosticLimits(payload = {}) {
+      const source = { ...(payload || {}), ...((payload || {}).limits || {}) };
+      const entries = Object.entries(source)
+        .filter(([key, value]) => /^max[A-Z]/.test(key) && (typeof value === 'number' || typeof value === 'string'))
+        .slice(0, 5)
+        .map(([key, value]) => `${key.replace(/^max/, 'max ')}=${value}`);
+      return entries.length ? entries.join(', ') : 'default limits';
+    }
+
+    function searchDiagnosticResultCount(result) {
+      if (!result || typeof result !== 'object') return null;
+      const stats = result.stats || result.placementStats || {};
+      for (const key of ['chainsFound', 'results', 'records', 'reports', 'count', 'states']) {
+        const value = stats[key] ?? result[key];
+        if (Array.isArray(value)) return value.length.toLocaleString();
+        if (Number.isFinite(Number(value))) return Number(value).toLocaleString();
+      }
+      for (const key of ['chains', 'links', 'results', 'reports']) {
+        if (Array.isArray(result[key])) return result[key].length.toLocaleString();
+      }
+      return null;
+    }
+
+    function searchDiagnosticPhaseLabel(value) {
+      const text = String(value || '').toLowerCase();
+      const labels = [
+        ['modestly-easy', 'Modestly Easy'],
+        ['very-easy', 'Very Easy'],
+        ['extremely-easy', 'Extremely Easy'],
+        ['easy', 'Easy'],
+        ['moderate', 'Moderate'],
+        ['tough', 'Tough'],
+        ['challenging', 'Challenging'],
+        ['irritating', 'Irritating'],
+        ['frustrating', 'Frustrating'],
+        ['hard', 'Hard'],
+        ['demanding', 'Demanding'],
+        ['expert', 'Expert'],
+        ['brutal', 'Brutal'],
+        ['nightmare', 'Nightmare'],
+        ['abyssal', 'Abyssal'],
+        ['ascendant', 'Ascendant'],
+        ['transcendent', 'Transcendent'],
+      ];
+      return labels.find(([prefix]) => text.startsWith(prefix))?.[1]
+        || value
+        || 'starting';
+    }
+
+    function renderSearchDiagnostics(update = {}) {
+      const state = activeSearchDiagnostics;
+      if (!state || !searchDiagnosticsEl) return;
+      Object.assign(state, update);
+      const elapsed = Math.max(0, (state.finishedAt || performance.now()) - state.startedAt);
+      const seconds = (elapsed / 1000).toFixed(1);
+      const lines = [
+        `Phase: ${searchDiagnosticPhaseLabel(state.phase)}  |  Stage: ${state.stage || 'starting'}  |  Elapsed: ${seconds}s`,
+        `Results: ${state.resultCount ?? '—'}  |  States: ${state.states ?? '—'}  |  Limits: ${state.limits}`,
+      ];
+      if (state.reason) lines.push(`Stopped: ${state.reason}`);
+      searchDiagnosticsEl.textContent = lines.join('\n');
+      searchDiagnosticsEl.hidden = false;
+      searchDiagnosticsEl.className = `search-diagnostics ${state.reason ? 'warn' : 'active'}`;
+    }
+
+    function beginSearchDiagnostics(operation, payload) {
+      if (searchDiagnosticsTimer) clearInterval(searchDiagnosticsTimer);
+      activeSearchDiagnostics = {
+        operation,
+        phase: payload?.diagnosticPhase || payload?.hierarchyPhase || 'starting',
+        stage: 'starting',
+        startedAt: performance.now(),
+        limits: searchDiagnosticLimits(payload),
+        states: null,
+        resultCount: null,
+        reason: null,
+        finishedAt: null,
+      };
+      renderSearchDiagnostics();
+      searchDiagnosticsTimer = setInterval(() => renderSearchDiagnostics(), 500);
+      return activeSearchDiagnostics;
+    }
+
+    function updateSearchDiagnostics(progress = {}) {
+      if (!activeSearchDiagnostics) return;
+      const count = progress.resultCount ?? progress.results ?? progress.chainsFound
+        ?? progress.checked ?? progress.combinations;
+      renderSearchDiagnostics({
+        stage: progress.stage || progress.phase || activeSearchDiagnostics.stage,
+        states: progress.statesVisited ?? progress.states ?? progress.directedViews
+          ?? progress.seedsChecked ?? activeSearchDiagnostics.states,
+        resultCount: Number.isFinite(Number(count)) ? searchDiagnosticNumber(count) : activeSearchDiagnostics.resultCount,
+      });
+    }
+
+    function finishSearchDiagnostics(reason, result = null) {
+      if (!activeSearchDiagnostics) return;
+      const state = activeSearchDiagnostics;
+      const count = searchDiagnosticResultCount(result);
+      if (count !== null) state.resultCount = count;
+      state.finishedAt = performance.now();
+      state.reason = reason || null;
+      if (searchDiagnosticsTimer) clearInterval(searchDiagnosticsTimer);
+      searchDiagnosticsTimer = null;
+      renderSearchDiagnostics();
+    }
 
     function releaseSearchWorkerBlobUrl() {
       if (searchWorkerBlobUrl === null) return;
@@ -6398,6 +6591,7 @@
 
     function disableSearchWorker(error = null) {
       searchWorkerDisabled = true;
+      finishSearchDiagnostics(error?.message || 'Search worker unavailable.');
       if (searchWorker) searchWorker.terminate();
       searchWorker = null;
       releaseSearchWorkerBlobUrl();
@@ -6407,7 +6601,7 @@
       searchWorkerJobs.clear();
     }
 
-    function ensureSearchWorker() {
+    async function ensureSearchWorker() {
       if (searchWorkerDisabled) return null;
       if (searchWorker) return searchWorker;
       if (typeof Worker === 'undefined') {
@@ -6416,13 +6610,11 @@
       }
 
       try {
-      const workerPath = './src/search-worker.js?v=20261022-8';
+      const workerPath = './src/search-worker.js?v=20261026-1';
         releaseSearchWorkerBlobUrl();
         let workerUrl = new URL(workerPath, document.baseURI);
         if (document.baseURI.startsWith('file:')) {
-          if (typeof window.StormDokuSearchWorkerSource !== 'string') {
-            throw new Error('Offline search worker source is missing.');
-          }
+          await loadOfflineWorkerSource();
           // A file-origin worker cannot import local scripts. Embed its cores
           // in the Blob so offline Next and Run All share the same worker.
           searchWorkerBlobUrl = URL.createObjectURL(new Blob(
@@ -6435,15 +6627,23 @@
         const currentWorker = searchWorker;
         searchWorker.onmessage = event => {
           if (searchWorker !== currentWorker) return;
-          releaseSearchWorkerBlobUrl();
           const { id, result, error, type } = event.data || {};
           const job = searchWorkerJobs.get(id);
           if (!job) return;
-          interactiveSearchProgress?.();
-          if (type === 'progress') return;
+          if (type === 'progress') {
+            interactiveSearchProgress?.();
+            job.onProgress?.(event.data);
+            return;
+          }
+          releaseSearchWorkerBlobUrl();
           searchWorkerJobs.delete(id);
-          if (error) job.reject(new Error(error));
-          else job.resolve(result);
+          if (error) {
+            finishSearchDiagnostics(error);
+            job.reject(new Error(error));
+          } else {
+            finishSearchDiagnostics(null, result);
+            job.resolve(result);
+          }
         };
         searchWorker.onerror = event => {
           if (searchWorker !== currentWorker) return;
@@ -6457,6 +6657,7 @@
             .filter(Boolean)
             .join(' ');
           const error = new Error(details || 'Search worker failed.');
+          finishSearchDiagnostics(error.message);
           const failedWorker = searchWorker;
           searchWorker = null;
           if (failedWorker) failedWorker.terminate();
@@ -6471,24 +6672,41 @@
       }
     }
 
-    function runSearchWorker(type, payload) {
+    async function runSearchWorker(type, payload, options = {}) {
       syncVariantSettingsFromControls();
       core.configureVariants(variantSettings);
       const epoch = searchEpoch;
-      const worker = ensureSearchWorker();
+      const worker = await ensureSearchWorker();
       if (!worker) return Promise.reject(new Error('Search worker unavailable.'));
 
       const id = ++searchWorkerJobId;
       const workerPayload = payload && typeof payload === 'object'
         ? { ...payload, variantSettings: { ...variantSettings } }
         : payload;
+      beginSearchDiagnostics(
+        type,
+        {
+          ...workerPayload,
+          diagnosticPhase: options.diagnosticPhase
+            || workerPayload?.diagnosticPhase
+            || activeHierarchyPhase,
+        },
+      );
       return new Promise((resolve, reject) => {
-        searchWorkerJobs.set(id, { resolve, reject });
+        searchWorkerJobs.set(id, {
+          resolve,
+          reject,
+          onProgress: progress => {
+            updateSearchDiagnostics(progress);
+            options.onProgress?.(progress);
+          },
+        });
         try {
           interactiveSearchProgress?.();
           worker.postMessage({ id, type, payload: workerPayload });
         } catch (error) {
           searchWorkerJobs.delete(id);
+          finishSearchDiagnostics(error);
           reject(error);
         }
       }).then(result => {
@@ -6521,7 +6739,7 @@
     function runPuzzleGenerator(givens) {
       if (location.protocol === 'file:') return runCoreSearch('generate', givens);
       return new Promise((resolve, reject) => {
-      const workerPath = './src/generator-worker.js?v=20261019-2';
+      const workerPath = './src/generator-worker.js?v=20261026-1';
         const workerUrl = document.baseURI.startsWith('file:')
           ? workerPath
           : new URL(workerPath, document.baseURI);
@@ -6562,6 +6780,7 @@
       searchEpoch += 1;
       generationToken += 1;
       const error = searchCancellationError(reason);
+      finishSearchDiagnostics(reason);
       const activeGenerator = generatorWorker;
       const rejectGenerator = generatorReject;
       generatorWorker = null;
@@ -9084,12 +9303,36 @@
       element.addEventListener('contextmenu', event => handlePlayerDigitClick(event, cell, digit, true));
     }
 
+    function accessibleCellLabel(cell) {
+      const row = Math.floor(cell / 9) + 1;
+      const column = (cell % 9) + 1;
+      const value = puzzle[cell] || promotedValues[cell] || 0;
+      if (value) {
+        return `Row ${row}, Column ${column}, ${originalPuzzle[cell] ? 'given ' : 'value '}${value}`;
+      }
+      const candidates = (cand[cell] || []).join(', ') || 'no candidates';
+      return `Row ${row}, Column ${column}, empty, candidates ${candidates}`;
+    }
+
     function bindPlayerCellElement(element, cell) {
       element.dataset.playerCell = String(cell);
-      element.tabIndex = selectedPlayerCell === cell ? 0 : -1;
+      const rovingCell = selectedPlayerCell ?? 0;
+      element.tabIndex = rovingCell === cell ? 0 : -1;
       element.setAttribute('role', 'gridcell');
+      element.setAttribute('aria-rowindex', String(Math.floor(cell / 9) + 1));
+      element.setAttribute('aria-colindex', String((cell % 9) + 1));
+      element.setAttribute('aria-label', accessibleCellLabel(cell));
       if (isPlayerEditableCell(cell)) element.classList.add('player-editable');
       if (selectedPlayerCell === cell) element.classList.add('player-selected');
+      element.addEventListener('focus', () => {
+        selectedPlayerCell = cell;
+        selectedPlayerDigit = null;
+        playerPromotionMode = false;
+        for (const other of boardEl.querySelectorAll('[role="gridcell"].player-selected')) {
+          if (other !== element) other.classList.remove('player-selected');
+        }
+        element.classList.add('player-selected');
+      });
       element.addEventListener('click', event => handlePlayerCellClick(event, cell));
       element.addEventListener('contextmenu', event => handlePlayerCellContextMenu(event, cell));
     }
@@ -9137,8 +9380,19 @@
       return family === 'ALS'
         || typeName === 'ALS'
         || typeName.startsWith('ALS_')
-        || !!step.module
         || linkType === core.ALS;
+    }
+
+    function isAhsVisualStep(step) {
+      const family = step?.family || '';
+      const typeName = String(step?.linkTypeName || '').toUpperCase();
+      return family === 'AHS'
+        || typeName === 'AHS'
+        || typeName.startsWith('AHS_');
+    }
+
+    function isModuleVisualStep(step) {
+      return isAlsVisualStep(step) || isAhsVisualStep(step);
     }
 
     function isAlmostFishVisualStep(step) {
@@ -9936,23 +10190,6 @@
         && (chain.steps || []).every(step =>
           step.family === 'SL' && Number(step.linkType) === 4);
 
-      if (chain.alcXz) {
-        const { als, ahs, contacts } = chain.alcXz;
-        drawSideDigitBoxes(svg, als, 'strong-link-side-box strong-link-start-box');
-        drawSideDigitBoxes(svg, ahs, 'strong-link-side-box strong-link-end-box');
-        for (const contact of contacts) {
-          for (const [left, right] of contact.pairs) {
-            drawWeakConnection(
-              svg,
-              { cells: [left], digits: [contact.digit] },
-              { cells: [right], digits: [contact.digit] },
-            );
-          }
-        }
-        boardEl.appendChild(svg);
-        return;
-      }
-
       if (chain.ahsXy) {
         for (const [index, step] of chain.steps.entries()) {
           const boxClass = index % 2
@@ -9978,7 +10215,7 @@
       for (let index = 0; index < chain.steps.length; index++) {
         const step = chain.steps[index];
         drawAlmostFishOverlay(svg, step);
-        if (!isAlsVisualStep(step) && !isPureXyChain) {
+        if (!isModuleVisualStep(step) && !isPureXyChain) {
           // The chain endpoints already have their green/blue node graphics.
           // Add digit boxes only for intermediate sides.
           if (index > 0) {
@@ -9999,7 +10236,7 @@
         // A grouped endpoint needs one enclosing box for the whole link.
         // Single-cell endpoints keep their existing green/blue node graphics;
         // boxing those again would double-stamp the chain start/end.
-        if (!isAlsVisualStep(step) && !isPureXyChain) {
+        if (!isModuleVisualStep(step) && !isPureXyChain) {
           if (index === 0) {
             drawGroupedEndpointBox(
               svg,
@@ -10023,7 +10260,7 @@
           drawChainSectorFrames(svg, step.weakSectors);
           drawWeakConnection(svg, fromSide, toSide, weakFromDigit, weakToDigit, true);
         }
-        if (isAlsVisualStep(step) && step.module?.common) {
+        if (isModuleVisualStep(step) && step.module?.common) {
           const moduleSides = moduleVisualSides(step);
           const common = step.module.common;
           const weakDigits = common.restrictedDigits?.length
@@ -10031,7 +10268,7 @@
             : (common.digits || []);
           drawWeakConnections(svg, moduleSides.entry, moduleSides.exit, weakDigits);
         }
-        if (!isAlsVisualStep(step) && !isAlmostFishVisualStep(step)) {
+        if (!isModuleVisualStep(step) && !isAlmostFishVisualStep(step)) {
           // Keep the proof visible even when an earlier move removed a
           // candidate that the selected chain still uses as an anchor. The
           // fallback is only a geometric slot; it does not recreate the mark.
@@ -10325,10 +10562,14 @@
       const alsMarks = new Set();
       const alsStyleByCell = new Map();
       const alsStyleByAtom = new Map();
+      const ahsMarks = new Set();
+      const ahsStyleByCell = new Map();
+      const ahsStyleByAtom = new Map();
       const startMarks = new Set();
       const endMarks = new Set();
       const cells = new Set();
       const alsCells = new Set();
+      const ahsCells = new Set();
       const alsEntryCells = new Set();
       const alsExitCells = new Set();
       const startCells = new Set();
@@ -10344,10 +10585,14 @@
           alsMarks,
           alsStyleByCell,
           alsStyleByAtom,
+          ahsMarks,
+          ahsStyleByCell,
+          ahsStyleByAtom,
           startMarks,
           endMarks,
           cells,
           alsCells,
+          ahsCells,
           alsEntryCells,
           alsExitCells,
           startCells,
@@ -10423,6 +10668,30 @@
             }
           }
         }
+
+        if (isAhsVisualStep(step)) {
+          const moduleSides = moduleVisualSides(step);
+          for (const side of [moduleSides.entry, moduleSides.exit]) {
+            for (const cell of side?.cells || []) {
+              ahsCells.add(cell);
+              ahsStyleByCell.set(cell, AHS_RECORD_COLOR);
+            }
+            for (const atom of chainSideAtoms(side, null, false)) {
+              ahsMarks.add(atom);
+              ahsStyleByAtom.set(atom, AHS_RECORD_COLOR);
+            }
+          }
+          if (step.module?.common) {
+            const common = step.module.common;
+            const weakDigits = common.restrictedDigits?.length
+              ? common.restrictedDigits
+              : (common.digits || []);
+            for (const digit of weakDigits) {
+              for (const atom of chainSideAtoms(moduleSides.entry, digit, false)) weakMarks.add(atom);
+              for (const atom of chainSideAtoms(moduleSides.exit, digit, false)) weakMarks.add(atom);
+            }
+          }
+        }
       }
 
       const firstEntry = visibleChainEntrySide(chain.steps[0]) || {};
@@ -10466,8 +10735,12 @@
         endMarks,
         cells,
         alsCells,
+        ahsCells,
         alsEntryCells,
         alsExitCells,
+        ahsMarks,
+        ahsStyleByCell,
+        ahsStyleByAtom,
         startCells,
         endCells,
         orderByCell,
@@ -11580,10 +11853,14 @@
         chainAlsMarks: chainView.alsMarks,
         chainAlsStyleByCell: chainView.alsStyleByCell,
         chainAlsStyleByAtom: chainView.alsStyleByAtom,
+        chainAhsMarks: chainView.ahsMarks,
+        chainAhsStyleByCell: chainView.ahsStyleByCell,
+        chainAhsStyleByAtom: chainView.ahsStyleByAtom,
         chainStartMarks: chainView.startMarks,
         chainEndMarks: chainView.endMarks,
         chainCells: chainView.cells,
         chainAlsCells: chainView.alsCells,
+        chainAhsCells: chainView.ahsCells,
         chainAlsEntryCells: chainView.alsEntryCells,
         chainAlsExitCells: chainView.alsExitCells,
         chainStartCells: chainView.startCells,
@@ -11652,10 +11929,15 @@
           const digit = digitIndex + 1;
           const tile = document.createElement('div');
           tile.className = `cell vantage-cell vantage-${view.toLowerCase()}`;
+          tile.setAttribute('role', 'gridcell');
+          tile.setAttribute('aria-rowindex', String(sector + 1));
+          tile.setAttribute('aria-colindex', String(digit));
           if (!positions.size) tile.classList.add('vantage-empty');
           const activePositions = [...positions].map(position => position + 1).join('');
           tile.title = `${axis}${sector + 1}, digit ${digit}: `
             + `${activePositions ? `${positionPrefix}${activePositions}` : 'none'}`;
+          tile.setAttribute('aria-label', `${axis}${sector + 1}, digit ${digit}, `
+            + `${activePositions ? `${positionPrefix}${activePositions}` : 'no positions'}`);
 
           const miniGrid = document.createElement('span');
           miniGrid.className = 'vantage-slice-grid';
@@ -11707,6 +11989,7 @@
             const isChainXorExit = highlights.isChain && highlights.chainXorExitMarks.has(atom);
             const isChainWeak = highlights.isChain && highlights.chainWeakMarks.has(atom);
             const isChainAls = highlights.isChain && highlights.chainAlsMarks.has(atom);
+            const isChainAhs = highlights.isChain && highlights.chainAhsMarks.has(atom);
             const isAlsRecord = highlights.isAlsRecord && highlights.alsRecordMarks.has(atom);
             const isAlsDof = highlights.isAlsDof && highlights.alsDofMarks.has(atom);
             const isAhsDof = highlights.isAhsDof && highlights.ahsDofRecordMarks.has(atom);
@@ -11754,6 +12037,7 @@
             }
             if (isChainWeak) mark.classList.add('chain-weak');
             if (isChainAls || isAlsRecord || isAlsDof) mark.classList.add('chain-als');
+            if (isChainAhs) mark.classList.add('ahs-record');
             if (isAhsRecord) mark.classList.add('ahs-record');
             if (isAhsDof) mark.classList.add('ahs-record');
             if (isSimpleColoringDigit) {
@@ -11824,6 +12108,10 @@
       boardEl.classList.toggle('vantage-rn', gridView === 'Rn');
       boardEl.classList.toggle('vantage-cn', gridView === 'Cn');
       boardEl.classList.toggle('vantage-bn', gridView === 'Bn');
+      boardEl.setAttribute('role', 'grid');
+      boardEl.setAttribute('aria-rowcount', '9');
+      boardEl.setAttribute('aria-colcount', '9');
+      boardEl.tabIndex = gridView === 'RC' ? -1 : 0;
       boardEl.setAttribute('aria-label', gridView === 'RC'
         ? 'Sudoku candidate grid'
         : `Sudoku ${gridView} candidate view`);
@@ -11877,6 +12165,10 @@
         if (highlights.isChain && highlights.chainAlsCells.has(cell)) {
           el.classList.add('chain-als-cell');
           applyAlsColorVars(el, highlights.chainAlsStyleByCell.get(cell));
+        }
+        if (highlights.isChain && highlights.chainAhsCells.has(cell)) {
+          el.classList.add('ahs-record-cell');
+          applyAhsColorVars(el, highlights.chainAhsStyleByCell.get(cell));
         }
         if (highlights.isAlsRecord && highlights.alsRecordCells.has(cell)) {
           el.classList.add('chain-als-cell');
@@ -11972,6 +12264,7 @@
             const isChainXorExitDigit = highlights.isChain && highlights.chainXorExitMarks.has(atomKey);
             const isChainWeakDigit = highlights.isChain && highlights.chainWeakMarks.has(atomKey);
             const isChainAlsDigit = highlights.isChain && highlights.chainAlsMarks.has(atomKey);
+            const isChainAhsDigit = highlights.isChain && highlights.chainAhsMarks.has(atomKey);
             const isAlsRecordDigit = highlights.isAlsRecord && highlights.alsRecordMarks.has(atomKey);
             const isAlsDofDigit = highlights.isAlsDof && highlights.alsDofMarks.has(atomKey);
             const isAhsRecordDigit = highlights.isAhsRecord && highlights.ahsRecordMarks.has(atomKey);
@@ -12010,7 +12303,7 @@
             const chainDisplayDigit = isElim
               || ((hasCandidate || isChainExplanation)
                 && (isFishDigit || isFishEndofinDigit || isChainDigit || isChainWeakDigit || isStrongLinkDigit
-                  || isAlsRecordDigit || isAlsDofDigit || isAhsRecordDigit || isAhsDofRecordDigit || isDigitFocus
+                  || isAlsRecordDigit || isAlsDofDigit || isAhsRecordDigit || isAhsDofRecordDigit || isChainAhsDigit || isDigitFocus
                   || isCandidateSizeFilter || isSimpleColoringDigit || isMultiColoringDigit || isThreeDMedusaDigit
                   || isMslsDigit || isChromaticDigit));
             mark.textContent = markFor(cell, digit)
@@ -12044,6 +12337,10 @@
             if (isChainAlsDigit && hasChainCandidate) {
               mark.classList.add('chain-als-digit');
               applyAlsColorVars(mark, highlights.chainAlsStyleByAtom.get(atomKey));
+            }
+            if (isChainAhsDigit && hasChainCandidate) {
+              mark.classList.add('ahs-record-digit');
+              applyAhsColorVars(mark, highlights.chainAhsStyleByAtom.get(atomKey));
             }
             if (isAlsRecordDigit) {
               mark.classList.add('chain-als-digit');
@@ -12754,6 +13051,7 @@
       addAt(150, 'als-dof', 'ahs-dof', 'alc-dof', 'dds', 'adds');
       addAt(160, 'msls');
       addAt(170, 'ahs-dof-chain');
+      addAt(170, 'als-dof-chain');
 
       const strongLinkTypes = maxRank >= 50
         ? [0, 1, 2, 3, 4]
@@ -12870,10 +13168,9 @@
       },
       {
         category: 'MODERATE', score: '3.125 to 3.75', items: [
-          ['X-Chain depth 3, strong-link types 0-3', '3.25 + link modifiers'],
-          ['L(1)-Wing and ERI subclasses', '3.25 + link modifiers'],
-          ['B.A.R.N.S. size 3, XYZ Wing/Ring', '3.25 + ALS_RCC modifiers'],
+          ['X-Chains depth 3, types 0-3, including L(1)/ERI subclasses', '3.25 + link modifiers'],
           ['XY-Chain depth 3', '3.25 + link modifiers'],
+          ['B.A.R.N.S. size 3, XYZ Wing/Ring', '3.25 + ALS_RCC modifiers'],
           ['L(2,3), W, S, M, H(1,2,3), Strong Wing/Ring depth 3', '3.25 + link modifiers'],
           ['Franken 3x3 Fish K0', '3.125'],
           ['Mutant 3x3 Fish K0', '3.25'],
@@ -12897,7 +13194,7 @@
           ['B.A.R.N.S./WXYZ, size 4', '4.25 + ALS_RCC modifiers'],
           ['XY-Chain depth 4', '4.25 + link modifiers'],
           ['Hidden XY-Chain depth 4', '4.25 + link modifiers'],
-          ['AIC depth 4, including ALS_RCC/AHS_RCC and Inversion Wings/Rings', '4.25 + link / ALS_RCC / AHS_RCC modifiers'],
+          ['Ordinary AIC depth 4, including Inversion Wings/Rings', '4.25 + link modifiers'],
           ['Franken 4x4 Fish K0', '4.125'],
           ['Mutant 4x4 Fish K0', '4.25'],
           ['Franken 4x4+K1 Fish', '4.375'],
@@ -12914,7 +13211,7 @@
           ['X-Chains depth 5', '5'],
           ['XY-Chain depth 5', '5.25 + link modifiers'],
           ['Hidden XY-Chain depth 5', '5.25 + link modifiers'],
-          ['AIC depth 5, including ALS_RCC/AHS_RCC', '5.25 + link / ALS_RCC / AHS_RCC modifiers'],
+          ['Ordinary AIC depth 5, including permitted Inversion Wings/Rings', '5.25 + link modifiers'],
           ['Transport WXYZ Wings/Rings', '5 + link modifiers'],
           ['B.A.R.N.S. size 5, VWXYZ Wings/Rings', '5 + ALS_RCC modifiers'],
           ['Franken/Mutant 5x5 Fish K0 (off by default)', '5.125'],
@@ -12947,7 +13244,7 @@
           ['Full-depth X-Chains', '7.25 + link modifiers'],
           ['Full-depth XY-Chains', '7.25 + link modifiers'],
           ['Full-depth Hidden XY-Chains', '7.25 + link modifiers'],
-          ['Full-depth AIC, including ALS_RCC/AHS_RCC', '7.25 + link / ALS_RCC / AHS_RCC modifiers'],
+          ['Full-depth ordinary AIC', '7.25 + link modifiers'],
 
           ['Franken 7x7 Fish K0', '7.125'],
           ['Mutant 7x7 Fish K0', '7.25'],
@@ -13005,7 +13302,7 @@
       },
       {
         category: 'TRANSCENDENT', score: '14 to 15.999', items: [
-          ['ALS-Chaining, progressively scaled depth/digits/DOF', '14+'],
+          ['ALS-DOF Chaining, progressively scaled depth/digits/DOF', '14+'],
           ['AHS-DOF Chain, extended scope', '14+'],
         ],
       },
@@ -13386,7 +13683,8 @@
       const alsNamed = (isAicAls || /^ALS\s*-/i.test(fullName))
         && /(?:Wing|Ring)$/i.test(name);
       if (alsNamed && !/^ALS\s*-\s*(?:XZ|XY|Chain)$/i.test(fullName)) {
-        return define('Demanding', 8 + ringBonus, `ALS - ${name}${ringSuffix}`);
+        const label = isAicAls ? `AIC + ALS - ${name}` : `ALS - ${name}`;
+        return define('Demanding', 8 + ringBonus, `${label}${ringSuffix}`);
       }
 
       const ahsNamed = /^AHS\s*-\s*/i.test(fullName)
@@ -13596,6 +13894,14 @@
         return {
           ...ratingDefinition(ratingCategoryForValue(score), score,
             `AHS - DOF Chain${step?.isRing ? ' Ring' : ''}`),
+          hardestMove: step.desc || '',
+        };
+      }
+      if (tech === 'als-dof-chain') {
+        const score = 14 + (step?.isRing ? 0.5 : 0);
+        return {
+          ...ratingDefinition(ratingCategoryForValue(score), score,
+            `ALS - DOF Chain${step?.isRing ? ' Ring' : ''}`),
           hardestMove: step.desc || '',
         };
       }
@@ -13948,6 +14254,9 @@
       }
 
       ratingSummaryEl.hidden = false;
+      ratingStepCountEl.textContent = String(
+        ratingReport.cycles ?? ratingReport.partialMoves ?? 0,
+      );
       const ratingCategory = ratingReport.category || ratingCategoryForValue(ratingReport.value);
       ratingCategoryEl.className = `rating-summary-category ${ratingCategoryColorClass(ratingCategory)}`;
       ratingCategoryEl.textContent = ratingCategory;
@@ -13969,13 +14278,9 @@
       const structureName = String(chain?.structureName || '').trim();
       if (!structureName) return ratedName;
 
-      // AIC + ALS is an implementation prefix, not part of the displayed
-      // name for a named construct. Keep the specific structure while removing
-      // that prefix from the user-facing solution step.
-      const namedStructure = structureName.replace(
-        /^AIC\s*\+\s*ALS\s*-\s*/i,
-        'ALS - ',
-      );
+      // Preserve the AIC + ALS identity in solution history. Folder-specific
+      // views may still expose the shorter ALS subclass label.
+      const namedStructure = structureName;
       const isGenericName = value => /^(?:AIC|AIC\s*\+\s*ALS(?:\s+Chain)?|ALS\s*-\s*(?:XZ|XY|Chain)(?:\s+Ring)?|AHS\s*-\s*(?:XZ|XY|Chain)(?:\s+Ring)?|X-Chain\s+\(Depth\s+\d+\)(?:\s+Ring)?)$/i.test(value);
       if (namedStructure !== structureName && !isGenericName(ratedName)) {
         return ratedName || namedStructure;
@@ -15953,7 +16258,6 @@
     }
 
     function chainText(chain, verbose = false) {
-      if (chain.alcXz) return core.formatAlcXz(chain);
       if (chain.ahsXy) {
         return core.formatChainEureka(chain);
       }
@@ -15977,16 +16281,10 @@
         : core.formatChainEureka
           ? core.formatChainEureka(displayChain)
           : core.formatChain(displayChain);
-      const structureName = String(displayChain.structureName || '');
-      const prefix = 'AIC + ALS - ';
-      if (!structureName.startsWith(prefix)) return text;
-
-      const namedStructure = structureName.slice(prefix.length);
-      if (!namedStructure || /^(?:Ring|Chain)$/i.test(namedStructure)) return text;
-      const displayStructure = `ALS - ${namedStructure}`;
-      return text.startsWith(`${structureName}:`)
-        ? `${displayStructure}:${text.slice(structureName.length + 1)}`
-        : text.replace(structureName, displayStructure);
+      // Preserve the structural AIC + ALS identity in the proof text. The
+      // folder renderer supplies the more specific ALS alias only where that
+      // proof is being grouped in the hierarchy.
+      return text;
     }
 
     function openXWingSubclass(chain) {
@@ -16042,7 +16340,11 @@
     }
 
     function folderChainText(chain, folder) {
-      // B.A.R.N.S. is a folder classifier only; keep it out of the chain text.
+      // A proof can legitimately belong to more than one structural class.
+      // Keep the proof itself shared, but use the name of the folder in which
+      // it is being rendered instead of letting chainText() globally choose
+      // the B.A.R.N.S. alias for every location.
+      if (folder?.displayName) return folder.displayName;
       return chainText(chain);
     }
     function chainFolderInfo(chain) {
@@ -16574,6 +16876,9 @@
       const barnsTransportInfo = barnsTransportChainInfo(chain);
       const hiddenXyInfo = hiddenXyChainInfo(chain);
       const alsInfo = alsOnlyChainInfo(chain) || alsNamedChainInfo(chain);
+      const namedAlsWing = String(chain.structureName || '').match(
+        /^(?:AIC\s*\+\s*)?ALS\s*-\s*([LMH])(?:\(\d+\))?\s*-\s*(Wing|Ring)$/i,
+      );
 
       // Keep the existing structural folder. ERI chains can also belong to
       // Local/M/Hybrid folders, so the same chain may have more than one UI location.
@@ -16581,6 +16886,7 @@
         || /^X\s*Chains?$/i.test(String(primary.family || ''));
       if (!genericXFamily
         && !/^ALS$/i.test(String(primary.family || ''))
+        && !namedAlsWing
         && !/^Local(?: -)? Wing \| Ring$/i.test(String(primary.family || ''))
         && primary.family !== 'ERI - Chain'
         && ((primary.family === 'AIC + ALS' && primary.wing) || (primary.wing && primary.rank))) {
@@ -16599,21 +16905,18 @@
         });
       }
 
-      // Named ALS wings/rings also live in the ALS family. Keep the
-      // structural M/H/L folder above as a secondary location, but expose
-      // the same result under Almost Locked Sets so ALS-backed named forms
-      // are grouped with the other ALS techniques.
-      const namedAlsWing = String(chain.structureName || '').match(
-        /^ALS\s*-\s*([LMH])(?:\(\d+\))?\s*-\s*(Wing|Ring)$/i,
-      );
+      // Named ALS wings/rings are A.I.C. subclasses. Keep the structural
+      // proof shared, but place the named view in the A.I.C. hierarchy.
       if (namedAlsWing) {
         const rankType = namedAlsWing[1].toUpperCase();
         const form = namedAlsWing[2][0].toUpperCase() + namedAlsWing[2].slice(1).toLowerCase();
+        const namedForm = `${rankType}-Wing/Ring`;
         locations.push({
-          family: 'Almost Locked Sets',
-          wing: `${rankType} - Wing | Ring`,
-          rank: form,
-          subclass: `ALS - ${rankType}-${form}`,
+          family: 'A.I.C',
+          wing: namedForm,
+          rank: null,
+          subclass: `ALS - ${namedForm}`,
+          displayName: `ALS - ${namedForm}`,
         });
       }
 
@@ -16649,10 +16952,17 @@
       }
       if (barnsTransportInfo) {
         locations.push({
-          family: 'B.A.R.N.S',
-          wing: 'Transport',
-          rank: `T - ${barnsTransportInfo.sizeName} ${barnsTransportInfo.form}`,
+          family: 'Almost Locked Sets',
+          wing: 'ALS - XZ rule',
+          rank: null,
           subclass: null,
+          displayName: `T - ${barnsTransportInfo.sizeName} ${barnsTransportInfo.form}`,
+          path: [
+            'ALS - XZ rule',
+            'B.A.R.N.S.',
+            'Transport',
+            `T - ${barnsTransportInfo.sizeName} ${barnsTransportInfo.form}`,
+          ],
         });
       }
 
@@ -16720,6 +17030,8 @@
         const shortXChain = /^(?:2-String Kite|Empty Rectangle|Finned X-Wing|Sashimi X-Wing|Skyscraper|X-Wing|ERI Chain|L\(1\))$/i.test(xType);
         const namedPath = xType === 'L(1)'
           ? ['Local Wing | Ring', 'L(1)', chain.isRing ? 'Ring' : null, l1Subclass].filter(Boolean)
+          : shortXChain
+            ? [xType]
           : [
               shortXChain ? null : 'Single Digit Named Chains',
               xType,
@@ -17435,6 +17747,12 @@
           minDepth: 2,
           family: 'als-xz',
         });
+        addMixedStage('als-xz-transport', {
+          maxDepth: 3,
+          minDepth: 3,
+          family: 'als-xz',
+          allowedMoveKeys: ['t-als-xz'],
+        });
 
         // ALS-XY is exactly logical breadth 3. The attached ALSs are not
         // restricted to three cells; their legal size is independent of the
@@ -17449,6 +17767,12 @@
           maxDepth: 3,
           minDepth: 3,
           family: 'als-xy',
+        });
+        addMixedStage('als-xy-transport', {
+          maxDepth: 4,
+          minDepth: 4,
+          family: 'als-xy',
+          allowedMoveKeys: ['t-als-xy'],
         });
 
         // Longer ALS chains come after the fixed ALS-XZ/ALS-XY stages.
@@ -17784,8 +18108,6 @@
     }
 
     function chainMoveKeys(chain) {
-      if (barnsTransportChainInfo(chain)) return new Set(['barns-transport']);
-
       const fullName = String(chain?.structureName || '');
       const name = fullName
         .replace(/^\s*(?:AIC\s*\+\s*ALS|ALS|AHS)\s*-\s*/i, '')
@@ -17855,7 +18177,10 @@
       const barns = barnsChainInfo(chain);
       const barnsTransport = barnsTransportChainInfo(chain);
       if (barns) keys.add('barns');
-      if (barnsTransport) keys.add('barns-transport');
+      // A transported ALS-XZ can have the same broad three-stage shape as
+      // the legacy B.A.R.N.S. transport helper.  Its classified name is the
+      // authoritative family; do not let the structural fallback mask it.
+      if (barnsTransport && !keys.has('t-als-xz')) keys.add('barns-transport');
 
       const alsOne = alsSizeOneChainInfo(chain);
       if (alsOne) {
@@ -18287,6 +18612,80 @@
         maxResults: budget === 'generator' ? 1000 : 2500,
       });
       return bestAhsDofMoveFromReport(candidateGrid, report, profile);
+    }
+
+    function alsDofChainStepFromResult(result, report, index, candidateGrid) {
+      const items = core.eliminationItems({ items: result?.eliminations || [] }, candidateGrid);
+      if (!items.length) return null;
+      const step = {
+        tech: 'als-dof-chain',
+        name: result.name || 'ALS-DOF Chain',
+        structureName: result.name || 'ALS-DOF Chain',
+        mode: result.mode || 'chain',
+        isRing: !!result.isRing,
+        ringForm: result.ringForm,
+        size: result.size,
+        alsDofRecord: result,
+        alsDofChainReport: report,
+        alsDofChainIndex: index,
+        desc: core.formatAlsDof({ ...result, eliminations: items }),
+        elim: { items },
+        digits: [...new Set(items.map(item => item.digit))],
+        at: [...new Set((result.primaryA?.cells || [])
+          .concat((result.auxiliary || []).flatMap(node => node.cells || []))
+          .concat(result.primaryC?.cells || [])
+          .concat((result.hydraBranches || []).flatMap(branch => branch.chainCells || [])))],
+      };
+      step.rating = ratingForStep(step);
+      return step;
+    }
+
+    function bestAlsDofChainMoveFromReport(candidateGrid, report, profile = null) {
+      let best = null;
+      for (let index = 0; index < (report?.results || []).length; index++) {
+        const step = alsDofChainStepFromResult(report.results[index], report, index, candidateGrid);
+        if (!step) continue;
+        if (profile?.maxRank !== undefined && step.rating.rank > profile.maxRank) continue;
+        const candidate = {
+          step,
+          chain: null,
+          alsDofChainReport: report,
+          alsDofChainIndex: index,
+          priority: directMovePriority(step),
+        };
+        if (isHigherPriorityMove(candidate, best)) best = candidate;
+      }
+      return best;
+    }
+
+    function findSolverAlsDofChainMove(candidateGrid = cand, budget = 'interactive', profile = null) {
+      const payload = {
+        maxDigits: Math.min(9, Math.max(2, Number(profile?.alsMaxDigits) || 5)),
+        maxAuxiliary: Math.min(9, Math.max(1, Number(profile?.alsMaxAuxiliary) || 5)),
+        maxResults: budget === 'generator' ? 500 : 1000,
+        includeHydra: true,
+      };
+      const raw = core.findAlsDofChains(candidateGrid, payload);
+      const accepted = (raw.results || []).filter(result =>
+        core.verifyAlsDofNet(candidateGrid, result, {
+          alsList: core.alsConstructor(candidateGrid, {
+            maxSizeDOF: payload.maxDigits - 1,
+            maxSizeFox: payload.maxDigits - 1,
+          }),
+        }).ok);
+      return bestAlsDofChainMoveFromReport(candidateGrid, { ...raw, results: accepted }, profile);
+    }
+
+    async function findSolverAlsDofChainMoveInWorker(candidateGrid = cand, budget = 'interactive', profile = null) {
+      const payload = {
+        candidateGrid,
+        maxDigits: Math.min(9, Math.max(2, Number(profile?.alsMaxDigits) || 5)),
+        maxAuxiliary: Math.min(9, Math.max(1, Number(profile?.alsMaxAuxiliary) || 5)),
+        maxResults: budget === 'generator' ? 500 : 1000,
+        includeHydra: true,
+      };
+      const report = await runSearchWorker('als-dof-chain', payload);
+      return bestAlsDofChainMoveFromReport(candidateGrid, report, profile);
     }
 
     function ahsDofChainStepFromResult(result, report, index, candidateGrid) {
@@ -18726,6 +19125,10 @@
     }
 
     function solverAlsPassCanStop(phase, best, cellLimit, maxCells) {
+      // Do not use score-derived breadth cutoffs. Every configured pass is
+      // part of the method and must be searched explicitly.
+      return false;
+      /*
       if (!best || cellLimit == null || maxCells == null || cellLimit >= maxCells) return false;
 
       // The solver walks node breadth cumulatively. Once a valid ALS-XZ has
@@ -18738,14 +19141,19 @@
       const nextLowerBound = chainPhaseMinimumRating(phase)
         + ((cellLimit + 1) * 0.02);
       return bestScore <= nextLowerBound + 1e-9;
+      */
     }
 
     function solverAhsPassCanStop(phase, best, cellLimit, maxCells) {
+      // Kept as a compatibility hook for callers; no implicit score pruning.
+      return false;
+      /*
       if (!best || cellLimit == null || cellLimit >= maxCells) return false;
       const bestScore = Number(best.step?.rating?.value);
       if (!Number.isFinite(bestScore)) return false;
       const lowerBound = chainPhaseMinimumRating(phase) + (cellLimit * 0.02);
       return bestScore < lowerBound - 1e-9;
+      */
     }
 
     function chainPhaseDepthForCeiling(phase, ceiling) {
@@ -18785,18 +19193,15 @@
         let stopAllPhases = false;
         const searchPasses = solverSearchPasses(phase, profile, budget);
         for (const { alsMaxDigits, alsCellCounts, ahsMaxDigits, ahsMaxCells } of searchPasses) {
-          const phaseFloor = chainPhaseMinimumRating(phase);
-          const currentCeiling = Number.isFinite(Number(bestOverall?.step?.rating?.value))
-            ? Number(bestOverall.step.rating.value)
-            : scoreCeiling == null ? Number.NaN : Number(scoreCeiling);
-          if (Number.isFinite(currentCeiling) && phaseFloor > currentCeiling) break;
           const searchPhase = {
             ...phase,
             ...(alsMaxDigits == null ? {} : { alsMaxDigits }),
             ...(Array.isArray(alsCellCounts) ? { alsCellCounts } : {}),
             ...(ahsMaxDigits == null ? {} : { ahsMaxDigits }),
             ...(ahsMaxCells == null ? {} : { ahsMaxCells }),
-            maxDepth: chainPhaseDepthForCeiling(phase, currentCeiling),
+            // Ratings rank results after the phase search; they never reduce
+            // the configured graph depth or hide a valid candidate.
+            maxDepth: phase.maxDepth,
           };
           const phaseSearchProfile = phaseProfile(profile, searchPhase);
           const search = chainSearchOptions(
@@ -18866,15 +19271,6 @@
             solverAlsMaxCells(phase, profile),
           )) break;
 
-          // All later ALS phases start at ALS-XZ (score 7). Once every pure
-          // strong-link phase has been checked, a lower-scoring AIC move cannot
-          // be beaten by those later phases, so avoid the expensive ALS walk.
-          const finishedPureStrongPhases = phase.name === 'strong-all';
-          const bestScore = Number(bestOverall?.step?.rating?.value);
-          if (finishedPureStrongPhases && Number.isFinite(bestScore) && bestScore < 7) {
-            stopAllPhases = true;
-            break;
-          }
         }
         if (stopAllPhases) break;
       }
@@ -18991,18 +19387,15 @@
         let stopAllPhases = false;
         const searchPasses = solverSearchPasses(phase, profile, budget);
         for (const { alsMaxDigits, alsCellCounts, ahsMaxDigits, ahsMaxCells } of searchPasses) {
-          const phaseFloor = chainPhaseMinimumRating(phase);
-          const currentCeiling = Number.isFinite(Number(bestOverall?.step?.rating?.value))
-            ? Number(bestOverall.step.rating.value)
-            : scoreCeiling == null ? Number.NaN : Number(scoreCeiling);
-          if (Number.isFinite(currentCeiling) && phaseFloor > currentCeiling) break;
           const searchPhase = {
             ...phase,
             ...(alsMaxDigits == null ? {} : { alsMaxDigits }),
             ...(Array.isArray(alsCellCounts) ? { alsCellCounts } : {}),
             ...(ahsMaxDigits == null ? {} : { ahsMaxDigits }),
             ...(ahsMaxCells == null ? {} : { ahsMaxCells }),
-            maxDepth: chainPhaseDepthForCeiling(phase, currentCeiling),
+            // Keep the full configured depth. A score found in an earlier
+            // pass is not a search heuristic.
+            maxDepth: phase.maxDepth,
           };
           const searchProfile = phaseProfile(profile, searchPhase);
           const config = generatorWorkerConfig(
@@ -19015,6 +19408,8 @@
           const result = await runSearchWorker('chains', {
             candidateGrid: config.candidateGrid,
             ...config.chain,
+          }, {
+            diagnosticPhase: searchPhase.hierarchyPhase || searchPhase.name,
           });
           const report = {
             chains: result?.chains || [],
@@ -19056,15 +19451,6 @@
             solverAlsMaxCells(phase, profile),
           )) break;
 
-          // All later ALS phases start at ALS-XZ (score 7). Once every pure
-          // strong-link phase has been checked, a lower-scoring AIC move cannot
-          // be beaten by those later phases, so avoid the expensive ALS walk.
-          const finishedPureStrongPhases = phase.name === 'strong-all';
-          const bestScore = Number(bestOverall?.step?.rating?.value);
-          if (finishedPureStrongPhases && Number.isFinite(bestScore) && bestScore < 7) {
-            stopAllPhases = true;
-            break;
-          }
         }
         if (stopAllPhases) break;
       }
@@ -19083,7 +19469,7 @@
       const addChain = (name, chainPhase) => phases.push({
         name,
         kind: 'chain',
-        chainPhase,
+        chainPhase: { ...chainPhase, hierarchyPhase: name },
         requiredTypes: chainPhase.requiredTypes || ['chains'],
       });
       const addAlsDof = name => phases.push({
@@ -19097,6 +19483,10 @@
       const addAhsDofChain = name => phases.push({
         name,
         kind: 'ahs-dof-chain',
+      });
+      const addAlsDofChain = name => phases.push({
+        name,
+        kind: 'als-dof-chain',
       });
       const addMsls = name => phases.push({
         name,
@@ -19170,8 +19560,23 @@
           maxAlsLinks: 0,
         },
       });
-      addDirect('modestly-easy-fish', [
-        { kind: 'fish', size: 2, k: [0, 1, 2], categories: ['Franken', 'Mutant'] },
+      addDirect('modestly-easy-franken-k0', [
+        { kind: 'fish', size: 2, k: [0], categories: ['Franken'] },
+      ]);
+      addDirect('modestly-easy-mutant-k0', [
+        { kind: 'fish', size: 2, k: [0], categories: ['Mutant'] },
+      ]);
+      addDirect('modestly-easy-franken-k1', [
+        { kind: 'fish', size: 2, k: [1], categories: ['Franken'] },
+      ]);
+      addDirect('modestly-easy-mutant-k1', [
+        { kind: 'fish', size: 2, k: [1], categories: ['Mutant'] },
+      ]);
+      addDirect('modestly-easy-franken-k2', [
+        { kind: 'fish', size: 2, k: [2], categories: ['Franken'] },
+      ]);
+      addDirect('modestly-easy-mutant-k2', [
+        { kind: 'fish', size: 2, k: [2], categories: ['Mutant'] },
       ]);
       addDirect('easy-subsets', [
         { type: 'hidden-triple' },
@@ -19183,17 +19588,29 @@
       addChain('moderate-chains', {
         name: 'strong-depth-3-0-3',
         includeAls: false,
-        strongLinkTypes: [0, 1, 2, 3, 4],
+        strongLinkTypes: [0, 1, 2, 3],
         maxDepth: 3,
         minDepth: 3,
         requireAls: false,
         requireMixed: false,
         family: null,
+        singleDigitOnly: true,
         allowedMoveKeys: [
           'x-chain', 'chain-x-wing',
           'l1-wing', 'dual-empty-rectangle',
           'rect-kite', 'bridged-eri', 'eri-chain',
         ],
+      });
+      addChain('moderate-xy-chain', {
+        name: 'xy-chain-depth-3',
+        includeAls: false,
+        strongLinkTypes: [4],
+        maxDepth: 3,
+        minDepth: 3,
+        requireAls: false,
+        requireMixed: false,
+        family: null,
+        allowedMoveKeys: ['xy-wing', 'xy-chain'],
       });
       addChain('moderate-barns-3', {
         name: 'barns-size-3',
@@ -19208,17 +19625,6 @@
         barnsSize: 3,
         family: 'barns',
         requiredTypes: ['chains', 'barns'],
-      });
-      addChain('moderate-xy-chain', {
-        name: 'xy-chain-depth-3',
-        includeAls: false,
-        strongLinkTypes: [4],
-        maxDepth: 3,
-        minDepth: 3,
-        requireAls: false,
-        requireMixed: false,
-        family: null,
-        allowedMoveKeys: ['xy-wing', 'xy-chain'],
       });
       addChain('moderate-named-wings', {
         name: 'named-wings-depth-3',
@@ -19236,9 +19642,25 @@
           'strong-wing',
         ],
       });
-      addDirect('moderate-fish', [
-        { kind: 'fish', size: 3, k: [0, 1, 2], categories: ['Franken', 'Mutant'] },
-      ]);      addDirect('tough-subsets', [
+      addDirect('moderate-franken-k0', [
+        { kind: 'fish', size: 3, k: [0], categories: ['Franken'] },
+      ]);
+      addDirect('moderate-mutant-k0', [
+        { kind: 'fish', size: 3, k: [0], categories: ['Mutant'] },
+      ]);
+      addDirect('moderate-franken-k1', [
+        { kind: 'fish', size: 3, k: [1], categories: ['Franken'] },
+      ]);
+      addDirect('moderate-mutant-k1', [
+        { kind: 'fish', size: 3, k: [1], categories: ['Mutant'] },
+      ]);
+      addDirect('moderate-franken-k2', [
+        { kind: 'fish', size: 3, k: [2], categories: ['Franken'] },
+      ]);
+      addDirect('moderate-mutant-k2', [
+        { kind: 'fish', size: 3, k: [2], categories: ['Mutant'] },
+      ]);
+      addDirect('tough-subsets', [
         { type: 'hidden-quad' },
         { type: 'naked-quad' },
       ]);
@@ -19323,15 +19745,15 @@
         });
         addChain('challenging-aic', {
           name: 'aic-depth-4',
-          includeAls: true,
-          includeAhs: true,
+          includeAls: false,
+          includeAhs: false,
           strongLinkTypes: [0, 1, 2, 3, 4],
           maxDepth: 4,
           minDepth: 4,
           requireAls: false,
           requireMixed: false,
           family: null,
-          genericAicOnly: true,
+          allowedMoveKeys: ['aic-generic', 'inversion'],
           searchLimits: {
             maxChains: 250,
             maxResultAttempts: 5000,
@@ -19343,8 +19765,23 @@
             maxAlsLinks: 1000,
           },
         });
-        addDirect('challenging-fish', [
-          { kind: 'fish', size: 4, k: [0, 1, 2], categories: ['Franken', 'Mutant'] },
+        addDirect('challenging-franken-k0', [
+          { kind: 'fish', size: 4, k: [0], categories: ['Franken'] },
+        ]);
+        addDirect('challenging-mutant-k0', [
+          { kind: 'fish', size: 4, k: [0], categories: ['Mutant'] },
+        ]);
+        addDirect('challenging-franken-k1', [
+          { kind: 'fish', size: 4, k: [1], categories: ['Franken'] },
+        ]);
+        addDirect('challenging-mutant-k1', [
+          { kind: 'fish', size: 4, k: [1], categories: ['Mutant'] },
+        ]);
+        addDirect('challenging-franken-k2', [
+          { kind: 'fish', size: 4, k: [2], categories: ['Franken'] },
+        ]);
+        addDirect('challenging-mutant-k2', [
+          { kind: 'fish', size: 4, k: [2], categories: ['Mutant'] },
         ]);
       }
       if (profile?.maxRank >= 80) {
@@ -19394,15 +19831,15 @@
         });
         addChain('irritating-aic', {
           name: 'aic-depth-5',
-          includeAls: true,
-          includeAhs: true,
+          includeAls: false,
+          includeAhs: false,
           strongLinkTypes: [0, 1, 2, 3, 4],
           maxDepth: 8,
           minDepth: 5,
           requireAls: false,
           requireMixed: false,
           family: null,
-          genericAicOnly: true,
+          allowedMoveKeys: ['aic-generic', 'inversion'],
         });
         addChain('irritating-transport-wxyz', {
           name: 'barns-transport-wxyz',
@@ -19439,32 +19876,6 @@
         addDirect('frustrating-basic-fish', [
           { kind: 'fish', size: 6, k: [0], categories: ['Basic'] },
         ]);
-        addChain('frustrating-transport-barns-5', {
-          name: 'barns-transport-size-5',
-          includeAls: true,
-          strongLinkTypes: [0, 1, 2, 3, 4],
-          maxDepth: 3,
-          minDepth: 3,
-          requireAls: true,
-          requireMixed: true,
-          barnsSize: 5,
-          family: 'barns-transport',
-          requiredTypes: ['chains', 'barns-transport'],
-        });
-        addChain('frustrating-barns-6', {
-          name: 'barns-size-6',
-          includeAls: true,
-          strongLinkTypes: [4],
-          maxDepth: 2,
-          minDepth: 2,
-          requireAls: true,
-          requireMixed: false,
-          alsLinkMode: 'xz-only',
-          alsModuleKinds: ['ALS_XZ'],
-          barnsSize: 6,
-          family: 'barns',
-          requiredTypes: ['chains', 'barns'],
-        });
         addChain('frustrating-xchains', {
           name: 'strong-depth-6-plus',
           includeAls: false,
@@ -19511,8 +19922,37 @@
           family: null,
           genericAicOnly: true,
         });
-        addDirect('frustrating-extended-fish', [
-          { kind: 'fish', size: 6, k: [0], categories: ['Franken', 'Mutant'] },
+        addChain('frustrating-transport-barns-5', {
+          name: 'barns-transport-size-5',
+          includeAls: true,
+          strongLinkTypes: [0, 1, 2, 3, 4],
+          maxDepth: 3,
+          minDepth: 3,
+          requireAls: true,
+          requireMixed: true,
+          barnsSize: 5,
+          family: 'barns-transport',
+          requiredTypes: ['chains', 'barns-transport'],
+        });
+        addChain('frustrating-barns-6', {
+          name: 'barns-size-6',
+          includeAls: true,
+          strongLinkTypes: [4],
+          maxDepth: 2,
+          minDepth: 2,
+          requireAls: true,
+          requireMixed: false,
+          alsLinkMode: 'xz-only',
+          alsModuleKinds: ['ALS_XZ'],
+          barnsSize: 6,
+          family: 'barns',
+          requiredTypes: ['chains', 'barns'],
+        });
+        addDirect('frustrating-franken-k0', [
+          { kind: 'fish', size: 6, k: [0], categories: ['Franken'] },
+        ]);
+        addDirect('frustrating-mutant-k0', [
+          { kind: 'fish', size: 6, k: [0], categories: ['Mutant'] },
         ]);
         addChain('frustrating-transport-w-wing', {
           name: 'w-transport-depth-4',
@@ -19642,8 +20082,8 @@
         });
         addChain('hard-aic-full-depth', {
           name: 'aic-full-depth',
-          includeAls: true,
-          includeAhs: true,
+          includeAls: false,
+          includeAhs: false,
           strongLinkTypes: [0, 1, 2, 3, 4],
           maxDepth: 8,
           minDepth: 2,
@@ -19653,8 +20093,11 @@
           genericAicOnly: true,
           requiredTypes: ['chains'],
         });
-        addDirect('hard-extended-fish', [
-          { kind: 'fish', size: 7, k: [0], categories: ['Franken', 'Mutant'] },
+        addDirect('hard-franken-k0', [
+          { kind: 'fish', size: 7, k: [0], categories: ['Franken'] },
+        ]);
+        addDirect('hard-mutant-k0', [
+          { kind: 'fish', size: 7, k: [0], categories: ['Mutant'] },
         ]);
 
       }
@@ -19662,9 +20105,6 @@
         addDirect('demanding-subsets', [
           { type: 'hidden-octuple' },
           { type: 'naked-octuple' },
-        ]);
-        addDirect('demanding-basic-fish', [
-          { kind: 'fish', size: 8, k: [0], categories: ['Basic'] },
         ]);
         addChain('demanding-named-als', {
           name: 'named-als-wings-rings-depth-3',
@@ -19737,8 +20177,12 @@
           minDepth: 3,
           requireAls: true,
           requireMixed: true,
-          family: 'barns-transport',
-          requiredTypes: ['chains', 'barns-transport'],
+          // This is the three-stage transported ALS-XZ form, not a
+          // B.A.R.N.S. transport.  Keep it in the demanding phase so the
+          // corrected classifier can report the depth-3 move.
+          family: 'als-xz',
+          allowedMoveKeys: ['t-als-xz'],
+          requiredTypes: ['chains', 't-als-xz'],
         });
         addChain('demanding-transport-ahs-xz', {
           name: 'transport-ahs-xz',
@@ -19820,31 +20264,12 @@
           { type: 'hidden-nontuple' },
           { type: 'naked-nontuple' },
         ]);
-        addDirect('expert-basic-fish', [
-          { kind: 'fish', size: 9, k: [0], categories: ['Basic'] },
-        ]);
-        addChain('expert-generic-aic', {
-          name: 'generic-aic-depth-5-plus',
-          includeAls: false,
-          includeAhs: false,
-          strongLinkTypes: [0, 1, 2, 3, 4],
-          maxDepth: 8,
-          minDepth: 5,
-          genericAicOnly: true,
-          requireAls: false,
-          requireMixed: false,
-          family: null,
-          requiredTypes: ['chains'],
-        });
-
-
-
         addChain('expert-transport-als-xy', {
           name: 'transport-als-xy',
           includeAls: true,
           strongLinkTypes: [0, 1, 2, 3, 4],
-          maxDepth: 3,
-          minDepth: 3,
+          maxDepth: 4,
+          minDepth: 4,
           requireAls: true,
           requireMixed: true,
           family: 'als-xy',
@@ -19946,6 +20371,7 @@
         requiredTypes: ['chains'],
       });
       if (profile?.maxRank == null || profile.maxRank >= 160) addMsls('ascendant-msls-family');
+      addAlsDofChain('transcendent-als-dof-chain-family');
       addAhsDofChain('transcendent-ahs-dof-chain-family');
 
       return phases.filter(phase => {
@@ -19967,6 +20393,7 @@
         return ['als-dof', 'dds', 'adds'].some(type => enabledTypes.has(type));
       }
       if (phase.kind === 'ahs-dof') return enabledTypes.has('ahs-dof');
+      if (phase.kind === 'als-dof-chain') return enabledTypes.has('als-dof-chain');
       if (phase.kind === 'ahs-dof-chain') return enabledTypes.has('ahs-dof-chain');
       if (phase.kind === 'msls') return enabledTypes.has('msls');
       if (phase.kind === 'chain') {
@@ -20116,6 +20543,7 @@
       }
       if (phase?.kind === 'als-dof') return 12;
       if (phase?.kind === 'ahs-dof') return 12.25;
+      if (phase?.kind === 'als-dof-chain') return 14;
       if (phase?.kind === 'ahs-dof-chain') return 14;
       if (phase?.kind === 'msls') return 13;
       const name = String(phase?.name || '').toLowerCase();
@@ -20166,6 +20594,7 @@
         ['abyssal-', 150],
         ['msls-', 160],
         ['ahs-dof-chain-', 170],
+        ['als-dof-chain-', 170],
       ];
       return bands.find(([prefix]) => value.startsWith(prefix))?.[1] ?? 0;
     }
@@ -20179,6 +20608,7 @@
       const phases = solverPhasePlan(profile);
       const enabledTypes = currentSolverMoveTypes(profile?.moveTypes);
       for (const phase of phases) {
+        activeHierarchyPhase = phase.name;
         if (phase.kind === 'alc') {
           if (!solverPhaseAllowsType(phase, enabledTypes)) continue;
           const alc = findSolverAlcMove(
@@ -20189,6 +20619,7 @@
             profile,
             phase,
           );
+          if (alc?.incomplete) return alc;
           if (alc?.step) return alc;
           continue;
         }
@@ -20202,6 +20633,12 @@
           if (!solverPhaseAllowsType(phase, enabledTypes)) continue;
           const ahsDof = findSolverAhsDofMove(candidateGrid, budget, profile);
           if (ahsDof?.step) return ahsDof;
+          continue;
+        }
+        if (phase.kind === 'als-dof-chain') {
+          if (!solverPhaseAllowsType(phase, enabledTypes)) continue;
+          const alsDofChain = findSolverAlsDofChainMove(candidateGrid, budget, profile);
+          if (alsDofChain?.step) return alsDofChain;
           continue;
         }
         if (phase.kind === 'ahs-dof-chain') {
@@ -20231,6 +20668,7 @@
           null,
           phase.chainPhase,
         );
+        if (chain?.incomplete) return chain;
         if (chain?.step) return chain;
       }
       return null;
@@ -20246,6 +20684,7 @@
       const phases = solverPhasePlan(profile);
       const enabledTypes = currentSolverMoveTypes(profile?.moveTypes);
       for (const phase of phases) {
+        activeHierarchyPhase = phase.name;
         if (phase.kind === 'alc') {
           if (!solverPhaseAllowsType(phase, enabledTypes)) continue;
           const alc = await findSolverAlcMoveInWorker(
@@ -20256,6 +20695,7 @@
             profile,
             phase,
           );
+          if (alc?.incomplete) return alc;
           if (alc?.step) return alc;
           continue;
         }
@@ -20286,6 +20726,12 @@
           if (!solverPhaseAllowsType(phase, enabledTypes)) continue;
           const ahsDof = await findSolverAhsDofMoveInWorker(candidateGrid, budget, profile);
           if (ahsDof?.step) return ahsDof;
+          continue;
+        }
+        if (phase.kind === 'als-dof-chain') {
+          if (!solverPhaseAllowsType(phase, enabledTypes)) continue;
+          const alsDofChain = await findSolverAlsDofChainMoveInWorker(candidateGrid, budget, profile);
+          if (alsDofChain?.step) return alsDofChain;
           continue;
         }
         if (phase.kind === 'ahs-dof-chain') {
@@ -20320,6 +20766,7 @@
           null,
           phase.chainPhase,
         );
+        if (chain?.incomplete) return chain;
         if (chain?.step) return chain;
       }
       return null;
@@ -21481,6 +21928,45 @@
       return `${promotions.length} solved value${promotions.length === 1 ? '' : 's'}: ${values.join(', ')}`;
     }
 
+    // Final move gate shared by Next, Run All, and selected structure results.
+    // The technique engines propose candidates; the solver independently tests
+    // each proposed value against the current puzzle before accepting its
+    // removal. Candidate-space inspection grids without a solvable puzzle are
+    // intentionally left available for diagnosis and skip this proof.
+    function verifyEliminationsByCompletion(items) {
+      const proposed = (items || []).filter(item =>
+        Number.isInteger(item?.cell) && Number.isInteger(item?.digit));
+      if (!proposed.length) return { ok: true, checked: 0 };
+      if (!solution || !puzzle?.some(Boolean)) return { ok: true, checked: 0, skipped: true };
+
+      const seen = new Set();
+      for (const item of proposed) {
+        const key = `${item.cell}:${item.digit}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        if (!(cand[item.cell] || []).includes(item.digit)) {
+          return { ok: false, errors: [`${core.cellName(item.cell)}<>${item.digit} is no longer a candidate.`] };
+        }
+
+        const forced = [...puzzle];
+        if (forced[item.cell] && forced[item.cell] !== item.digit) {
+          return { ok: false, errors: [`${core.cellName(item.cell)} is already fixed.`] };
+        }
+        forced[item.cell] = item.digit;
+        const completions = typeof core.countSolutionsDlx === 'function'
+          ? core.countSolutionsDlx(forced, 1)
+          : core.solveDlx(forced, 1).count;
+        if (completions > 0) {
+          return {
+            ok: false,
+            errors: [`${core.cellName(item.cell)}=${item.digit} still permits a completion.`],
+            rejected: item,
+          };
+        }
+      }
+      return { ok: true, checked: seen.size };
+    }
+
     function applyCycleChoice(before, promoted, choice) {
       if (!choice?.step) {
         activeStep = null;
@@ -21512,6 +21998,19 @@
       const reportCandidateGrid = choice.report
         ? core.cloneCandidates(cand)
         : null;
+
+      const verification = verifyEliminationsByCompletion(
+        core.eliminationItems(step.elim, cand),
+      );
+      if (!verification.ok) {
+        activeStep = null;
+        lastRemoved = [];
+        setStatus(
+          `Move rejected by independent verification: ${verification.errors.join('; ')}`,
+          'warn',
+        );
+        return false;
+      }
 
       const removed = core.applyEliminations(cand, step.elim);
       if (!removed.length) {
@@ -21733,7 +22232,7 @@
           // found nothing. This can happen after a worker reload or when its
           // cached graph inventory is stale. Reuse the synchronous path before
           // reporting that no enabled move exists.
-          if (workerChoice?.step) return workerChoice;
+          if (workerChoice?.step || workerChoice?.incomplete) return workerChoice;
           return fallback();
         } finally {
           if (interactiveSearchProgress === refreshTimeout) interactiveSearchProgress = null;
@@ -21741,6 +22240,7 @@
         }
       } catch (error) {
         if (isSearchCancelled(error)) throw error;
+        finishSearchDiagnostics(error.message || 'Search failed.');
         lastInteractiveSearchError = error;
         // Keep file:// pages and browsers without worker support usable, and
         // recover from a worker that is stuck in an older/high-cost phase.
@@ -23458,7 +23958,11 @@
     function loadTesseract() {
       if (window.Tesseract) return Promise.resolve(window.Tesseract);
       if (tesseractPromise) return tesseractPromise;
-      tesseractPromise = Promise.reject(new Error('The local OCR library did not load.'));
+      tesseractPromise = loadLocalScript(
+        './src/ocr/tesseract.min.js?v=5.1.1',
+        'Tesseract',
+        'The local Tesseract OCR library did not load.',
+      );
       return tesseractPromise;
     }
 
@@ -23618,6 +24122,14 @@
     }
 
     async function recognizeSudokuImageWithOcrad(file) {
+      if (!ocradPromise) {
+        ocradPromise = loadLocalScript(
+          './src/ocr/ocrad.js?v=0.25',
+          'OCRAD',
+          'The local Ocrad OCR engine did not load.',
+        );
+      }
+      await ocradPromise;
       if (typeof OCRAD !== 'function') throw new Error('The local file OCR engine did not load.');
       const image = new Image();
       const url = URL.createObjectURL(file);
@@ -23776,14 +24288,17 @@
     }
 
     async function importPuzzle() {
+      let clipboardError = null;
       try {
         const clipboardText = await navigator.clipboard?.readText?.();
         if (clipboardText?.trim()) inputEl.value = clipboardText.trim();
       } catch (error) {
-        // Clipboard access can be unavailable on file:// pages; use the text
-        // already in the input as a manual-paste fallback.
+        clipboardError = error;
       }
       loadPuzzle();
+      if (clipboardError) {
+        setStatus('Clipboard access failed. Paste the puzzle into the input field manually, then press Load.', 'warn');
+      }
     }
 
     function loadPuzzle() {

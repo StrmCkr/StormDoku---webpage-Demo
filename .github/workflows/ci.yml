@@ -1,0 +1,52 @@
+name: StormDoku CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify repository
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify required application files
+        shell: bash
+        run: |
+          test -f index.html
+          test -f src/search-worker.js
+          test -f src/search-worker-source.js
+          test -f scripts/build-search-worker.js
+
+      - name: Verify offline worker bundle
+        run: node scripts/build-search-worker.js --check
+
+      - name: Verify synchronized application build ID
+        run: node scripts/check-build-id.js
+
+      - name: Verify bundled OCR integrity
+        run: node scripts/check-ocr-integrity.js
+
+      - name: Check JavaScript syntax
+        shell: bash
+        run: |
+          while IFS= read -r -d '' file; do
+            node --check "$file"
+          done < <(find src -maxdepth 1 -type f -name '*.js' -print0)
+          node --check scripts/build-search-worker.js
+          node --check scripts/check-build-id.js
+          node --check scripts/check-ocr-integrity.js
+
+      - name: Check patch formatting
+        run: git diff --check

@@ -1545,9 +1545,11 @@
     let assignmentBudget = 5000;
     const maxPeerReports = 150;
     const adjacentByCell = Array.from({ length: 81 }, () => []);
-    for (const [left, right] of NON_CONSECUTIVE_EDGES) {
-      adjacentByCell[left].push(right);
-      adjacentByCell[right].push(left);
+    if (variantState.nonConsecutive) {
+      for (const [left, right] of NON_CONSECUTIVE_EDGES) {
+        adjacentByCell[left].push(right);
+        adjacentByCell[right].push(left);
+      }
     }
     const combinations = (items, size, start = 0, chosen = [], output = []) => {
       if (chosen.length === size) {
@@ -1576,7 +1578,8 @@
               legal = false;
               break;
             }
-            if (nonConsecutiveAdjacent(cell, otherCell)
+            if (variantState.nonConsecutive
+              && nonConsecutiveAdjacent(cell, otherCell)
               && Math.abs(digit - otherDigit) === 1) {
               legal = false;
               break;
@@ -1653,24 +1656,31 @@
               if (gappedReduction && (dof !== 2 || sourceSize > 6)) continue;
               const reduced = new Map(sourceCells.map(cell => {
                 const equalPeer = originPeers.has(cell);
-                const adjacent = nonConsecutiveAdjacent(origin, cell);
+                const adjacent = variantState.nonConsecutive
+                  && nonConsecutiveAdjacent(origin, cell);
                 const values = (cand[cell] || []).filter(value =>
                   !(equalPeer && value === n)
                   && !(adjacent && Math.abs(value - n) === 1));
                 return [cell, values];
               }));
-              const hasEqualPeer = sourceCells.some(cell => originPeers.has(cell));
-              const hasAdjacentPeer = sourceCells.some(cell =>
+              const hasAdjacentPeer = variantState.nonConsecutive && sourceCells.some(cell =>
                 nonConsecutiveAdjacent(origin, cell));
-              if (!hasEqualPeer || !hasAdjacentPeer) continue;
+              const peerReduction = sourceCells.some(cell => {
+                if (!originPeers.has(cell)) return false;
+                const before = cand[cell] || [];
+                const after = reduced.get(cell) || [];
+                return before.includes(n) && after.length < before.length;
+              });
+              if (!peerReduction && !hasAdjacentPeer) continue;
               const nonConsecutiveReduction = sourceCells.some(cell => {
+                if (!variantState.nonConsecutive) return false;
                 if (!nonConsecutiveAdjacent(origin, cell)) return false;
                 const before = cand[cell] || [];
                 const after = reduced.get(cell) || [];
                 return before.some(value => Math.abs(value - n) === 1)
                   && after.length < before.length;
               });
-              if (!nonConsecutiveReduction) continue;
+              if (!peerReduction && !nonConsecutiveReduction) continue;
 
               // The origin value need not itself be the middle of the ALS
               // digit set.  First apply its ordinary peer removals and its
