@@ -75,20 +75,56 @@
     })).filter(ahs => ahs.ahsDOF === 1 && ahs.ahsDigits.length >= 2);
     const adjacency = ahsList.map(() => []);
     const bridges = new Map();
-    for (let a = 0; a < ahsList.length; a++) {
-      for (let b = a + 1; b < ahsList.length; b++) {
-        const bridge = bridgeBetween(cand, ahsList[a], ahsList[b]);
-        if (!bridge) continue;
-        adjacency[a].push(b);
-        adjacency[b].push(a);
-        bridges.set(`${a}:${b}`, bridge);
+    // Index only AHS pairs that can bridge: they must share a cell or a
+    // candidate digit. The previous all-pairs pass spent most of its time
+    // testing impossible same-sector/disjoint pairs.
+    const pairKeys = new Set();
+    const addBucketPairs = bucket => {
+      for (let left = 0; left < bucket.length; left += 1) {
+        for (let right = left + 1; right < bucket.length; right += 1) {
+          const a = Math.min(bucket[left], bucket[right]);
+          const b = Math.max(bucket[left], bucket[right]);
+          pairKeys.add(`${a}:${b}`);
+        }
       }
+    };
+    const byCell = new Map();
+    const byDigit = new Map();
+    ahsList.forEach((ahs, index) => {
+      for (const cell of ahs.ahsAllCells) {
+        const bucket = byCell.get(cell) || [];
+        bucket.push(index);
+        byCell.set(cell, bucket);
+      }
+      for (const digit of ahs.ahsDigits) {
+        const bucket = byDigit.get(digit) || [];
+        bucket.push(index);
+        byDigit.set(digit, bucket);
+      }
+    });
+    for (const bucket of byCell.values()) addBucketPairs(bucket);
+    for (const bucket of byDigit.values()) addBucketPairs(bucket);
+    for (const key of pairKeys) {
+      const [a, b] = key.split(':').map(Number);
+      if (ahsList[a].ahsSector === ahsList[b].ahsSector) continue;
+      const bridge = bridgeBetween(cand, ahsList[a], ahsList[b]);
+      if (!bridge) continue;
+      adjacency[a].push(b);
+      adjacency[b].push(a);
+      bridges.set(key, bridge);
     }
 
     const maxTriples = options.maxTriples ?? 30000;
     const maxChains = options.maxChains ?? 500;
     const chains = [];
     const seen = new Set();
+    const placementCache = new Map();
+    const placementKey = (sets, forced = null) => `${sets.map(set => set.uniqueID).join(',')}|${forced ? `${forced.cell}:${forced.digit}` : ''}`;
+    const cachedPlacement = (sets, forced = null) => {
+      const key = placementKey(sets, forced);
+      if (!placementCache.has(key)) placementCache.set(key, hasPlacement(cand, sets, forced));
+      return placementCache.get(key);
+    };
     let triples = 0;
     let truncated = false;
     const bridgeOf = (a, b) => bridges.get(`${Math.min(a, b)}:${Math.max(a, b)}`);
@@ -108,7 +144,7 @@
           // bridgeBetween() rejects same-sector bridges, but an open chain
           // has no closing bridge to perform that check for its endpoints.
           if (new Set(sets.map(ahs => ahs.ahsSector)).size !== sets.length) continue;
-          if (!hasPlacement(cand, sets)) continue;
+          if (!cachedPlacement(sets)) continue;
           const closingBridge = bridgeOf(first, last);
           const isRing = Boolean(closingBridge);
           const eliminations = [];
@@ -119,10 +155,10 @@
               if (!sets.some(ahs => ahs.ahsAllCells.includes(cell)
                 && !ahs.ahsDigits.includes(digit))) continue;
               const forced = { cell, digit };
-              if (hasPlacement(cand, sets, forced)) continue;
-              if (!hasPlacement(cand, [sets[0], sets[1]], forced)
-                || !hasPlacement(cand, [sets[0], sets[2]], forced)
-                || !hasPlacement(cand, [sets[1], sets[2]], forced)) continue;
+              if (cachedPlacement(sets, forced)) continue;
+              if (!cachedPlacement([sets[0], sets[1]], forced)
+                || !cachedPlacement([sets[0], sets[2]], forced)
+                || !cachedPlacement([sets[1], sets[2]], forced)) continue;
               eliminations.push({ cell, digit });
             }
           }

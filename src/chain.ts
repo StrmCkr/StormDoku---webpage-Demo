@@ -1551,46 +1551,6 @@ function computeNonConnectedEdge(
   computeType2Sides(cand, left, right, out);
 }
 
-// Non-connected nodes are an OR relation, not a single directed junction.
-// Evaluate every endpoint-side pairing so exit/exit consequences are retained.
-function computeNonConnectedOrEdges(
-  cand: CandidateGrid,
-  leftView: DirectedView,
-  rightView: DirectedView,
-  out: Map<string, ChainElimination>,
-): void {
-  for (const leftSide of ['entry', 'exit'] as const) {
-    for (const rightSide of ['entry', 'exit'] as const) {
-      const left = boundarySide(leftView, leftSide);
-      const right = boundarySide(rightView, rightSide);
-      computeType1Sides(cand, left, right, out);
-      computeType2Sides(cand, left, right, out);
-      if (!includeSameCell) continue;
-      for (const leftDigit of left.digits) {
-        const leftCells = left.cellsByDigit?.[leftDigit] || [];
-        const leftElims = new Set(left.potentialElimByDigit[leftDigit] || []);
-        for (const cell of leftCells) {
-          for (const digit of cand[cell] || []) {
-            if (digit !== leftDigit) leftElims.add(cell);
-          }
-        }
-        for (const rightDigit of right.digits) {
-          const rightCells = right.cellsByDigit?.[rightDigit] || [];
-          const rightElims = new Set(right.potentialElimByDigit[rightDigit] || []);
-          for (const cell of rightCells) {
-            for (const digit of cand[cell] || []) {
-              if (digit !== rightDigit) rightElims.add(cell);
-            }
-          }
-          for (const cell of intersection([...leftElims], [...rightElims])) {
-            for (const digit of cand[cell] || []) addElimination(out, cand, digit, [cell], 'or-edge');
-          }
-        }
-      }
-    }
-  }
-}
-
 function computeWeakLinkEliminations(
   cand: CandidateGrid,
   leftView: DirectedView,
@@ -1629,15 +1589,6 @@ function computeJunctionEliminations(
     computeNonConnectedEdge(cand, left, right, out);
   }
 
-  for (let leftIndex = 0; leftIndex < steps.length; leftIndex++) {
-    for (let rightIndex = leftIndex + 2; rightIndex < steps.length; rightIndex++) {
-      const left = steps[leftIndex].view;
-      const right = steps[rightIndex].view;
-      const weak = directConnection(left, right);
-      if (weak && !weak.modular) computeWeakLinkEliminations(cand, left, right, weak, out);
-      computeNonConnectedOrEdges(cand, left, right, out, !isRing);
-    }
-  }
 }
 
 function computeSameCellRing(
@@ -2133,8 +2084,7 @@ function isAlsNodeStep(step: PublicChainStep): boolean {
 }
 
 function isTransportAlsNodeStep(step: PublicChainStep): boolean {
-  return isAlsNodeStep(step)
-    || step.family === 'ALS'
+  return step.family === 'ALS'
     || step.linkTypeName === 'ALS_RCC'
     || /^ALS(?:_|$)/i.test(String(step.module?.moduleKind || ''));
 }
@@ -2160,15 +2110,6 @@ function transportAlsNodeCount(steps: readonly PublicChainStep[]): number {
   };
 
   for (const step of steps) {
-    if (isBivalveStep(step)) {
-      addNode({
-        id: null,
-        sector: null,
-        cells: [...step.entry.cells, ...step.exit.cells],
-        digits: [...step.entry.digits, ...step.exit.digits],
-        label: '',
-      });
-    }
     if (isAlsRccStep(step) || step.family === 'ALS') {
       addNode(step.module?.entrySideSubset || step.module?.entrySubset);
       addNode(step.module?.exitSideSubset || step.module?.exitSubset);
@@ -2413,8 +2354,7 @@ function classifyChain(
     if (semanticDepth === 3 && ringPatternMatches(semanticPattern, 'VLL')) {
       return prefixedStructureName('M(2)-Ring', steps);
     }
-    if (semanticDepth === 3
-      && ringPatternMatches(semanticPattern, 'LVLV') && hasWRingValueNodes(steps)) {
+    if (ringPatternMatches(semanticPattern, 'LVLV') && hasWRingValueNodes(steps)) {
       return prefixedStructureName('W-Ring', steps);
     }
     if (ringPatternMatches(pattern, 'LLLLV')) return prefixedStructureName('Strong-Ring', steps);
@@ -2425,6 +2365,12 @@ function classifyChain(
   }
 
   const pattern = normalisedOpenPattern(steps);
+  if (steps.length === 4
+    && hasWRingValueNodes(steps)
+    && (pattern === 'VLVL' || pattern === 'LVLV')
+    && steps.filter(isOrdinaryStrongLinkStep).length === 2) {
+    return prefixedStructureName('W-Wing - Transport', steps);
+  }
   if (isTransportAlsXz(steps)) return 'T-ALS-XZ';
   if (isTransportAlsXy(steps)) return 'T-ALS-XY';
   const simpleName = classifyTwoLinkXChain(steps);

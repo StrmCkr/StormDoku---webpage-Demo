@@ -6,20 +6,197 @@
     throw new Error('ALS and AHS constructors must load before alc-core.js');
   }
 
+  function isMixedAlcChain(chain) {
+    const families = new Set((chain?.steps || [])
+      .map(step => step.family ?? step.view?.node?.family)
+      .filter(Boolean));
+    return families.has('ALS') && families.has('AHS');
+  }
+
+  function subsetKey(subset) {
+    if (!subset) return null;
+    const cells = [...(subset.cells || subset.alsAllCells || subset.ahsAllCells || [])]
+      .map(Number).sort((a, b) => a - b).join(',');
+    const digits = [...(subset.digits || subset.alsDigits || subset.ahsDigits || [])]
+      .map(Number).sort((a, b) => a - b).join('');
+    return `${cells}|${digits}`;
+  }
+
+  function expandedAlcNodeCount(steps) {
+    const nodes = new Set();
+    for (const step of steps || []) {
+      const module = step.module || step.view?.node?.module;
+      const subsets = module
+        ? [module.entrySubset, module.exitSubset]
+        : [step.entry, step.exit];
+      for (const subset of subsets) {
+        const key = subsetKey(subset);
+        if (key) nodes.add(key);
+      }
+    }
+    return nodes.size;
+  }
+
+  function isBasicAlcXzSteps(steps) {
+    return steps.length === 2
+      && steps.some(step => (step.family ?? step.view?.node?.family) === 'ALS')
+      && steps.some(step => (step.family ?? step.view?.node?.family) === 'AHS')
+      && expandedAlcNodeCount(steps) === 2;
+  }
+
+  const candidateKey = (cell, digit) => `${cell}:${digit}`;
+  const sees = (left, right) => left !== right && core.peersOf(left).includes(right);
+
+  // ALC-XZ is a direct two-module proof: one ALS and one AHS.  Keep its
+  // completion check independent from the longer ALC graph walker so a valid
+  // pair cannot be lost to graph breadth, RCC endpoint orientation, or a
+  // later chain classifier.
+  function placementEliminations(cand, als = null, ahs = null, work = null) {
+    const variables = [];
+    if (als) {
+      for (const cell of als.alsAllCells || []) {
+        variables.push((cand[cell] || []).map(digit => ({ cell, digit })));
+      }
+    }
+    if (ahs) {
+      for (const digit of ahs.ahsDigits || []) {
+        variables.push((ahs.ahsAllCells || [])
+          .filter(cell => (cand[cell] || []).includes(digit))
+          .map(cell => ({ cell, digit })));
+      }
+    }
+    if (variables.some(choices => !choices.length)) return null;
+    variables.sort((left, right) => left.length - right.length);
+    let common = null;
+    let completions = 0;
+    const assigned = [];
+
+    const visit = (index, excluded) => {
+      if (work && work.statesVisited >= work.maxStates) {
+        work.exhausted = true;
+        return;
+      }
+      if (work) work.statesVisited += 1;
+      if (index === variables.length) {
+        common = common === null
+          ? new Set(excluded)
+          : new Set([...common].filter(key => excluded.has(key)));
+        completions += 1;
+        return;
+      }
+      for (const choice of variables[index]) {
+        if (assigned.some(previous =>
+          (choice.cell === previous.cell && choice.digit !== previous.digit)
+          || (choice.digit === previous.digit && sees(choice.cell, previous.cell)))) continue;
+        assigned.push(choice);
+        const nextExcluded = new Set(excluded);
+        for (const digit of cand[choice.cell] || []) {
+          if (digit !== choice.digit) nextExcluded.add(candidateKey(choice.cell, digit));
+        }
+        for (const peer of core.peersOf(choice.cell)) {
+          if ((cand[peer] || []).includes(choice.digit)) {
+            nextExcluded.add(candidateKey(peer, choice.digit));
+          }
+        }
+        visit(index + 1, nextExcluded);
+        assigned.pop();
+        if (work?.exhausted || common?.size === 0) return;
+      }
+    };
+
+    visit(0, new Set());
+    return !work?.exhausted && completions ? common : null;
+  }
+
+  function sharedDigitContacts(cand, als, ahs) {
+    const contacts = [];
+    for (const digit of als.alsDigits || []) {
+      if (!(ahs.ahsDigits || []).includes(digit)) continue;
+      const alsCells = (als.alsAllCells || []).filter(cell => (cand[cell] || []).includes(digit));
+      const ahsCells = (ahs.ahsAllCells || []).filter(cell => (cand[cell] || []).includes(digit));
+      const pairs = alsCells.flatMap(left => ahsCells
+        .filter(right => sees(left, right))
+        .map(right => [left, right]));
+      // An RCC is not merely a shared digit with one touching pair. Every
+      // occurrence of the digit in one set must see every occurrence in the
+      // other set. Other shared digits are ordinary Z/common digits.
+      const restricted = alsCells.length > 0
+        && ahsCells.length > 0
+        && alsCells.every(left => ahsCells.every(right => sees(left, right)));
+      if (pairs.length) contacts.push({ digit, pairs, restricted });
+    }
+    return contacts;
+  }
+
+  function sharedDigits(cand, als, ahs) {
+    return (als.alsDigits || []).filter(digit => {
+      if (!(ahs.ahsDigits || []).includes(digit)) return false;
+      const alsCells = (als.alsAllCells || []).filter(cell => (cand[cell] || []).includes(digit));
+      const ahsCells = (ahs.ahsAllCells || []).filter(cell => (cand[cell] || []).includes(digit));
+      return alsCells.length > 0 && ahsCells.length > 0
+        && alsCells.some(left => ahsCells.some(right => sees(left, right)));
+    });
+  }
+
+  function directAlcSteps(cand, als, ahs) {
+    const sideFor = (cells, digits, side) => ({
+      side,
+      cells: [...cells],
+      digits: [...digits],
+      // ALS/AHS digit lists are unions. Preserve the actual cell membership
+      // for the UI so Eureka and the overlay never paint a union digit into a
+      // cell where it is not a candidate.
+      digitsByCell: Object.fromEntries([...cells].map(cell => [
+        String(cell), (cand[cell] || []).filter(digit => digits.includes(digit)),
+      ])),
+    });
+    return [
+      {
+        family: 'ALS', linkType: 5, linkTypeName: 'ALS_RCC', linkId: als.uniqueID,
+        direction: 'F', originSectors: [als.alsSector],
+        entry: sideFor(als.alsAllCells, als.alsDigits, 'left'),
+        exit: sideFor(als.alsAllCells, als.alsDigits, 'right'),
+      },
+      {
+        family: 'AHS', linkType: 6, linkTypeName: 'AHS_RCC', linkId: ahs.uniqueID,
+        direction: 'F', originSectors: [ahs.ahsSector],
+        entry: sideFor(ahs.ahsAllCells, ahs.ahsDigits, 'left'),
+        exit: sideFor(ahs.ahsAllCells, ahs.ahsDigits, 'right'),
+      },
+    ];
+  }
+
   function formatAlcXz(chain) {
     const { als, ahs, contacts } = chain.alcXz;
-    const rccDigits = [...new Set((contacts || []).map(contact => Number(contact.digit)))]
+    const alsSideData = chain.steps?.[0]?.entry;
+    const ahsSideData = chain.steps?.[1]?.entry;
+    const validContacts = (contacts || []).map(contact => ({
+      ...contact,
+      pairs: (contact.pairs || []).filter(pair =>
+        (alsSideData?.digitsByCell?.[String(pair[0])] || als.digits).includes(Number(contact.digit))
+        && (ahsSideData?.digitsByCell?.[String(pair[1])] || ahs.digits).includes(Number(contact.digit))),
+    })).filter(contact => contact.pairs.length);
+    const restrictedDisplayContacts = validContacts.filter(contact => contact.restricted);
+    const displayContacts = restrictedDisplayContacts.length
+      ? restrictedDisplayContacts.slice(0, 1)
+      : validContacts.slice(0, 1);
+    const rccDigits = [...new Set(displayContacts.map(contact => Number(contact.digit)))]
       .filter(Number.isInteger)
       .sort((left, right) => left - right);
-    const alsRccCells = [...new Set((contacts || []).flatMap(contact =>
+    const alsRccCells = [...new Set(displayContacts.flatMap(contact =>
       (contact.pairs || []).map(pair => pair[0])))].sort((left, right) => left - right);
-    const ahsRccCells = [...new Set((contacts || []).flatMap(contact =>
+    const ahsRccCells = [...new Set(displayContacts.flatMap(contact =>
       (contact.pairs || []).map(pair => pair[1])))].sort((left, right) => left - right);
     const alsSide = `(${als.digits.join('')})${core.cellGroupName(als.cells)}`;
+    // An AHS RCC is a restricted cell/contact in the hidden set. It reduces
+    // the AHS degree of freedom by a cell; it does not remove the RCC digit
+    // from the AHS digit label as it would from an ALS digit expression.
     const ahsSide = `(${ahs.digits.join('')})${core.cellGroupName(ahs.cells)}`;
     const leftRcc = `(${rccDigits.join('') || '?'})${core.cellGroupName(alsRccCells)}`;
     const rightRcc = `(${rccDigits.join('') || '?'})${core.cellGroupName(ahsRccCells)}`;
-    return `ALC - XZ: ${alsSide} = ${leftRcc} - ${rightRcc} = ${ahsSide} => ${core.formatRemovals(chain.eliminations)}`;
+    const name = chain.isRing ? 'ALC - XZ Ring' : 'ALC - XZ';
+    const closure = chain.isRing ? ' - ring' : '';
+    return `${name}: ${alsSide} = ${leftRcc} - ${rightRcc} = ${ahsSide}${closure} => ${core.formatRemovals(chain.eliminations)}`;
   }
 
   function findAlcBivalveChains(cand, options = {}) {
@@ -58,6 +235,10 @@
       maxQueue: options.maxQueue ?? 30000,
       maxBranching: options.maxBranching ?? 120,
       resultFilter: steps => (steps.length === 2 || steps.length === 3)
+        // ALC is specifically the mixed ALS/AHS bridge.  An AHS+AHS walk
+        // with a bivalent/grouped link belongs to the AHS/AIC engines and
+        // must not be relabeled as ALC-XZ.
+        && steps.some(step => step.view.node.family === 'ALS')
         && steps.some(step => step.view.node.family === 'AHS')
         && steps.some(step => step.view.node.family === 'SL' && step.view.node.linkType === 4)
         && (steps.length === 2 || steps.some(step => step.view.node.family === 'SL'
@@ -65,7 +246,7 @@
     });
     return {
       ...report,
-      chains: (report.chains || []).map(chain => ({
+      chains: (report.chains || []).filter(isMixedAlcChain).map(chain => ({
         ...chain,
         structureName: chain.isRing ? 'ALC - XZ Ring' : 'ALC - XZ',
         structureFamily: 'ALC',
@@ -74,9 +255,9 @@
   }
 
   function findAlcXz(cand, options = {}) {
-    const maxAlsCells = Math.min(8, Math.max(1, options.maxAlsCells ?? 8));
-    const maxAhsDigits = Math.min(8, Math.max(1, options.maxAhsDigits ?? 8));
-    const maxAhsCells = Math.min(9, Math.max(2, options.maxAhsCells ?? 9));
+    const maxAlsCells = Math.min(8, Math.max(1, options.maxAlsCells ?? 4));
+    const maxAhsDigits = Math.min(8, Math.max(1, options.maxAhsDigits ?? 4));
+    const maxAhsCells = Math.min(9, Math.max(2, options.maxAhsCells ?? 5));
     const maxAhsDof = Math.min(5, Math.max(1, options.maxAhsDof ?? 3));
     const alsMaxSizeDOF = Number.isInteger(options.alsMaxSizeDOF)
       ? Math.max(0, options.alsMaxSizeDOF) : maxAlsCells - 1;
@@ -89,99 +270,101 @@
     const allAls = (options.alsList || core.alsConstructor(cand, {
       maxSizeDOF: alsMaxSizeDOF, maxSizeFox: alsMaxSizeFox,
       searchLimit: true,
-    })).filter(als => als.alsDOF === 1 && als.alsAllCells.length <= maxAlsCells);
+    })).filter(als => als.alsDOF === 1 && als.alsAllCells.length <= maxAlsCells)
+      .sort((left, right) => left.alsAllCells.length - right.alsAllCells.length
+        || left.alsDigits.length - right.alsDigits.length);
     const allAhs = (options.ahsList || core.ahsConstructor(cand, {
       maxSize: ahsMaxSize, maxSizeFox: ahsMaxFox,
       searchLimit: false,
-    })).filter(ahs => ahs.ahsDOF >= 1 && ahs.ahsDOF <= maxAhsDof);
-    const strongLinkSet = options.strongLinkSet || core.buildStrongLinks(cand, {
-      strongLinkTypes: [0, 1, 4],
-    });
+    })).filter(ahs => ahs.ahsDOF >= 1 && ahs.ahsDOF <= maxAhsDof
+      && ahs.ahsDigits.length <= maxAhsDigits
+      && ahs.ahsAllCells.length <= maxAhsCells)
+      .sort((left, right) => left.ahsDigits.length - right.ahsDigits.length
+        || left.ahsAllCells.length - right.ahsAllCells.length);
     const maxChains = Math.max(1, options.maxChains ?? 500);
-    let lastReport = null;
+    const work = {
+      maxStates: Number.isInteger(options.maxStates) ? Math.max(1, options.maxStates) : Infinity,
+      statesVisited: 0,
+      exhausted: false,
+    };
+    const alsAlone = new Map();
+    const ahsAlone = new Map();
+    const chains = [];
+    const seen = new Set();
+    let pairsChecked = 0;
+    let compatiblePairs = 0;
 
-    // ALC-XZ is breadth 2.  Scale the ALS/AHS node inventories one size at a
-    // time, just like the other hierarchy phases, and stop at the first size
-    // that produces a verified graph-chain result.
-    for (let size = 1; size <= Math.max(maxAlsCells, maxAhsDigits); size++) {
-      const alsList = allAls.filter(als => als.alsAllCells.length <= size);
-      const ahsList = allAhs.filter(ahs => ahs.ahsDigits.length <= size
-        && ahs.ahsAllCells.length <= Math.min(maxAhsCells, size + 1));
-      if (!alsList.length || !ahsList.length) continue;
-
-      const alsLinkSet = options.alsLinkSet && size === maxAlsCells
-        ? options.alsLinkSet
-        : core.buildAlsLinks(cand, {
-          alsList,
-          strictSingleCommon: true,
-          maxLinks: options.maxAlsLinks ?? 5000,
+    outer: for (const als of allAls) {
+      for (const ahs of allAhs) {
+        if (work.statesVisited >= work.maxStates) {
+          work.exhausted = true;
+          break outer;
+        }
+        work.statesVisited += 1;
+        if ((als.alsAllCells || []).some(cell => (ahs.ahsAllCells || []).includes(cell))) continue;
+        const contacts = sharedDigitContacts(cand, als, ahs);
+        const commonDigits = sharedDigits(cand, als, ahs);
+        // A direct ring needs a contact and a second shared digit. The contact
+        // may be witnessed in either traversal direction; do not require the
+        // stricter all-to-all RCC test here because the placement proof below
+        // is the authority for this ALC ring form.
+        if (!contacts.length || commonDigits.length < 2) continue;
+        pairsChecked += 1;
+        const both = placementEliminations(cand, als, ahs, work);
+        if (work.exhausted) break outer;
+        if (!both) continue;
+        compatiblePairs += 1;
+        if (!alsAlone.has(als.uniqueID)) alsAlone.set(als.uniqueID, placementEliminations(cand, als, null, work));
+        if (!ahsAlone.has(ahs.uniqueID)) ahsAlone.set(ahs.uniqueID, placementEliminations(cand, null, ahs, work));
+        if (work.exhausted) break outer;
+        const alone = new Set([
+          ...(alsAlone.get(als.uniqueID) || []),
+          ...(ahsAlone.get(ahs.uniqueID) || []),
+        ]);
+        const newEliminations = [...both].filter(key => !alone.has(key));
+        const eliminations = newEliminations.map(key => {
+          const [cell, digit] = key.split(':').map(Number);
+          return { cell, digit };
+        }).filter(item => (cand[item.cell] || []).includes(item.digit));
+        if (!eliminations.length) continue;
+        const key = `${als.alsAllCells.join(',')}|${als.alsDigits.join('')}|${ahs.ahsSector}|${ahs.ahsDigits.join('')}|${eliminations.map(item => `${item.cell}:${item.digit}`).join(',')}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        chains.push({
+          length: 2,
+          // A direct two-module XZ has two reciprocal RCC contacts.  The
+          // proof closes back through the second contact, so it is a ring;
+          // leaving this open made Eureka render each module as a self-edge
+          // such as (459=459) and omitted the closure marker.
+          structureName: 'ALC - XZ Ring',
+          structureFamily: 'ALC',
+          isRing: true,
+          eliminations,
+          steps: directAlcSteps(cand, als, ahs),
+          alcXz: {
+            als: { cells: [...als.alsAllCells], digits: [...als.alsDigits], sector: als.alsSector },
+            ahs: { cells: [...ahs.ahsAllCells], digits: [...ahs.ahsDigits], sector: ahs.ahsSector },
+            contacts,
+          },
         });
-      const ahsLinkSet = options.ahsLinkSet && size === maxAhsDigits
-        ? options.ahsLinkSet
-        : core.buildAhsLinks(cand, {
-          ahsList,
-          strongLinkSet,
-          minDof: 1,
-          maxDof: maxAhsDof,
-          strictSingleCommon: false,
-          maxLinks: options.maxAhsLinks ?? 5000,
-        });
-      const report = core.findAicChains(cand, {
-        candidateGrid: cand,
-        onProgress: progress => options.onProgress?.({ ...progress, stage: `alc-xz-size-${size}` }),
-        strongLinkSet,
-        alsList,
-        alsLinkSet,
-        includeAls: true,
-        ahsList,
-        ahsLinkSet,
-        includeAhs: true,
-        includeAlc: true,
-        startFamilies: ['ALS', 'AHS'],
-        alcOnly: true,
-        skipAhsPlacementVerification: true,
-        strongLinkTypes: [0, 1, 4],
-        minDepth: 2,
-        maxDepth: 4,
-        maxChains,
-        maxResultAttempts: options.maxResultAttempts,
-        maxResultAttemptsPerStart: options.maxResultAttemptsPerStart,
-        maxStates: options.maxStates,
-        maxQueue: options.maxQueue,
-        maxBranching: options.maxBranching,
-        resultFilter: steps => {
-          if (steps.length !== 2) return false;
-          const families = steps.map(step => step.view.node.family);
-          return families.includes('ALS') && families.includes('AHS');
-        },
-      });
-      const chains = (report.chains || []).map(chain => ({
-        ...chain,
-        structureName: chain.isRing ? 'ALC - XZ Ring' : 'ALC - XZ',
-        structureFamily: 'ALC',
-      }));
-      lastReport = {
-        ...report,
-        chains,
-        technique: 'ALC-XZ',
-        stats: {
-          ...(report.stats || {}),
-          alsNodes: alsList.length,
-          ahsNodes: ahsList.length,
-          alsSize: size,
-          ahsSize: size,
-          maxAlsCells, maxAhsDigits, maxAhsCells, maxAhsDof,
-          alsMaxSizeDOF, alsMaxSizeFox, ahsMaxSize, ahsMaxFox,
-          chainsFound: chains.length,
-        },
-      };
-      if (chains.length || report.stats?.truncated) return lastReport;
+        if (chains.length >= maxChains) break outer;
+      }
     }
 
-    return lastReport || {
-      chains: [],
+    options.onProgress?.({ stage: 'complete', statesVisited: work.statesVisited });
+    return {
+      chains,
       technique: 'ALC-XZ',
-      stats: { chainsFound: 0, truncated: false },
+      stats: {
+        alsNodes: allAls.length,
+        ahsNodes: allAhs.length,
+        maxAlsCells, maxAhsDigits, maxAhsCells, maxAhsDof,
+        alsMaxSizeDOF, alsMaxSizeFox, ahsMaxSize, ahsMaxFox,
+        pairsChecked, compatiblePairs, chainsFound: chains.length,
+        truncated: work.exhausted || chains.length >= maxChains,
+        statesVisited: work.statesVisited,
+        stopReason: work.exhausted ? 'maxStates' : chains.length >= maxChains ? 'maxChains' : null,
+      },
     };
   }
 
@@ -223,15 +406,23 @@
       maxQueue: options.maxQueue ?? 50000,
       maxBranching: options.maxBranching ?? 200,
       resultFilter: steps => {
-        if (steps.length < 3) return false;
+        if (steps.length < 3
+          && !(chainMode && steps.length === 2 && expandedAlcNodeCount(steps) >= 3)) {
+          return false;
+        }
         const hasAls = steps.some(step => step.view.node.family === 'ALS');
         const hasAhs = steps.some(step => step.view.node.family === 'AHS');
         if (!hasAls || !hasAhs) return false;
         if (chainMode && steps.some(step => !['ALS', 'AHS'].includes(step.view.node.family))) {
           return false;
         }
-        // The third node is another distinct ALS/AHS module in chain mode.
-        return new Set(steps.map(step => step.view.node.graphId)).size >= 3;
+        // ALC-XY is valid as an open three-step chain; it does not require a
+        // closing bridge or three distinct graph IDs. ALC-Chain retains the
+        // expanded-node guard for its two-link modular form.
+        const graphNodeCount = new Set(steps.map(step => step.view.node.graphId)).size;
+        return !chainMode
+          || graphNodeCount >= 3
+          || (steps.length === 2 && expandedAlcNodeCount(steps) >= 3);
       },
     });
     const chains = (report.chains || []).map(chain => ({

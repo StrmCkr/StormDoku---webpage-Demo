@@ -1,0 +1,2 @@
+/* StormDoku subset and Box-Line Reduction event wiring. */
+(function(global){const app=global.StormDokuApp=global.StormDokuApp||{};app.subsetEvents={install({naked,hidden,boxLine,runNaked,runHidden,runBoxLine}){const invoke=(event,run)=>{event.preventDefault();event.stopPropagation();run();};naked.addEventListener('click',event=>invoke(event,runNaked));hidden.addEventListener('click',event=>invoke(event,runHidden));boxLine.addEventListener('click',event=>invoke(event,runBoxLine));}};})(window);

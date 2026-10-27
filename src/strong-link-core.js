@@ -224,7 +224,10 @@
         const intersectionCell = row * 9 + col;
         const boxCountWithoutIntersection = boxCells.length
           - (boxCells.includes(intersectionCell) ? 1 : 0);
-        if (requireCount && boxCountWithoutIntersection < 4) continue;
+      // A four-cell ERI is valid: the shared intersection plus three cells
+      // on the two arms. The previous threshold incorrectly required four
+      // cells outside the intersection and discarded this form.
+      if (requireCount && boxCountWithoutIntersection < 3) continue;
 
         const construction = eriXorConstruction(box, row, col);
         if (intersection(boxCells, construction.emptyCells).length) continue;
@@ -263,7 +266,7 @@
         const intersectionCell = row * 9 + col;
         const remainingCount = unitDigitCells.length
           - (unitDigitCells.includes(intersectionCell) ? 1 : 0);
-        if (requireCount && remainingCount < 4) continue;
+        if (requireCount && remainingCount < 3) continue;
 
         const emptyCells = unit.filter(cell => core.Rx[cell] !== row && core.Cy[cell] !== col);
         if (intersection(unitDigitCells, emptyCells).length) continue;
@@ -451,7 +454,10 @@
 
   function buildEriLinks(cand, digitCells, digit, buckets, seen) {
     for (let box = 0; box < 9; box++) {
-      for (const geometry of eriGeometries(box, digitCells, digit, true)) {
+      // The link builder emits every geometrically valid ERI.  Candidate
+      // counts are not a chain-walk rule; the BFS consumes the generated
+      // XOR sides and NAND connections only.
+      for (const geometry of eriGeometries(box, digitCells, digit, false)) {
           addUnique(
             buckets,
             seen,
@@ -474,7 +480,7 @@
     for (let sector = 27; sector < core.UNITS.length; sector++) {
       const name = core.variantUnitName?.(sector);
       if (!/^W[1-4]$/.test(name || '')) continue;
-      for (const geometry of windokuEriGeometries(sector, digitCells, digit, true)) {
+      for (const geometry of windokuEriGeometries(sector, digitCells, digit, false)) {
         addUnique(
           buckets,
           seen,

@@ -285,7 +285,9 @@ function eriGeometries(
       const intersectionCell = row * 9 + col;
       const boxCountWithoutIntersection = boxCells.length
         - (boxCells.includes(intersectionCell) ? 1 : 0);
-      if (requireCount && boxCountWithoutIntersection < 4) continue;
+      // A four-cell ERI is valid: the shared intersection plus three cells
+      // on the two arms.
+      if (requireCount && boxCountWithoutIntersection < 3) continue;
 
       const construction = eriXorConstruction(box, row, col);
       if (intersection(boxCells, construction.emptyCells ?? []).length) continue;
@@ -371,7 +373,7 @@ function buildEriLinks(
   seen: Set<string>,
 ): void {
   for (let box = 0; box < 9; box++) {
-    for (const geometry of eriGeometries(box, digitCells, digit, true)) {
+    for (const geometry of eriGeometries(box, digitCells, digit, false)) {
         addUnique(
           buckets,
           seen,

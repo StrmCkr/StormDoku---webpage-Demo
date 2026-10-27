@@ -332,6 +332,14 @@
       && node.dof <= opts.maxDof
       && node.dof <= opts.maxAuxiliary);
     const auxiliaries = ahsList.filter(node => node.dof === 1);
+    const auxiliaryByCell = new Map();
+    auxiliaries.forEach((node, index) => {
+      for (const cell of node.cells) {
+        const bucket = auxiliaryByCell.get(cell) || [];
+        bucket.push(index);
+        auxiliaryByCell.set(cell, bucket);
+      }
+    });
     const results = [];
     const seen = new Set();
     const stats = {
@@ -346,7 +354,9 @@
     };
 
     outer: for (const hub of hubs) {
-      const candidates = auxiliaries.flatMap(node => {
+      const possibleIndexes = new Set(hub.cells.flatMap(cell => auxiliaryByCell.get(cell) || []));
+      const candidates = [...possibleIndexes].sort((left, right) => left - right).flatMap(index => {
+        const node = auxiliaries[index];
         if (node.id === hub.id) return [];
         const cells = ahsDofBridgeCells(cand, hub, node);
         return cells.length ? [{ node, cells }] : [];
@@ -509,25 +519,58 @@
       ahsDofNetNodes(net).length && (net.eliminations || []).length);
     const adjacency = nets.map(() => []);
     const bridges = new Map();
-    for (let left = 0; left < nets.length; left += 1) {
-      for (let right = left + 1; right < nets.length; right += 1) {
-        const bridge = ahsDofChainBridge(nets[left], nets[right]);
-        if (!bridge) continue;
-        adjacency[left].push(right);
-        adjacency[right].push(left);
-        bridges.set(`${left}:${right}`, bridge);
+    const pairKeys = new Set();
+    const addBucketPairs = bucket => {
+      for (let left = 0; left < bucket.length; left += 1) {
+        for (let right = left + 1; right < bucket.length; right += 1) {
+          const a = Math.min(bucket[left], bucket[right]);
+          const b = Math.max(bucket[left], bucket[right]);
+          pairKeys.add(`${a}:${b}`);
+        }
       }
+    };
+    const byCell = new Map();
+    const byDigit = new Map();
+    nets.forEach((net, index) => {
+      for (const node of ahsDofNetNodes(net)) {
+        for (const cell of node.cells || []) {
+          const bucket = byCell.get(cell) || [];
+          bucket.push(index);
+          byCell.set(cell, bucket);
+        }
+        for (const digit of node.digits || []) {
+          const bucket = byDigit.get(digit) || [];
+          bucket.push(index);
+          byDigit.set(digit, bucket);
+        }
+      }
+    });
+    for (const bucket of byCell.values()) addBucketPairs(bucket);
+    for (const bucket of byDigit.values()) addBucketPairs(bucket);
+    for (const key of pairKeys) {
+      const [left, right] = key.split(':').map(Number);
+      const bridge = ahsDofChainBridge(nets[left], nets[right]);
+      if (!bridge) continue;
+      adjacency[left].push(right);
+      adjacency[right].push(left);
+      bridges.set(key, bridge);
     }
     const bridgeOf = (left, right) => bridges.get(`${Math.min(left, right)}:${Math.max(left, right)}`);
     const results = [];
     const seen = new Set();
+    const eliminationCache = new Map();
     const stats = { nets: nets.length, bridges: bridges.size,
       strongLinks: 0, pathsChecked: 0, chainResults: 0,
       zeroEliminationChains: 0, truncated: false, maxDepth };
     const evaluate = path => {
       stats.pathsChecked += 1;
       const chainNets = path.map(index => nets[index]);
-      const eliminations = ahsDofChainEliminations(cand, chainNets);
+      const cacheKey = [...path].sort((a, b) => a - b).join(',');
+      let eliminations = eliminationCache.get(cacheKey);
+      if (!eliminations) {
+        eliminations = ahsDofChainEliminations(cand, chainNets);
+        eliminationCache.set(cacheKey, eliminations);
+      }
       if (!eliminations.length) { stats.zeroEliminationChains += 1; return; }
       const isRing = path.length > 2 && !!bridgeOf(path[0], path[path.length - 1]);
       const key = `${path.join(',')}|${eliminations.map(item => `${item.cell}:${item.digit}`).join(',')}`;

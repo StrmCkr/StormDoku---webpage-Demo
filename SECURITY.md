@@ -17,7 +17,12 @@ Changes to those assets should update the notices and be reviewed together.
 
 `index.html` applies a CSP covering the bundled scripts, local OCR assets,
 same-origin workers, and Blob workers used by direct `file://` execution. The
-application script is covered by a matching nonce. The inline stylesheet still
-uses `unsafe-inline` because the current page keeps its complete CSS in the
-document; moving that stylesheet to an external file is the next step if a
-fully strict style policy is required.
+application JavaScript and stylesheet are loaded as same-origin external
+resources, so no inline-script or inline-style allowance is required.
+
+## Offline OCR CSP exception
+
+The bundled Ocrad fallback is a generated OCR runtime that binds compiled
+functions through `eval()`. The page CSP therefore includes `script-src
+'unsafe-eval'` so direct `file://` OCR remains operational. Tesseract does not
+use this fallback permission.
