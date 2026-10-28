@@ -1739,11 +1739,9 @@
 
   // Box-based non-consecutive ERI.  The ERI link builder is the authority for
   // the box geometry; this layer applies the non-consecutive consequence to
-  // the 2-, 3-, 4-cell ERI forms, plus the one legal 5-cell form.  The
-  // 5-cell form is valid only when the occupied I cell is the exact center
-  // of a classic box.  For forms larger than the pair,
-  // the crossing cell is the occupied I cell and the other N cells must all
-  // be orthogonally adjacent to it.
+  // existing dual-link forms and to true ERI geometry.  True ERI is limited
+  // to the four-cell form without I and the one legal five-cell form with I.
+  // The five-cell I cell is valid only at the exact center of a classic box.
   function nonConsecutiveEriStepsM(cand, sourceCount) {
     if (!variantState.nonConsecutive) return [];
     const core = global.StormDoku;
@@ -1758,7 +1756,11 @@
 
         const intersectionCell = geometry.construction?.intersectionCell;
         const intersectionOccupied = boxCells.includes(intersectionCell);
-        if (intersectionOccupied !== (sourceCount >= 3)) continue;
+        // Only the four-cell no-I and five-cell active-I formations are true
+        // ERI geometry.  The smaller formations retain the existing dual-link
+        // quality and must not be promoted to the ERI class.
+        const trueEri = sourceCount === 4 || sourceCount === 5;
+        if (trueEri && intersectionOccupied !== (sourceCount === 5)) continue;
         if (sourceCount === 5) {
           const box = geometry.box;
           if (box === undefined || intersectionCell !== Bset[box][4]) continue;
@@ -1801,12 +1803,15 @@
             indices: [],
             cells: [...sourceCells, intersectionCell],
           },
-          // The occupied intersection is the third N cell in the triple
-          // form and must be drawn with the two ERI arms.
+          // Preserve the geometry's intersection marker for drawing. For a
+          // true size-5 ERI it is the active I cell; for the size-4 form it
+          // remains the empty crossing cell. Smaller results are dual-link
+          // quality and are not promoted to the ERI class.
           vertices: [...sourceCells, intersectionCell],
           variant: true,
           nonConsecutive: true,
-          eri: true,
+          eri: trueEri,
+          dualLinkQuality: !trueEri,
         });
       }
     }

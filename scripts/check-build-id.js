@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const expectedBuildId = '20261027-10';
+const expectedBuildId = '20261027-14';
 const files = [
   'index.html',
   'src/search-worker.js',

@@ -42,6 +42,7 @@
     const ratingStepCountEl = document.getElementById('ratingStepCount');
     const ratingHardestMoveEl = document.getElementById('ratingHardestMove');
     const difficultyTableEl = document.getElementById('difficultyTable');
+    const difficultyFlowListEl = document.getElementById('difficultyFlowList');
     const solutionStepsPanelEl = document.getElementById('solutionStepsPanel');
     const solutionStepsPreviewEl = document.getElementById('solutionStepsPreview');
     const solutionCopyEurekaEl = document.getElementById('solutionCopyEureka');
@@ -80,8 +81,6 @@
     const toyMiniLexSummaryEl = document.getElementById('toyMiniLexSummary');
     const toyMiniLexStringEl = document.getElementById('toyMiniLexString');
     const toyMiniLexGridEl = document.getElementById('toyMiniLexGrid');
-    let toyAutomorphFamilyCache = null;
-    let toyMiniLexLayoutCache = null;
     let toyMinimizerReport = null;
     const logEl = document.getElementById('log');
     const pomResultsEl = document.getElementById('pomResults');
@@ -464,6 +463,29 @@
         nonConsecutive: variantNonConsecutiveEl,
       },
     });
+    const variantSettingsController = appNamespace.variantSettings.create({
+      state: {
+        variantSettings,
+        get puzzle() { return puzzle; },
+        set cand(value) { cand = value; },
+        set solution(value) { solution = value; },
+        set undoStack(value) { undoStack = value; },
+        set redoStack(value) { redoStack = value; },
+        get solution() { return solution; },
+      },
+      actions: {
+        get variantControls() { return variantControls; },
+        get fishControls() { return fishControls; },
+        configureVariants: core.configureVariants,
+        allCandidates: core.allCandidates,
+        solveFully: core.solveFully,
+        resetAnalysisAfterPlayerEdit,
+        render,
+        setStatus,
+      },
+    });
+    const syncVariantSettingsFromControls = variantSettingsController.sync;
+    const applyVariantSettings = variantSettingsController.apply;
     const searchControl = appNamespace.searchControl.create({
       getEpoch: () => searchEpoch,
     });
@@ -504,8 +526,22 @@
       getCandidates: cell => cand[cell],
       getPuzzle: cell => puzzle[cell],
       getPromoted: cell => promotedValues[cell],
-      hasCandidate: cellHasCandidate,
+      hasCandidate: (cell, digit) => appNamespace.candidateState.cellHasCandidate(cand, cell, digit),
     });
+    const settingsRuntime = appNamespace.settingsRuntime.create({
+      state: {
+        get puzzle() { return puzzle; },
+        get pomReport() { return pomReport; },
+        set pomReport(value) { pomReport = value; },
+      },
+      actions: {
+        get fishControls() { return fishControls; },
+        get techniqueControls() { return techniqueControls; },
+        omissionFishSearch: core.omissionFishStep,
+        renderPomReport,
+      },
+    });
+    const fishSettingsChanged = settingsRuntime.fishSettingsChanged;
     const fishControls = appNamespace.fishControls.create({
       core,
       variantSettings,
@@ -623,7 +659,7 @@
       }
 
       try {
-      const workerPath = './src/search-worker.js?v=20261027-9';
+      const workerPath = './src/search-worker.js?v=20261027-14';
         releaseSearchWorkerBlobUrl();
         let workerUrl = new URL(workerPath, document.baseURI);
         if (document.baseURI.startsWith('file:')) {
@@ -732,17 +768,9 @@
       return runSearchWorker('core-search', { method, args });
     }
 
-    function searchCancellationError(reason = 'Search cancelled.') {
-      return searchControl.cancellationError(reason);
-    }
-
-    function isSearchCancelled(error) {
-      return searchControl.isCancelled(error);
-    }
-
-    function scheduleSearch(callback, delay = 20) {
-      searchControl.schedule(callback, delay);
-    }
+    const searchCancellationError = (reason = 'Search cancelled.') => searchControl.cancellationError(reason);
+    const isSearchCancelled = error => searchControl.isCancelled(error);
+    const scheduleSearch = (callback, delay = 20) => searchControl.schedule(callback, delay);
 
     function runPuzzleGenerator(givens) {
       if (location.protocol === 'file:') return runCoreSearch('generate', givens);
@@ -800,46 +828,8 @@
       return formControls.selectedNumbers(values);
     }
 
-    function fishSettingsChanged() {
-      if (!pomReport) return;
-      pomReport = null;
-      renderPomReport();
-    }
-
-    function syncFishRanges(changed, controls = null) {
-      fishControls.syncRanges(changed, controls);
-    }
-
-    function sectorToggleLabel(index) {
-      return fishControls.sectorLabel(index);
-    }
-
-    function syncFishVariantSectors(addActive = false) {
-      fishControls.syncVariantSectors(addActive);
-    }
-
-    function renderFishSectorGrid(kind) {
-      fishControls.renderSectorGrid(kind);
-    }
-
-    function setVariantSectorRange(kind, names, on) {
-      fishControls.setVariantRange(kind, names, on);
-    }
-
-    function setSectorRange(kind, start, end, on) {
-      fishControls.setRange(kind, start, end, on);
-    }
-
-    function setAllDigits(on) {
-      fishControls.setAllDigits(on);
-    }
-
     function digitHasRemainingCandidates(digit) {
-      return cand.some((values, cell) =>
-        !puzzle[cell]
-        && !promotedValues[cell]
-        && (values || []).includes(digit),
-      );
+      return appNamespace.candidateState.digitHasRemainingCandidates(cand, puzzle, promotedValues, digit);
     }
 
     function renderDigitFocusButtons() {
@@ -880,353 +870,68 @@
 
     candidateControls.installFilterEvents();
 
-    function initFishSettings() {
-      fishControls.initialize();
-    }
+    const initFishSettings = settingsRuntime.initFishSettings;
+    const syncFishRanges = settingsRuntime.syncFishRanges;
+    const sectorToggleLabel = settingsRuntime.sectorToggleLabel;
+    const syncFishVariantSectors = settingsRuntime.syncFishVariantSectors;
+    const renderFishSectorGrid = settingsRuntime.renderFishSectorGrid;
+    const setVariantSectorRange = settingsRuntime.setVariantSectorRange;
+    const setSectorRange = settingsRuntime.setSectorRange;
+    const setAllDigits = settingsRuntime.setAllDigits;
+    const currentAlmostFishOptions = settingsRuntime.currentAlmostFishOptions;
+    const currentPomFishOptions = settingsRuntime.currentPomFishOptions;
+    const currentSolverMoveTypes = settingsRuntime.currentSolverMoveTypes;
+    const currentSolverFishOptions = settingsRuntime.currentSolverFishOptions;
 
-    function currentAlmostFishOptions() {
-      return fishControls.almostOptions();
-    }
+    const markFor = (cell, digit) => appNamespace.candidateState.markFor(cand, cell, digit);
 
-    function currentPomFishOptions() {
-      return fishControls.pomOptions();
-    }
+    const sectorView = appNamespace.sectorView.create({ core, boardEl });
+    const { cellsForHouse, cellsForSectors, sectorFrameRects, renderSectorFrames } = sectorView;
 
-    function currentSolverMoveTypes(override = null) {
-      return techniqueControls.currentTypes(override);
-    }
+    const selectedChain = () => reportSelection.chain(
+      chainReport, selectedChainIndex, cand, chainStepFromResult);
 
-    function currentSolverFishOptions() {
-      return fishControls.solverOptions({
-        grid: puzzle,
-        omissionFishSearch: core.omissionFishStep,
-        enabledTechniques: currentSolverMoveTypes(),
-      });
-    }
+    const reportSelection = appNamespace.reportSelection;
+    const selectedAlsRecord = () => reportSelection.als(alsReport, selectedAlsId);
+    const selectedAlsDofRecord = () => reportSelection.alsDof(
+      alsDofReport, alsDofChainReport, selectedAlsDofSource, selectedAlsDofIndex);
+    const selectedHydraRecord = () => reportSelection.hydra(
+      alsHydraReport, ahsHydraReport, alcHydraReport, selectedHydraFamily, selectedAlsHydraIndex);
+    const selectedAlsHydraRecord = () => (selectedHydraFamily === 'ALS' || selectedHydraFamily === null)
+      ? selectedHydraRecord() : null;
 
-    function markFor(cell, digit) {
-      return (cand[cell] || []).includes(digit) ? digit : '';
-    }
+    const hydraStep = appNamespace.hydraStep.create({ core, rateStep: ratingForStep });
+    const formatHydraResult = hydraStep.format;
+    const alsHydraStepFromResult = hydraStep.fromResult;
 
-    function cellsForHouse(ref) {
-      const cells = new Set();
-      if (!ref) return cells;
+    const selectedAhsRecord = () => reportSelection.ahs(ahsReport, selectedAhsId);
+    const selectedAhsDofNetRecord = () => reportSelection.ahsDof(ahsDofReport, selectedAhsDofNetIndex);
+    const selectedAhsDofChainRecord = () => reportSelection.ahsDof(ahsDofChainReport, selectedAhsDofChainIndex);
 
-      for (const cell of ref.cells || []) cells.add(cell);
+    const { atomKey } = appNamespace.candidateState;
+    const cellHasCandidate = (cell, digit) => appNamespace.candidateState.cellHasCandidate(cand, cell, digit);
 
-      for (const index of ref.indices) {
-        const house =
-          ref.type === 'row' ? core.Rset[index] :
-          ref.type === 'col' ? core.Cset[index] :
-          ref.type === 'box' ? core.Bset[index] :
-          ref.type === 'variant-sector' || ref.type === 'diagonal' || ref.type === 'anti-diagonal'
-            ? core.UNITS[index]
-            : null;
+    const candidateVisibility = appNamespace.candidateVisibility.create({
+      hasCandidate: cellHasCandidate,
+      getDofRecord: selectedAlsDofRecord,
+      getSelectedChain: selectedChain,
+      getHydraRecord: selectedHydraRecord,
+      getLastRemoved: () => lastRemoved,
+    });
+    const chainCandidateIsVisible = candidateVisibility.isVisible;
 
-        for (const cell of house || []) cells.add(cell);
-      }
+    const { cloneSolveBackups, restoreSolveBackups, arraysEqual: playerArraysEqual, isEditableCell } = appNamespace.playerState;
+    const clonePlayerSolveBackups = () => cloneSolveBackups(playerSolveBackups);
 
-      return cells;
-    }
+    const restorePlayerSolveBackups = saved => { playerSolveBackups = restoreSolveBackups(saved); };
 
-    function cellsForSectors(sectors) {
-      const cells = new Set();
-      for (const sector of sectors || []) {
-        for (const cell of core.UNITS[sector] || []) cells.add(cell);
-      }
-      return cells;
-    }
+    const isPlayerEditableCell = cell => isEditableCell(cell, originalPuzzle);
 
-    function sectorFrameRects(ref) {
-      if (!ref) return [];
-      const one = 100 / 9;
-
-      if (['variant-sector', 'diagonal', 'anti-diagonal'].includes(ref.type)) {
-        const cells = ref.indices.flatMap(index => core.UNITS[index] || []);
-        if (!cells.length) return [];
-
-        const rows = cells.map(cell => Math.floor(cell / 9));
-        const cols = cells.map(cell => cell % 9);
-        const minRow = Math.min(...rows);
-        const maxRow = Math.max(...rows);
-        const minCol = Math.min(...cols);
-        const maxCol = Math.max(...cols);
-        const rectangle = [];
-        for (let row = minRow; row <= maxRow; row++) {
-          for (let col = minCol; col <= maxCol; col++) rectangle.push(row * 9 + col);
-        }
-
-        // W1-W4 are contiguous 3x3 sectors. Draw one clean frame for them;
-        // diagonal and disjoint sectors use one frame per member cell.
-        if (rectangle.length === cells.length
-          && rectangle.every(cell => cells.includes(cell))) {
-          return [{
-            left: minCol * one,
-            top: minRow * one,
-            width: (maxCol - minCol + 1) * one,
-            height: (maxRow - minRow + 1) * one,
-          }];
-        }
-
-        return [...new Set(cells)].map(cell => ({
-          left: (cell % 9) * one,
-          top: Math.floor(cell / 9) * one,
-          width: one,
-          height: one,
-        }));
-      }
-
-      return ref.indices.map(index => {
-        if (ref.type === 'row') {
-          return { left: 0, top: index * one, width: 100, height: one };
-        }
-
-        if (ref.type === 'col') {
-          return { left: index * one, top: 0, width: one, height: 100 };
-        }
-
-        return {
-          left: (index % 3) * (100 / 3),
-          top: Math.floor(index / 3) * (100 / 3),
-          width: 100 / 3,
-          height: 100 / 3,
-        };
-      });
-    }
-
-    function renderSectorFrames(ref) {
-      for (const rect of sectorFrameRects(ref)) {
-        const frame = document.createElement('div');
-        frame.className = 'sector-frame';
-        frame.style.left = `${rect.left}%`;
-        frame.style.top = `${rect.top}%`;
-        frame.style.width = `${rect.width}%`;
-        frame.style.height = `${rect.height}%`;
-        boardEl.appendChild(frame);
-      }
-    }
-
-    function selectedChain() {
-      if (chainReport && selectedChainIndex !== null) {
-        const chain = chainReport.chains[selectedChainIndex] || null;
-        if (!chain) return null;
-        // Keep the board renderer on the same pre-application explanation
-        // snapshot used by the selected AIC result in the report panel. This
-        // matters when Next has already removed candidates from the live grid
-        // and the user opens a different chain returned by that same search.
-        return chainStepFromResult(
-          chain,
-          chainReport,
-          selectedChainIndex,
-          cand,
-        ).chain;
-      }
-      return null;
-    }
-
-    function selectedAlsRecord() {
-      if (!alsReport || selectedAlsId === null) return null;
-      return alsReport.find(record => record.uniqueID === selectedAlsId) || null;
-    }
-
-    function selectedAlsDofRecord() {
-      const report = selectedAlsDofSource === 'chain'
-        ? alsDofChainReport
-        : alsDofReport;
-      if (!report || selectedAlsDofIndex === null) return null;
-      return report.results[selectedAlsDofIndex] || null;
-    }
-
-    function selectedHydraRecord() {
-      const report = selectedHydraFamily === 'AHS'
-        ? ahsHydraReport
-        : selectedHydraFamily === 'ALC'
-          ? alcHydraReport
-          : alsHydraReport;
-      if (!report || selectedAlsHydraIndex === null) return null;
-      return report.results?.[selectedAlsHydraIndex] || null;
-    }
-
-    function selectedAlsHydraRecord() {
-      return selectedHydraFamily === 'ALS' || selectedHydraFamily === null
-        ? selectedHydraRecord()
-        : null;
-    }
-
-    function formatHydraResult(result) {
-      const hub = result?.primaryA?.alsDigits || result?.primaryA?.digits || [];
-      const hubCells = result?.primaryA?.alsAllCells || result?.primaryA?.cells || [];
-      const endpoint = result?.primaryC?.alsDigits || result?.primaryC?.digits || [];
-      const auxiliaryById = new Map((result?.auxiliary || []).map(node => [
-        node.hydraParticipantId,
-        node,
-      ]));
-      const aicChains = (result?.participants || [])
-        .map(participant => participant.chain)
-        .filter(Boolean)
-        .map(chain => core.formatChainEureka
-          ? core.formatChainEureka(chain)
-          : (chain.structureName || 'AIC'));
-      const hydraBranches = (result?.hydraBranches || []).map((branch, index) => {
-        const rcc = branch.rcc || {};
-        const left = core.cellGroupName(rcc.leftCells || []);
-        const right = core.cellGroupName(rcc.rightCells || []);
-        const auxiliary = auxiliaryById.get(branch.participantId) || branch.ls || {};
-        const lsDigits = auxiliary.alsDigits || auxiliary.digits || [];
-        const lsCells = auxiliary.alsAllCells || auxiliary.cells || [];
-        const chain = branch.chain
-          ? (core.formatChainEureka
-            ? core.formatChainEureka(branch.chain)
-            : (branch.chain.structureName || 'AIC'))
-          : 'AIC';
-        return `${String.fromCharCode(65 + index)}: (${rcc.digit ?? '?'})${left}=${right}`
-          + ` -> LS {${lsDigits.join('')}}${core.cellGroupName(lsCells)} -> ${chain}`;
-      });
-      const chainCount = hydraBranches.length || (result?.participants || []).length;
-      const elims = core.formatRemovals?.(result?.eliminations || [])
-        || (result?.eliminations || []).map(item => `r${Math.floor(item.cell / 9) + 1}c${item.cell % 9 + 1}<>${item.digit}`).join(', ');
-      const branchText = hydraBranches.length
-        ? hydraBranches.join(' ; ')
-        : 'No RCC-to-LS AIC branches';
-      const terminal = endpoint.length ? `; terminal {${endpoint.join('')}}` : '';
-      const family = result?.family || (result?.type === 'HYDRA_AHS_DOF' ? 'AHS' : 'ALS');
-      return `Hydra ${family}-DOF: Hub {${hub.join('')}}${core.cellGroupName(hubCells)}; `
-        + `${branchText}${terminal}`
-        + ` [${chainCount} AIC branch${chainCount === 1 ? '' : 'es'}${aicChains.length && !hydraBranches.length ? `: ${aicChains.join(' || ')}` : ''}] => ${elims || '?'}`;
-    }
-
-    function alsHydraStepFromResult(result, index, candidateGrid) {
-      const items = core.eliminationItems({ items: result?.eliminations || [] }, candidateGrid);
-      if (!items.length) return null;
-      const at = [
-        ...(result.primaryA?.cells || result.primaryA?.alsAllCells || []),
-        ...(result.primaryC?.cells || result.primaryC?.alsAllCells || []),
-        ...(result.auxiliary || []).flatMap(node => node.cells || node.alsAllCells || []),
-        ...(result.participants || []).flatMap(participant => participant.chainCells || []),
-      ];
-      const step = {
-        tech: 'als-hydra',
-        name: `Hydra ${result?.family || 'ALS'} - DOF`,
-        structureName: `Hydra ${result?.family || 'ALS'} - DOF`,
-        hydraRecord: result,
-        hydraIndex: index,
-        desc: formatHydraResult({ ...result, eliminations: items }),
-        elim: { items },
-        digits: [...new Set(items.map(item => item.digit))],
-        at: [...new Set(at)],
-      };
-      step.rating = ratingForStep(step);
-      return step;
-    }
-
-    function selectedAhsRecord() {
-      if (!ahsReport || selectedAhsId === null) return null;
-      return ahsReport.find(record => record.uniqueID === selectedAhsId) || null;
-    }
-
-    function selectedAhsDofNetRecord() {
-      if (!ahsDofReport || selectedAhsDofNetIndex === null) return null;
-      return ahsDofReport.results?.[selectedAhsDofNetIndex] || null;
-    }
-
-    function selectedAhsDofChainRecord() {
-      if (!ahsDofChainReport || selectedAhsDofChainIndex === null) return null;
-      return ahsDofChainReport.results?.[selectedAhsDofChainIndex] || null;
-    }
-
-    function atomKey(cell, digit) {
-      return String(cell) + ':' + String(digit);
-    }
-
-    function cellHasCandidate(cell, digit) {
-      return (cand[cell] || []).includes(digit);
-    }
-
-    function chainCandidateIsVisible(cell, digit) {
-      if (cellHasCandidate(cell, digit)) return true;
-      const dofRecord = selectedAlsDofRecord();
-      const displayed = selectedChain() || (dofRecord?.hasHydra ? dofRecord : selectedHydraRecord());
-      // Hydra branch eliminations are shown as eliminations only; they must
-      // never reappear as live AIC node badges after the Hydra result applies.
-      if (displayed?.hasHydra || selectedHydraRecord()) return false;
-      // After applying a move, retain only candidates recorded in
-      // lastRemoved so the completed explanation stays anchored. Reported,
-      // not-yet-applied eliminations are rendered separately and stay hidden
-      // from live chain-node graphics.
-      return lastRemoved.some(item => item.cell === cell && item.digit === digit)
-        && (displayed?.eliminations || []).some(item =>
-          item.cell === cell && item.digit === digit);
-    }
-
-    function clonePlayerSolveBackups() {
-      return [...playerSolveBackups.entries()].map(([cell, backup]) => [cell, {
-        digit: backup.digit,
-        entries: backup.entries.map(entry => ({
-          ...entry,
-          cand: [...entry.cand],
-          afterCand: [...entry.afterCand],
-        })),
-      }]);
-    }
-
-    function restorePlayerSolveBackups(saved) {
-      playerSolveBackups = new Map((saved || []).map(([cell, backup]) => [cell, {
-        digit: backup.digit,
-        entries: (backup.entries || []).map(entry => ({
-          ...entry,
-          cand: [...(entry.cand || [])],
-          afterCand: [...(entry.afterCand || [])],
-        })),
-      }]));
-    }
-
-    function playerArraysEqual(left, right) {
-      return left.length === right.length && left.every((value, index) => value === right[index]);
-    }
-
-    function isPlayerEditableCell(cell) {
-      return Number.isInteger(cell) && cell >= 0 && cell < 81 && !originalPuzzle[cell];
-    }
-
-    function setManualMode(enabled, announce = true) {
-      promotionSecurityDisabled = !!enabled;
-      manualModeEl.setAttribute('aria-pressed', String(promotionSecurityDisabled));
-      if (announce) {
-        setStatus(
-          promotionSecurityDisabled
-            ? 'Manual grid building enabled. Promotion security disabled.'
-            : 'Manual grid building disabled. Promotion security restored.',
-          promotionSecurityDisabled ? 'warn' : 'ok',
-        );
-      }
-    }
-
-    function applyVariantSettings() {
-      syncVariantSettingsFromControls();
-      core.configureVariants(variantSettings);
-      syncFishVariantSectors(true);
-      renderFishSectorGrid('baseSectors');
-      renderFishSectorGrid('coverSectors');
-      cand = core.allCandidates(puzzle);
-      solution = core.solveFully(puzzle);
-      resetAnalysisAfterPlayerEdit();
-      undoStack = [];
-      redoStack = [];
-      render();
-      const active = Object.entries(variantSettings)
-        .filter(([, enabled]) => enabled)
-        .map(([name]) => name);
-      setStatus(
-        solution
-          ? `Variations updated${active.length ? `: ${active.join(', ')}.` : '.'}`
-          : 'Variations updated. The current givens have no solution under these rules.',
-        solution ? 'ok' : 'warn',
-      );
-    }
-
-    function syncVariantSettingsFromControls() {
-      variantControls.read();
-    }
+    const setManualMode = appNamespace.playerMode.create({
+      element: manualModeEl,
+      setDisabled: value => { promotionSecurityDisabled = value; },
+      setStatus,
+    }).setManualMode;
 
     function resetAnalysisAfterPlayerEdit() {
       cycle = 0;
@@ -1295,1127 +1000,149 @@
       if (solutionStepsPanelEl) solutionStepsPanelEl.open = false;
     }
 
-    function toyCellPermutation(mapper) {
-      const permutation = new Array(81);
-      for (let row = 0; row < 9; row++) {
-        for (let col = 0; col < 9; col++) {
-          const [newRow, newCol] = mapper(row, col);
-          const target = newRow * 9 + newCol;
-          if (!Number.isInteger(target) || target < 0 || target >= 81) {
-            throw new Error('Invalid toy transformation map.');
-          }
-          permutation[row * 9 + col] = target;
-        }
-      }
-      if (new Set(permutation).size !== 81) throw new Error('Toy transformation map is not bijective.');
-      return permutation;
-    }
+    const { cellPermutation: toyCellPermutation, mapValues: toyMapValues, mapCandidates: toyMapCandidates } = appNamespace.toyMath;
+    const { searchFamilyLabels: toySearchFamilyLabels } = appNamespace.toyCatalog;
 
-    function toyPermutationPreservesActiveVariants(permutation) {
-      const sameSet = (left, right) => left.size === right.size
-        && [...left].every(value => right.has(value));
-      const unitKey = unit => unit.slice().sort((a, b) => a - b).join(',');
-      const activeUnitKinds = ['diagonal', 'antiDiagonal', 'windoku']
-        .filter(name => variantSettings[name]);
+    const toyPermutationPreservesActiveVariants = permutation =>
+      appNamespace.toyCompatibility.preservesActiveVariants(permutation, core, variantSettings);
 
-      for (const kind of activeUnitKinds) {
-        const original = new Set((core.VARIANT_UNITS[kind] || []).map(unitKey));
-        const transformed = new Set((core.VARIANT_UNITS[kind] || [])
-          .map(unit => unitKey(unit.map(cell => permutation[cell]))));
-        if (!sameSet(original, transformed)) return false;
-      }
+    const toyVariantTransformMessage = () => appNamespace.toyCompatibility.variantTransformMessage(variantSettings);
 
-      const relationPairs = predicate => {
-        const pairs = new Set();
-        for (let first = 0; first < 81; first += 1) {
-          const firstRow = Math.floor(first / 9);
-          const firstColumn = first % 9;
-          for (let second = first + 1; second < 81; second += 1) {
-            const secondRow = Math.floor(second / 9);
-            const secondColumn = second % 9;
-            if (predicate(
-              Math.abs(firstRow - secondRow),
-              Math.abs(firstColumn - secondColumn),
-            )) pairs.add(`${first}:${second}`);
-          }
-        }
-        return pairs;
-      };
-      const mappedPairs = pairs => new Set([...pairs].map(pair => {
-        const [first, second] = pair.split(':').map(Number);
-        const mapped = [permutation[first], permutation[second]].sort((a, b) => a - b);
-        return `${mapped[0]}:${mapped[1]}`;
-      }));
-      const relations = [];
-      if (variantSettings.antiKing) relations.push((dr, dc) => dr === 1 && dc === 1);
-      if (variantSettings.antiKnight) relations.push((dr, dc) => (dr === 1 && dc === 2) || (dr === 2 && dc === 1));
-      if (variantSettings.nonConsecutive) relations.push((dr, dc) => (dr === 1 && dc === 0) || (dr === 0 && dc === 1));
-      for (const relation of relations) {
-        const original = relationPairs(relation);
-        if (!sameSet(original, mappedPairs(original))) return false;
-      }
-      return true;
-    }
+    const { remapDigit: remapToyDigit,
+      remapDigitSet: remapToyDigitSet } = appNamespace.toyMath;
 
-    function toyVariantTransformMessage() {
-      const active = Object.entries(variantSettings)
-        .filter(([, enabled]) => enabled)
-        .map(([name]) => name);
-      return active.length
-        ? `The transformation is not compatible with active variations: ${active.join(', ')}.`
-        : 'The transformation is not a valid Sudoku permutation.';
-    }
+    const { mapCellState: mapToyCellState,
+      exchangeDigitState: exchangeToyDigitState } = appNamespace.toyState;
 
-    function toyMapValues(values, permutation) {
-      if (!Array.isArray(values)) return values;
-      const mapped = new Array(81).fill(0);
-      for (let cell = 0; cell < 81; cell++) mapped[permutation[cell]] = values[cell] || 0;
-      return mapped;
-    }
+    const { bandStackSwapMapper: toyBandStackSwapMapper, localSwapMapper: toyLocalSwapMapper } = appNamespace.toyMath;
 
-    function toyMapCandidates(values, permutation) {
-      if (!Array.isArray(values)) return values;
-      const mapped = Array.from({ length: 81 }, () => []);
-      for (let cell = 0; cell < 81; cell++) mapped[permutation[cell]] = [...(values[cell] || [])];
-      return mapped;
-    }
-
-    function toyMapAutomorphScalarValues(values, permutation, mapping) {
-      return toyMapValues(values, permutation).map(value => mapping[value] || value);
-    }
-
-    function toyMapAutomorphCandidates(values, permutation, mapping) {
-      return toyMapCandidates(values, permutation).map(cellValues => [...new Set(
-        cellValues.map(value => mapping[value] || value),
-      )].sort((left, right) => left - right));
-    }
-
-    function applyToyCellPermutationInPlace(permutation) {
-      originalPuzzle = toyMapValues(originalPuzzle, permutation);
-      puzzle = toyMapValues(puzzle, permutation);
-      promotedValues = toyMapValues(promotedValues, permutation);
-      cand = toyMapCandidates(cand, permutation);
-      if (solution) solution = toyMapValues(solution, permutation);
-    }
-
-    function applyToyDigitSwapInPlace(first, second) {
-      const remap = value => value === first ? second : value === second ? first : value;
-      originalPuzzle = originalPuzzle.map(remap);
-      puzzle = puzzle.map(remap);
-      promotedValues = promotedValues.map(remap);
-      cand = cand.map(values => values.map(remap).sort((left, right) => left - right));
-      if (solution) solution = solution.map(remap);
-
-      const selectedDigits = new Set([...activeDigitHighlights].map(remap));
-      activeDigitHighlights.clear();
-      for (const digit of selectedDigits) activeDigitHighlights.add(digit);
-      pomFishSettings.digits = new Set([...pomFishSettings.digits].map(remap));
-    }
-
-    function completeToyDigitMapping(mapping) {
-      const completed = new Array(10).fill(0);
-      const used = new Set();
-      for (let digit = 1; digit <= 9; digit++) {
-        const target = Number(mapping?.[digit]);
-        if (target >= 1 && target <= 9 && !used.has(target)) {
-          completed[digit] = target;
-          used.add(target);
-        }
-      }
-      const remaining = Array.from({ length: 9 }, (_, index) => index + 1)
-        .filter(digit => !used.has(digit));
-      for (let digit = 1; digit <= 9; digit++) {
-        if (!completed[digit]) completed[digit] = remaining.shift();
-      }
-      return completed;
-    }
-
-    function toyBandStackSwapMapper(axis, first, second) {
-      return (row, col) => {
-        if (axis === 'band') {
-          const band = Math.floor(row / 3);
-          const newBand = band === first ? second : band === second ? first : band;
-          return [newBand * 3 + (row % 3), col];
-        }
-        if (axis === 'stack') {
-          const stack = Math.floor(col / 3);
-          const newStack = stack === first ? second : stack === second ? first : stack;
-          return [row, newStack * 3 + (col % 3)];
-        }
-        return [row, col];
-      };
-    }
-
-    function toyLocalSwapMapper(axis, unit, first, second) {
-      return (row, col) => {
-        if (axis === 'row' && Math.floor(row / 3) === unit) {
-          const local = row % 3;
-          return [unit * 3 + (local === first ? second : local === second ? first : local), col];
-        }
-        if (axis === 'column' && Math.floor(col / 3) === unit) {
-          const local = col % 3;
-          return [row, unit * 3 + (local === first ? second : local === second ? first : local)];
-        }
-        return [row, col];
-      };
-    }
-
-    function applyToyStateChange(label, transform) {
-      if (busy) return false;
-      leaveHistoryPreview();
-      const before = snapshotState();
-      try {
-        transform();
-      } catch (error) {
-        setStatus(`${label} could not be applied.`, 'warn');
-        return false;
-      }
-
-      resetAnalysisAfterPlayerEdit();
-      clearToyAutomorphResults();
-      clearToyMiniLex();
-      clearToyMinimizerResults();
-      playerSolveBackups = new Map();
-      selectedPlayerCell = null;
-      selectedPlayerDigit = null;
-      playerPromotionMode = false;
-      inputEl.value = core.encode(originalPuzzle);
-      undoStack.push(before);
-      redoStack = [];
-      setStatus(`${label} applied. Analysis reports were cleared for the transformed grid.`, 'ok');
-      render();
-      return true;
-    }
-
-    function applyToyCellTransform(label, mapper) {
-      const permutation = toyCellPermutation(mapper);
-      if (!toyPermutationPreservesActiveVariants(permutation)) {
-        setStatus(toyVariantTransformMessage(), 'warn');
-        return false;
-      }
-      return applyToyStateChange(label, () => {
-        originalPuzzle = toyMapValues(originalPuzzle, permutation);
-        puzzle = toyMapValues(puzzle, permutation);
-        promotedValues = toyMapValues(promotedValues, permutation);
-        cand = toyMapCandidates(cand, permutation);
-        if (solution) solution = toyMapValues(solution, permutation);
-      });
-    }
-
-    function remapToyDigit(value, first, second) {
-      if (value === first) return second;
-      if (value === second) return first;
-      return value;
-    }
-
-    function remapToyDigitSet(set, first, second) {
-      return new Set([...set].map(digit => remapToyDigit(digit, first, second)));
-    }
-
-    function applyToyDigitExchange(first, second) {
-      if (first === second) return false;
-      return applyToyStateChange(`Digits ${first} and ${second} exchanged`, () => {
-        const remapValues = values => values?.map(value => remapToyDigit(value, first, second));
-        originalPuzzle = remapValues(originalPuzzle);
-        puzzle = remapValues(puzzle);
-        promotedValues = remapValues(promotedValues);
-        cand = cand.map(values => remapValues(values).sort((left, right) => left - right));
-        if (solution) solution = remapValues(solution);
-
-        const selectedDigits = remapToyDigitSet(activeDigitHighlights, first, second);
+    const toyActions = appNamespace.toyActions.create({
+      isBusy: () => busy,
+      leaveHistoryPreview,
+      snapshotState,
+      resetAnalysis: resetAnalysisAfterPlayerEdit,
+      clearAutomorphResults: clearToyAutomorphResults,
+      clearMiniLex: () => clearToyMiniLex(),
+      clearMinimizerResults: clearToyMinimizerResults,
+      resetPlayerState: () => {
+        playerSolveBackups = new Map();
+        selectedPlayerCell = null;
+        selectedPlayerDigit = null;
+        playerPromotionMode = false;
+      },
+      updateInput: () => { inputEl.value = core.encode(originalPuzzle); },
+      pushUndo: before => undoStack.push(before),
+      clearRedo: () => { redoStack = []; },
+      setStatus,
+      render,
+      cellPermutation: toyCellPermutation,
+      preservesVariants: toyPermutationPreservesActiveVariants,
+      variantMessage: toyVariantTransformMessage,
+      mapCellState: mapToyCellState,
+      mapValues: toyMapValues,
+      mapCandidates: toyMapCandidates,
+      exchangeDigitState: exchangeToyDigitState,
+      remapDigit: remapToyDigit,
+      remapDigitSet: remapToyDigitSet,
+      getCellState: () => ({ originalPuzzle, puzzle, promotedValues, cand, solution,
+        activeDigitHighlights, pomFishSettings }),
+      setCellState: state => {
+        ({ originalPuzzle, puzzle, promotedValues, cand, solution } = state);
         activeDigitHighlights.clear();
-        for (const digit of selectedDigits) activeDigitHighlights.add(digit);
-        pomFishSettings.digits = remapToyDigitSet(pomFishSettings.digits, first, second);
-      });
-    }
-
-    function toyPairValue(select) {
-      const [left, right] = String(select.value).split(':').map(Number);
-      return [left, right];
-    }
-
-    function fillToySelect(select, options) {
-      select.textContent = '';
-      for (const option of options) {
-        const element = document.createElement('option');
-        element.value = option.value;
-        element.textContent = option.label;
-        select.appendChild(element);
+        for (const digit of state.activeDigitHighlights || activeDigitHighlights) activeDigitHighlights.add(digit);
+        if (state.pomFishSettings) pomFishSettings.digits = state.pomFishSettings.digits;
       }
-    }
+    });
+    const applyToyStateChange = toyActions.applyStateChange;
 
-    function initToyControls() {
-      const pairs = [[0, 1], [0, 2], [1, 2]];
-      fillToySelect(toyStackSwapEl, pairs.map(([first, second]) => ({
-        value: `${first}:${second}`,
-        label: `Stack ${first + 1} ↔ ${second + 1}`,
-      })));
-      fillToySelect(toyBandSwapEl, pairs.map(([first, second]) => ({
-        value: `${first}:${second}`,
-        label: `Band ${first + 1} ↔ ${second + 1}`,
-      })));
+    const applyToyCellTransform = toyActions.applyCellTransform;
+    const applyToyDigitExchange = toyActions.applyDigitExchange;
 
-      const rowOptions = [];
-      const columnOptions = [];
-      for (let unit = 0; unit < 3; unit++) {
-        for (const [first, second] of pairs) {
-          rowOptions.push({
-            value: `${unit}:${first}:${second}`,
-            label: `Band ${unit + 1}: R${unit * 3 + first + 1} ↔ R${unit * 3 + second + 1}`,
-          });
-          columnOptions.push({
-            value: `${unit}:${first}:${second}`,
-            label: `Stack ${unit + 1}: C${unit * 3 + first + 1} ↔ C${unit * 3 + second + 1}`,
-          });
-        }
-      }
-      fillToySelect(toyRowSwapEl, rowOptions);
-      fillToySelect(toyColumnSwapEl, columnOptions);
+    const { pairValue: toyPairValue, initialize: initToyControls } = appNamespace.toyControls;
 
-      const digitOptions = Array.from({ length: 9 }, (_, index) => ({
-        value: String(index + 1),
-        label: String(index + 1),
-      }));
-      fillToySelect(toyDigitAEl, digitOptions);
-      fillToySelect(toyDigitBEl, digitOptions);
-      toyDigitBEl.value = '2';
-    }
+    const { transformationMapper: toyTransformationMapper } = appNamespace.toyMath;
+    const { permutations: toyPermutations } = appNamespace.toyMath;
 
-    function toyTransformationMapper(kind) {
-      switch (kind) {
-        case 'transpose':
-        case 'diagonal-reflection':
-          return (row, col) => [col, row];
-        case 'horizontal-mirror':
-          return (row, col) => [8 - row, col];
-        case 'vertical-mirror':
-          return (row, col) => [row, 8 - col];
-        case 'anti-diagonal-reflection':
-          return (row, col) => [8 - col, 8 - row];
-        case 'pivot-left':
-          return (row, col) => [8 - col, row];
-        case 'pivot-right':
-          return (row, col) => [col, 8 - row];
-        case 'half-turn':
-          return (row, col) => [8 - row, 8 - col];
-        default:
-          return null;
-      }
-    }
+    const { getRecords: getToyFamilyRecords } = appNamespace.toyCatalog;
 
-    function toyPermutations(values) {
-      const output = [];
-      const current = [];
-      const visit = remaining => {
-        if (!remaining.length) {
-          output.push([...current]);
-          return;
-        }
-        for (let index = 0; index < remaining.length; index++) {
-          current.push(remaining[index]);
-          visit(remaining.slice(0, index).concat(remaining.slice(index + 1)));
-          current.pop();
-        }
-      };
-      visit([...values]);
-      return output;
-    }
+    const { renderAutomorphCatalog: renderAutomorphCatalogPure } = appNamespace.toyCatalog;
+    function renderToyAutomorphCatalog() { renderAutomorphCatalogPure(document, getToyFamilyRecords()); }
 
-    function toyIdentityOrder() {
-      return [0, 1, 2];
-    }
+    const { isIdentityPermutation: toyIsIdentityPermutation } = appNamespace.toyMath;
 
-    function toyOrderLabel(order) {
-      return order.map(value => value + 1).join('');
-    }
+    const { cellDigits: toyCellDigits,
+      verifyDigitMap: toyVerifyDigitMap, digitPatternMap: toyDigitPatternMap } = appNamespace.toyMath;
 
-    function toyComposePermutations(first, second) {
-      const composed = new Array(81);
-      for (let cell = 0; cell < 81; cell++) composed[cell] = second[first[cell]];
-      return composed;
-    }
-
-    function toyPermutationKey(permutation) {
-      return permutation.join(',');
-    }
-
-    function toyLayoutPermutation(bandOrder, rowOrders, stackOrder, columnOrders) {
-      return toyCellPermutation((row, col) => {
-        const band = Math.floor(row / 3);
-        const stack = Math.floor(col / 3);
-        const localRow = row % 3;
-        const localCol = col % 3;
-        const nextBand = bandOrder[band];
-        const nextStack = stackOrder[stack];
-        const nextLocalRow = rowOrders[band][localRow];
-        const nextLocalCol = columnOrders[stack][localCol];
-        return [nextBand * 3 + nextLocalRow, nextStack * 3 + nextLocalCol];
-      });
-    }
-
-    function toyFamilyRecords() {
-      if (toyAutomorphFamilyCache) return toyAutomorphFamilyCache;
-
-      // These are the named identity representatives from symetrical stuff.txt.
-      // The old implementation expanded thousands of arbitrary legal layouts;
-      // these compact maps are the actual identities, not a substitute search.
-      // Catalog row shape: type class (M), name, transformation applied (C),
-      // unique-grid population (N), L/F metadata, and solving-method
-      // applicability (S). L and F remain opaque until defined. The catalog
-      // is intentionally stored in one orientation: its row equivalent is
-      // supplied by the transformation, so named identities are not doubled.
-      const catalog = {
-        fixedBoxes: [
-          { name: 'Mini-Rows (MR)', sequence: 'C', M: 8, N: 107495424, L: 3, F: 0, methods: 'N', alias: 'Mini-Columns (MC)' },
-          { name: '2 MR, 1 MD', sequence: 'CR1', M: 7, N: 21233664, L: 3, F: 0, methods: 'Y' },
-          { name: '1 MR, 2 MD', sequence: 'CR1R2', M: 9, N: 4204224, L: 3, F: 0, methods: 'Y' },
-          { name: 'Mini-Diagonals (MD)', sequence: 'CR', M: 10, N: 2508084, L: 3, F: 0, methods: 'Y' },
-        ],
-        bands: [
-          { name: 'Jumping-Rows (JR)', sequence: 'S', M: 25, N: 14837760, L: 3, F: 0, methods: 'N' },
-          { name: '2 JR, 1 GR', sequence: 'SR1', M: 28, N: 2085120, L: 3, F: 0, methods: 'Y' },
-          { name: '1 JR, 2 GR', sequence: 'SR1R2', M: 30, N: 294912, L: 3, F: 0, methods: 'Y' },
-          { name: 'Gliding-Rows (GR)', sequence: 'SR', M: 32, N: 6342480, L: 3, F: 0, methods: 'Y' },
-          { name: 'Full-Rows (FR)', sequence: 'SC1', M: 27, N: 5184, L: 9, F: 0, methods: 'U' },
-          { name: '2 FR, 1 WR', sequence: 'SR1C1', M: 26, N: 2592, L: 9, F: 0, methods: 'U' },
-          { name: '1 FR, 2 WR', sequence: 'SR1R2C1', M: 29, N: 1296, L: 9, F: 0, methods: 'U' },
-          { name: 'Waving-Rows (WR)', sequence: 'SRC1', M: 31, N: 648, L: 9, F: 0, methods: 'U' },
-        ],
-        triangular: [
-          { name: 'Jumping-Diagonals (JD)', sequence: 'BS', M: 22, N: 323928, L: 3, F: 0, methods: 'Y', alias: 'Block symmetry' },
-          { name: 'Broken-Columns (BC)', sequence: 'BSR1', M: 24, N: 288, L: 9, F: 0, methods: 'U' },
-          { name: 'Full-Diagonals (FD)', sequence: 'BSR1C1', M: 23, N: 162, L: 9, F: 0, methods: 'U' },
-        ],
-        rotational: [
-          { name: 'Half-Turn (HT)', sequence: 'DD2', M: 79, N: 155492352, L: 2, F: 1, methods: 'Y', alias: '180-degree rotational symmetry' },
-          { name: 'Quarter-Turn (QT)', sequence: 'DBxRx', M: 86, N: 13056, L: 4, F: 1, methods: 'Y', alias: '90-degree rotational symmetry; includes HT' },
-        ],
-        diagonal: [
-          { name: 'Diagonal-Mirror (DM)', sequence: 'D', M: 37, N: 30258432, L: 2, F: 9, methods: 'Y', alias: 'Diagonal symmetry' },
-          { name: 'DM + JD', sequence: 'DBS', M: 43, N: 288, L: 6, F: 0, methods: 'Y' },
-          { name: 'DM + MD', sequence: 'DRC', M: 40, N: 1854, L: 6, F: 0, methods: 'Y' },
-        ],
-        sticks: [
-          { name: 'Column-Sticks (CS)', sequence: 'BxCx', M: 134, N: 449445888, L: 2, F: 9, methods: 'Y', alias: 'Sticks symmetry' },
-          { name: 'CS + MC', sequence: 'BxCxR', M: 135, N: 27648, L: 6, F: 0, methods: 'U' },
-          { name: 'CS + JR', sequence: 'BxCxS', M: 145, N: 13824, L: 6, F: 0, methods: 'U' },
-          { name: 'CS + GR/Band2, JR/Band3', sequence: 'BxCxSR2', M: 144, N: 3456, L: 6, F: 0, methods: 'U' },
-          { name: 'CS + GR', sequence: 'BxCxSR', M: 142, N: 6480, L: 6, F: 0, methods: 'U' },
-          { name: 'CS + JR/Band2, GR/Band3', sequence: 'BxCxSR1R3', M: 143, N: 1728, L: 6, F: 0, methods: 'U' },
-        ],
-      };
-
-      const identity = toyCellPermutation((row, col) => [row, col]);
-      const operationMaps = new Map([
-        ['B', toyLayoutPermutation([2, 0, 1], [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()], toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()])],
-        ['S', toyLayoutPermutation(toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()], [2, 0, 1], [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()])],
-        ['Bx', toyLayoutPermutation([2, 1, 0], [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()], toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()])],
-        ['Sx', toyLayoutPermutation(toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()], [2, 1, 0], [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()])],
-        ['R', toyLayoutPermutation(toyIdentityOrder(), [[2, 0, 1], [2, 0, 1], [2, 0, 1]], toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()])],
-        ['C', toyLayoutPermutation(toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()], toyIdentityOrder(), [[2, 0, 1], [2, 0, 1], [2, 0, 1]])],
-        ['Rx', toyLayoutPermutation(toyIdentityOrder(), [[2, 1, 0], [2, 1, 0], [2, 1, 0]], toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()])],
-        ['Cx', toyLayoutPermutation(toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()], toyIdentityOrder(), [[2, 1, 0], [2, 1, 0], [2, 1, 0]])],
-        ['R1', toyLayoutPermutation(toyIdentityOrder(), [[2, 0, 1], toyIdentityOrder(), toyIdentityOrder()], toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()])],
-        ['R2', toyLayoutPermutation(toyIdentityOrder(), [toyIdentityOrder(), [2, 0, 1], toyIdentityOrder()], toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()])],
-        ['R3', toyLayoutPermutation(toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), [2, 0, 1]], toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()])],
-        ['C1', toyLayoutPermutation(toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()], toyIdentityOrder(), [[2, 0, 1], toyIdentityOrder(), toyIdentityOrder()])],
-        ['C2', toyLayoutPermutation(toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()], toyIdentityOrder(), [toyIdentityOrder(), [2, 0, 1], toyIdentityOrder()])],
-        ['C3', toyLayoutPermutation(toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), toyIdentityOrder()], toyIdentityOrder(), [toyIdentityOrder(), toyIdentityOrder(), [2, 0, 1]])],
-        ['D', toyCellPermutation((row, col) => [col, row])],
-        ['D2', toyCellPermutation((row, col) => [8 - col, 8 - row])],
-      ]);
-
-      const operationTokens = sequence => {
-        const tokens = [];
-        for (let index = 0; index < sequence.length;) {
-          const two = sequence.slice(index, index + 2);
-          if (operationMaps.has(two)) {
-            tokens.push(two);
-            index += 2;
-          } else {
-            tokens.push(sequence[index]);
-            index += 1;
-          }
-        }
-        return tokens;
-      };
-
-      // Transposition exchanges the row and column operations while keeping
-      // the class itself unchanged.  The numbered and mirror forms follow
-      // the same exchange: R1/C1, R2/C2, R3/C3, Rx/Cx, and B/S.
-      const transposeOperationToken = token => {
-        const swaps = {
-          B: 'S',
-          S: 'B',
-          Bx: 'Sx',
-          Sx: 'Bx',
-          R: 'C',
-          C: 'R',
-          Rx: 'Cx',
-          Cx: 'Rx',
-          R1: 'C1',
-          C1: 'R1',
-          R2: 'C2',
-          C2: 'R2',
-          R3: 'C3',
-          C3: 'R3',
-        };
-        return swaps[token] || token;
-      };
-
-      const operationLabels = sequence =>
-        sequence.match(/[A-Z](?:x|\d)?(?:\^\d+)?/g) || [];
-
-      const transposeOperationLabel = label => {
-        const marker = label.indexOf('^');
-        const token = marker < 0 ? label : label.slice(0, marker);
-        const exponent = marker < 0 ? '' : label.slice(marker);
-        return `${transposeOperationToken(token)}${exponent}`;
-      };
-
-      const transposePermutation = permutation => {
-        const transpose = toyCellPermutation((row, column) => [column, row]);
-        return toyComposePermutations(
-          toyComposePermutations(transpose, permutation),
-          transpose,
-        );
-      };
-
-      const permutationPower = (permutation, exponent) => {
-        let result = identity;
-        for (let power = 0; power < exponent; power++) {
-          result = toyComposePermutations(result, permutation);
-        }
-        return result;
-      };
-
-      const permutationOrder = permutation => {
-        let current = identity;
-        for (let order = 1; order <= 12; order++) {
-          current = toyComposePermutations(current, permutation);
-          if (toyIsIdentityPermutation(current)) return order;
-        }
-        return 1;
-      };
-
-      const sequenceVariants = sequence => {
-        const tokens = operationTokens(sequence);
-        const variants = [];
-        const visit = (index, current, labels) => {
-          if (index === tokens.length) {
-            variants.push({
-              sequence: labels.join(''),
-              permutation: current,
-            });
-            return;
-          }
-
-          const token = tokens[index];
-          const operation = operationMaps.get(token);
-          const order = permutationOrder(operation);
-          for (let exponent = 1; exponent < order; exponent++) {
-            visit(
-              index + 1,
-              toyComposePermutations(current, permutationPower(operation, exponent)),
-              [...labels, exponent === 1 ? token : `${token}^${exponent}`],
-            );
-          }
-        };
-        visit(0, identity, []);
-        return variants;
-      };
-
-      const records = Object.fromEntries(Object.keys(catalog).map(family => [family, []]));
-      for (const [family, entries] of Object.entries(catalog)) {
-        const unique = new Map();
-        for (const entry of entries) {
-          const { name, sequence } = entry;
-          const variants = sequenceVariants(sequence).map(variant => ({
-            ...entry,
-            label: `${name} (${variant.sequence})`,
-            testedSequence: variant.sequence,
-            permutation: variant.permutation,
-            transposed: false,
-          }));
-          const transposedVariants = variants.map(record => {
-            const labels = operationLabels(record.testedSequence)
-              .map(transposeOperationLabel);
-            return {
-              ...record,
-              label: `${name} (${labels.join('')})`,
-              testedSequence: labels.join(''),
-              permutation: transposePermutation(record.permutation),
-              transposed: true,
-            };
-          });
-          for (const record of [...variants, ...transposedVariants]) {
-            const key = toyPermutationKey(record.permutation);
-            if (!unique.has(key)) unique.set(key, record);
-          }
-        }
-        records[family] = [...unique.values()];
-      }
-
-      toyAutomorphFamilyCache = records;
-      return toyAutomorphFamilyCache;
-    }
-
-    function renderToyAutomorphCatalog() {
-      const familyLabels = {
-        fixedBoxes: 'Fixed Boxes',
-        bands: 'Boxes Move in Bands',
-        triangular: 'Boxes Move Triangular',
-        rotational: 'Rotational',
-        diagonal: 'Diagonal',
-        sticks: 'Sticks',
-      };
-      const familyDescriptions = {
-        fixedBoxes: 'Mini-row, mini-column, and mini-diagonal patterns while the box bands remain fixed.',
-        bands: 'Stack, row, glide, full-row, and waving-row movements across the bands.',
-        triangular: 'Triangular band/stack movements that produce diagonal and broken-column forms.',
-        rotational: 'Composite transformations that produce half-turn and quarter-turn symmetry.',
-        diagonal: 'Main-diagonal reflection and its diagonal composite forms.',
-        sticks: 'Reversal and stack/column composites that produce stick symmetry.',
-      };
-      const records = toyFamilyRecords();
-
-      for (const family of Object.keys(familyLabels)) {
-        const panel = document.getElementById(`toyAutomorphFamilyCatalog-${family}`);
-        if (!panel) continue;
-        panel.textContent = '';
-
-        const body = document.createElement('div');
-        body.className = 'toy-automorph-catalog-body';
-        const description = document.createElement('p');
-        description.className = 'toy-automorph-catalog-description';
-        description.textContent = familyDescriptions[family];
-        body.appendChild(description);
-
-        const list = document.createElement('ol');
-        for (const record of records[family]) {
-          if (record.testedSequence !== record.sequence) continue;
-          const item = document.createElement('li');
-          const name = document.createElement('strong');
-          name.textContent = record.name;
-          item.appendChild(name);
-          item.appendChild(document.createTextNode(` — `));
-          const code = document.createElement('code');
-          code.textContent = record.sequence;
-          item.appendChild(code);
-          list.appendChild(item);
-        }
-        body.appendChild(list);
-        panel.appendChild(body);
-      }
-
-      for (const toggle of document.querySelectorAll('[data-toy-automorph-family-toggle]')) {
-        if (toggle.dataset.bound === 'true') continue;
-        toggle.dataset.bound = 'true';
-        toggle.addEventListener('click', event => {
-          event.stopPropagation();
-          const panel = document.getElementById(toggle.getAttribute('aria-controls'));
-          if (!panel) return;
-          const open = panel.hidden;
-          panel.hidden = !open;
-          toggle.setAttribute('aria-expanded', String(open));
-          toggle.textContent = open ? '−' : '+';
-        });
-      }
-    }
-
-    function toyIsIdentityPermutation(permutation) {
-      return permutation.every((target, cell) => target === cell);
-    }
-
-    function toyCellDigits(value) {
-      if (Array.isArray(value)) return value.filter(digit => digit >= 1 && digit <= 9);
-      return value >= 1 && value <= 9 ? [value] : [];
-    }
-
-    function toyGridDigitMasks(grid) {
-      const sourceMasks = Array.from({ length: 10 }, () => 0n);
-      for (let cell = 0; cell < 81; cell++) {
-        const bit = 1n << BigInt(cell);
-        for (const digit of toyCellDigits(grid[cell])) sourceMasks[digit] |= bit;
-      }
-      return sourceMasks;
-    }
-
-    function toyTransformDigitMasks(sourceMasks, permutation) {
-      const transformed = Array.from({ length: 10 }, () => 0n);
-      for (let digit = 1; digit <= 9; digit++) {
-        for (let cell = 0; cell < 81; cell++) {
-          if (sourceMasks[digit] & (1n << BigInt(cell))) {
-            transformed[digit] |= 1n << BigInt(permutation[cell]);
-          }
-        }
-      }
-      return transformed;
-    }
-
-    function toyDigitPatternMapFromMasks(sourceMasks, targetMasks) {
-
-      const targetByPattern = new Map();
-      for (let digit = 1; digit <= 9; digit++) {
-        const pattern = targetMasks[digit].toString();
-        if (!targetByPattern.has(pattern)) targetByPattern.set(pattern, []);
-        targetByPattern.get(pattern).push(digit);
-      }
-
-      const mapping = new Array(10).fill(0);
-      for (let digit = 1; digit <= 9; digit++) {
-        const pattern = sourceMasks[digit].toString();
-        const matches = targetByPattern.get(pattern);
-        if (!matches) return null;
-        const sourceDigits = [];
-        for (let other = 1; other <= 9; other++) {
-          if (sourceMasks[other] === sourceMasks[digit]) sourceDigits.push(other);
-        }
-        const position = sourceDigits.indexOf(digit);
-        mapping[digit] = matches[position];
-      }
-
-      const used = new Set(mapping.slice(1));
-      if (used.size !== 9) return null;
-      return mapping;
-    }
-
-    function toyVerifyDigitMap(source, target, mapping) {
-      for (let cell = 0; cell < 81; cell++) {
-        const mapped = new Set(toyCellDigits(source[cell]).map(digit => mapping[digit]));
-        const expected = new Set(toyCellDigits(target[cell]));
-        if (mapped.size !== expected.size || [...mapped].some(digit => !expected.has(digit))) return false;
-      }
-      return true;
-    }
-
-    function toyDigitPatternMap(source, target) {
-      const mapping = toyDigitPatternMapFromMasks(toyGridDigitMasks(source), toyGridDigitMasks(target));
-      return mapping && toyVerifyDigitMap(source, target, mapping) ? mapping : null;
-    }
-
+    const { automorphSource: toyAutomorphSourcePure } = appNamespace.toyMath;
     function toyAutomorphSource() {
-      const useSolution = Boolean(toyAutomorphUseSolutionEl?.checked);
-      const hasSolution = Array.isArray(solution)
-        && solution.length === 81
-        && solution.every(digit => Number.isInteger(digit) && digit >= 1 && digit <= 9);
-      const values = useSolution && hasSolution ? solution : originalPuzzle;
-      return {
-        source: [...values],
-        target: [...values],
-        mode: useSolution && hasSolution ? 'solution' : 'grid string',
-        hasSolution,
-      };
+      return toyAutomorphSourcePure(originalPuzzle, solution, Boolean(toyAutomorphUseSolutionEl?.checked));
     }
 
-    function toyDigitNormalizeDetails(values) {
-      // R1 is the anchor: scan row-major from r1c1 through r9c9 so the
-      // first-seen digit order is stable when a Mini-lex string is reloaded.
-      const mapping = new Array(10).fill(0);
-      const normalized = new Array(81).fill(0);
-      let nextDigit = 1;
-      for (let cell = 0; cell < 81; cell++) {
-        const digit = values[cell] || 0;
-        if (!digit) continue;
-        if (!mapping[digit]) mapping[digit] = nextDigit++;
-        normalized[cell] = mapping[digit];
-      }
-      return { normalized, mapping };
-    }
+    const { digitNormalizeDetails: toyDigitNormalizeDetails,
+      normalizedValueKey: toyNormalizedValueKey,
+      compareNumberArrays: toyCompareNumberArrays, cachedMiniLexLayoutMaps: toyMiniLexLayoutMaps,
+      miniLexCanonicalize: toyMiniLexCanonicalize } = appNamespace.toyMath;
 
-    function toyDigitNormalize(values) {
-      return toyDigitNormalizeDetails(values).normalized;
-    }
-
-    function toyNormalizedValueKey(values) {
-      return toyDigitNormalize(values).join('');
-    }
-
-    function toyMiniLexLayoutMaps() {
-      if (toyMiniLexLayoutCache) return toyMiniLexLayoutCache;
-
-      const orders = toyPermutations([0, 1, 2]);
-      const rowMaps = [];
-      const columnMaps = [];
-
-      // Each map is source index -> target index. These are the complete
-      // 1,296 legal row and column permutations, not only the visible toys.
-      for (const bandOrder of orders) {
-        for (const firstRows of orders) {
-          for (const secondRows of orders) {
-            for (const thirdRows of orders) {
-              const local = [firstRows, secondRows, thirdRows];
-              const rowMap = new Array(9);
-              for (let index = 0; index < 9; index++) {
-                const group = Math.floor(index / 3);
-                rowMap[index] = bandOrder[group] * 3 + local[group][index % 3];
-              }
-              rowMaps.push(rowMap);
-            }
-          }
-        }
-      }
-
-      for (const stackOrder of orders) {
-        for (const firstColumns of orders) {
-          for (const secondColumns of orders) {
-            for (const thirdColumns of orders) {
-              const local = [firstColumns, secondColumns, thirdColumns];
-              const columnMap = new Array(9);
-              for (let index = 0; index < 9; index++) {
-                const group = Math.floor(index / 3);
-                columnMap[index] = stackOrder[group] * 3 + local[group][index % 3];
-              }
-              columnMaps.push(columnMap);
-            }
-          }
-        }
-      }
-
-      toyMiniLexLayoutCache = { rowMaps, columnMaps };
-      return toyMiniLexLayoutCache;
-    }
-
-    function toyStructuralTargetCell(sourceRow, sourceColumn, rowMap, columnMap, transposed) {
-      const targetRow = transposed ? columnMap[sourceColumn] : rowMap[sourceRow];
-      const targetColumn = transposed ? rowMap[sourceRow] : columnMap[sourceColumn];
-      return targetRow * 9 + targetColumn;
-    }
-
-    function toyStructuralPermutation(rowMap, columnMap, transposed) {
-      const permutation = new Array(81);
-      for (let sourceRow = 0; sourceRow < 9; sourceRow++) {
-        for (let sourceColumn = 0; sourceColumn < 9; sourceColumn++) {
-          const source = sourceRow * 9 + sourceColumn;
-          permutation[source] = toyStructuralTargetCell(
-            sourceRow,
-            sourceColumn,
-            rowMap,
-            columnMap,
-            transposed,
-          );
-        }
-      }
-      return permutation;
-    }
-
-    function toyStructuralDigitMap(values, rowMap, columnMap, transposed) {
-      const mapping = new Int8Array(10);
-      const reverse = new Int8Array(10);
-      for (let sourceRow = 0; sourceRow < 9; sourceRow++) {
-        for (let sourceColumn = 0; sourceColumn < 9; sourceColumn++) {
-          const source = sourceRow * 9 + sourceColumn;
-          const target = toyStructuralTargetCell(
-            sourceRow,
-            sourceColumn,
-            rowMap,
-            columnMap,
-            transposed,
-          );
-          const sourceDigits = toyCellDigits(values[source]);
-          const targetDigits = toyCellDigits(values[target]);
-          if (sourceDigits.length !== targetDigits.length) return null;
-          if (!sourceDigits.length) continue;
-
-          // Full solution grids use scalar cells. Candidate-aware fallback is
-          // retained so the automorphism tool remains correct on partial data.
-          if (sourceDigits.length === 1) {
-            const sourceDigit = sourceDigits[0];
-            const targetDigit = targetDigits[0];
-            if (
-              (mapping[sourceDigit] && mapping[sourceDigit] !== targetDigit)
-              || (reverse[targetDigit] && reverse[targetDigit] !== sourceDigit)
-            ) return null;
-            mapping[sourceDigit] = targetDigit;
-            reverse[targetDigit] = sourceDigit;
-            continue;
-          }
-
-          for (let index = 0; index < sourceDigits.length; index++) {
-            const sourceDigit = sourceDigits[index];
-            const targetDigit = targetDigits[index];
-            if (
-              (mapping[sourceDigit] && mapping[sourceDigit] !== targetDigit)
-              || (reverse[targetDigit] && reverse[targetDigit] !== sourceDigit)
-            ) return null;
-            mapping[sourceDigit] = targetDigit;
-            reverse[targetDigit] = sourceDigit;
-          }
-        }
-      }
-
-      return Array.from(mapping);
-    }
-
+    const { completeSearch: toyCompleteAutomorphismSearchPure } = appNamespace.toyCatalog;
     function toyCompleteAutomorphismSearch(values) {
-      const { rowMaps, columnMaps } = toyMiniLexLayoutMaps();
-      const records = [];
-      let tested = 0;
-      for (const transposed of [false, true]) {
-        for (const rowMap of rowMaps) {
-          for (const columnMap of columnMaps) {
-            tested++;
-            const permutation = toyStructuralPermutation(rowMap, columnMap, transposed);
-            if (!toyPermutationPreservesActiveVariants(permutation)) continue;
-            const mapping = toyStructuralDigitMap(values, rowMap, columnMap, transposed);
-            if (!mapping) continue;
-            records.push({
-              permutation,
-              mapping,
-              transposed,
-              rowMap: [...rowMap],
-              columnMap: [...columnMap],
-            });
-          }
-        }
-      }
-      return { records, tested };
+      return toyCompleteAutomorphismSearchPure(values, toyPermutationPreservesActiveVariants);
     }
 
-    function toyStructuralOrderLabel(map) {
-      return map.map(value => value + 1).join('');
-    }
+    const { miniLexOrientedRows: toyMiniLexOrientedRows,
+      miniLexRowMasks: toyMiniLexRowMasks, miniLexBestRowMaps: toyMiniLexBestRowMaps,
+      formatDigitMap: toyFormatDigitMap, minimizerCellLabel: toyMinimizerCellLabel,
+      automorphismLabel: toyCompleteAutomorphismLabel } = appNamespace.toyMath;
+    const { searchAutomorphisms: toySearchAutomorphisms } = appNamespace.toyMath;
+    const { clear: clearToyMiniLexView, render: renderToyMiniLexView } = appNamespace.toyMiniLexView;
 
-    function toyCompleteAutomorphismLabel(record) {
-      const orientation = record.transposed ? 'transpose' : 'direct';
-      return `${orientation}; rows ${toyStructuralOrderLabel(record.rowMap)}; columns ${toyStructuralOrderLabel(record.columnMap)}`;
-    }
-
-    function toyMiniLexOrientedRows(values, transposed) {
-      const rows = Array.from({ length: 9 }, () => new Array(9).fill(0));
-      for (let row = 0; row < 9; row++) {
-        for (let col = 0; col < 9; col++) {
-          const source = transposed ? col * 9 + row : row * 9 + col;
-          rows[row][col] = values[source] || 0;
-        }
-      }
-      return rows;
-    }
-
-    function toyMiniLexRowMasks(rows, columnMap) {
-      return rows.map(row => {
-        let mask = 0;
-        for (let sourceColumn = 0; sourceColumn < 9; sourceColumn++) {
-          if (row[sourceColumn]) mask |= 1 << (8 - columnMap[sourceColumn]);
-        }
-        return mask;
-      });
-    }
-
-    function toyMiniLexPatternKey(pattern) {
-      return pattern.toString(2).padStart(81, '0');
-    }
-
-    function toyCompareNumberArrays(left, right) {
-      for (let index = 0; index < left.length; index++) {
-        if (left[index] !== right[index]) return left[index] - right[index];
-      }
-      return 0;
-    }
-
-    function toyMiniLexBestRowMaps(rowMasks) {
-      const orders = toyPermutations([0, 1, 2]);
-      const bandChoices = [];
-
-      // For a fixed column map, the clue pattern is minimized by sorting the
-      // three rows inside each band. Keep every tied order because tied clue
-      // patterns still need R1 digit normalization as a second comparison.
-      for (let band = 0; band < 3; band++) {
-        let bestRows = null;
-        const choices = [];
-        for (const order of orders) {
-          const rows = order.map(localRow => rowMasks[band * 3 + localRow]);
-          if (bestRows === null || toyCompareNumberArrays(rows, bestRows) < 0) {
-            bestRows = rows;
-            choices.length = 0;
-            choices.push(order);
-          } else if (toyCompareNumberArrays(rows, bestRows) === 0) {
-            choices.push(order);
-          }
-        }
-        bandChoices.push({ bestRows, choices });
-      }
-
-      let bestPatternRows = null;
-      const bandOrders = [];
-      for (const order of orders) {
-        const rows = [];
-        for (const sourceBand of order) rows.push(...bandChoices[sourceBand].bestRows);
-        if (bestPatternRows === null || toyCompareNumberArrays(rows, bestPatternRows) < 0) {
-          bestPatternRows = rows;
-          bandOrders.length = 0;
-          bandOrders.push(order);
-        } else if (toyCompareNumberArrays(rows, bestPatternRows) === 0) {
-          bandOrders.push(order);
-        }
-      }
-
-      const rowMaps = [];
-      const addLocalChoices = (bandOrder, targetBand, current) => {
-        if (targetBand === 3) {
-          const rowMap = new Array(9);
-          for (let outputBand = 0; outputBand < 3; outputBand++) {
-            const sourceBand = bandOrder[outputBand];
-            const localOrder = current[sourceBand];
-            for (let targetLocal = 0; targetLocal < 3; targetLocal++) {
-              rowMap[sourceBand * 3 + localOrder[targetLocal]] = outputBand * 3 + targetLocal;
-            }
-          }
-          rowMaps.push(rowMap);
-          return;
-        }
-
-        const sourceBand = bandOrder[targetBand];
-        for (const localOrder of bandChoices[sourceBand].choices) {
-          current[sourceBand] = localOrder;
-          addLocalChoices(bandOrder, targetBand + 1, current);
-        }
-      };
-
-      for (const bandOrder of bandOrders) addLocalChoices(bandOrder, 0, []);
-      let pattern = 0n;
-      for (let row = 0; row < bestPatternRows.length; row++) {
-        pattern |= BigInt(bestPatternRows[row]) << BigInt((8 - row) * 9);
-      }
-      return { pattern, rowMaps };
-    }
-
-    function clearToyMiniLex() {
-      toyMiniLexSummaryEl.textContent = 'No Mini-lex representation has been built.';
-      toyMiniLexStringEl.textContent = 'none';
-      toyMiniLexGridEl.textContent = '';
-    }
+    const toyMiniLexViewElements = { summary: toyMiniLexSummaryEl, string: toyMiniLexStringEl, grid: toyMiniLexGridEl };
+    function clearToyMiniLex() { clearToyMiniLexView(toyMiniLexViewElements); }
 
     function buildToyMiniLex() {
       const comparison = toyAutomorphSource();
       const values = comparison.source;
       const { columnMaps } = toyMiniLexLayoutMaps();
-      const orientedRows = [
-        toyMiniLexOrientedRows(values, false),
-        toyMiniLexOrientedRows(values, true),
-      ];
       // Mini-lex for a puzzle is pattern-first: minimize the 0/1 clue mask,
       // then minimize the R1-anchored digit labels within that mask. Both
       // comparisons happen in this one pass; the previous version repeated
       // the complete 3,359,232-layout search for the second comparison.
-      let bestPattern = null;
-      let bestKey = null;
-      let bestValues = null;
-      let bestOrientation = 0;
-
-      for (let orientation = 0; orientation < orientedRows.length; orientation++) {
-        const rows = orientedRows[orientation];
-        for (const columnMap of columnMaps) {
-          const rowMasks = toyMiniLexRowMasks(rows, columnMap);
-          const bestRows = toyMiniLexBestRowMaps(rowMasks);
-          if (bestPattern !== null && bestRows.pattern > bestPattern) continue;
-
-          for (const rowMap of bestRows.rowMaps) {
-            const pattern = bestRows.pattern;
-            const transformed = new Array(81).fill(0);
-            for (let sourceRow = 0; sourceRow < 9; sourceRow++) {
-              const targetRow = rowMap[sourceRow];
-              for (let sourceColumn = 0; sourceColumn < 9; sourceColumn++) {
-                const targetColumn = columnMap[sourceColumn];
-                transformed[targetRow * 9 + targetColumn] = rows[sourceRow][sourceColumn];
-              }
-            }
-            const normalizedDetails = toyDigitNormalizeDetails(transformed);
-            const normalized = normalizedDetails.normalized;
-            const key = normalized.join('');
-            if (
-              bestPattern === null
-              || pattern < bestPattern
-              || (pattern === bestPattern && (bestKey === null || key < bestKey))
-            ) {
-              bestPattern = pattern;
-              bestKey = key;
-              bestValues = normalized;
-              bestOrientation = orientation;
-            }
-          }
-        }
-      }
-      if (!bestValues) {
+      const best = toyMiniLexCanonicalize(values, columnMaps, toyPermutations([0, 1, 2]), {
+        orientedRows: toyMiniLexOrientedRows, rowMasks: toyMiniLexRowMasks,
+        bestRowMaps: toyMiniLexBestRowMaps, compare: toyCompareNumberArrays,
+        normalize: toyDigitNormalizeDetails,
+      });
+      if (!best) {
         clearToyMiniLex();
         return null;
       }
 
-      const best = {
-        key: bestKey,
-        values: bestValues,
-        label: bestOrientation ? 'Transpose + full structural search' : 'Full structural search',
+      const result = {
+        key: best.key,
+        values: best.values,
+        label: best.orientation ? 'Transpose + full structural search' : 'Full structural search',
         sourceMode: comparison.mode,
       };
-      toyMiniLexSummaryEl.textContent = `${best.label}; ${best.sourceMode}; R1 anchor; clue pattern first; 3,359,232 layouts.`;
-      toyMiniLexStringEl.textContent = best.key;
-      toyMiniLexGridEl.textContent = '';
-      for (const digit of best.values) {
-        const cell = document.createElement('span');
-        cell.className = 'toy-minilex-cell';
-        cell.textContent = digit ? String(digit) : '.';
-        toyMiniLexGridEl.appendChild(cell);
-      }
-      return best;
-    }
-
-    function toyFormatDigitMap(mapping) {
-      const changes = [];
-      for (let digit = 1; digit <= 9; digit++) {
-        if (!mapping[digit]) continue;
-        if (mapping[digit] !== digit) changes.push(`${digit}\u2192${mapping[digit]}`);
-      }
-      return changes.length ? changes.join(' ') : 'identity';
+      renderToyMiniLexView(toyMiniLexViewElements, result);
+      return result;
     }
 
     function clearToyAutomorphResults() {
-      toyAutomorphResultsEl.textContent = 'No automorphic identity search has been run.';
+      appNamespace.toyAutomorphView.clear(toyAutomorphResultsEl);
     }
 
     function clearToyMinimizerResults() {
       toyMinimizerReport = null;
-      toyMinimizerResultsEl.textContent = 'No clue minimization has been run.';
-      toyMinimizerReplaceEl.disabled = true;
-    }
-
-    function toyMinimizerCellLabel(cell, digit) {
-      const row = Math.floor(cell / 9) + 1;
-      const column = (cell % 9) + 1;
-      return `r${row}c${column}=${digit}`;
+      clearToyMinimizerView(toyMinimizerViewElements);
     }
 
     function renderToyMinimizerReport(report) {
-      toyMinimizerResultsEl.textContent = '';
-      const summary = document.createElement('p');
-      summary.textContent = report
-        ? `Unique solution preserved. ${report.removed.length} of ${report.sourceGivenCount} clues can be removed in this reduction order; ${report.reducedGivenCount} clues remain.`
-        : 'No clue minimization has been run.';
-      toyMinimizerResultsEl.appendChild(summary);
-      if (!report) {
-        toyMinimizerReplaceEl.disabled = true;
-        return;
-      }
-      const note = document.createElement('p');
-      note.textContent = report.removed.length
-        ? 'Accepted removals are listed below. The displayed reduced grid is the state that can be replaced.'
-        : 'No clue was removable while preserving uniqueness.';
-      toyMinimizerResultsEl.appendChild(note);
-      if (report.removed.length) {
-        const list = document.createElement('ul');
-        for (const item of report.removed) {
-          const entry = document.createElement('li');
-          entry.textContent = toyMinimizerCellLabel(item.cell, item.digit);
-          list.appendChild(entry);
-        }
-        toyMinimizerResultsEl.appendChild(list);
-      }
-      toyMinimizerReplaceEl.disabled = !report.removed.length;
+      renderToyMinimizerView(toyMinimizerViewElements, report, toyMinimizerCellLabel);
     }
 
-    function toyMinimizerSolutionCount(grid) {
-      if (typeof core.countSolutionsDlx === 'function') return core.countSolutionsDlx([...grid], 2);
-      return core.solveDlx([...grid], 2).count;
-    }
+    const { countToySolutions } = appNamespace.toyMath;
+    const { clear: clearToyMinimizerView, render: renderToyMinimizerView } = appNamespace.toyMinimizerView;
+    const toyMinimizerViewElements = { results: toyMinimizerResultsEl, replace: toyMinimizerReplaceEl };
+    function toyMinimizerSolutionCount(grid) { return countToySolutions(grid, core, 2); }
 
     async function runToyMinimizer() {
       if (busy) return;
@@ -2432,35 +1159,23 @@
       }
 
       const epoch = setBusy(true);
-      const working = [...source];
-      const removed = [];
       try {
-        let changed = true;
-        while (changed) {
-          changed = false;
-          for (let cell = 0; cell < 81; cell += 1) {
-            if (!busy || epoch !== searchEpoch) return;
-            const digit = working[cell];
-            if (!digit) continue;
-            working[cell] = 0;
-            await new Promise(resolve => setTimeout(resolve, 0));
-            if (toyMinimizerSolutionCount(working) === 1) {
-              removed.push({ cell, digit });
-              changed = true;
-            } else {
-              working[cell] = digit;
-            }
-          }
-        }
+        const reduction = await appNamespace.toyMinimizer.minimize(
+          source,
+          grid => toyMinimizerSolutionCount(grid) === 1,
+          () => busy && epoch === searchEpoch,
+          () => new Promise(resolve => setTimeout(resolve, 0)),
+        );
+        if (!reduction) return;
         toyMinimizerReport = {
           sourceKey: source.join(''),
           sourceGivenCount,
-          reducedGivenCount: working.filter(Boolean).length,
-          reduced: working,
-          removed,
+          reducedGivenCount: reduction.reduced.filter(Boolean).length,
+          reduced: reduction.reduced,
+          removed: reduction.removed,
         };
         renderToyMinimizerReport(toyMinimizerReport);
-        setStatus(`Clue minimizer found ${removed.length} removable clue${removed.length === 1 ? '' : 's'}.`, 'ok');
+        setStatus(`Clue minimizer found ${reduction.removed.length} removable clue${reduction.removed.length === 1 ? '' : 's'}.`, 'ok');
       } catch (error) {
         clearToyMinimizerResults();
         setStatus(`Clue minimizer failed: ${error.message || error}`, 'warn');
@@ -2483,12 +1198,6 @@
         promotedValues = new Array(81).fill(0);
         cand = core.allCandidates(puzzle);
       });
-    }
-
-    function appendToyAutomorphResult(list, entry, description) {
-      const item = document.createElement('li');
-      item.appendChild(document.createTextNode(description));
-      list.appendChild(item);
     }
 
     function runToyAutomorphSearch() {
@@ -2522,120 +1231,25 @@
       // source. Named classes must be checked in the selected source's coordinate
       // frame, otherwise canonicalization conjugates the operation and hides
       // its class name.
-      const searchSource = miniLex.values;
       const searchTarget = miniLex.values;
       const namedSource = comparison.source;
       const namedTarget = comparison.target;
 
-      const familyLabels = {
-        fixedBoxes: 'Fixed Boxes',
-        bands: 'Boxes move in bands',
-        triangular: 'Boxes move triangular',
-        rotational: 'Rotational symmetries',
-        diagonal: 'Diagonal symmetries',
-        sticks: 'Sticks symmetries',
-      };
-      const records = toyFamilyRecords();
-      const normalizedTargetKey = toyNormalizedValueKey(namedTarget);
-      const matches = new Map();
-      let namedTested = 0;
-      for (const family of familyNames) {
-        const familyMatches = [];
-        for (const record of records[family]) {
-          if (toyIsIdentityPermutation(record.permutation)) continue;
-          if (!toyPermutationPreservesActiveVariants(record.permutation)) continue;
-          namedTested++;
-          const transformed = toyMapValues(namedSource, record.permutation);
-          let mapping = null;
-          if (toyNormalizedValueKey(transformed) === normalizedTargetKey) {
-            mapping = toyDigitPatternMap(transformed, namedTarget);
-          }
-          if (mapping && toyVerifyDigitMap(transformed, searchTarget, mapping)) {
-            familyMatches.push({ ...record, mapping });
-          }
-        }
-        matches.set(family, familyMatches);
-      }
+      const records = getToyFamilyRecords();
+      const fullFamilySearch = familyNames.length === Object.keys(toySearchFamilyLabels).length;
+      const search = toySearchAutomorphisms(familyNames, records, namedSource, namedTarget, searchTarget, fullFamilySearch, {
+        normalizedKey: toyNormalizedValueKey, mapValues: toyMapValues, digitPatternMap: toyDigitPatternMap,
+        verifyDigitMap: toyVerifyDigitMap, isIdentity: toyIsIdentityPermutation,
+        preserves: toyPermutationPreservesActiveVariants,
+        complete: toyCompleteAutomorphismSearch,
+      });
+      const { matches, completeMatches, tested, total, namedTotal } = search;
 
-      let tested = namedTested;
-      const fullFamilySearch = familyNames.length === Object.keys(familyLabels).length;
-      let completeMatches = [];
-      if (fullFamilySearch) {
-        const complete = toyCompleteAutomorphismSearch(searchSource);
-        tested = complete.tested;
-        completeMatches = complete.records;
-      }
-
-      toyAutomorphResultsEl.textContent = '';
-      const namedTotal = [...matches.values()].reduce((sum, entries) => sum + entries.length, 0);
-      const total = fullFamilySearch
-        ? completeMatches.length
-        : namedTotal;
-      const intro = document.createElement('p');
-      intro.textContent = fullFamilySearch
-        ? `Compared the ${comparison.mode}; tested ${tested.toLocaleString()} legal transformations against its Mini-lex grid; found ${total} complete automorphisms.`
-        : `Compared the ${comparison.mode}; tested ${tested} named family transformations against its Mini-lex grid; found ${total} ${total === 1 ? 'identity' : 'identities'}.`;
-      toyAutomorphResultsEl.appendChild(intro);
-      if (fullFamilySearch) {
-        const shortcutSummary = document.createElement('p');
-        shortcutSummary.textContent = `Named shortcut checks found ${namedTotal} matching identity ${namedTotal === 1 ? 'class' : 'classes'} across ${Object.keys(familyLabels).length} symmetry families.`;
-        toyAutomorphResultsEl.appendChild(shortcutSummary);
-      }
-      if (!total) {
-        const none = document.createElement('p');
-        none.textContent = 'No digit-renamed automorphic identity was found in the selected families.';
-        toyAutomorphResultsEl.appendChild(none);
-      }
-
-      if (fullFamilySearch && total) {
-        const completePanel = document.createElement('details');
-        const completeSummary = document.createElement('summary');
-        completeSummary.textContent = total === 1
-          ? 'Asymmetric (identity only)'
-          : `Automorphisms (${total})`;
-        completePanel.appendChild(completeSummary);
-        const completeList = document.createElement('ol');
-        const limit = 200;
-        for (const entry of completeMatches.slice(0, limit)) {
-          appendToyAutomorphResult(
-            completeList,
-            entry,
-            `${toyCompleteAutomorphismLabel(entry)}; digit map ${toyFormatDigitMap(entry.mapping)}`,
-          );
-        }
-        if (completeMatches.length > limit) {
-          const more = document.createElement('li');
-          more.textContent = `Showing ${limit} of ${completeMatches.length} complete matches.`;
-          completeList.appendChild(more);
-        }
-        completePanel.appendChild(completeList);
-        toyAutomorphResultsEl.appendChild(completePanel);
-      }
-
-      for (const family of familyNames) {
-        const entries = matches.get(family);
-        if (!entries?.length) continue;
-        const panel = document.createElement('details');
-        const summary = document.createElement('summary');
-        summary.textContent = `${familyLabels[family]} (${entries.length})`;
-        panel.appendChild(summary);
-        const list = document.createElement('ol');
-        const limit = 200;
-        for (const entry of entries.slice(0, limit)) {
-          appendToyAutomorphResult(
-            list,
-            entry,
-            `${entry.label}; digit map ${toyFormatDigitMap(entry.mapping)}`,
-          );
-        }
-        if (entries.length > limit) {
-          const more = document.createElement('li');
-          more.textContent = `Showing ${limit} of ${entries.length} matches.`;
-          list.appendChild(more);
-        }
-        panel.appendChild(list);
-        toyAutomorphResultsEl.appendChild(panel);
-      }
+      appNamespace.toyAutomorphView.renderSearch({ results: toyAutomorphResultsEl }, {
+        mode: comparison.mode, tested, total, namedTotal, fullFamilySearch, matches, completeMatches,
+        familyNames, labels: toySearchFamilyLabels,
+        completeLabel: toyCompleteAutomorphismLabel, formatMap: toyFormatDigitMap,
+      });
       setStatus(
         total
           ? `Automorphic search found ${total} digit-renamed ${total === 1 ? 'identity' : 'identities'}.`
@@ -6753,647 +5367,27 @@
       updateHistoryButtons();
     }
 
-    function displayTech(tech) {
-      if (tech === 'pointing' || tech === 'claiming' || tech === 'non-consecutive-line' || tech === 'non-consecutive-eri' || tech === 'non-consecutive-als' || tech === 'non-consecutive-als-dof' || tech === 'non-consecutive-als-dof-peer') {
-        return 'Box - Line Reduction';
-      }
-      return tech.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
-    }
+    const { displayTech, constructDisplayName } = appNamespace.displayNames;
 
-    const RATING_CATEGORY_RANKS = Object.freeze({
-      Any: -1,
-      Lulz: 0,
-      'Extremely Easy': 10,
-      'Very Easy': 20,
-      'Modestly Easy': 30,
-      Easy: 40,
-      Moderate: 50,
-      Tough: 60,
-      Challenging: 70,
-      Irritating: 80,
-      Frustrating: 90,
-      Hard: 100,
-      Demanding: 110,
-      Expert: 120,
-      Brutal: 130,
-      Nightmare: 140,
-      Abyssal: 150,
-      Ascendant: 160,
-      Transcendent: 170,
-      Unknown: Number.POSITIVE_INFINITY,
-    });
+    const ratingData = appNamespace.ratingData;
+    const RATING_CATEGORY_RANKS = ratingData.ranks;
+    const RATING_CATEGORY_SCORE_BANDS = ratingData.scoreBands;
+    const RATING_CATEGORY_COLORS = ratingData.colors;
 
-    const RATING_CATEGORY_SCORE_BANDS = Object.freeze([
-      { category: 'Lulz', min: 0, max: 0 },
-      { category: 'Extremely Easy', min: 1, max: 1.5 },
-      { category: 'Very Easy', min: 2, max: 2 },
-      { category: 'Modestly Easy', min: 2.001, max: 2.999 },
-      { category: 'Easy', min: 3, max: 3 },
-      { category: 'Moderate', min: 3.001, max: 3.999 },
-      { category: 'Tough', min: 4, max: 4 },
-      { category: 'Challenging', min: 4.001, max: 4.999 },
-      { category: 'Irritating', min: 5, max: 5.999 },
-      { category: 'Frustrating', min: 6, max: 6.999 },
-      { category: 'Hard', min: 7, max: 7.999 },
-      { category: 'Demanding', min: 8, max: 8.999 },
-      { category: 'Expert', min: 9, max: 9.999 },
-      { category: 'Brutal', min: 10, max: 10.999 },
-      { category: 'Nightmare', min: 11, max: 11.999 },
-      { category: 'Abyssal', min: 12, max: 12.999 },
-      { category: 'Ascendant', min: 13, max: 13.999 },
-      { category: 'Transcendent', min: 14, max: 15.999 },
-    ]);
+    const ratingRuntime = appNamespace.ratingRuntime.create(ratingData);
+    const { ratingCategoryColorClass, normalizeRatingCategory, ratingCategoryForValue,
+      generationTechniqueProfile, ratingDefinition, formatRatingValue, ratingTags } = ratingRuntime;
+    const { unknownRating, fishScoreForSize } = appNamespace.ratingScoring.create(ratingData);
+    const { chainLengthOf, chainUniqueDigitCount, chainMathScore, pureXyChainDepth,
+      depthScaledChainRating } = appNamespace.chainScoring;
+    const { chainLinkScoreModifier } = appNamespace.chainModifiers.create(
+      module => chainModuleSubsets(module));
+    const { isTransportAlsXyRingShape, normalizedChainStructureName } = appNamespace.chainClassification;
+    const { alsDofScore, alsDofMoveKey, alsDofMoveEnabled } = appNamespace.dofRating;
 
-    const RATING_CATEGORY_COLORS = Object.freeze({
-      Lulz: 'white',
-      'Extremely Easy': 'white',
-      'Very Easy': 'green',
-      'Modestly Easy': 'green',
-      Easy: 'blue',
-      Moderate: 'blue',
-      Tough: 'yellow',
-      Challenging: 'yellow',
-      Irritating: 'red',
-      Frustrating: 'red',
-      Hard: 'purple',
-      Demanding: 'purple',
-      Expert: 'violet',
-      Brutal: 'violet',
-      Nightmare: 'brown',
-      Abyssal: 'brown',
-      Ascendant: 'black',
-      Transcendent: 'black',
-      Any: 'unknown',
-      Unknown: 'unknown',
-    });
+    const RATING_TAGS = ratingTags;
 
-    function ratingCategoryColorClass(category) {
-      return `rating-category-${RATING_CATEGORY_COLORS[normalizeRatingCategory(category)] || 'unknown'}`;
-    }
-
-    function normalizeRatingCategory(category) {
-      const value = String(category ?? '').trim();
-      if (!value || /^any$/i.test(value)) return 'Any';
-      if (/^unknown$/i.test(value)) return 'Unknown';
-      return value;
-    }
-
-    function ratingCategoryForValue(value, fallback = 'Unknown') {
-      const numeric = Number(value);
-      if (!Number.isFinite(numeric)) return fallback;
-      const band = RATING_CATEGORY_SCORE_BANDS.find(({ min, max }) => numeric >= min && numeric <= max);
-      return band?.category || fallback;
-    }
-
-    function generationTechniqueProfile(category) {
-      const normalizedCategory = normalizeRatingCategory(category);
-      if (normalizedCategory === 'Any' || normalizedCategory === 'Unknown') return null;
-
-      const maxRank = RATING_CATEGORY_RANKS[normalizedCategory];
-      if (!Number.isFinite(maxRank)) return null;
-
-      const moveTypes = new Set();
-      const addAt = (rank, ...types) => {
-        if (maxRank < rank) return;
-        for (const type of types) moveTypes.add(type);
-      };
-
-      addAt(0, 'last-man-standing');
-      addAt(10, 'hidden-single', 'naked-single', 'box-line');
-      addAt(20, 'hidden-pair', 'naked-pair', 'x-wing', 'aic-x-wing', 'chains', 'x-chain', 'chain-x-wing');
-      addAt(30, '2x2+k-fish', 'empty-rectangle', '2-string-kite', 'skyscraper',
-        'finned-x-wing', 'sashimi-x-wing');
-      addAt(40, 'hidden-triple', 'naked-triple', 'swordfish');
-      addAt(50, '3x3+k-fish', 'dual-empty-rectangle', 'rect-kite', 'bridged-eri',
-        'eri-chain', 'l1-wing', 'xy-wing', 'barns', 'als-xz',
-        's-wing', 'm2-wing', 'm3-wing', 'l2-wing', 'l3-wing',
-        'h1-wing', 'h2-wing', 'h3-wing', 'w-wing', 'strong-wing');
-      addAt(60, 'hidden-quad', 'naked-quad', 'jellyfish');
-      addAt(70, '4x4+k-fish');
-      addAt(50, 'xy-chain');
-      addAt(70, 'barns-transport');
-      addAt(90, 'inversion',
-        'barns-transport');
-      addAt(100, 'als-xz', 'ahs-xz', 'alc-xz');
-      addAt(100, 'remote-pair', 'hidden-xy-chain', 'hidden-remote-pair');
-      addAt(110, 'als-named', 'ahs-named', 'alc-named',
-        't-als-xz', 't-ahs-xz', 't-alc-xz', 'als-xy', 'ahs-xy', 'alc-xy');
-      addAt(120, 't-als-xy', 't-ahs-xy', 't-alc-xy', 'aic-als');
-      addAt(130, 'als-chain', 'ahs-chain', 'alc-chain');
-      addAt(150, 'als-dof', 'ahs-dof', 'alc-dof', 'dds', 'adds');
-      addAt(160, 'msls');
-      addAt(170, 'ahs-dof-chain');
-      addAt(170, 'als-dof-chain');
-
-      const strongLinkTypes = maxRank >= 50
-        ? [0, 1, 2, 3, 4]
-        : maxRank >= 30
-          ? [0, 1, 2, 3]
-          : maxRank >= 20
-            ? [0]
-            : [];
-
-      const maxDepth = maxRank <= 30 ? 2 : maxRank <= 50 ? 3 : maxRank <= 70 ? 4 : 8;
-      const maxFishSize = maxRank < 80 ? 4 : maxRank < 90 ? 5 : maxRank < 100 ? 6 : maxRank < 110 ? 7 : maxRank < 120 ? 8 : 9;
-      const subsetSizes = maxRank >= 120 ? [5, 6, 7, 8, 9]
-        : maxRank >= 110 ? [5, 6, 7, 8]
-          : maxRank >= 100 ? [5, 6, 7]
-            : maxRank >= 90 ? [5, 6]
-              : maxRank >= 80 ? [5] : [];
-      const basicFishSizes = maxRank >= 120 ? [5, 6, 7, 8, 9]
-        : maxRank >= 110 ? [5, 6, 7, 8]
-          : maxRank >= 100 ? [5, 6, 7]
-            : maxRank >= 90 ? [5, 6]
-              : maxRank >= 80 ? [5] : [];
-
-      return {
-        moveTypes,
-        maxRank,
-        maxDepth,
-        maxFishSize,
-        subsetSizes,
-        basicFishSizes,
-        strongLinkTypes,
-        includeAlsRcc: maxRank >= 50,
-        alsMaxDigits: maxRank >= 170 ? 9 : maxRank >= 150 ? 5 : null,
-        alsMaxSizeDOF: maxRank >= 150 ? Math.min(8, Math.max(1, Math.floor((maxRank - 140) / 2))) : null,
-        alsMaxSizeFox: maxRank >= 150 ? Math.min(8, Math.max(2, Math.floor((maxRank - 140) / 2) + 1)) : null,
-        alsMaxAuxiliary: maxRank >= 170 ? 8 : maxRank >= 150 ? 2 : null,
-        alsSearchLimit: maxRank >= 150,
-        scalingTier: Math.max(0, Math.floor(maxRank / 10)),
-      };
-    }
-
-    function ratingDefinition(category, value, tag, tech = null, rank = null) {
-      return {
-        category,
-        rank: rank ?? RATING_CATEGORY_RANKS[normalizeRatingCategory(category)] ?? RATING_CATEGORY_RANKS.Unknown,
-        value,
-        tag,
-        ...(tech ? { tech } : {}),
-      };
-    }
-
-    const RATING_TAGS = Object.freeze([
-      ratingDefinition('Lulz', 0, 'Last Man Standing', 'last-man-standing'),
-      ratingDefinition('Extremely Easy', 1, 'Hidden Single', 'hidden-single'),
-      ratingDefinition('Extremely Easy', 1, 'Naked Single', 'naked-single'),
-      ratingDefinition('Extremely Easy', 1, 'Box - Line Reduction', 'box-line'),
-      ratingDefinition('Very Easy', 2, 'Hidden Pair', 'hidden-pair'),
-      ratingDefinition('Very Easy', 2, 'Naked Pair', 'naked-pair'),
-      ratingDefinition('Very Easy', 2, 'X-Wing', 'x-wing'),
-      ratingDefinition('Easy', 3, 'Hidden Triple', 'hidden-triple'),
-      ratingDefinition('Easy', 3, 'Naked Triple', 'naked-triple'),
-      ratingDefinition('Easy', 3, 'SwordFish', 'swordfish'),
-      ratingDefinition('Tough', 4, 'Hidden Quad', 'hidden-quad'),
-      ratingDefinition('Tough', 4, 'Naked Quad', 'naked-quad'),
-      ratingDefinition('Tough', 4, 'JellyFish', 'jellyfish'),
-    ]);
-
-    const DIFFICULTY_TABLE_GROUPS = Object.freeze([
-      {
-        category: 'ANY', score: '—', items: [
-          ['Any target', 'No restriction'],
-        ],
-      },
-      {
-        category: 'LULZ', score: '0', items: [
-          ['Last Man Standing', '0'],
-        ],
-      },
-      {
-        category: 'EXTREMELY EASY', score: '1', items: [
-          ['Hidden Single', '1'],
-          ['Naked Single', '1'],
-          ['Box-Line Reduction', '1'],
-        ],
-      },
-      {
-        category: 'VERY EASY', score: '2', items: [
-          ['Hidden Pair', '2'],
-          ['Naked Pair', '2'],
-          ['X-Wing', '2'],
-        ],
-      },
-      {
-        category: 'MODESTLY EASY', score: '2.125 to 2.75', items: [
-          ['X-Chain depth 2, open', '2.25 + link modifiers'],
-          ['Skyscraper', '2.25 + link modifiers'],
-          ['2-String Kite', '2.25 + link modifiers'],
-          ['Finned X-Wing', '2.25 + link modifiers'],
-          ['Sashimi X-Wing', '2.25 + link modifiers'],
-          ['Empty Rectangle', '2.25 + link modifiers'],
-          ['Franken 2x2 Fish K0', '2.125'],
-          ['Mutant 2x2 Fish K0', '2.25'],
-          ['Franken 2x2+K1 Fish', '2.375'],
-          ['Mutant 2x2+K1 Fish', '2.50'],
-          ['Franken 2x2+K2 Fish', '2.625'],
-          ['Mutant 2x2+K2 Fish', '2.75'],
-        ],
-      },
-      {
-        category: 'EASY', score: '3', items: [
-          ['Hidden Triple', '3'],
-          ['Naked Triple', '3'],
-          ['Swordfish', '3'],
-        ],
-      },
-      {
-        category: 'MODERATE', score: '3.125 to 3.75', items: [
-          ['X-Chains depth 3, types 0-3, including L(1)/ERI subclasses', '3.25 + link modifiers'],
-          ['XY-Chain depth 3', '3.25 + link modifiers'],
-          ['B.A.R.N.S. size 3, XYZ Wing/Ring', '3.25 + ALS_RCC modifiers'],
-          ['L(2,3), W, S, M, H(1,2,3), Strong Wing/Ring depth 3', '3.25 + link modifiers'],
-          ['Franken 3x3 Fish K0', '3.125'],
-          ['Mutant 3x3 Fish K0', '3.25'],
-          ['Franken 3x3+K1 Fish', '3.375'],
-          ['Mutant 3x3+K1 Fish', '3.50'],
-          ['Franken 3x3+K2 Fish', '3.625'],
-          ['Mutant 3x3+K2 Fish', '3.75'],
-        ],
-      },
-      {
-        category: 'TOUGH', score: '4', items: [
-          ['Hidden Quad', '4'],
-          ['Naked Quad', '4'],
-          ['Jellyfish', '4'],
-        ],
-      },
-      {
-        category: 'CHALLENGING', score: '4.125 to 4.75', items: [
-          ['X-Chain depth 4', '4.25 + link modifiers'],
-          ['B.A.R.N.S. transport, size 3', '4.75 + link modifiers'],
-          ['B.A.R.N.S./WXYZ, size 4', '4.25 + ALS_RCC modifiers'],
-          ['XY-Chain depth 4', '4.25 + link modifiers'],
-          ['Hidden XY-Chain depth 4', '4.25 + link modifiers'],
-          ['Ordinary AIC depth 4, including Inversion Wings/Rings', '4.25 + link modifiers'],
-          ['Franken 4x4 Fish K0', '4.125'],
-          ['Mutant 4x4 Fish K0', '4.25'],
-          ['Franken 4x4+K1 Fish', '4.375'],
-          ['Mutant 4x4+K1 Fish', '4.50'],
-          ['Franken 4x4+K2 Fish', '4.625'],
-          ['Mutant 4x4+K2 Fish', '4.75'],
-        ],
-      },
-      {
-        category: 'IRRITATING', score: '5 to 5.75', items: [
-          ['Hidden Quintuple (off by default)', '5'],
-          ['Naked Quintuple (off by default)', '5'],
-          ['Basic 5x5 Fish (off by default)', '5'],
-          ['X-Chains depth 5', '5'],
-          ['XY-Chain depth 5', '5.25 + link modifiers'],
-          ['Hidden XY-Chain depth 5', '5.25 + link modifiers'],
-          ['Ordinary AIC depth 5, including permitted Inversion Wings/Rings', '5.25 + link modifiers'],
-          ['Transport WXYZ Wings/Rings', '5 + link modifiers'],
-          ['B.A.R.N.S. size 5, VWXYZ Wings/Rings', '5 + ALS_RCC modifiers'],
-          ['Franken/Mutant 5x5 Fish K0 (off by default)', '5.125'],
-        ],
-      },
-      {
-        category: 'FRUSTRATING', score: '6 to 6.75', items: [
-          ['Hidden Sextuple (off by default)', '6'],
-          ['Naked Sextuple (off by default)', '6'],
-          ['Basic 6x6 Fish (off by default)', '6'],
-          ['X-Chains depth 6', '6 + link modifiers'],
-          ['XY-Chain depth 6', '6 + link modifiers'],
-          ['Hidden XY-Chain depth 6', '6 + link modifiers'],
-          ['AIC depth 6, including ALS_RCC/AHS_RCC', '6 + link / ALS_RCC / AHS_RCC modifiers'],
-          ['Transport B.A.R.N.S. size 5', '6 + link modifiers'],
-          ['B.A.R.N.S. size 6, UVWXYZ Wings/Rings', '6 + ALS_RCC modifiers'],
-          ['Franken 6x6 Fish K0', '6.125'],
-          ['Mutant 6x6 Fish K0', '6.25'],
-          ['Transport W-Wing/Ring', '6.5'],
-        ],
-      },
-      {
-        category: 'HARD', score: '7 to 7.75', items: [
-          ['Hidden Septuple (off by default)', '7'],
-          ['Naked Septuple (off by default)', '7'],
-          ['Basic 7x7 Fish (off by default)', '7'],
-          ['ALS-XZ, full engine, depth 2', '7 + link / ALS_RCC modifiers'],
-          ['AHS-XZ, full engine, depth 2', '7 + link / AHS_RCC modifiers'],
-          ['ALC-XZ, full engine, depth 2', '7 + link / ALS_RCC / AHS_RCC modifiers'],
-          ['Full-depth X-Chains', '7.25 + link modifiers'],
-          ['Full-depth XY-Chains', '7.25 + link modifiers'],
-          ['Full-depth Hidden XY-Chains', '7.25 + link modifiers'],
-          ['Full-depth ordinary AIC', '7.25 + link modifiers'],
-
-          ['Franken 7x7 Fish K0', '7.125'],
-          ['Mutant 7x7 Fish K0', '7.25'],
-        ],
-      },
-      {
-        category: 'DEMANDING', score: '8 to 8.5', items: [
-          ['Hidden Octuple (off by default)', '8'],
-          ['Naked Octuple (off by default)', '8'],
-          ['Named ALS Wings/Rings, AIC depth 3', '8 + link / ALS_RCC modifiers'],
-          ['Named AHS Wings/Rings, AIC depth 3', '8 + link / AHS_RCC modifiers'],
-          ['Named ALC Wings/Rings, AIC depth 3', '8 + link / ALS_RCC / AHS_RCC modifiers'],
-          ['Transport ALS-XZ', '8 + link / ALS_RCC modifiers'],
-          ['Transport AHS-XZ', '8 + link / AHS_RCC modifiers'],
-          ['Transport ALC-XZ', '8 + link / ALS_RCC / AHS_RCC modifiers'],
-          ['ALS-XY, unrestricted, depth 3', '8 + link / ALS_RCC modifiers'],
-          ['AHS-XY, depth 3', '8 + link / AHS_RCC modifiers'],
-          ['ALC-XY, depth 3', '8.5 + link / ALS_RCC / AHS_RCC modifiers'],
-        ],
-      },
-      {
-        category: 'EXPERT', score: '9 to 9.5', items: [
-          ['Hidden Nontuple (off by default)', '9'],
-          ['Naked Nontuple (off by default)', '9'],
-          ['Transport ALS-XY', '9 + link / ALS_RCC modifiers'],
-          ['Transport AHS-XY', '9 + link / AHS_RCC modifiers'],
-          ['Transport ALC-XY', '9 + link / ALS_RCC / AHS_RCC modifiers'],
-        ],
-      },
-      {
-        category: 'BRUTAL', score: '10 to 10.5', items: [
-          ['ALS Chains, full scope beyond depth 3', '10 + link / ALS_RCC modifiers'],
-          ['AHS Chains, full scope beyond depth 3', '10 + link / AHS_RCC modifiers'],
-          ['ALC Chains, full scope beyond depth 3', '10.5 + link / ALS_RCC / AHS_RCC modifiers'],
-        ],
-      },
-      {
-        category: 'NIGHTMARE', score: '11 to 11.5', items: [
-          ['Full AIC, beyond depth 3', '11 + link / ALS_RCC / AHS_RCC modifiers'],
-        ],
-      },
-      {
-        category: 'ABYSSAL', score: '12 to 12.999', items: [
-          ['ALS-DOF, progressively scaled DOF/digits', '12 + 0.25 * (DOF - 1)'],
-          ['DDS ring, progressively scaled DOF/digits', 'ALS-DOF + 0.5'],
-          ['ADDS, progressively scaled DOF/digits', 'DDS + 0.25'],
-          ['AHS-DOF, progressively scaled DOF/cells', '12.25 + 0.25 * (DOF - 1)'],
-          ['ALC-DOF, progressively scaled mixed roots', '12.5 + scaling'],
-        ],
-      },
-      {
-        category: 'ASCENDANT', score: '13 to 13.999', items: [
-          ['MSLS, scaled multi-sector locked sets', '13 + link / cover modifiers'],
-        ],
-      },
-      {
-        category: 'TRANSCENDENT', score: '14 to 15.999', items: [
-          ['ALS-DOF Chaining, progressively scaled depth/digits/DOF', '14+'],
-          ['AHS-DOF Chain, extended scope', '14+'],
-        ],
-      },
-      {
-        category: 'UNKNOWN', score: '—', items: [
-          ['Unsolved', '—'],
-          ['Unclassified', '—'],
-        ],
-      },
-    ]);
-
-    function renderDifficultyTable() {
-      if (!difficultyTableEl) return;
-      difficultyTableEl.textContent = '';
-
-      const header = document.createElement('div');
-      header.className = 'difficulty-table-header';
-      header.setAttribute('role', 'row');
-      for (const label of ['Difficulty', 'Score', 'Move']) {
-        const cell = document.createElement('span');
-        cell.textContent = label;
-        cell.setAttribute('role', 'columnheader');
-        header.appendChild(cell);
-      }
-      difficultyTableEl.appendChild(header);
-
-      for (const group of DIFFICULTY_TABLE_GROUPS) {
-        const details = document.createElement('details');
-        details.className = 'difficulty-category';
-
-        const summary = document.createElement('summary');
-        summary.setAttribute('role', 'row');
-        const category = document.createElement('span');
-        category.textContent = group.category;
-        const score = document.createElement('span');
-        score.textContent = group.score;
-        const count = document.createElement('span');
-        count.textContent = `${group.items.length} ${group.items.length === 1 ? 'item' : 'items'}`;
-        summary.appendChild(category);
-        summary.appendChild(score);
-        summary.appendChild(count);
-        details.appendChild(summary);
-
-        const items = document.createElement('div');
-        items.className = 'difficulty-items';
-        items.setAttribute('role', 'rowgroup');
-        group.items.forEach(([name, itemScore, note, tooltip], index) => {
-          const item = document.createElement('div');
-          item.className = 'difficulty-item';
-          item.setAttribute('role', 'row');
-          if (tooltip) item.title = tooltip;
-
-          const itemIndex = document.createElement('span');
-          itemIndex.className = 'difficulty-item-index';
-          itemIndex.textContent = `${index + 1}.`;
-          const itemName = document.createElement('span');
-          itemName.textContent = name;
-          const itemScoreEl = document.createElement('span');
-          itemScoreEl.className = 'difficulty-item-score';
-          itemScoreEl.textContent = itemScore;
-          if (note) {
-            const noteEl = document.createElement('small');
-            noteEl.className = 'difficulty-item-note';
-            noteEl.textContent = ` ${note}`;
-            itemScoreEl.appendChild(noteEl);
-          }
-          item.appendChild(itemIndex);
-          item.appendChild(itemName);
-          item.appendChild(itemScoreEl);
-          items.appendChild(item);
-        });
-        details.appendChild(items);
-        difficultyTableEl.appendChild(details);
-      }
-    }
-
-    function unknownRating(move = '') {
-      return {
-        rank: RATING_CATEGORY_RANKS.Unknown,
-        value: null,
-        tag: 'Unknown',
-        category: 'Unknown',
-        hardestMove: move,
-        cycles: 0,
-        score: 0,
-        scoredMoves: 0,
-        source: 'run',
-      };
-    }
-
-    function fishScoreForSize(size, k = 0, fishCategory = 'Basic') {
-      const fishSize = Number(size);
-      const fishK = Number(k);
-      if (!Number.isInteger(fishSize) || fishSize < 2
-        || !Number.isInteger(fishK) || fishK < 0) return null;
-      if (fishSize > 7 || fishK > 2) return null;
-      const modifier = String(fishCategory || 'Basic').toLowerCase();
-      const shapeModifier = modifier === 'franken'
-        ? 0.125
-        : modifier === 'mutant'
-          ? 0.25
-          : 0;
-      return Number((fishSize + (fishK * 0.25) + shapeModifier).toFixed(3));
-    }
-
-    function chainLengthOf(chain) {
-      return Number(chain?.length || chain?.steps?.length || 0);
-    }
-
-    function chainUniqueDigitCount(chain) {
-      const digits = new Set();
-      for (const step of chain?.steps || []) {
-        for (const digit of step.entry?.digits || []) digits.add(Number(digit));
-        for (const digit of step.exit?.digits || []) digits.add(Number(digit));
-        if (step.weakDigit != null) digits.add(Number(step.weakDigit));
-        if (step.weakFromDigit != null) digits.add(Number(step.weakFromDigit));
-        if (step.weakToDigit != null) digits.add(Number(step.weakToDigit));
-      }
-      return [...digits].filter(Number.isFinite).length;
-    }
-
-    function chainMathScore(baseScore, chain, canonicalLength = baseScore, canonicalDigits = baseScore) {
-      const length = chainLengthOf(chain);
-      const actualDigits = Array.isArray(chain?.uniqueDigits)
-        ? chain.uniqueDigits.length
-        : Number(chain?.uniqueDigitCount);
-      const digitExcess = Number.isFinite(actualDigits)
-        ? Math.max(0, actualDigits - canonicalDigits)
-        : 0;
-      const lengthExcess = Number.isFinite(length)
-        ? Math.max(0, length - canonicalLength)
-        : 0;
-      const closure = chain?.isRing ? 0.5 : 0.25;
-      return Number((baseScore + lengthExcess + digitExcess + closure).toFixed(3));
-    }
-
-    function pureXyChainDepth(chain) {
-      const steps = chain?.steps || [];
-      if (steps.length < 2 || !steps.every(step =>
-        step.family === 'SL'
-        && Number(step.linkType) === 4
-        && (step.entry?.cells || []).length === 1
-        && (step.exit?.cells || []).length === 1)) return 0;
-      return chainLengthOf(chain);
-    }
-
-    function depthScaledChainRating(chain, label, minimumDepth = 3) {
-      const depth = Math.max(minimumDepth, chainLengthOf(chain));
-      const base = Math.min(7, depth);
-      const value = chainMathScore(base, chain, depth, 2);
-      return {
-        value,
-        label: `${label} (Depth ${depth})`,
-      };
-    }
-
-    const CHAIN_LINK_SCORE_MODIFIERS = Object.freeze({
-      0: 0.01,
-      1: 0.03,
-      2: 0.04,
-      3: 0.05,
-      4: 0.06,
-    });
-
-    function chainAlsRccDigitModifier(chain) {
-      const seen = new Set();
-      let modifier = 0;
-      for (const step of chain?.steps || []) {
-        if (step.family !== 'ALS'
-          || String(step.linkTypeName || '').toUpperCase() !== 'ALS_RCC') continue;
-        for (const subset of chainModuleSubsets(step.module)) {
-          if (!subset) continue;
-          const digits = [...new Set((subset.digits || []).map(Number).filter(Number.isFinite))]
-            .sort((left, right) => left - right);
-          const key = [
-            subset.id ?? '',
-            (subset.cells || []).join(','),
-            digits.join(''),
-          ].join('|');
-          if (seen.has(key)) continue;
-          seen.add(key);
-          modifier += 0.01 * digits.length;
-        }
-      }
-      return modifier;
-    }
-
-    function chainAhsRccCellModifier(chain) {
-      const seen = new Set();
-      let modifier = 0;
-      for (const step of chain?.steps || []) {
-        if (step.family !== 'AHS'
-          || String(step.linkTypeName || '').toUpperCase() !== 'AHS_RCC') continue;
-        for (const subset of chainModuleSubsets(step.module)) {
-          if (!subset) continue;
-          const cells = [...new Set((subset.cells || []).map(Number).filter(Number.isFinite))]
-            .sort((left, right) => left - right);
-          const digits = [...new Set((subset.digits || []).map(Number).filter(Number.isFinite))]
-            .sort((left, right) => left - right);
-          const key = [
-            subset.id ?? '',
-            cells.join(','),
-            digits.join(''),
-          ].join('|');
-          if (seen.has(key)) continue;
-          seen.add(key);
-          modifier += 0.01 * cells.length;
-        }
-      }
-      return modifier;
-    }
-
-    function chainLinkScoreModifier(chain) {
-      let modifier = chainAlsRccDigitModifier(chain) + chainAhsRccCellModifier(chain);
-      for (const step of chain?.steps || []) {
-        if (step.family !== 'SL') continue;
-        const linkModifier = CHAIN_LINK_SCORE_MODIFIERS[Number(step.linkType)];
-        if (linkModifier != null) modifier += linkModifier;
-      }
-      return Number(modifier.toFixed(3));
-    }
-
-    function isTransportAlsXyRingShape(chain) {
-      if (!chain?.isRing) return false;
-      const nodes = new Set();
-      const addNode = subset => {
-        const cells = [...new Set(subset?.cells || [])].sort((a, b) => a - b);
-        const digits = [...new Set(subset?.digits || [])].sort((a, b) => a - b);
-        if (cells.length && digits.length) nodes.add(`${cells.join(',')}|${digits.join('')}`);
-      };
-      for (const step of chain.steps || []) {
-        const bivalve = step?.family === 'SL'
-          && Number(step.linkType) === 4
-          && step.entry?.cells?.length === 1
-          && step.exit?.cells?.length === 1
-          && step.entry.cells[0] === step.exit.cells[0];
-        if (bivalve) {
-          addNode({
-            cells: [...step.entry.cells, ...step.exit.cells],
-            digits: [...(step.entry.digits || []), ...(step.exit.digits || [])],
-          });
-        }
-        if (step?.family === 'ALS' || step?.linkTypeName === 'ALS_RCC') {
-          addNode(step.module?.entrySideSubset || step.module?.entrySubset);
-          addNode(step.module?.exitSideSubset || step.module?.exitSubset);
-        }
-      }
-      const isOrdinaryStrong = step => step?.family === 'SL'
-        && Number(step.linkType) >= 0 && Number(step.linkType) <= 3
-        && step.linkTypeName !== 'ALS';
-      return nodes.size === 3
-        && chain.steps.filter(isOrdinaryStrong).length === 1;
-    }
-
-    function normalizedChainStructureName(chain) {
-      return isTransportAlsXyRingShape(chain)
-        ? 'T-ALS-XY Ring'
-        : String(chain?.structureName || 'AIC');
-    }
+    const DIFFICULTY_TABLE_GROUPS = appNamespace.difficultyInfoData.groups;
 
     function ratingForChain(chain, step = chain) {
       if (!chain) return unknownRating(step?.desc || '');
@@ -7645,49 +5639,10 @@
       return unknownRating(step?.desc || '');
     }
 
-    function alsDofScore(step) {
-      const dof = Math.max(1, Number(step?.size ?? step?.primaryA?.dof ?? 1));
-      const dofShift = 0.25 * Math.max(0, dof - 1);
-      if (step?.mode === 'almost-dds') return 12 + dofShift + 0.75;
-      if (step?.mode === 'dds') return 12 + dofShift + (step.isRing ? 0.5 : 0);
-      return 12 + dofShift + (step?.isRing ? 0.5 : 0);
-    }
-
-    function alsDofMoveKey(result) {
-      if (result?.mode === 'dds') return 'dds';
-      if (result?.mode === 'almost-dds') return 'adds';
-      return 'als-dof';
-    }
-
-    function alsDofMoveEnabled(result, enabledTypes) {
-      return enabledTypes.has(alsDofMoveKey(result));
-    }
-
-    function alsDofStepFromResult(result, report, index, candidateGrid) {
-      const items = core.eliminationItems({ items: result?.eliminations || [] }, candidateGrid);
-      if (!items.length) return null;
-      const step = {
-        tech: 'als-dof',
-        name: result.name,
-        structureName: result.name,
-        mode: result.mode,
-        isRing: !!result.isRing,
-        ringForm: result.ringForm,
-        size: result.size,
-        alsDofRecord: result,
-        alsDofReport: report,
-        alsDofIndex: index,
-        desc: core.formatAlsDof({ ...result, eliminations: items }),
-        elim: { items },
-        digits: [...new Set(items.map(item => item.digit))],
-        at: [...new Set((result.primaryA?.cells || [])
-          .concat((result.auxiliary || []).flatMap(node => node.cells || []))
-          .concat(result.primaryC?.cells || [])
-          .concat((result.hydraBranches || []).flatMap(branch => branch.chainCells || [])))],
-      };
-      step.rating = ratingForStep(step);
-      return step;
-    }
+    const { fromResult: alsDofStepFromResult } = appNamespace.dofStep.create({
+      core,
+      rateStep: ratingForStep,
+    });
 
     function ratingForStep(step) {
       const tech = String(step?.tech || '');
@@ -7816,70 +5771,18 @@
       return unknownRating(step?.desc || '');
     }
 
-    function ratingFromSteps(steps, source = 'run') {
-      let hardest = null;
-      let score = 0;
-      let scoredMoves = 0;
-      for (const step of steps || []) {
-        const rating = step.rating || ratingForStep(step);
-        if (!hardest
-          || rating.rank > hardest.rank
-          || (rating.rank === hardest.rank && Number(rating.value || -Infinity) > Number(hardest.value || -Infinity))) {
-          hardest = rating;
-        }
-        if (Number.isFinite(rating.value)) {
-          score += rating.value;
-          scoredMoves += 1;
-        }
-      }
+    const { ratingFromSteps, ratingWithSolvedState, ratingFromLog } = appNamespace.ratingAggregation.create({
+      rateStep: ratingForStep,
+      unknownRating,
+      ratingCategoryForValue,
+      ranks: RATING_CATEGORY_RANKS,
+    });
 
-      return {
-        ...(hardest || unknownRating()),
-        category: hardest?.category === 'Unknown'
-          ? 'Unknown'
-          : ratingCategoryForValue(hardest?.value, hardest?.category || 'Unknown'),
-        cycles: (steps || []).length,
-        score: Number(score.toFixed(3)),
-        scoredMoves,
-        source,
-      };
-    }
-
-    function ratingWithSolvedState(rating, solved) {
-      if (solved !== false) return { ...rating, solved };
-      return {
-        ...rating,
-        rank: RATING_CATEGORY_RANKS.Unknown,
-        value: null,
-        tag: 'Unknown',
-        category: 'Unknown',
-        stalledAfter: rating.tag,
-        stalledMove: rating.hardestMove,
-        partialScore: rating.score,
-        partialMoves: rating.scoredMoves,
-        hardestMove: '',
-        solved: false,
-      };
-    }
-
-    function candidateGridIsSolved(candidateGrid, grid, expectedSolution = solution) {
-      if (!Array.isArray(expectedSolution) || expectedSolution.length !== 81) return false;
-      return candidateGrid.every((values, cell) => {
-        if (grid[cell]) return grid[cell] === expectedSolution[cell];
-        return values.length === 1 && values[0] === expectedSolution[cell];
-      });
-    }
-
-    function boardIsComplete() {
-      return puzzle.every((value, cell) => value || promotedValues[cell]);
-    }
-
-    function ratingFromLog(entries, solved = null) {
-      return ratingWithSolvedState(
-        ratingFromSteps(entries || [], 'run'),
-        solved,
-      );
-    }
+    const solvedState = appNamespace.solvedState;
+    const candidateGridIsSolved = (candidateGrid, grid, expectedSolution = solution) =>
+      solvedState.candidateGridIsSolved(candidateGrid, grid, expectedSolution);
+    const { boardIsComplete: isBoardComplete } = solvedState;
+    const boardIsComplete = () => isBoardComplete(puzzle, promotedValues);
 
     function applySimulationPromotion(candidateGrid, grid, step) {
       const cell = (step?.at || step?.vertices || [])[0];
@@ -8009,13 +5912,6 @@
       };
     }
 
-    function formatRatingValue(value) {
-      if (!Number.isFinite(value)) return '';
-      return Number.isInteger(value)
-        ? String(value)
-        : value.toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
-    }
-
     function rateGeneratedPuzzle(grid, expectedSolution, targetCategory = 'any') {
       try {
         const profile = generationTechniqueProfile(targetCategory);
@@ -8079,49 +5975,19 @@
       }
     }
 
-    function renderRatingReport() {
-      if (!ratingReport) {
-        ratingSummaryEl.hidden = true;
-        return;
-      }
-
-      ratingSummaryEl.hidden = false;
-      ratingStepCountEl.textContent = String(
-        ratingReport.cycles ?? ratingReport.partialMoves ?? 0,
-      );
-      const ratingCategory = ratingReport.category || ratingCategoryForValue(ratingReport.value);
-      ratingCategoryEl.className = `rating-summary-category ${ratingCategoryColorClass(ratingCategory)}`;
-      ratingCategoryEl.textContent = ratingCategory;
-      if (ratingReport.solved === false) {
-        const partialScore = formatRatingValue(ratingReport.partialScore ?? ratingReport.score);
-        ratingDetailEl.textContent = partialScore || '0';
-        ratingHardestMoveEl.textContent = 'Unknown';
-        return;
-      }
-
-      ratingDetailEl.textContent = formatRatingValue(ratingReport.score) || '0';
-      ratingHardestMoveEl.textContent = ratingReport.hardestMove
-        ? `${ratingReport.tag} (${formatRatingValue(ratingReport.value)})`
-        : 'Unknown';
-    }
-
-    function constructDisplayName(chain, ratingTag) {
-      const ratedName = String(ratingTag || '').trim();
-      const structureName = String(chain?.structureName || '').trim();
-      if (!structureName) return ratedName;
-
-      // Preserve the AIC + ALS identity in solution history. Folder-specific
-      // views may still expose the shorter ALS subclass label.
-      const namedStructure = structureName;
-      const isGenericName = value => /^(?:AIC|AIC\s*\+\s*ALS(?:\s+Chain)?|ALS\s*-\s*(?:XZ|XY|Chain)(?:\s+Ring)?|AHS\s*-\s*(?:XZ|XY|Chain)(?:\s+Ring)?|X-Chain\s+\(Depth\s+\d+\)(?:\s+Ring)?)$/i.test(value);
-      if (namedStructure !== structureName && !isGenericName(ratedName)) {
-        return ratedName || namedStructure;
-      }
-      if (isGenericName(ratedName) && !isGenericName(namedStructure)) {
-        return namedStructure;
-      }
-      return ratedName || namedStructure;
-    }
+    const ratingView = appNamespace.ratingView.create({
+      elements: {
+        summary: ratingSummaryEl,
+        stepCount: ratingStepCountEl,
+        category: ratingCategoryEl,
+        detail: ratingDetailEl,
+        hardestMove: ratingHardestMoveEl,
+      },
+      formatRatingValue,
+      ratingCategoryForValue,
+      ratingCategoryColorClass,
+    });
+    const renderRatingReport = () => ratingView.render(ratingReport);
 
     function appendStep(step) {
       const rating = ratingForStep(step);
@@ -8146,70 +6012,15 @@
       ratingReport = ratingFromLog(logEntries, candidateGridIsSolved(cand, puzzle));
     }
 
-    function displayedStepDescription(entry) {
-      const description = String(entry?.desc || '');
-      const moveName = String(entry?.moveName || entry?.ratingTag || '').trim();
-      if (!entry?.chain || !moveName || moveName === 'Unknown') return description;
+    const solutionLogView = appNamespace.solutionLogView.create({
+      elements: { log: logEl, preview: solutionStepsPreviewEl },
+      formatRatingValue,
+      inspectLogStep,
+    });
+    const displayedStepDescription = solutionLogView.displayedStepDescription;
+    const renderLog = () => solutionLogView.render(logEntries, historyState);
 
-      const separator = description.indexOf(':');
-      if (separator < 0) return description;
-      return `${moveName}: ${description.slice(separator + 1).trim()}`;
-    }
-
-    function renderLog() {
-      logEl.textContent = '';
-
-      const latest = historyState.active
-        ? logEntries[historyState.index]
-        : logEntries[logEntries.length - 1];
-      solutionStepsPreviewEl.textContent = latest
-        ? `${latest.cycle}. ${displayedStepDescription(latest)}`
-     : 'No applied steps yet.';
-
-      for (let index = logEntries.length - 1; index >= 0; index--) {
-        const entry = logEntries[index];
-        const li = document.createElement('li');
-        const tag = document.createElement('span');
-        const title = document.createElement('strong');
-
-        li.tabIndex = 0;
-        li.setAttribute('role', 'button');
-        li.classList.toggle('selected', historyState.index === index);
-        li.addEventListener('click', () => inspectLogStep(index));
-        li.addEventListener('keydown', event => {
-          if (event.key !== 'Enter' && event.key !== ' ') return;
-          event.preventDefault();
-          inspectLogStep(index);
-        });
-        tag.className = 'rating-tag';
-        const value = formatRatingValue(entry.rating?.value);
-        tag.textContent = value ? `Rating: (${value})` : 'Rating: (Unknown)';
-        title.textContent = `${entry.cycle}. ${displayedStepDescription(entry)}`;
-
-        li.appendChild(tag);
-        li.appendChild(title);
-        logEl.appendChild(li);
-      }
-    }
-
-    function renderPomList(title, items) {
-      if (!items.length) return;
-
-      const section = document.createElement('section');
-      const heading = document.createElement('h3');
-      heading.textContent = title;
-      section.appendChild(heading);
-
-      const list = document.createElement('ul');
-      for (const value of items) {
-        const item = document.createElement('li');
-        item.textContent = value;
-        list.appendChild(item);
-      }
-
-      section.appendChild(list);
-      pomResultsEl.appendChild(section);
-    }
+    const { renderList: renderPomList } = appNamespace.pomView.create(pomResultsEl);
 
     function renderPomReport() {
       pomResultsEl.textContent = '';
@@ -9594,66 +7405,6 @@
 
     function renderSuperMultiColoringReport() {
       return;
-      /* Retained below only as an archive while the method is removed. */
-      superMultiColoringResultsEl.textContent = '';
-      if (!superMultiColoringReport) {
-        superMultiColoringResultsEl.textContent = 'No Super Multi-colouring search has been run.';
-        return;
-      }
-      const summary = document.createElement('p');
-      summary.textContent = `${superMultiColoringReport.length} Super Multi-colouring result${superMultiColoringReport.length === 1 ? '' : 's'}.`;
-      superMultiColoringResultsEl.appendChild(summary);
-      if (!superMultiColoringReport.length) {
-        const empty = document.createElement('p');
-        empty.textContent = 'No Super Multi-colouring results were found using type 0, 1, 2, or 3 strong-link nodes.';
-        superMultiColoringResultsEl.appendChild(empty);
-        return;
-      }
-      const list = document.createElement('ul');
-      list.className = 'log';
-      for (let index = 0; index < superMultiColoringReport.length; index++) {
-        const record = superMultiColoringReport[index];
-        const safetyFlags = record.safetyFlags || [];
-        const item = document.createElement('li');
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'chain-result';
-        if (safetyFlags.length) button.classList.add('chain-result-flagged');
-        if (selectedSuperMultiColoringIndex === index) button.classList.add('selected');
-        button.textContent = `${safetyFlags.length ? '[FLAGGED] ' : ''}${superMultiColoringEureka(record)}`;
-        button.title = safetyFlags.length
-          ? `Flagged for inspection: ${safetyFlags.join('; ')}`
-          : 'Highlight this Super Multi-colouring result on the grid';
-        button.addEventListener('click', () => {
-          selectedSuperMultiColoringIndex = index;
-          colouringSequenceState.superMulti.breadth = 1;
-          selectedSimpleColoringIndex = null;
-          selectedThreeDMedusaIndex = null;
-          selectedMultiColoringIndex = null;
-          selectedThreeDMedusaMultiIndex = null;
-          selectedAlsId = null;
-          selectedAhsId = null;
-          selectedStrongLinkType = null;
-          selectedStrongLinkIndex = null;
-          selectedChainIndex = null;
-          selectedFishKey = null;
-          selectedNakedSubsetKey = null;
-          selectedHiddenSubsetKey = null;
-          activeStep = null;
-          lastRemoved = [];
-          renderBoard();
-          renderSimpleColoringReport();
-          renderThreeDMedusaReport();
-          renderMultiColoringReport();
-          renderSuperMultiColoringReport();
-          renderThreeDMedusaMultiReport();
-          setStatus(`Super Multi-colouring result ${index + 1} selected.`, 'ok');
-          focusMap();
-        });
-        item.appendChild(button);
-        list.appendChild(item);
-      }
-      superMultiColoringResultsEl.appendChild(list);
     }
 
     function threeDMedusaMultiEureka(record) {
@@ -11131,95 +8882,33 @@
       return reasons;
     }
 
-    function colourSafetyFlags(record) {
-      return [...new Set([
-        ...(record?.safetyFlags || []),
-        ...chainSafetyFlags(
-          { eliminations: record?.eliminations || [] },
-          cand,
-          solution,
-          puzzle,
-        ),
-      ])];
-    }
+    const colouringStep = appNamespace.colouringStep.create({
+      core,
+      getCandidates: () => cand,
+      getSolution: () => solution,
+      getPuzzle: () => puzzle,
+      displayRecord: displayColouringRecord,
+      chainSafetyFlags,
+      eureka: {
+        simple: simpleColoringEureka,
+        medusa: threeDMedusaEureka,
+        multi: multiColoringEureka,
+        superMulti: superMultiColoringEureka,
+        medusaMulti: threeDMedusaMultiEureka,
+      },
+    });
+    const annotateColouringReports = colouringStep.annotate;
+    const colouringStepFromResult = colouringStep.stepFromResult;
 
-    function annotateColouringReports(records) {
-      return (records || []).map(record => ({
-        ...record,
-        safetyFlags: colourSafetyFlags(record),
-      }));
-    }
-
-    function colouringStepFromResult(record, method) {
-      const displayed = displayColouringRecord(record, method);
-      const items = core.eliminationItems({ items: displayed?.eliminations || [] }, cand);
-      if (!items.length) return null;
-      const names = {
-        simple: 'Simple Colouring',
-        medusa: '3D-Medusa',
-        multi: 'Multi-colouring',
-        superMulti: 'Super Multi-colouring',
-        medusaMulti: '3D-Medusa {Multi-colouring}',
-      };
-      return {
-        tech: 'colouring',
-        name: names[method] || 'Colouring',
-        structureName: names[method] || 'Colouring',
-        desc: method === 'simple'
-          ? simpleColoringEureka(displayed)
-          : method === 'medusa'
-            ? threeDMedusaEureka(displayed)
-            : method === 'multi'
-              ? multiColoringEureka(displayed)
-              : method === 'superMulti'
-                ? superMultiColoringEureka(displayed)
-                : threeDMedusaMultiEureka(displayed),
-        elim: { items },
-        digits: [...new Set(items.map(item => item.digit))],
-        at: [...new Set((displayed.nodes || []).map(node => node.cell).filter(Number.isInteger))],
-        colouringRecord: displayed,
-        colouringMethod: method,
-      };
-    }
-
-    function chainNodeLimitOptions(family = 'chain') {
-      const useAls = family === 'alc'
-        ? chainUseAlcNodeLimitsEl?.checked !== false
-        : chainUseAlsNodeLimitsEl?.checked !== false;
-      const useAhs = family === 'alc'
-        ? chainUseAlcNodeLimitsEl?.checked !== false
-        : chainUseAhsNodeLimitsEl?.checked !== false;
-      const alsSize = Number(chainAlsMaxSizeEl?.value);
-      const ahsSize = Number(chainAhsMaxSizeEl?.value);
-      const alcSize = Number(chainAlcMaxSizeEl?.value);
-      const selectedAlsSize = family === 'alc' ? alcSize : alsSize;
-      const selectedAhsSize = family === 'alc' ? alcSize : ahsSize;
-      return {
-        alsMaxCells: useAls && Number.isInteger(selectedAlsSize)
-          ? Math.min(9, Math.max(2, selectedAlsSize))
-          : null,
-        alsMaxSizeDOF: useAls && Number.isInteger(selectedAlsSize)
-          ? Math.min(8, Math.max(0, selectedAlsSize - 1))
-          : null,
-        alsMaxSizeFox: useAls && Number.isInteger(selectedAlsSize)
-          ? Math.min(8, Math.max(1, selectedAlsSize))
-          : null,
-        // AHS size is N digits. Its cell side is N + DOF, with the
-        // configured search allowance supporting up to three DOF cells.
-        ahsMaxDigits: useAhs && Number.isInteger(selectedAhsSize)
-          ? Math.min(9, Math.max(2, selectedAhsSize))
-          : null,
-        ahsMaxCells: useAhs && Number.isInteger(selectedAhsSize)
-          ? Math.min(9, Math.max(2, selectedAhsSize + 3))
-          : null,
-        ahsMaxSize: useAhs && Number.isInteger(selectedAhsSize)
-          ? Math.min(8, Math.max(1, selectedAhsSize - 1))
-          : null,
-        ahsMaxFox: useAhs && Number.isInteger(selectedAhsSize)
-          ? Math.min(8, Math.max(1, selectedAhsSize + 2))
-          : null,
-      };
-    }
+    const chainNodeLimits = appNamespace.chainNodeLimits.create({
+      useAls: chainUseAlsNodeLimitsEl,
+      useAhs: chainUseAhsNodeLimitsEl,
+      useAlc: chainUseAlcNodeLimitsEl,
+      alsSize: chainAlsMaxSizeEl,
+      ahsSize: chainAhsMaxSizeEl,
+      alcSize: chainAlcMaxSizeEl,
+    });
+    const chainNodeLimitOptions = chainNodeLimits.get;
 
     function chainSearchOptions(
       candidateGrid,
@@ -13114,6 +10803,13 @@
         : size === 4 ? 'jellyfish' : `${size}x${size}-fish`;
     }
 
+    function solverFishMoveType(spec, k, category = 'Basic') {
+      // Basic K0 uses the ordinary fish toggle. Franken/Mutant K0 is still
+      // an extended-fish move and must not inherit the basic X-Wing toggle.
+      if (category === 'Basic' && k === 0) return basicFishMoveType(spec.size);
+      return `${spec.size}x${spec.size}+k-fish`;
+    }
+
     function solverFishOptions(candidateGrid, fixedGrid, moveTypes = null, profile = null) {
       const enabledTechniques = currentSolverMoveTypes(moveTypes);
       return {
@@ -14199,13 +11895,6 @@
         return !['chain', 'alc'].includes(phase.kind)
           || profile.maxDepth >= phase.chainPhase.minDepth;
       });
-    }
-
-    function solverFishMoveType(spec, k, category = 'Basic') {
-      // Basic K0 uses the ordinary fish toggle. Franken/Mutant K0 is still
-      // an extended-fish move and must not inherit the basic X-Wing toggle.
-      if (category === 'Basic' && k === 0) return basicFishMoveType(spec.size);
-      return `${spec.size}x${spec.size}+k-fish`;
     }
 
     function solverPhaseAllowsType(phase, enabledTypes, spec = null) {
@@ -15717,11 +13406,7 @@
       return promoted;
     }
 
-    function promotionSummary(promotions) {
-      if (!promotions.length) return '';
-      const values = promotions.map(({ cell, digit }) => `${core.cellName(cell)} = ${digit}`);
-      return `${promotions.length} solved value${promotions.length === 1 ? '' : 's'}: ${values.join(', ')}`;
-    }
+    const { summary: promotionSummary } = appNamespace.promotionView.create(core.cellName);
 
     // Final move gate shared by Next, Run All, and selected structure results.
     // The technique engines propose candidates; the solver independently tests
@@ -16315,439 +14000,285 @@
       },
     });
 
-    function runAlsLinkBuild() {
-      const searchToken = setBusy(true);
-      setStatus('Building ALS graph links...');
+    const runAlsLinkBuild = appNamespace.alsLinkBuild.create({
+      elements: {
+        results: alsLinkResultsEl,
+      },
+      state: {
+        get cand() { return cand; },
+        get alsReport() { return alsReport; },
+        set alsReport(value) { alsReport = value; },
+        set alsLinkReport(value) { alsLinkReport = value; },
+        set chainReport(value) { chainReport = value; },
+        get alsLinkReport() { return alsLinkReport; },
+      },
+      actions: {
+        setBusy,
+        setStatus,
+        scheduleSearch,
+        runCoreSearch,
+        renderAlsReport,
+        renderAlsLinkReport,
+        openReportPanel,
+        renderChainReport,
+        flattenAlsLinks: core.flattenAlsLinks,
+        isSearchCancelled,
+      },
+    });
 
-      scheduleSearch(async () => {
-        try {
-          const sourceAls = alsReport || await runCoreSearch('alsConstructor', cand);
-          if (!alsReport) {
-            alsReport = sourceAls;
-            renderAlsReport();
-          }
-          alsLinkReport = await runCoreSearch('buildAlsLinks', cand, {
-            alsList: sourceAls,
-            strictSingleCommon: true,
-          });
-          chainReport = null;
-          renderAlsLinkReport();
-          openReportPanel(alsLinkResultsEl);
-          renderChainReport();
-          const count = core.flattenAlsLinks(alsLinkReport).length;
-          setStatus(
-            `ALS link build complete. ${count} paired ALS modules. Size-1 Bivalve ALS nodes are in Strong Links as ALS. Grid and solving history unchanged.`,
-            'ok',
-          );
-        } catch (error) {
-          if (isSearchCancelled(error)) return;
-          alsLinkReport = null;
-          chainReport = null;
-          renderAlsLinkReport();
-          renderChainReport();
-          setStatus('Could not build ALS graph links.', 'warn');
-        } finally {
-          setBusy(false, searchToken);
-        }
-      }, 20);
-    }
+    const runAhsBuild = appNamespace.ahsRecordBuild.create({
+      elements: {
+        results: ahsResultsEl,
+      },
+      state: {
+        get cand() { return cand; },
+        set ahsReport(value) { ahsReport = value; },
+        get ahsReport() { return ahsReport; },
+        set selectedAhsDof(value) { selectedAhsDof = value; },
+        set selectedAhsId(value) { selectedAhsId = value; },
+        get openAhsSizeGroups() { return openAhsSizeGroups; },
+        set chainReport(value) { chainReport = value; },
+      },
+      actions: {
+        setBusy,
+        setStatus,
+        scheduleSearch,
+        runCoreSearch,
+        renderAhsReport,
+        openReportPanel,
+        renderChainReport,
+        isSearchCancelled,
+      },
+    });
 
-    function runAhsBuild() {
-      const searchToken = setBusy(true);
-      setStatus('Building HS / AHS records...');
+    const runStrongLinkBuild = appNamespace.strongLinkBuild.create({
+      elements: {
+        strongTypes: chainStrongTypeEls,
+        results: strongLinkResultsEl,
+      },
+      state: {
+        get cand() { return cand; },
+        get puzzle() { return puzzle; },
+        set strongLinkReport(value) { strongLinkReport = value; },
+        get strongLinkReport() { return strongLinkReport; },
+        set selectedStrongLinkType(value) { selectedStrongLinkType = value; },
+        set selectedStrongLinkIndex(value) { selectedStrongLinkIndex = value; },
+        set chainReport(value) { chainReport = value; },
+      },
+      actions: {
+        setBusy,
+        setStatus,
+        scheduleSearch,
+        runCoreSearch,
+        chainNodeLimitOptions,
+        currentAlmostFishOptions,
+        renderStrongLinkReport,
+        openReportPanel,
+        renderChainReport,
+        flattenStrongLinks: core.flattenStrongLinks,
+        isSearchCancelled,
+      },
+    });
 
-      scheduleSearch(async () => {
-        try {
-          ahsReport = await runCoreSearch('ahsConstructor', cand, {
-            maxSize: 8,
-            maxSizeFox: 7,
-          });
-          selectedAhsDof = null;
-          selectedAhsId = null;
-          openAhsSizeGroups.clear();
-          chainReport = null;
-          renderAhsReport();
-          openReportPanel(ahsResultsEl);
-          renderChainReport();
-          setStatus(`HS / AHS build complete. ${ahsReport.length} records. Grid and solving history unchanged.`, 'ok');
-        } catch (error) {
-          if (isSearchCancelled(error)) return;
-          ahsReport = null;
-          selectedAhsDof = null;
-          selectedAhsId = null;
-          openAhsSizeGroups.clear();
-          chainReport = null;
-          renderAhsReport();
-          renderChainReport();
-          setStatus('Could not build HS / AHS records.', 'warn');
-        } finally {
-          setBusy(false, searchToken);
-        }
-      }, 20);
-    }
+    const runSimpleColoringBuild = appNamespace.simpleColoringBuild.create({
+      elements: {
+        results: simpleColoringResultsEl,
+      },
+      state: {
+        get cand() { return cand; },
+        set simpleColoringReport(value) { simpleColoringReport = value; },
+        get simpleColoringReport() { return simpleColoringReport; },
+        set selectedSimpleColoringIndex(value) { selectedSimpleColoringIndex = value; },
+        set selectedThreeDMedusaIndex(value) { selectedThreeDMedusaIndex = value; },
+        set selectedMultiColoringIndex(value) { selectedMultiColoringIndex = value; },
+        set selectedSuperMultiColoringIndex(value) { selectedSuperMultiColoringIndex = value; },
+        set selectedThreeDMedusaMultiIndex(value) { selectedThreeDMedusaMultiIndex = value; },
+        set activeStep(value) { activeStep = value; },
+        set lastRemoved(value) { lastRemoved = value; },
+      },
+      actions: {
+        setBusy,
+        setStatus,
+        scheduleSearch,
+        runCoreSearch,
+        annotateColouringReports,
+        renderSimpleColoringReport,
+        renderThreeDMedusaReport,
+        renderBoard,
+        openReportPanel,
+        isSearchCancelled,
+      },
+    });
 
-    function runStrongLinkBuild() {
-      const searchToken = setBusy(true);
-      setStatus('Building strong links...');
+    const runThreeDMedusaBuild = appNamespace.threeDMedusaBuild.create({
+      elements: {
+        results: threeDMedusaResultsEl,
+      },
+      state: {
+        get cand() { return cand; },
+        set threeDMedusaReport(value) { threeDMedusaReport = value; },
+        get threeDMedusaReport() { return threeDMedusaReport; },
+        set selectedThreeDMedusaIndex(value) { selectedThreeDMedusaIndex = value; },
+        set selectedSimpleColoringIndex(value) { selectedSimpleColoringIndex = value; },
+        set selectedMultiColoringIndex(value) { selectedMultiColoringIndex = value; },
+        set selectedSuperMultiColoringIndex(value) { selectedSuperMultiColoringIndex = value; },
+        set selectedThreeDMedusaMultiIndex(value) { selectedThreeDMedusaMultiIndex = value; },
+        set activeStep(value) { activeStep = value; },
+        set lastRemoved(value) { lastRemoved = value; },
+      },
+      actions: {
+        setBusy,
+        setStatus,
+        scheduleSearch,
+        runCoreSearch,
+        annotateColouringReports,
+        renderSimpleColoringReport,
+        renderThreeDMedusaReport,
+        renderBoard,
+        openReportPanel,
+        isSearchCancelled,
+      },
+    });
 
-      scheduleSearch(async () => {
-        try {
-          const strongLinkTypes = chainStrongTypeEls
-            .map((element, index) => element.checked ? index : null)
-            .filter(index => index !== null);
-          const nodeLimits = chainNodeLimitOptions('chain');
-          const includeAlmostFish = strongLinkTypes.includes(7);
-          strongLinkReport = await runCoreSearch('buildStrongLinks', cand, {
-            includeAlmostFish,
-            almostFish: includeAlmostFish
-              ? { grid: [...(puzzle || [])], ...currentAlmostFishOptions() }
-              : {},
-          });
-          selectedStrongLinkType = null;
-          selectedStrongLinkIndex = null;
-          chainReport = null;
-          renderStrongLinkReport();
-          openReportPanel(strongLinkResultsEl);
-          renderChainReport();
-          const count = core.flattenStrongLinks(strongLinkReport).length;
-          setStatus(
-            `Strong-link build complete. ${count} links. Grid and solving history unchanged.`,
-            'ok',
-          );
-        } catch (error) {
-          if (isSearchCancelled(error)) return;
-          strongLinkReport = null;
-          chainReport = null;
-          renderStrongLinkReport();
-          renderChainReport();
-          setStatus('Could not build strong links.', 'warn');
-        } finally {
-          setBusy(false, searchToken);
-        }
-      }, 20);
-    }
+    const runMultiColoringBuild = appNamespace.multiColoringBuild.create({
+      elements: {
+        results: multiColoringResultsEl,
+      },
+      state: {
+        get cand() { return cand; },
+        set multiColoringReport(value) { multiColoringReport = value; },
+        get multiColoringReport() { return multiColoringReport; },
+        set selectedMultiColoringIndex(value) { selectedMultiColoringIndex = value; },
+        set selectedSimpleColoringIndex(value) { selectedSimpleColoringIndex = value; },
+        set selectedThreeDMedusaIndex(value) { selectedThreeDMedusaIndex = value; },
+        set selectedSuperMultiColoringIndex(value) { selectedSuperMultiColoringIndex = value; },
+        set selectedThreeDMedusaMultiIndex(value) { selectedThreeDMedusaMultiIndex = value; },
+        set activeStep(value) { activeStep = value; },
+        set lastRemoved(value) { lastRemoved = value; },
+      },
+      actions: {
+        setBusy,
+        setStatus,
+        scheduleSearch,
+        runCoreSearch,
+        annotateColouringReports,
+        renderSimpleColoringReport,
+        renderThreeDMedusaReport,
+        renderMultiColoringReport,
+        renderSuperMultiColoringReport,
+        renderThreeDMedusaMultiReport,
+        renderBoard,
+        openReportPanel,
+        isSearchCancelled,
+      },
+    });
 
-    function runSimpleColoringBuild() {
-      const searchToken = setBusy(true);
-      setStatus('Searching Simple Colouring...');
+    const runThreeDMedusaMultiBuild = appNamespace.threeDMedusaMultiBuild.create({
+      elements: {
+        results: threeDMedusaMultiResultsEl,
+      },
+      state: {
+        get cand() { return cand; },
+        set threeDMedusaMultiReport(value) { threeDMedusaMultiReport = value; },
+        get threeDMedusaMultiReport() { return threeDMedusaMultiReport; },
+        set selectedThreeDMedusaMultiIndex(value) { selectedThreeDMedusaMultiIndex = value; },
+        set selectedSimpleColoringIndex(value) { selectedSimpleColoringIndex = value; },
+        set selectedThreeDMedusaIndex(value) { selectedThreeDMedusaIndex = value; },
+        set selectedMultiColoringIndex(value) { selectedMultiColoringIndex = value; },
+        set selectedSuperMultiColoringIndex(value) { selectedSuperMultiColoringIndex = value; },
+        set activeStep(value) { activeStep = value; },
+        set lastRemoved(value) { lastRemoved = value; },
+      },
+      actions: {
+        setBusy,
+        setStatus,
+        scheduleSearch,
+        runCoreSearch,
+        annotateColouringReports,
+        renderSimpleColoringReport,
+        renderThreeDMedusaReport,
+        renderMultiColoringReport,
+        renderSuperMultiColoringReport,
+        renderThreeDMedusaMultiReport,
+        renderBoard,
+        openReportPanel,
+        isSearchCancelled,
+      },
+    });
 
-      scheduleSearch(async () => {
-        try {
-          const currentStrongLinks = await runCoreSearch('buildStrongLinks', cand);
-          simpleColoringReport = annotateColouringReports(
-            await runCoreSearch('buildSimpleColoring', cand, currentStrongLinks),
-          );
-          selectedSimpleColoringIndex = simpleColoringReport.length ? 0 : null;
-          selectedThreeDMedusaIndex = null;
-          selectedMultiColoringIndex = null;
-          selectedSuperMultiColoringIndex = null;
-          selectedThreeDMedusaMultiIndex = null;
-          activeStep = null;
-          lastRemoved = [];
-          renderSimpleColoringReport();
-          renderThreeDMedusaReport();
-          renderBoard();
-          openReportPanel(simpleColoringResultsEl);
-          setStatus(
-            simpleColoringReport.length
-              ? `Simple Colouring found ${simpleColoringReport.length} result${simpleColoringReport.length === 1 ? '' : 's'}.`
-              : 'Simple Colouring found no legal eliminations.',
-            simpleColoringReport.length ? 'ok' : 'warn',
-          );
-        } catch (error) {
-          if (isSearchCancelled(error)) return;
-          simpleColoringReport = null;
-          selectedSimpleColoringIndex = null;
-          selectedThreeDMedusaIndex = null;
-          renderSimpleColoringReport();
-          renderBoard();
-          console.error('Simple Colouring search failed:', error);
-          setStatus('Could not search Simple Colouring.', 'warn');
-        } finally {
-          setBusy(false, searchToken);
-        }
-      }, 20);
-    }
+    const runFishBuild = appNamespace.fishBuild.create({
+      elements: {
+        results: fishResultsEl,
+      },
+      state: {
+        get cand() { return cand; },
+        get puzzle() { return puzzle; },
+        set fishReport(value) { fishReport = value; },
+        get fishReport() { return fishReport; },
+        set selectedFishCategory(value) { selectedFishCategory = value; },
+        set selectedFishSize(value) { selectedFishSize = value; },
+        set selectedFishKey(value) { selectedFishKey = value; },
+      },
+      actions: {
+        setBusy,
+        setStatus,
+        scheduleSearch,
+        runSearchWorker,
+        currentPomFishOptions,
+        renderFishReport,
+        openReportPanel,
+        isSearchCancelled,
+      },
+    });
 
-    function runThreeDMedusaBuild() {
-      const searchToken = setBusy(true);
-      setStatus('Searching 3D - Medusa {Simple}...');
+    const runGenericSubsetBuild = appNamespace.genericSubsetBuild.create({
+      elements: {
+        hiddenResults: hiddenSubsetResultsEl,
+        nakedResults: nakedSubsetResultsEl,
+      },
+      state: {
+        get cand() { return cand; },
+        get ahsReport() { return ahsReport; },
+        get alsReport() { return alsReport; },
+        set hiddenSubsetReport(value) { hiddenSubsetReport = value; },
+        set selectedHiddenSubsetSize(value) { selectedHiddenSubsetSize = value; },
+        set selectedHiddenSubsetKey(value) { selectedHiddenSubsetKey = value; },
+        set nakedSubsetReport(value) { nakedSubsetReport = value; },
+        set selectedNakedSubsetSize(value) { selectedNakedSubsetSize = value; },
+        set selectedNakedSubsetKey(value) { selectedNakedSubsetKey = value; },
+      },
+      actions: {
+        setBusy,
+        setStatus,
+        scheduleSearch,
+        runCoreSearch,
+        renderHiddenSubsetReport,
+        renderNakedSubsetReport,
+        openReportPanel,
+        isSearchCancelled,
+      },
+    });
 
-      scheduleSearch(async () => {
-        try {
-          const currentStrongLinks = await runCoreSearch('buildStrongLinks', cand);
-          threeDMedusaReport = annotateColouringReports(
-            await runCoreSearch('buildThreeDMedusa', cand, currentStrongLinks),
-          );
-          selectedThreeDMedusaIndex = threeDMedusaReport.length ? 0 : null;
-          selectedSimpleColoringIndex = null;
-          selectedMultiColoringIndex = null;
-          selectedSuperMultiColoringIndex = null;
-          selectedThreeDMedusaMultiIndex = null;
-          activeStep = null;
-          lastRemoved = [];
-          renderSimpleColoringReport();
-          renderThreeDMedusaReport();
-          renderBoard();
-          openReportPanel(threeDMedusaResultsEl);
-          setStatus(
-            threeDMedusaReport.length
-              ? `3D-Medusa found ${threeDMedusaReport.length} result${threeDMedusaReport.length === 1 ? '' : 's'}.`
-              : '3D-Medusa found no legal eliminations.',
-            threeDMedusaReport.length ? 'ok' : 'warn',
-          );
-        } catch (error) {
-          if (isSearchCancelled(error)) return;
-          threeDMedusaReport = null;
-          selectedThreeDMedusaIndex = null;
-          renderThreeDMedusaReport();
-          renderBoard();
-          setStatus('Could not search 3D-Medusa.', 'warn');
-        } finally {
-          setBusy(false, searchToken);
-        }
-      }, 20);
-    }
-
-    function runMultiColoringBuild() {
-      const searchToken = setBusy(true);
-      setStatus('Searching Multi-colouring...');
-
-      scheduleSearch(async () => {
-        try {
-          const currentStrongLinks = await runCoreSearch('buildStrongLinks', cand);
-          multiColoringReport = annotateColouringReports(
-            await runCoreSearch('buildMultiColoring', cand, currentStrongLinks),
-          );
-          selectedMultiColoringIndex = multiColoringReport.length ? 0 : null;
-          selectedSimpleColoringIndex = null;
-          selectedThreeDMedusaIndex = null;
-          selectedSuperMultiColoringIndex = null;
-          selectedThreeDMedusaMultiIndex = null;
-          activeStep = null;
-          lastRemoved = [];
-          renderSimpleColoringReport();
-          renderThreeDMedusaReport();
-          renderMultiColoringReport();
-          renderSuperMultiColoringReport();
-          renderThreeDMedusaMultiReport();
-          renderBoard();
-          openReportPanel(multiColoringResultsEl);
-          setStatus(
-            multiColoringReport.length
-              ? `Multi-colouring found ${multiColoringReport.length} result${multiColoringReport.length === 1 ? '' : 's'}.`
-              : 'Multi-colouring found no legal eliminations.',
-            multiColoringReport.length ? 'ok' : 'warn',
-          );
-        } catch (error) {
-          if (isSearchCancelled(error)) return;
-          multiColoringReport = null;
-          selectedMultiColoringIndex = null;
-          selectedSuperMultiColoringIndex = null;
-          selectedThreeDMedusaMultiIndex = null;
-          renderMultiColoringReport();
-          renderThreeDMedusaMultiReport();
-          renderBoard();
-          console.error('Multi-colouring search failed:', error);
-          setStatus('Could not search Multi-colouring.', 'warn');
-        } finally {
-          setBusy(false, searchToken);
-        }
-      }, 20);
-    }
-
-    function runSuperMultiColoringBuild() {
-      return;
-      /* Archived method body retained below for reference only. */
-      setBusy(true);
-      setStatus('Searching Super Multi-colouring...');
-      setTimeout(() => {
-        try {
-          const currentStrongLinks = core.buildStrongLinks(cand);
-          superMultiColoringReport = annotateColouringReports(
-            core.buildSuperMultiColoring(cand, currentStrongLinks),
-          );
-          selectedSuperMultiColoringIndex = superMultiColoringReport.length ? 0 : null;
-          selectedSimpleColoringIndex = null;
-          selectedThreeDMedusaIndex = null;
-          selectedMultiColoringIndex = null;
-          selectedThreeDMedusaMultiIndex = null;
-          activeStep = null;
-          lastRemoved = [];
-          renderSimpleColoringReport();
-          renderThreeDMedusaReport();
-          renderMultiColoringReport();
-          renderSuperMultiColoringReport();
-          renderThreeDMedusaMultiReport();
-          renderBoard();
-          openReportPanel(superMultiColoringResultsEl);
-          setStatus(
-            superMultiColoringReport.length
-              ? `Super Multi-colouring found ${superMultiColoringReport.length} result${superMultiColoringReport.length === 1 ? '' : 's'}.`
-              : 'Super Multi-colouring found no legal eliminations.',
-            superMultiColoringReport.length ? 'ok' : 'warn',
-          );
-        } catch (error) {
-          superMultiColoringReport = null;
-          selectedSuperMultiColoringIndex = null;
-          renderSuperMultiColoringReport();
-          renderBoard();
-          console.error('Super Multi-colouring search failed:', error);
-          setStatus('Could not search Super Multi-colouring.', 'warn');
-        } finally {
-          setBusy(false);
-        }
-      }, 20);
-    }
-
-    function runThreeDMedusaMultiBuild() {
-      const searchToken = setBusy(true);
-      setStatus('Searching 3D - Medusa {Multi-colouring}...');
-
-      scheduleSearch(async () => {
-        try {
-          const currentStrongLinks = await runCoreSearch('buildStrongLinks', cand);
-          threeDMedusaMultiReport = annotateColouringReports(
-            await runCoreSearch('buildThreeDMedusaMultiColoring', cand, currentStrongLinks),
-          );
-          selectedThreeDMedusaMultiIndex = threeDMedusaMultiReport.length ? 0 : null;
-          selectedSimpleColoringIndex = null;
-          selectedThreeDMedusaIndex = null;
-          selectedMultiColoringIndex = null;
-          selectedSuperMultiColoringIndex = null;
-          activeStep = null;
-          lastRemoved = [];
-          renderSimpleColoringReport();
-          renderThreeDMedusaReport();
-          renderMultiColoringReport();
-          renderSuperMultiColoringReport();
-          renderThreeDMedusaMultiReport();
-          renderBoard();
-          openReportPanel(threeDMedusaMultiResultsEl);
-          setStatus(
-            threeDMedusaMultiReport.length
-              ? '3D-Medusa Multi-colouring found ' + threeDMedusaMultiReport.length
-                + ' result' + (threeDMedusaMultiReport.length === 1 ? '' : 's') + '.'
-              : '3D-Medusa Multi-colouring found no legal eliminations.',
-            threeDMedusaMultiReport.length ? 'ok' : 'warn',
-          );
-        } catch (error) {
-          if (isSearchCancelled(error)) return;
-          threeDMedusaMultiReport = null;
-          selectedThreeDMedusaMultiIndex = null;
-          renderThreeDMedusaMultiReport();
-          renderBoard();
-          console.error('3D-Medusa Multi-colouring search failed:', error);
-          setStatus('Could not search 3D-Medusa {Multi-colouring}.', 'warn');
-        } finally {
-          setBusy(false, searchToken);
-        }
-      }, 20);
-    }
-
-    function runFishBuild() {
-      const searchToken = setBusy(true);
-      setStatus('Searching N x (N + K) fish...');
-
-      scheduleSearch(async () => {
-        try {
-          fishReport = await runSearchWorker('fish', {
-            candidateGrid: cand,
-            fixedGrid: puzzle,
-            options: currentPomFishOptions(),
-          });
-          selectedFishCategory = null;
-          selectedFishSize = null;
-          selectedFishKey = null;
-          renderFishReport();
-          openReportPanel(fishResultsEl);
-          setStatus('N x (N + K) fish search complete. ' + fishReport.length + ' reports. Grid and solving history unchanged.', fishReport.length ? 'ok' : 'warn');
-        } catch (error) {
-          if (isSearchCancelled(error)) return;
-          fishReport = null;
-          selectedFishCategory = null;
-          renderFishReport();
-          setStatus('Could not search N x (N + K) fish.', 'warn');
-        } finally {
-          setBusy(false, searchToken);
-        }
-      }, 20);
-    }
-
-    function runGenericSubsetBuild(kind) {
-      const hidden = kind === 'hidden';
-      const searchToken = setBusy(true);
-      setStatus(`Searching ${hidden ? 'hidden' : 'naked'} subsets...`);
-
-      scheduleSearch(async () => {
-        try {
-          const options = hidden
-            ? { kind, ahsList: ahsReport || undefined }
-            : { kind, alsList: alsReport || undefined };
-          const report = await runCoreSearch('findGenericSubsetReports', cand, options);
-          if (hidden) {
-            hiddenSubsetReport = report;
-            selectedHiddenSubsetSize = null;
-            selectedHiddenSubsetKey = null;
-            renderHiddenSubsetReport();
-            openReportPanel(hiddenSubsetResultsEl);
-          } else {
-            nakedSubsetReport = report;
-            selectedNakedSubsetSize = null;
-            selectedNakedSubsetKey = null;
-            renderNakedSubsetReport();
-            openReportPanel(nakedSubsetResultsEl);
-          }
-          setStatus(
-            `${hidden ? 'Hidden' : 'Naked'} subset search complete. ${report.length} reports. `
-              + 'Grid and solving history unchanged.',
-            report.length ? 'ok' : 'warn',
-          );
-        } catch (error) {
-          if (isSearchCancelled(error)) return;
-          if (hidden) {
-            hiddenSubsetReport = null;
-            selectedHiddenSubsetSize = null;
-            selectedHiddenSubsetKey = null;
-            renderHiddenSubsetReport();
-          } else {
-            nakedSubsetReport = null;
-            selectedNakedSubsetSize = null;
-            selectedNakedSubsetKey = null;
-            renderNakedSubsetReport();
-          }
-          setStatus(`Could not search ${hidden ? 'hidden' : 'naked'} subsets.`, 'warn');
-        } finally {
-          setBusy(false, searchToken);
-        }
-      }, 20);
-    }
-
-    function runBoxLineBuild() {
-      const searchToken = setBusy(true);
-      setStatus('Searching Box Line Reduction...');
-
-      scheduleSearch(async () => {
-        try {
-          boxLineReport = await runCoreSearch('findBoxLineReports', cand);
-          selectedBoxLineIndex = null;
-          renderBoxLineReport();
-          openReportPanel(boxLineResultsEl);
-          setStatus(
-            `Box Line Reduction search complete. ${boxLineReport.length} reports. Grid and solving history unchanged.`,
-            boxLineReport.length ? 'ok' : 'warn',
-          );
-        } catch (error) {
-          if (isSearchCancelled(error)) return;
-          boxLineReport = null;
-          selectedBoxLineIndex = null;
-          renderBoxLineReport();
-          setStatus('Could not search Box Line Reduction.', 'warn');
-        } finally {
-          setBusy(false, searchToken);
-        }
-      }, 20);
-    }
+    const runBoxLineBuild = appNamespace.boxLineBuild.create({
+      elements: {
+        results: boxLineResultsEl,
+      },
+      state: {
+        get cand() { return cand; },
+        set boxLineReport(value) { boxLineReport = value; },
+        get boxLineReport() { return boxLineReport; },
+        set selectedBoxLineIndex(value) { selectedBoxLineIndex = value; },
+      },
+      actions: {
+        setBusy,
+        setStatus,
+        scheduleSearch,
+        runCoreSearch,
+        renderBoxLineReport,
+        openReportPanel,
+        isSearchCancelled,
+      },
+    });
 
     const runAlsDofBuild = appNamespace.alsDofBuild.create({
       elements: {
@@ -16840,132 +14371,47 @@
       },
     });
 
-    function mslsStepFromResult(result) {
-      const eliminations = (result.eliminations || []).map(item => ({
-        cell: item.r * 9 + item.c,
-        digit: item.digit,
-      }));
-      return {
-        tech: 'msls',
-        name: 'MSLS',
-        desc: core.formatMsls(result),
-        elim: { items: eliminations },
-        digits: [...new Set((result.links || []).flatMap(link => link.digits || []))],
-        vertices: result.cellIds || [],
-        at: result.cellIds || [],
-        mslsLinks: result.links || [],
-        mslsBaseCells: result.baseCellIds || result.cellIds || [],
-        mslsCoverCells: result.coverCellIds || [],
-        mslsCoverAtoms: result.coverAtoms || [],
-      };
-    }
+    const mslsStepFromResult = result => appNamespace.mslsView.stepFromResult(result, core);
 
-    function renderMslsReport() {
-      mslsResultsEl.textContent = '';
-      if (!mslsReport) {
-        mslsResultsEl.textContent = 'No MSLS search has been run.';
-        return;
-      }
-      const results = mslsReport.results || [];
-      const flagged = results.filter(result => (result.safetyFlags || []).length);
-      const summary = document.createElement('p');
-      summary.textContent = `${results.length} MSLS results found.`
-        + (mslsReport.stats?.truncated ? ' Search limit reached; results are incomplete.' : '')
-        + (flagged.length ? ` ${flagged.length} flagged for inspection.` : '');
-      mslsResultsEl.appendChild(summary);
-      if (!results.length) {
-        const empty = document.createElement('p');
-        empty.textContent = 'No MSLS elimination was found.';
-        mslsResultsEl.appendChild(empty);
-        return;
-      }
-      const list = document.createElement('ul');
-      list.className = 'log';
-      results.slice(0, 500).forEach((result, index) => {
-        const item = document.createElement('li');
-        const button = document.createElement('button');
-        const safetyFlags = result.safetyFlags || [];
-        button.type = 'button';
-        button.className = 'chain-result';
-        if (safetyFlags.length) button.classList.add('chain-result-flagged');
-        if (selectedMslsIndex === index) button.classList.add('selected');
-        button.textContent = `${safetyFlags.length ? '[FLAGGED] ' : ''}${index + 1}. ${core.formatMsls(result)}`;
-        button.title = safetyFlags.length
-          ? `Flagged for inspection: ${safetyFlags.join('; ')}`
-          : 'Highlight this MSLS result and its eliminations on the grid';
-        button.addEventListener('click', () => {
-          selectedMslsIndex = index;
-          selectedAlsId = null;
-          selectedAhsId = null;
-          selectedAhsDofNetIndex = null;
-          selectedAhsDofChainIndex = null;
-          selectedChainIndex = null;
-          selectedStrongLinkType = null;
-          selectedStrongLinkIndex = null;
-          activeStep = mslsStepFromResult(result);
-          lastRemoved = activeStep.elim.items;
-          renderBoard();
-          renderMslsReport();
-          setStatus(`MSLS result ${index + 1} selected.`, safetyFlags.length ? 'warn' : 'ok');
-          focusMap();
-        });
-        item.appendChild(button);
-        list.appendChild(item);
-      });
-      mslsResultsEl.appendChild(list);
-      if (results.length > 500) {
-        const more = document.createElement('p');
-        more.textContent = `Showing 500 of ${results.length} results.`;
-        mslsResultsEl.appendChild(more);
-      }
-    }
+    const mslsView = appNamespace.mslsView.create({
+      documentRef: document,
+      resultsEl: mslsResultsEl,
+      core,
+      getReport: () => mslsReport,
+      getSelectedIndex: () => selectedMslsIndex,
+      onSelect: (result, index, safetyFlags) => {
+        selectedMslsIndex = index;
+        selectedAlsId = null;
+        selectedAhsId = null;
+        selectedAhsDofNetIndex = null;
+        selectedAhsDofChainIndex = null;
+        selectedChainIndex = null;
+        selectedStrongLinkType = null;
+        selectedStrongLinkIndex = null;
+        activeStep = mslsStepFromResult(result);
+        lastRemoved = activeStep.elim.items;
+        renderBoard();
+        mslsView.render();
+        setStatus(`MSLS result ${index + 1} selected.`, safetyFlags.length ? 'warn' : 'ok');
+        focusMap();
+      },
+    });
+    const renderMslsReport = mslsView.render;
 
-    async function runMslsSearch() {
-      const searchToken = setBusy(true);
-      setStatus('Searching Multi-Sector Locked Sets...');
-      mslsResultsEl.textContent = 'Searching MSLS...';
-      try {
-        const requestedMin = Math.max(3, Math.min(5, Number(mslsMinSizeEl.value) || 3));
-        const requestedMax = Math.max(requestedMin, Math.min(5, Number(mslsMaxSizeEl.value) || 5));
-        const stateBudgetPerSize = Math.max(1000, Math.min(20000000, Number(mslsStateBudgetEl.value) || 5000000));
-        const stateBudget = Math.min(50000000, stateBudgetPerSize * requestedMax);
-        const resultLimit = Math.max(1, Math.min(50000, Number(mslsResultLimitEl.value) || 10000));
-        mslsMinSizeEl.value = String(requestedMin);
-        mslsMaxSizeEl.value = String(requestedMax);
-        mslsStateBudgetEl.value = String(stateBudgetPerSize);
-        mslsResultLimitEl.value = String(resultLimit);
-        const payload = {
-          candidateGrid: cand,
-          options: {
-            minBaseSectors: requestedMin,
-            minCoverSectors: requestedMin,
-            maxBaseSectors: requestedMax,
-            maxCoverSectors: requestedMax,
-            mixedCovers: true,
-            maxRemovedCells: 1,
-            fastCover: true,
-            maxK: 1,
-            maxLinks: 81,
-            maxCells: requestedMax * 9,
-            maxStates: stateBudget,
-            maxResults: resultLimit,
-          },
-        };
-        const report = await runSearchWorker('msls', payload);
-        mslsReport = report;
-        selectedMslsIndex = null;
-        renderMslsReport();
-        openReportPanel(mslsResultsEl);
-        setStatus(`MSLS search complete. ${report.results.length} result${report.results.length === 1 ? '' : 's'}.`, report.results.length ? 'ok' : 'warn');
-      } catch (error) {
-        if (isSearchCancelled(error)) return;
-        mslsResultsEl.textContent = `Could not search MSLS: ${error.message || error}`;
-        openReportPanel(mslsResultsEl);
-        setStatus('Could not search MSLS.', 'warn');
-      } finally {
-        setBusy(false, searchToken);
-      }
-    }
+    const mslsSearch = appNamespace.mslsSearch.create({
+      elements: { results: mslsResultsEl, minSize: mslsMinSizeEl, maxSize: mslsMaxSizeEl,
+        stateBudget: mslsStateBudgetEl, resultLimit: mslsResultLimitEl },
+      getCandidateGrid: () => cand,
+      runSearchWorker,
+      setReport: report => { mslsReport = report; },
+      setSelectedIndex: value => { selectedMslsIndex = value; },
+      render: renderMslsReport,
+      openReportPanel,
+      setBusy,
+      setStatus,
+      isSearchCancelled,
+    });
+    const runMslsSearch = mslsSearch.run;
 
     function runAlsSearch(family) {
       const phase = family === 'als-xz'
@@ -18032,7 +15478,8 @@
 
     initSearchStopButtons();
     initFishSettings();
-    initToyControls();
+    initToyControls({ stack: toyStackSwapEl, band: toyBandSwapEl, row: toyRowSwapEl, column: toyColumnSwapEl,
+      digitA: toyDigitAEl, digitB: toyDigitBEl });
     if (linkState.linkedVariantSettings()) {
       core.configureVariants(variantSettings);
       syncFishVariantSectors(true);
@@ -18040,7 +15487,11 @@
     renderToyAutomorphCatalog();
     renderDigitFocusButtons();
     renderCandidateSizeFilterButtons();
-    renderDifficultyTable();
+    const difficultyInfo = appNamespace.difficultyInfo.create({
+      elements: { flow: difficultyFlowListEl, table: difficultyTableEl },
+    });
+    difficultyInfo.renderFlow(DIFFICULTY_TABLE_GROUPS);
+    difficultyInfo.renderTable(DIFFICULTY_TABLE_GROUPS);
     renderGridViewHeaders();
     render();
     const linkedInput = linkState.linkedPuzzleInput();

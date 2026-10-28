@@ -8,7 +8,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self'; img-src 'self' blob: data:; worker-src 'self' blob:; connect-src 'self' blob:; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self';">
   <title>StormDoku: on-line | off-line</title>
-  <link rel="stylesheet" href="./src/app.css?v=20261027-10">
+  <link rel="stylesheet" href="./src/app.css?v=20261027-14">
 </head>
 <body>
   <header>
@@ -226,6 +226,10 @@
               <code class="example-puzzle">..6.2....3..6.8..92.139.....7.....5..1...67.4.6..5.9.1...16.5..62...9.17.4....8..</code>
             </div>
                 <div class="example-item">
+              <button class="secondary example-load" type="button" data-example-puzzle=".76...4.11..3...8..4......2....2...5.....5.39.61......9..6.85....7.5...........24">Naked Triple</button>
+              <code class="example-puzzle">.76...4.11..3...8..4......2....2...5.....5.39.61......9..6.85....7.5...........24</code>
+            </div>
+                <div class="example-item">
               <button class="secondary example-load" type="button" data-example-puzzle="8........43.217....5......137..9.8.4....7....9.5.6..732......5....326.49........6">Hidden Quad</button>
               <code class="example-puzzle">8........43.217....5......137..9.8.4....7....9.5.6..732......5....326.49........6</code>
             </div>
@@ -409,7 +413,7 @@
             <details class="difficulty-flow">
               <summary aria-label="Show solver search flow" title="Show solver search flow">+</summary>
               <div class="difficulty-flow-panel" role="note">
-                <ol>
+                <ol id="difficultyFlowList">
                   <li><strong>1. LULZ.</strong> <span>Return Last Man Standing immediately when it exists.</span></li>
                   <li><strong>2. Extremely Easy.</strong> <span>Hidden Single, Naked Single, then Box-Line Reduction.</span></li>
                   <li><strong>3. Very Easy.</strong> <span>Hidden Pair, Naked Pair, then basic X-Wing.</span></li>
@@ -1157,10 +1161,10 @@
           </div>
         </details>
         <details class="pom-panel toy-panel" id="toysPanel">
-          <summary><h2>Toys</h2></summary>
+          <summary title="Explore Sudoku-preserving transformations, automorphic identities, Mini-lex representations, and clue minimization tools."><h2>Toys</h2></summary>
           <div class="pom-body">
             <fieldset>
-              <legend>Transformation</legend>
+              <legend title="These Sudoku-preserving transformations are isomorphisms: they change the presentation while preserving the puzzle structure, producing a grid isomorphic to the starting grid.">Transformation</legend>
               <div class="toy-transform-buttons" aria-label="Grid transformations">
                 <button class="secondary" type="button" data-toy-transform="transpose"
                   title="Transpose rows and columns">Transpose</button>
@@ -1181,7 +1185,7 @@
               </div>
             </fieldset>
             <fieldset>
-              <legend>Swaps and Digit Exchange</legend>
+              <legend title="These swaps and digit exchanges preserve the Sudoku structure, producing a grid isomorphic to the starting grid.">Swaps and Digit Exchange</legend>
               <div class="toy-swap-grid">
                 <div class="toy-swap-control">
                   <label>Stacks<select id="toyStackSwap" aria-label="Stack swap"></select></label>
@@ -1209,7 +1213,7 @@
               </div>
             </fieldset>
             <fieldset>
-              <legend>Automorphic Identities</legend>
+              <legend title="Automorphisms preserve the Sudoku structure while transformations such as row, column, band, stack, or digit changes produce an equivalent grid. This tool searches for those automorphic identities.">Automorphic Identities</legend>
               <div class="toy-automorph-toolbar">
                 <button id="toyAutomorphSearch" class="secondary" type="button"
                   title="Search the R1-anchored Mini-lex grid for digit-renamed matches">Search</button>
@@ -1303,7 +1307,7 @@
               </div>
             </fieldset>
             <fieldset>
-              <legend>Mini-lex Representation</legend>
+                <legend title="Mini-lex converts a grid to a canonical compact form: the clue pattern is normalized first, then the digit order. Equivalent grids can therefore be compared consistently.">Mini-lex Representation</legend>
               <div class="toy-minilex-toolbar">
                 <button id="toyMiniLexBuild" class="secondary" type="button"
                   title="Build the R1-anchored Mini-lex form: clue pattern first, then digit order">Build Mini-Lex</button>
@@ -1316,7 +1320,7 @@
               </details>
             </fieldset>
             <fieldset>
-              <legend>Clue Minimizer</legend>
+                <legend title="The clue minimizer searches for a smaller set of givens that preserves the same solution and active variation constraints.">Clue Minimizer</legend>
               <div class="toy-minimizer-toolbar">
                 <button id="toyMinimizerSearch" class="secondary" type="button"
                   title="Find clues that can be removed while preserving a unique solution">Find Extra Clues</button>
@@ -1605,98 +1609,148 @@
     </section>
   </main>
 
-    <script src="./src/browser-core.js?v=20261027-10"></script>
-  <script src="./src/set-tools-core.js?v=20261027-10"></script>
-  <script src="./src/pom-core.js?v=20261027-10"></script>
-  <script src="./src/als-core.js?v=20261027-10"></script>
-  <script src="./src/als-link-core.js?v=20261027-10"></script>
-  <script src="./src/als-dof-core.js?v=20261027-10"></script>
-  <script src="./src/hydra-core.js?v=20261027-10"></script>
-  <script src="./src/ahs-core.js?v=20261027-10"></script>
-  <script src="./src/ahs-link-core.js?v=20261027-10"></script>
-  <script src="./src/subset-report-core.js?v=20261027-10"></script>
-  <script src="./src/mini-sectors-core.js?v=20261027-10"></script>
-  <script src="./src/chromatic-core.js?v=20261027-10"></script>
-  <script src="./src/chromatic-als-core.js?v=20261027-10"></script>
-    <script src="./src/strong-link-core.js?v=20261027-10"></script>
-      <script src="./src/chain-core.js?v=20261027-10"></script>
-  <script src="./src/alc-core.js?v=20261027-10"></script>
-  <script src="./src/ahs-xy-core.js?v=20261027-10"></script>
-  <script src="./src/ahs-dof-core.js?v=20261027-10"></script>
-  <script src="./src/msls-core.js?v=20261027-10"></script>
-    <script src="./src/app-context.js?v=20261027-10"></script>
-    <script src="./src/app-worker-runtime.js?v=20261027-10"></script>
-    <script src="./src/app-generator-runtime.js?v=20261027-10"></script>
-    <script src="./src/app-ocr-assets.js?v=20261027-10"></script>
-    <script src="./src/app-ocr-grid.js?v=20261027-10"></script>
-    <script src="./src/app-ocr-controller.js?v=20261027-10"></script>
-    <script src="./src/app-clipboard.js?v=20261027-10"></script>
-    <script src="./src/app-link-state.js?v=20261027-10"></script>
-    <script src="./src/app-variant-controls.js?v=20261027-10"></script>
-    <script src="./src/app-search-control.js?v=20261027-10"></script>
-    <script src="./src/app-history-state.js?v=20261027-10"></script>
-    <script src="./src/app-ui-state.js?v=20261027-10"></script>
-    <script src="./src/app-toggle-ui.js?v=20261027-10"></script>
-    <script src="./src/app-fish-controls.js?v=20261027-10"></script>
-    <script src="./src/app-candidate-controls.js?v=20261027-10"></script>
-    <script src="./src/app-form-controls.js?v=20261027-10"></script>
-    <script src="./src/app-candidate-filter.js?v=20261027-10"></script>
-    <script src="./src/app-technique-controls.js?v=20261027-10"></script>
-    <script src="./src/app-input-loader.js?v=20261027-10"></script>
-    <script src="./src/app-basic-events.js?v=20261027-10"></script>
-    <script src="./src/app-ocr-events.js?v=20261027-10"></script>
-    <script src="./src/app-variant-events.js?v=20261027-10"></script>
-    <script src="./src/app-example-events.js?v=20261027-10"></script>
-    <script src="./src/app-board-events.js?v=20261027-10"></script>
-    <script src="./src/app-search-events.js?v=20261027-10"></script>
-    <script src="./src/app-pom-events.js?v=20261027-10"></script>
-    <script src="./src/app-als-events.js?v=20261027-10"></script>
-    <script src="./src/app-als-link-events.js?v=20261027-10"></script>
-    <script src="./src/app-ahs-events.js?v=20261027-10"></script>
-    <script src="./src/app-msls-events.js?v=20261027-10"></script>
-    <script src="./src/app-strong-link-events.js?v=20261027-10"></script>
-    <script src="./src/app-simple-coloring-events.js?v=20261027-10"></script>
-    <script src="./src/app-multi-coloring-events.js?v=20261027-10"></script>
-    <script src="./src/app-chain-events.js?v=20261027-10"></script>
-    <script src="./src/app-chain-build.js?v=20261027-10"></script>
-    <script src="./src/app-alc-build.js?v=20261027-10"></script>
-    <script src="./src/app-fish-events.js?v=20261027-10"></script>
-    <script src="./src/app-als-xz-events.js?v=20261027-10"></script>
-    <script src="./src/app-ahs-xz-events.js?v=20261027-10"></script>
-    <script src="./src/app-alc-xz-events.js?v=20261027-10"></script>
-    <script src="./src/app-alc-xy-events.js?v=20261027-10"></script>
-    <script src="./src/app-alc-chain-events.js?v=20261027-10"></script>
-    <script src="./src/app-alc-dof-events.js?v=20261027-10"></script>
-    <script src="./src/app-alc-hydra-build.js?v=20261027-10"></script>
-    <script src="./src/app-alc-hydra-events.js?v=20261027-10"></script>
-    <script src="./src/app-ahs-xy-events.js?v=20261027-10"></script>
-    <script src="./src/app-ahs-chain-events.js?v=20261027-10"></script>
-    <script src="./src/app-ahs-dof-events.js?v=20261027-10"></script>
-    <script src="./src/app-ahs-dof-build.js?v=20261027-10"></script>
-    <script src="./src/app-ahs-dof-chain-events.js?v=20261027-10"></script>
-    <script src="./src/app-ahs-dof-chain-build.js?v=20261027-10"></script>
-    <script src="./src/app-ahs-hydra-build.js?v=20261027-10"></script>
-    <script src="./src/app-als-dof-build.js?v=20261027-10"></script>
-    <script src="./src/app-als-dof-chain-build.js?v=20261027-10"></script>
-    <script src="./src/app-als-hydra-build.js?v=20261027-10"></script>
-    <script src="./src/app-ahs-link-build.js?v=20261027-10"></script>
-    <script src="./src/app-als-build.js?v=20261027-10"></script>
-    <script src="./src/app-ahs-build.js?v=20261027-10"></script>
-    <script src="./src/app-ahs-hydra-events.js?v=20261027-10"></script>
-    <script src="./src/app-ahs-link-events.js?v=20261027-10"></script>
-    <script src="./src/app-als-xy-events.js?v=20261027-10"></script>
-    <script src="./src/app-als-chain-events.js?v=20261027-10"></script>
-    <script src="./src/app-als-dof-events.js?v=20261027-10"></script>
-    <script src="./src/app-als-dof-chain-events.js?v=20261027-10"></script>
-    <script src="./src/app-als-hydra-events.js?v=20261027-10"></script>
-    <script src="./src/app-subset-events.js?v=20261027-10"></script>
-    <script src="./src/app-copy-events.js?v=20261027-10"></script>
-    <script src="./src/app-solution-events.js?v=20261027-10"></script>
-    <script src="./src/app-toy-events.js?v=20261027-10"></script>
-    <script src="./src/app-chromatic-events.js?v=20261027-10"></script>
-    <script src="./src/app-medusa-simple-coloring-events.js?v=20261027-10"></script>
-    <script src="./src/app-medusa-multi-coloring-events.js?v=20261027-10"></script>
-    <script src="./src/app-diagnostics.js?v=20261027-10"></script>
-    <script src="./src/app.js?v=20261027-10"></script>
+    <script src="./src/browser-core.js?v=20261027-14"></script>
+  <script src="./src/set-tools-core.js?v=20261027-14"></script>
+  <script src="./src/pom-core.js?v=20261027-14"></script>
+  <script src="./src/als-core.js?v=20261027-14"></script>
+  <script src="./src/als-link-core.js?v=20261027-14"></script>
+  <script src="./src/als-dof-core.js?v=20261027-14"></script>
+  <script src="./src/hydra-core.js?v=20261027-14"></script>
+  <script src="./src/ahs-core.js?v=20261027-14"></script>
+  <script src="./src/ahs-link-core.js?v=20261027-14"></script>
+  <script src="./src/subset-report-core.js?v=20261027-14"></script>
+  <script src="./src/mini-sectors-core.js?v=20261027-14"></script>
+  <script src="./src/chromatic-core.js?v=20261027-14"></script>
+  <script src="./src/chromatic-als-core.js?v=20261027-14"></script>
+    <script src="./src/strong-link-core.js?v=20261027-14"></script>
+      <script src="./src/chain-core.js?v=20261027-14"></script>
+  <script src="./src/alc-core.js?v=20261027-14"></script>
+  <script src="./src/ahs-xy-core.js?v=20261027-14"></script>
+  <script src="./src/ahs-dof-core.js?v=20261027-14"></script>
+  <script src="./src/msls-core.js?v=20261027-14"></script>
+    <script src="./src/app-context.js?v=20261027-14"></script>
+    <script src="./src/app-worker-runtime.js?v=20261027-14"></script>
+    <script src="./src/app-generator-runtime.js?v=20261027-14"></script>
+    <script src="./src/app-ocr-assets.js?v=20261027-14"></script>
+    <script src="./src/app-ocr-grid.js?v=20261027-14"></script>
+    <script src="./src/app-ocr-controller.js?v=20261027-14"></script>
+    <script src="./src/app-clipboard.js?v=20261027-14"></script>
+    <script src="./src/app-link-state.js?v=20261027-14"></script>
+    <script src="./src/app-variant-controls.js?v=20261027-14"></script>
+    <script src="./src/app-search-control.js?v=20261027-14"></script>
+    <script src="./src/app-history-state.js?v=20261027-14"></script>
+    <script src="./src/app-ui-state.js?v=20261027-14"></script>
+    <script src="./src/app-toggle-ui.js?v=20261027-14"></script>
+    <script src="./src/app-fish-controls.js?v=20261027-14"></script>
+    <script src="./src/app-candidate-controls.js?v=20261027-14"></script>
+    <script src="./src/app-form-controls.js?v=20261027-14"></script>
+    <script src="./src/app-candidate-filter.js?v=20261027-14"></script>
+    <script src="./src/app-technique-controls.js?v=20261027-14"></script>
+    <script src="./src/app-input-loader.js?v=20261027-14"></script>
+    <script src="./src/app-basic-events.js?v=20261027-14"></script>
+    <script src="./src/app-ocr-events.js?v=20261027-14"></script>
+    <script src="./src/app-variant-events.js?v=20261027-14"></script>
+    <script src="./src/app-example-events.js?v=20261027-14"></script>
+    <script src="./src/app-board-events.js?v=20261027-14"></script>
+    <script src="./src/app-search-events.js?v=20261027-14"></script>
+    <script src="./src/app-pom-events.js?v=20261027-14"></script>
+    <script src="./src/app-als-events.js?v=20261027-14"></script>
+    <script src="./src/app-als-link-events.js?v=20261027-14"></script>
+    <script src="./src/app-ahs-events.js?v=20261027-14"></script>
+    <script src="./src/app-msls-events.js?v=20261027-14"></script>
+    <script src="./src/app-strong-link-events.js?v=20261027-14"></script>
+    <script src="./src/app-simple-coloring-events.js?v=20261027-14"></script>
+    <script src="./src/app-multi-coloring-events.js?v=20261027-14"></script>
+    <script src="./src/app-chain-events.js?v=20261027-14"></script>
+    <script src="./src/app-chain-build.js?v=20261027-14"></script>
+    <script src="./src/app-alc-build.js?v=20261027-14"></script>
+    <script src="./src/app-fish-events.js?v=20261027-14"></script>
+    <script src="./src/app-als-xz-events.js?v=20261027-14"></script>
+    <script src="./src/app-ahs-xz-events.js?v=20261027-14"></script>
+    <script src="./src/app-alc-xz-events.js?v=20261027-14"></script>
+    <script src="./src/app-alc-xy-events.js?v=20261027-14"></script>
+    <script src="./src/app-alc-chain-events.js?v=20261027-14"></script>
+    <script src="./src/app-alc-dof-events.js?v=20261027-14"></script>
+    <script src="./src/app-alc-hydra-build.js?v=20261027-14"></script>
+    <script src="./src/app-alc-hydra-events.js?v=20261027-14"></script>
+    <script src="./src/app-ahs-xy-events.js?v=20261027-14"></script>
+    <script src="./src/app-ahs-chain-events.js?v=20261027-14"></script>
+    <script src="./src/app-ahs-dof-events.js?v=20261027-14"></script>
+    <script src="./src/app-ahs-dof-build.js?v=20261027-14"></script>
+    <script src="./src/app-ahs-dof-chain-events.js?v=20261027-14"></script>
+    <script src="./src/app-ahs-dof-chain-build.js?v=20261027-14"></script>
+    <script src="./src/app-ahs-hydra-build.js?v=20261027-14"></script>
+    <script src="./src/app-als-dof-build.js?v=20261027-14"></script>
+    <script src="./src/app-als-dof-chain-build.js?v=20261027-14"></script>
+    <script src="./src/app-als-hydra-build.js?v=20261027-14"></script>
+    <script src="./src/app-ahs-link-build.js?v=20261027-14"></script>
+    <script src="./src/app-als-build.js?v=20261027-14"></script>
+    <script src="./src/app-als-link-build.js?v=20261027-14"></script>
+    <script src="./src/app-ahs-record-build.js?v=20261027-14"></script>
+    <script src="./src/app-strong-link-build.js?v=20261027-14"></script>
+    <script src="./src/app-simple-coloring-build.js?v=20261027-14"></script>
+    <script src="./src/app-three-d-medusa-build.js?v=20261027-14"></script>
+    <script src="./src/app-multi-coloring-build.js?v=20261027-14"></script>
+    <script src="./src/app-three-d-medusa-multi-build.js?v=20261027-14"></script>
+    <script src="./src/app-fish-build.js?v=20261027-14"></script>
+    <script src="./src/app-generic-subset-build.js?v=20261027-14"></script>
+    <script src="./src/app-box-line-build.js?v=20261027-14"></script>
+    <script src="./src/app-difficulty-data.js?v=20261027-14"></script>
+    <script src="./src/app-rating-data.js?v=20261027-14"></script>
+    <script src="./src/app-rating-runtime.js?v=20261027-14"></script>
+    <script src="./src/app-dof-step.js?v=20261027-14"></script>
+    <script src="./src/app-hydra-step.js?v=20261027-14"></script>
+    <script src="./src/app-player-state.js?v=20261027-14"></script>
+    <script src="./src/app-player-mode.js?v=20261027-14"></script>
+    <script src="./src/app-toy-math.js?v=20261027-14"></script>
+    <script src="./src/app-toy-catalog.js?v=20261027-14"></script>
+    <script src="./src/app-toy-minilex-view.js?v=20261027-14"></script>
+    <script src="./src/app-toy-minimizer-view.js?v=20261027-14"></script>
+    <script src="./src/app-toy-automorph-view.js?v=20261027-14"></script>
+    <script src="./src/app-toy-minimizer.js?v=20261027-14"></script>
+    <script src="./src/app-toy-controls.js?v=20261027-14"></script>
+    <script src="./src/app-toy-compatibility.js?v=20261027-14"></script>
+    <script src="./src/app-toy-state.js?v=20261027-14"></script>
+    <script src="./src/app-toy-actions.js?v=20261027-14"></script>
+    <script src="./src/app-report-selection.js?v=20261027-14"></script>
+    <script src="./src/app-candidate-state.js?v=20261027-14"></script>
+    <script src="./src/app-candidate-visibility.js?v=20261027-14"></script>
+    <script src="./src/app-sector-view.js?v=20261027-14"></script>
+    <script src="./src/app-rating-scoring.js?v=20261027-14"></script>
+    <script src="./src/app-chain-scoring.js?v=20261027-14"></script>
+    <script src="./src/app-chain-modifiers.js?v=20261027-14"></script>
+    <script src="./src/app-chain-classification.js?v=20261027-14"></script>
+    <script src="./src/app-dof-rating.js?v=20261027-14"></script>
+    <script src="./src/app-rating-aggregation.js?v=20261027-14"></script>
+    <script src="./src/app-rating-view.js?v=20261027-14"></script>
+    <script src="./src/app-solution-log-view.js?v=20261027-14"></script>
+    <script src="./src/app-solved-state.js?v=20261027-14"></script>
+    <script src="./src/app-display-names.js?v=20261027-14"></script>
+    <script src="./src/app-pom-view.js?v=20261027-14"></script>
+    <script src="./src/app-promotion-view.js?v=20261027-14"></script>
+    <script src="./src/app-difficulty-info.js?v=20261027-14"></script>
+    <script src="./src/app-variant-settings.js?v=20261027-14"></script>
+    <script src="./src/app-settings-runtime.js?v=20261027-14"></script>
+    <script src="./src/app-msls-view.js?v=20261027-14"></script>
+    <script src="./src/app-msls-search.js?v=20261027-14"></script>
+    <script src="./src/app-colouring-step.js?v=20261027-14"></script>
+    <script src="./src/app-chain-node-limits.js?v=20261027-14"></script>
+    <script src="./src/app-ahs-build.js?v=20261027-14"></script>
+    <script src="./src/app-ahs-hydra-events.js?v=20261027-14"></script>
+    <script src="./src/app-ahs-link-events.js?v=20261027-14"></script>
+    <script src="./src/app-als-xy-events.js?v=20261027-14"></script>
+    <script src="./src/app-als-chain-events.js?v=20261027-14"></script>
+    <script src="./src/app-als-dof-events.js?v=20261027-14"></script>
+    <script src="./src/app-als-dof-chain-events.js?v=20261027-14"></script>
+    <script src="./src/app-als-hydra-events.js?v=20261027-14"></script>
+    <script src="./src/app-subset-events.js?v=20261027-14"></script>
+    <script src="./src/app-copy-events.js?v=20261027-14"></script>
+    <script src="./src/app-solution-events.js?v=20261027-14"></script>
+    <script src="./src/app-toy-events.js?v=20261027-14"></script>
+    <script src="./src/app-chromatic-events.js?v=20261027-14"></script>
+    <script src="./src/app-medusa-simple-coloring-events.js?v=20261027-14"></script>
+    <script src="./src/app-medusa-multi-coloring-events.js?v=20261027-14"></script>
+    <script src="./src/app-diagnostics.js?v=20261027-14"></script>
+    <script src="./src/app.js?v=20261027-14"></script>
 </body>
 </html>
