@@ -659,7 +659,7 @@
       }
 
       try {
-      const workerPath = './src/search-worker.js?v=20261027-14';
+      const workerPath = './src/search-worker.js?v=20261027-15';
         releaseSearchWorkerBlobUrl();
         let workerUrl = new URL(workerPath, document.baseURI);
         if (document.baseURI.startsWith('file:')) {
