@@ -20,5 +20,19 @@
     return { read, write };
   }
 
-  app.variantControls = { create };
+  function cellClasses(cell, settings = {}) {
+    const classes = [];
+    const row = Math.floor(cell / 9);
+    const col = cell % 9;
+    if (settings.diagonal && cell % 10 === 0) classes.push('variant-diagonal-cell');
+    if (settings.antiDiagonal && row + col === 8) classes.push('variant-anti-diagonal-cell');
+    if (settings.windoku) {
+      const inWindokuRegion = (row >= 1 && row <= 3 || row >= 5 && row <= 7)
+        && (col >= 1 && col <= 3 || col >= 5 && col <= 7);
+      if (inWindokuRegion) classes.push('variant-windoku-cell');
+    }
+    return classes;
+  }
+
+  app.variantControls = { create, cellClasses };
 })(window);

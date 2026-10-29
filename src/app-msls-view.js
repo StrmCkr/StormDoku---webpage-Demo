@@ -45,25 +45,60 @@
         resultsEl.appendChild(empty);
         return;
       }
-      const list = documentRef.createElement('ul');
-      list.className = 'log';
-      results.slice(0, 500).forEach((result, index) => {
-        const item = documentRef.createElement('li');
-        const button = documentRef.createElement('button');
-        const safetyFlags = result.safetyFlags || [];
-        button.type = 'button';
-        button.className = 'chain-result';
-        if (safetyFlags.length) button.classList.add('chain-result-flagged');
-        if (getSelectedIndex() === index) button.classList.add('selected');
-        button.textContent = `${safetyFlags.length ? '[FLAGGED] ' : ''}${index + 1}. ${core.formatMsls(result)}`;
-        button.title = safetyFlags.length
-          ? `Flagged for inspection: ${safetyFlags.join('; ')}`
-          : 'Highlight this MSLS result and its eliminations on the grid';
-        button.addEventListener('click', () => onSelect(result, index, safetyFlags));
-        item.appendChild(button);
-        list.appendChild(item);
+      const categories = documentRef.createElement('div');
+      categories.className = 'chain-categories';
+      const groups = new Map();
+      const classOrder = ['MS-AHS', 'MS-LS', 'MS-NS', 'MSLS'];
+      for (const [index, result] of results.slice(0, 500).entries()) {
+        const nameClass = String(result.model || 'MSLS');
+        const entries = groups.get(nameClass) || [];
+        entries.push({ result, index });
+        groups.set(nameClass, entries);
+      }
+      const orderedGroups = [...groups.entries()].sort((left, right) => {
+        const leftIndex = classOrder.indexOf(left[0]);
+        const rightIndex = classOrder.indexOf(right[0]);
+        return (leftIndex < 0 ? classOrder.length : leftIndex)
+          - (rightIndex < 0 ? classOrder.length : rightIndex)
+          || left[0].localeCompare(right[0]);
       });
-      resultsEl.appendChild(list);
+      for (const [nameClass, entries] of orderedGroups) {
+        const folder = documentRef.createElement('details');
+        folder.className = 'chain-category';
+        folder.open = entries.some(({ index }) => index === getSelectedIndex());
+        const summary = documentRef.createElement('summary');
+        const label = documentRef.createElement('strong');
+        label.className = 'chain-category-name';
+        label.textContent = nameClass;
+        const count = documentRef.createElement('span');
+        count.className = 'chain-category-count';
+        count.textContent = `${entries.length} ${entries.length === 1 ? 'result' : 'results'}`;
+        summary.appendChild(label);
+        summary.appendChild(count);
+        folder.appendChild(summary);
+
+        const list = documentRef.createElement('ul');
+        list.className = 'chain-list';
+        for (const { result, index } of entries) {
+          const item = documentRef.createElement('li');
+          const button = documentRef.createElement('button');
+          const safetyFlags = result.safetyFlags || [];
+          button.type = 'button';
+          button.className = 'chain-result';
+          if (safetyFlags.length) button.classList.add('chain-result-flagged');
+          if (getSelectedIndex() === index) button.classList.add('selected');
+          button.textContent = `${safetyFlags.length ? '[FLAGGED] ' : ''}${index + 1}. ${core.formatMsls(result)}`;
+          button.title = safetyFlags.length
+            ? `Flagged for inspection: ${safetyFlags.join('; ')}`
+            : 'Highlight this MSLS result and its eliminations on the grid';
+          button.addEventListener('click', () => onSelect(result, index, safetyFlags));
+          item.appendChild(button);
+          list.appendChild(item);
+        }
+        folder.appendChild(list);
+        categories.appendChild(folder);
+      }
+      resultsEl.appendChild(categories);
       if (results.length > 500) {
         const more = documentRef.createElement('p');
         more.textContent = `Showing 500 of ${results.length} results.`;

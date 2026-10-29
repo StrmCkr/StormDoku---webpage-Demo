@@ -21,6 +21,10 @@
       --gunmetal-ink: #f3f6f8;
     }
 
+    html {
+      background: var(--gunmetal-panel);
+    }
+
     * {
       box-sizing: border-box;
     }
@@ -2599,7 +2603,6 @@
       order: 99;
     }
 
-    .example-group-test-grids { order: 0; }
     .example-group-subsets { order: 1; }
     .example-group-fish { order: 2; }
     .example-group-aic { order: 3; }
@@ -3220,11 +3223,19 @@
       max-height: 260px;
       overflow: auto;
       padding: 7px 9px;
-      border: 1px solid var(--line);
+      border: 1px solid var(--gunmetal-line);
       border-radius: 5px;
-      background: var(--panel);
-      color: var(--ink);
+      background: var(--gunmetal-panel);
+      color: var(--gunmetal-ink);
       font-size: 12px;
+    }
+
+    .toy-automorph-results details,
+    .toy-automorph-results summary,
+    .toy-automorph-results ol,
+    .toy-automorph-results li {
+      background: transparent;
+      color: inherit;
     }
 
     .toy-automorph-results p {
@@ -4373,4 +4384,4 @@
         font-size: clamp(5px, 1.8vw, 11px);
       }
     }
-  
+

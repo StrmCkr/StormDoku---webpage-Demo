@@ -8,14 +8,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self'; img-src 'self' blob: data:; worker-src 'self' blob:; connect-src 'self' blob:; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self';">
   <title>StormDoku: on-line | off-line</title>
-  <link rel="stylesheet" href="./src/app.css?v=20261027-15">
+  <link rel="stylesheet" href="./src/app.css?v=20261029-01">
 </head>
 <body>
   <header>
     <div class="header-brand">
       <h1>StormDoku: <span title="Hosted use: the page may load its normal worker scripts and OCR resources when available.">on-line</span> | <span title="Local use: open the repository's index.html directly from file:// and use the bundled solver worker without a server or internet connection.">off-line</span></h1>
       <p class="topline">Generator, candidates, subsets, fish, chains, and structures demonstrator for regular Sudoku 9x9 grids, Sudoku X, Anti-Knight, Anti-King, Non-Consecutive, and Windoku.</p>
-      <p class="app-meta">Alpha v0.6.74 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <p class="app-meta">Alpha v0.6.75 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
     </div>
   </header>
 
@@ -151,34 +151,9 @@
         <summary><h2>Examples</h2></summary>
         <div class="pom-body">
           <div class="example-groups">
-            <details class="example-group example-group-test-grids">
-              <summary><h3>Test Grids</h3></summary>
-              <div class="report-subsection-body">
-                <div class="example-item">
-              <button class="secondary example-load" type="button" data-example-puzzle="123456789456789123789123456231564897564897231897231564312645978645978312978312645">Most Canonical</button>
-              <code class="example-puzzle">123456789456789123789123456231564897564897231897231564312645978645978312978312645</code>
-            </div>
-                <div class="example-item">
-              <button class="secondary example-load" type="button" data-example-puzzle="85..7.269.7.5.934.3..264758.2764..351.8.3.6.7..6.21894485316..276149....29385..1.">Lulz grid</button>
-              <code class="example-puzzle">85..7.269.7.5.934.3..264758.2764..351.8.3.6.7..6.21894485316..276149....29385..1.</code>
-            </div>
-                <div class="example-item">
-              <button class="secondary example-load" type="button" data-example-puzzle="500000009020100070008000300040002000000050000000706010003000800060004020900000005">Strmckr's 11.4 SE</button>
-              <code class="example-puzzle">500000009020100070008000300040002000000050000000706010003000800060004020900000005</code>
-            </div>
-                <div class="example-item">
-              <button class="secondary example-load" type="button" data-example-key="blank-candidate-grid">Blank Grid</button>
-              <code class="example-puzzle">123456789 in every cell</code>
-            </div>
-              </div>
-            </details>
             <details class="example-group example-group-chromatic">
               <summary><h3>Chromatic Graphs</h3></summary>
               <div class="report-subsection-body">
-                <div class="example-item">
-              <button class="secondary example-load" type="button" data-example-key="non-colourable-chromatic">Non colourable chromatic graphs</button>
-              <code class="example-puzzle">Candidate grid: 123 / 456789</code>
-            </div>
                 <div class="example-item">
               <button class="secondary example-load" type="button" data-example-puzzle="........1.....2.3...4.15.......346...47..8.1.6.31.78...78...1.63...8..744.67.138.">Chromatic Type 2 - Same digit 1</button>
               <code class="example-puzzle">........1.....2.3...4.15.......346...47..8.1.6.31.78...78...1.63...8..744.67.138.</code>
@@ -230,8 +205,8 @@
               <code class="example-puzzle">.76...4.11..3...8..4......2....2...5.....5.39.61......9..6.85....7.5...........24</code>
             </div>
                 <div class="example-item">
-              <button class="secondary example-load" type="button" data-example-puzzle="8........43.217....5......137..9.8.4....7....9.5.6..732......5....326.49........6">Hidden Quad</button>
-              <code class="example-puzzle">8........43.217....5......137..9.8.4....7....9.5.6..732......5....326.49........6</code>
+              <button class="secondary example-load" type="button" data-example-puzzle="049750000500000000008690000097083260060000050035460980000026700000000008000075420">Hidden Quad (alternate)</button>
+              <code class="example-puzzle">049750000500000000008690000097083260060000050035460980000026700000000008000075420</code>
             </div>
               </div>
             </details>
@@ -1609,148 +1584,165 @@
     </section>
   </main>
 
-    <script src="./src/browser-core.js?v=20261027-15"></script>
-  <script src="./src/set-tools-core.js?v=20261027-15"></script>
-  <script src="./src/pom-core.js?v=20261027-15"></script>
-  <script src="./src/als-core.js?v=20261027-15"></script>
-  <script src="./src/als-link-core.js?v=20261027-15"></script>
-  <script src="./src/als-dof-core.js?v=20261027-15"></script>
-  <script src="./src/hydra-core.js?v=20261027-15"></script>
-  <script src="./src/ahs-core.js?v=20261027-15"></script>
-  <script src="./src/ahs-link-core.js?v=20261027-15"></script>
-  <script src="./src/subset-report-core.js?v=20261027-15"></script>
-  <script src="./src/mini-sectors-core.js?v=20261027-15"></script>
-  <script src="./src/chromatic-core.js?v=20261027-15"></script>
-  <script src="./src/chromatic-als-core.js?v=20261027-15"></script>
-    <script src="./src/strong-link-core.js?v=20261027-15"></script>
-      <script src="./src/chain-core.js?v=20261027-15"></script>
-  <script src="./src/alc-core.js?v=20261027-15"></script>
-  <script src="./src/ahs-xy-core.js?v=20261027-15"></script>
-  <script src="./src/ahs-dof-core.js?v=20261027-15"></script>
-  <script src="./src/msls-core.js?v=20261027-15"></script>
-    <script src="./src/app-context.js?v=20261027-15"></script>
-    <script src="./src/app-worker-runtime.js?v=20261027-15"></script>
-    <script src="./src/app-generator-runtime.js?v=20261027-15"></script>
-    <script src="./src/app-ocr-assets.js?v=20261027-15"></script>
-    <script src="./src/app-ocr-grid.js?v=20261027-15"></script>
-    <script src="./src/app-ocr-controller.js?v=20261027-15"></script>
-    <script src="./src/app-clipboard.js?v=20261027-15"></script>
-    <script src="./src/app-link-state.js?v=20261027-15"></script>
-    <script src="./src/app-variant-controls.js?v=20261027-15"></script>
-    <script src="./src/app-search-control.js?v=20261027-15"></script>
-    <script src="./src/app-history-state.js?v=20261027-15"></script>
-    <script src="./src/app-ui-state.js?v=20261027-15"></script>
-    <script src="./src/app-toggle-ui.js?v=20261027-15"></script>
-    <script src="./src/app-fish-controls.js?v=20261027-15"></script>
-    <script src="./src/app-candidate-controls.js?v=20261027-15"></script>
-    <script src="./src/app-form-controls.js?v=20261027-15"></script>
-    <script src="./src/app-candidate-filter.js?v=20261027-15"></script>
-    <script src="./src/app-technique-controls.js?v=20261027-15"></script>
-    <script src="./src/app-input-loader.js?v=20261027-15"></script>
-    <script src="./src/app-basic-events.js?v=20261027-15"></script>
-    <script src="./src/app-ocr-events.js?v=20261027-15"></script>
-    <script src="./src/app-variant-events.js?v=20261027-15"></script>
-    <script src="./src/app-example-events.js?v=20261027-15"></script>
-    <script src="./src/app-board-events.js?v=20261027-15"></script>
-    <script src="./src/app-search-events.js?v=20261027-15"></script>
-    <script src="./src/app-pom-events.js?v=20261027-15"></script>
-    <script src="./src/app-als-events.js?v=20261027-15"></script>
-    <script src="./src/app-als-link-events.js?v=20261027-15"></script>
-    <script src="./src/app-ahs-events.js?v=20261027-15"></script>
-    <script src="./src/app-msls-events.js?v=20261027-15"></script>
-    <script src="./src/app-strong-link-events.js?v=20261027-15"></script>
-    <script src="./src/app-simple-coloring-events.js?v=20261027-15"></script>
-    <script src="./src/app-multi-coloring-events.js?v=20261027-15"></script>
-    <script src="./src/app-chain-events.js?v=20261027-15"></script>
-    <script src="./src/app-chain-build.js?v=20261027-15"></script>
-    <script src="./src/app-alc-build.js?v=20261027-15"></script>
-    <script src="./src/app-fish-events.js?v=20261027-15"></script>
-    <script src="./src/app-als-xz-events.js?v=20261027-15"></script>
-    <script src="./src/app-ahs-xz-events.js?v=20261027-15"></script>
-    <script src="./src/app-alc-xz-events.js?v=20261027-15"></script>
-    <script src="./src/app-alc-xy-events.js?v=20261027-15"></script>
-    <script src="./src/app-alc-chain-events.js?v=20261027-15"></script>
-    <script src="./src/app-alc-dof-events.js?v=20261027-15"></script>
-    <script src="./src/app-alc-hydra-build.js?v=20261027-15"></script>
-    <script src="./src/app-alc-hydra-events.js?v=20261027-15"></script>
-    <script src="./src/app-ahs-xy-events.js?v=20261027-15"></script>
-    <script src="./src/app-ahs-chain-events.js?v=20261027-15"></script>
-    <script src="./src/app-ahs-dof-events.js?v=20261027-15"></script>
-    <script src="./src/app-ahs-dof-build.js?v=20261027-15"></script>
-    <script src="./src/app-ahs-dof-chain-events.js?v=20261027-15"></script>
-    <script src="./src/app-ahs-dof-chain-build.js?v=20261027-15"></script>
-    <script src="./src/app-ahs-hydra-build.js?v=20261027-15"></script>
-    <script src="./src/app-als-dof-build.js?v=20261027-15"></script>
-    <script src="./src/app-als-dof-chain-build.js?v=20261027-15"></script>
-    <script src="./src/app-als-hydra-build.js?v=20261027-15"></script>
-    <script src="./src/app-ahs-link-build.js?v=20261027-15"></script>
-    <script src="./src/app-als-build.js?v=20261027-15"></script>
-    <script src="./src/app-als-link-build.js?v=20261027-15"></script>
-    <script src="./src/app-ahs-record-build.js?v=20261027-15"></script>
-    <script src="./src/app-strong-link-build.js?v=20261027-15"></script>
-    <script src="./src/app-simple-coloring-build.js?v=20261027-15"></script>
-    <script src="./src/app-three-d-medusa-build.js?v=20261027-15"></script>
-    <script src="./src/app-multi-coloring-build.js?v=20261027-15"></script>
-    <script src="./src/app-three-d-medusa-multi-build.js?v=20261027-15"></script>
-    <script src="./src/app-fish-build.js?v=20261027-15"></script>
-    <script src="./src/app-generic-subset-build.js?v=20261027-15"></script>
-    <script src="./src/app-box-line-build.js?v=20261027-15"></script>
-    <script src="./src/app-difficulty-data.js?v=20261027-15"></script>
-    <script src="./src/app-rating-data.js?v=20261027-15"></script>
-    <script src="./src/app-rating-runtime.js?v=20261027-15"></script>
-    <script src="./src/app-dof-step.js?v=20261027-15"></script>
-    <script src="./src/app-hydra-step.js?v=20261027-15"></script>
-    <script src="./src/app-player-state.js?v=20261027-15"></script>
-    <script src="./src/app-player-mode.js?v=20261027-15"></script>
-    <script src="./src/app-toy-math.js?v=20261027-15"></script>
-    <script src="./src/app-toy-catalog.js?v=20261027-15"></script>
-    <script src="./src/app-toy-minilex-view.js?v=20261027-15"></script>
-    <script src="./src/app-toy-minimizer-view.js?v=20261027-15"></script>
-    <script src="./src/app-toy-automorph-view.js?v=20261027-15"></script>
-    <script src="./src/app-toy-minimizer.js?v=20261027-15"></script>
-    <script src="./src/app-toy-controls.js?v=20261027-15"></script>
-    <script src="./src/app-toy-compatibility.js?v=20261027-15"></script>
-    <script src="./src/app-toy-state.js?v=20261027-15"></script>
-    <script src="./src/app-toy-actions.js?v=20261027-15"></script>
-    <script src="./src/app-report-selection.js?v=20261027-15"></script>
-    <script src="./src/app-candidate-state.js?v=20261027-15"></script>
-    <script src="./src/app-candidate-visibility.js?v=20261027-15"></script>
-    <script src="./src/app-sector-view.js?v=20261027-15"></script>
-    <script src="./src/app-rating-scoring.js?v=20261027-15"></script>
-    <script src="./src/app-chain-scoring.js?v=20261027-15"></script>
-    <script src="./src/app-chain-modifiers.js?v=20261027-15"></script>
-    <script src="./src/app-chain-classification.js?v=20261027-15"></script>
-    <script src="./src/app-dof-rating.js?v=20261027-15"></script>
-    <script src="./src/app-rating-aggregation.js?v=20261027-15"></script>
-    <script src="./src/app-rating-view.js?v=20261027-15"></script>
-    <script src="./src/app-solution-log-view.js?v=20261027-15"></script>
-    <script src="./src/app-solved-state.js?v=20261027-15"></script>
-    <script src="./src/app-display-names.js?v=20261027-15"></script>
-    <script src="./src/app-pom-view.js?v=20261027-15"></script>
-    <script src="./src/app-promotion-view.js?v=20261027-15"></script>
-    <script src="./src/app-difficulty-info.js?v=20261027-15"></script>
-    <script src="./src/app-variant-settings.js?v=20261027-15"></script>
-    <script src="./src/app-settings-runtime.js?v=20261027-15"></script>
-    <script src="./src/app-msls-view.js?v=20261027-15"></script>
-    <script src="./src/app-msls-search.js?v=20261027-15"></script>
-    <script src="./src/app-colouring-step.js?v=20261027-15"></script>
-    <script src="./src/app-chain-node-limits.js?v=20261027-15"></script>
-    <script src="./src/app-ahs-build.js?v=20261027-15"></script>
-    <script src="./src/app-ahs-hydra-events.js?v=20261027-15"></script>
-    <script src="./src/app-ahs-link-events.js?v=20261027-15"></script>
-    <script src="./src/app-als-xy-events.js?v=20261027-15"></script>
-    <script src="./src/app-als-chain-events.js?v=20261027-15"></script>
-    <script src="./src/app-als-dof-events.js?v=20261027-15"></script>
-    <script src="./src/app-als-dof-chain-events.js?v=20261027-15"></script>
-    <script src="./src/app-als-hydra-events.js?v=20261027-15"></script>
-    <script src="./src/app-subset-events.js?v=20261027-15"></script>
-    <script src="./src/app-copy-events.js?v=20261027-15"></script>
-    <script src="./src/app-solution-events.js?v=20261027-15"></script>
-    <script src="./src/app-toy-events.js?v=20261027-15"></script>
-    <script src="./src/app-chromatic-events.js?v=20261027-15"></script>
-    <script src="./src/app-medusa-simple-coloring-events.js?v=20261027-15"></script>
-    <script src="./src/app-medusa-multi-coloring-events.js?v=20261027-15"></script>
-    <script src="./src/app-diagnostics.js?v=20261027-15"></script>
-    <script src="./src/app.js?v=20261027-15"></script>
+    <script src="./src/browser-core.js?v=20261029-01"></script>
+  <script src="./src/set-tools-core.js?v=20261029-01"></script>
+  <script src="./src/pom-core.js?v=20261029-01"></script>
+  <script src="./src/als-core.js?v=20261029-01"></script>
+  <script src="./src/als-link-core.js?v=20261029-01"></script>
+  <script src="./src/als-dof-core.js?v=20261029-01"></script>
+  <script src="./src/hydra-core.js?v=20261029-01"></script>
+  <script src="./src/ahs-core.js?v=20261029-01"></script>
+  <script src="./src/ahs-link-core.js?v=20261029-01"></script>
+  <script src="./src/subset-report-core.js?v=20261029-01"></script>
+  <script src="./src/mini-sectors-core.js?v=20261029-01"></script>
+  <script src="./src/chromatic-core.js?v=20261029-01"></script>
+  <script src="./src/chromatic-als-core.js?v=20261029-01"></script>
+    <script src="./src/strong-link-core.js?v=20261029-01"></script>
+      <script src="./src/chain-core.js?v=20261029-01"></script>
+  <script src="./src/alc-core.js?v=20261029-01"></script>
+  <script src="./src/ahs-xy-core.js?v=20261029-01"></script>
+  <script src="./src/ahs-dof-core.js?v=20261029-01"></script>
+  <script src="./src/msls-core.js?v=20261029-01"></script>
+    <script src="./src/app-context.js?v=20261029-01"></script>
+    <script src="./src/app-worker-runtime.js?v=20261029-01"></script>
+    <script src="./src/app-generator-runtime.js?v=20261029-01"></script>
+    <script src="./src/app-ocr-assets.js?v=20261029-01"></script>
+    <script src="./src/app-ocr-grid.js?v=20261029-01"></script>
+    <script src="./src/app-ocr-controller.js?v=20261029-01"></script>
+    <script src="./src/app-clipboard.js?v=20261029-01"></script>
+    <script src="./src/app-link-state.js?v=20261029-01"></script>
+    <script src="./src/app-variant-controls.js?v=20261029-01"></script>
+    <script src="./src/app-search-control.js?v=20261029-01"></script>
+    <script src="./src/app-history-state.js?v=20261029-01"></script>
+    <script src="./src/app-ui-state.js?v=20261029-01"></script>
+    <script src="./src/app-toggle-ui.js?v=20261029-01"></script>
+    <script src="./src/app-fish-controls.js?v=20261029-01"></script>
+    <script src="./src/app-candidate-controls.js?v=20261029-01"></script>
+    <script src="./src/app-grid-text-view.js?v=20261029-01"></script>
+    <script src="./src/app-form-controls.js?v=20261029-01"></script>
+    <script src="./src/app-candidate-filter.js?v=20261029-01"></script>
+    <script src="./src/app-technique-controls.js?v=20261029-01"></script>
+    <script src="./src/app-input-loader.js?v=20261029-01"></script>
+    <script src="./src/app-basic-events.js?v=20261029-01"></script>
+    <script src="./src/app-ocr-events.js?v=20261029-01"></script>
+    <script src="./src/app-variant-events.js?v=20261029-01"></script>
+    <script src="./src/app-example-events.js?v=20261029-01"></script>
+    <script src="./src/app-board-events.js?v=20261029-01"></script>
+    <script src="./src/app-search-events.js?v=20261029-01"></script>
+    <script src="./src/app-pom-events.js?v=20261029-01"></script>
+    <script src="./src/app-als-events.js?v=20261029-01"></script>
+    <script src="./src/app-als-link-events.js?v=20261029-01"></script>
+    <script src="./src/app-ahs-events.js?v=20261029-01"></script>
+    <script src="./src/app-msls-events.js?v=20261029-01"></script>
+    <script src="./src/app-strong-link-events.js?v=20261029-01"></script>
+    <script src="./src/app-simple-coloring-events.js?v=20261029-01"></script>
+    <script src="./src/app-multi-coloring-events.js?v=20261029-01"></script>
+    <script src="./src/app-chain-events.js?v=20261029-01"></script>
+    <script src="./src/app-chain-build.js?v=20261029-01"></script>
+    <script src="./src/app-alc-build.js?v=20261029-01"></script>
+    <script src="./src/app-fish-events.js?v=20261029-01"></script>
+    <script src="./src/app-als-xz-events.js?v=20261029-01"></script>
+    <script src="./src/app-ahs-xz-events.js?v=20261029-01"></script>
+    <script src="./src/app-alc-xz-events.js?v=20261029-01"></script>
+    <script src="./src/app-alc-xy-events.js?v=20261029-01"></script>
+    <script src="./src/app-alc-chain-events.js?v=20261029-01"></script>
+    <script src="./src/app-alc-dof-events.js?v=20261029-01"></script>
+    <script src="./src/app-alc-hydra-build.js?v=20261029-01"></script>
+    <script src="./src/app-alc-hydra-events.js?v=20261029-01"></script>
+    <script src="./src/app-ahs-xy-events.js?v=20261029-01"></script>
+    <script src="./src/app-ahs-chain-events.js?v=20261029-01"></script>
+    <script src="./src/app-ahs-dof-events.js?v=20261029-01"></script>
+    <script src="./src/app-ahs-dof-build.js?v=20261029-01"></script>
+    <script src="./src/app-ahs-dof-chain-events.js?v=20261029-01"></script>
+    <script src="./src/app-ahs-dof-chain-build.js?v=20261029-01"></script>
+    <script src="./src/app-ahs-hydra-build.js?v=20261029-01"></script>
+    <script src="./src/app-als-dof-build.js?v=20261029-01"></script>
+    <script src="./src/app-als-dof-chain-build.js?v=20261029-01"></script>
+    <script src="./src/app-als-hydra-build.js?v=20261029-01"></script>
+    <script src="./src/app-ahs-link-build.js?v=20261029-01"></script>
+    <script src="./src/app-als-build.js?v=20261029-01"></script>
+    <script src="./src/app-als-link-build.js?v=20261029-01"></script>
+    <script src="./src/app-ahs-record-build.js?v=20261029-01"></script>
+    <script src="./src/app-strong-link-build.js?v=20261029-01"></script>
+    <script src="./src/app-simple-coloring-build.js?v=20261029-01"></script>
+    <script src="./src/app-three-d-medusa-build.js?v=20261029-01"></script>
+    <script src="./src/app-multi-coloring-build.js?v=20261029-01"></script>
+    <script src="./src/app-three-d-medusa-multi-build.js?v=20261029-01"></script>
+    <script src="./src/app-fish-build.js?v=20261029-01"></script>
+    <script src="./src/app-generic-subset-build.js?v=20261029-01"></script>
+    <script src="./src/app-box-line-build.js?v=20261029-01"></script>
+    <script src="./src/app-difficulty-data.js?v=20261029-01"></script>
+    <script src="./src/app-rating-data.js?v=20261029-01"></script>
+    <script src="./src/app-rating-runtime.js?v=20261029-01"></script>
+    <script src="./src/app-dof-step.js?v=20261029-01"></script>
+    <script src="./src/app-hydra-step.js?v=20261029-01"></script>
+    <script src="./src/app-player-state.js?v=20261029-01"></script>
+    <script src="./src/app-player-mode.js?v=20261029-01"></script>
+    <script src="./src/app-toy-math.js?v=20261029-01"></script>
+    <script src="./src/app-toy-catalog.js?v=20261029-01"></script>
+    <script src="./src/app-toy-minilex-view.js?v=20261029-01"></script>
+    <script src="./src/app-toy-minimizer-view.js?v=20261029-01"></script>
+    <script src="./src/app-toy-automorph-view.js?v=20261029-01"></script>
+    <script src="./src/app-toy-minimizer.js?v=20261029-01"></script>
+    <script src="./src/app-toy-controls.js?v=20261029-01"></script>
+    <script src="./src/app-toy-compatibility.js?v=20261029-01"></script>
+    <script src="./src/app-toy-state.js?v=20261029-01"></script>
+    <script src="./src/app-toy-actions.js?v=20261029-01"></script>
+    <script src="./src/app-toy-runtime.js?v=20261029-01"></script>
+    <script src="./src/app-report-selection.js?v=20261029-01"></script>
+    <script src="./src/app-candidate-state.js?v=20261029-01"></script>
+    <script src="./src/app-candidate-visibility.js?v=20261029-01"></script>
+    <script src="./src/app-sector-view.js?v=20261029-01"></script>
+    <script src="./src/app-vantage-view.js?v=20261029-01"></script>
+    <script src="./src/app-rating-scoring.js?v=20261029-01"></script>
+    <script src="./src/app-chain-scoring.js?v=20261029-01"></script>
+    <script src="./src/app-chain-step.js?v=20261029-01"></script>
+    <script src="./src/app-chain-visual-palette.js?v=20261029-01"></script>
+    <script src="./src/app-chain-visual-model.js?v=20261029-01"></script>
+    <script src="./src/app-chain-visual-geometry.js?v=20261029-01"></script>
+    <script src="./src/app-colouring-model.js?v=20261029-01"></script>
+    <script src="./src/app-highlight-context.js?v=20261029-01"></script>
+    <script src="./src/app-analysis-state.js?v=20261029-01"></script>
+    <script src="./src/app-chain-selection.js?v=20261029-01"></script>
+    <script src="./src/app-solver-ranking.js?v=20261029-01"></script>
+    <script src="./src/app-als-dof-selection.js?v=20261029-01"></script>
+    <script src="./src/app-alc-search.js?v=20261029-01"></script>
+    <script src="./src/app-chain-modifiers.js?v=20261029-01"></script>
+    <script src="./src/app-chain-classification.js?v=20261029-01"></script>
+    <script src="./src/app-dof-rating.js?v=20261029-01"></script>
+    <script src="./src/app-rating-aggregation.js?v=20261029-01"></script>
+    <script src="./src/app-rating-view.js?v=20261029-01"></script>
+    <script src="./src/app-solution-log-view.js?v=20261029-01"></script>
+    <script src="./src/app-solved-state.js?v=20261029-01"></script>
+    <script src="./src/app-display-names.js?v=20261029-01"></script>
+    <script src="./src/app-pom-view.js?v=20261029-01"></script>
+    <script src="./src/app-promotion-view.js?v=20261029-01"></script>
+    <script src="./src/app-difficulty-info.js?v=20261029-01"></script>
+    <script src="./src/app-variant-settings.js?v=20261029-01"></script>
+    <script src="./src/app-settings-runtime.js?v=20261029-01"></script>
+    <script src="./src/app-msls-view.js?v=20261029-01"></script>
+    <script src="./src/app-msls-search.js?v=20261029-01"></script>
+    <script src="./src/app-colouring-step.js?v=20261029-01"></script>
+    <script src="./src/app-chain-node-limits.js?v=20261029-01"></script>
+    <script src="./src/app-solver-phase.js?v=20261029-01"></script>
+    <script src="./src/app-phase-builder.js?v=20261029-01"></script>
+    <script src="./src/app-ahs-build.js?v=20261029-01"></script>
+    <script src="./src/app-ahs-hydra-events.js?v=20261029-01"></script>
+    <script src="./src/app-ahs-link-events.js?v=20261029-01"></script>
+    <script src="./src/app-als-xy-events.js?v=20261029-01"></script>
+    <script src="./src/app-als-chain-events.js?v=20261029-01"></script>
+    <script src="./src/app-als-dof-events.js?v=20261029-01"></script>
+    <script src="./src/app-als-dof-chain-events.js?v=20261029-01"></script>
+    <script src="./src/app-als-hydra-events.js?v=20261029-01"></script>
+    <script src="./src/app-subset-events.js?v=20261029-01"></script>
+    <script src="./src/app-copy-events.js?v=20261029-01"></script>
+    <script src="./src/app-solution-events.js?v=20261029-01"></script>
+    <script src="./src/app-toy-events.js?v=20261029-01"></script>
+    <script src="./src/app-chromatic-view.js?v=20261029-01"></script>
+    <script src="./src/app-chromatic-events.js?v=20261029-01"></script>
+    <script src="./src/app-medusa-simple-coloring-events.js?v=20261029-01"></script>
+    <script src="./src/app-medusa-multi-coloring-events.js?v=20261029-01"></script>
+    <script src="./src/app-diagnostics.js?v=20261029-01"></script>
+    <script src="./src/app.js?v=20261029-01"></script>
 </body>
 </html>

@@ -463,6 +463,7 @@
         nonConsecutive: variantNonConsecutiveEl,
       },
     });
+    const variantCellClasses = appNamespace.variantControls.cellClasses;
     const variantSettingsController = appNamespace.variantSettings.create({
       state: {
         variantSettings,
@@ -620,9 +621,8 @@
       set hierarchyPhase(value) { activeHierarchyPhase = value; },
     };
 
-    function beginSearchDiagnostics(operation, payload) {
-      return appNamespace.searchDiagnostics.begin(operation, payload);
-    }
+    const beginSearchDiagnostics = (operation, payload) =>
+      appNamespace.searchDiagnostics.begin(operation, payload);
 
     function updateSearchDiagnostics(progress = {}) {
       appNamespace.searchDiagnostics.update(progress);
@@ -659,20 +659,16 @@
       }
 
       try {
-      const workerPath = './src/search-worker.js?v=20261027-15';
+      const workerPath = './src/search-worker.js?v=20261029-01';
         releaseSearchWorkerBlobUrl();
         let workerUrl = new URL(workerPath, document.baseURI);
         if (document.baseURI.startsWith('file:')) {
-          await workerRuntime.loadOfflineWorkerSource();
           // A file-origin worker cannot import local scripts. Embed its cores
           // in the Blob so offline Next and Run All share the same worker.
-          searchWorkerBlobUrl = URL.createObjectURL(new Blob(
-            [window.StormDokuSearchWorkerSource],
-            { type: 'text/javascript' },
-          ));
+          searchWorkerBlobUrl = await workerRuntime.createOfflineWorkerBlobUrl();
           workerUrl = searchWorkerBlobUrl;
         }
-        searchWorker = new Worker(workerUrl, { type: 'classic' });
+        searchWorker = workerRuntime.createWorker(workerUrl, { type: 'classic' });
         const currentWorker = searchWorker;
         searchWorker.onmessage = event => {
           if (searchWorker !== currentWorker) return;
@@ -696,15 +692,7 @@
         };
         searchWorker.onerror = event => {
           if (searchWorker !== currentWorker) return;
-          const details = [
-            event.message,
-            event.filename && `(${event.filename})`,
-            event.lineno && `line ${event.lineno}`,
-            event.colno && `column ${event.colno}`,
-            event.type === 'error' && !event.message ? 'uncaught worker error' : null,
-          ]
-            .filter(Boolean)
-            .join(' ');
+          const details = workerRuntime.describeWorkerErrorEvent(event);
           const error = new Error(details || 'Search worker failed.');
           finishSearchDiagnostics(error.message);
           const failedWorker = searchWorker;
@@ -729,17 +717,10 @@
       if (!worker) return Promise.reject(new Error('Search worker unavailable.'));
 
       const id = ++searchWorkerJobId;
-      const workerPayload = payload && typeof payload === 'object'
-        ? { ...payload, variantSettings: { ...variantSettings } }
-        : payload;
+      const workerPayload = workerRuntime.withVariantSettings(payload, variantSettings);
       beginSearchDiagnostics(
         type,
-        {
-          ...workerPayload,
-          diagnosticPhase: options.diagnosticPhase
-            || workerPayload?.diagnosticPhase
-            || activeHierarchyPhase,
-        },
+        workerRuntime.diagnosticsPayload(workerPayload, options, activeHierarchyPhase),
       );
       return new Promise((resolve, reject) => {
         searchWorkerJobs.set(id, {
@@ -828,9 +809,8 @@
       return formControls.selectedNumbers(values);
     }
 
-    function digitHasRemainingCandidates(digit) {
-      return appNamespace.candidateState.digitHasRemainingCandidates(cand, puzzle, promotedValues, digit);
-    }
+    const digitHasRemainingCandidates = digit =>
+      appNamespace.candidateState.digitHasRemainingCandidates(cand, puzzle, promotedValues, digit);
 
     function renderDigitFocusButtons() {
       candidateControls.renderDigits();
@@ -886,6 +866,7 @@
     const markFor = (cell, digit) => appNamespace.candidateState.markFor(cand, cell, digit);
 
     const sectorView = appNamespace.sectorView.create({ core, boardEl });
+    const vantageView = appNamespace.vantageView;
     const { cellsForHouse, cellsForSectors, sectorFrameRects, renderSectorFrames } = sectorView;
 
     const selectedChain = () => reportSelection.chain(
@@ -932,6 +913,10 @@
       setDisabled: value => { promotionSecurityDisabled = value; },
       setStatus,
     }).setManualMode;
+    const validatePlayerPromotion = appNamespace.playerState.validatePlayerPromotion;
+    const validatePlayerClear = appNamespace.playerState.validatePlayerClear;
+    const validatePlayerCandidate = appNamespace.playerState.validatePlayerCandidate;
+    const validatePlayerCandidateRemoval = appNamespace.playerState.validatePlayerCandidateRemoval;
 
     function resetAnalysisAfterPlayerEdit() {
       cycle = 0;
@@ -967,36 +952,45 @@
       superMultiColoringReport = null;
       selectedSuperMultiColoringIndex = null;
       chromaticGraphReport = null;
-      selectedChromaticGraphIndex = null;
       chromaticAlsGraphReport = null;
-      selectedChromaticAlsGraphIndex = null;
-      openAlsSizeGroups.clear();
-      openAhsSizeGroups.clear();
-          selectedThreeDMedusaMultiIndex = null;
       fishReport = null;
       nakedSubsetReport = null;
       hiddenSubsetReport = null;
       chainReport = null;
       alsSearchFamily = null;
       ahsSearchFamily = null;
-      selectedAlsDof = null;
-      selectedAlsDofIndex = null;
-      selectedAlsDofSource = 'net';
-      selectedAlsId = null;
-      selectedAhsDof = null;
-      selectedAhsDofNetIndex = null;
-      selectedAhsDofChainIndex = null;
-      selectedAhsId = null;
-      selectedStrongLinkType = null;
-      selectedStrongLinkIndex = null;
-      selectedFishCategory = null;
-      selectedFishSize = null;
-      selectedFishKey = null;
-      selectedNakedSubsetSize = null;
-      selectedNakedSubsetKey = null;
-      selectedHiddenSubsetSize = null;
-      selectedHiddenSubsetKey = null;
-      selectedChainIndex = null;
+      resetAnalysisSelections({
+        set: (key, value) => ({
+          selectedMslsIndex: value => { selectedMslsIndex = value; },
+          selectedSimpleColoringIndex: value => { selectedSimpleColoringIndex = value; },
+          selectedThreeDMedusaIndex: value => { selectedThreeDMedusaIndex = value; },
+          selectedThreeDMedusaMultiIndex: value => { selectedThreeDMedusaMultiIndex = value; },
+          selectedMultiColoringIndex: value => { selectedMultiColoringIndex = value; },
+          selectedSuperMultiColoringIndex: value => { selectedSuperMultiColoringIndex = value; },
+          selectedChromaticGraphIndex: value => { selectedChromaticGraphIndex = value; },
+          selectedChromaticAlsGraphIndex: value => { selectedChromaticAlsGraphIndex = value; },
+          selectedAlsDof: value => { selectedAlsDof = value; },
+          selectedAlsDofIndex: value => { selectedAlsDofIndex = value; },
+          selectedAlsDofSource: value => { selectedAlsDofSource = value; },
+          selectedAhsDof: value => { selectedAhsDof = value; },
+          selectedAhsDofNetIndex: value => { selectedAhsDofNetIndex = value; },
+          selectedAhsDofChainIndex: value => { selectedAhsDofChainIndex = value; },
+          selectedAlsId: value => { selectedAlsId = value; },
+          selectedAhsId: value => { selectedAhsId = value; },
+          selectedStrongLinkType: value => { selectedStrongLinkType = value; },
+          selectedStrongLinkIndex: value => { selectedStrongLinkIndex = value; },
+          selectedFishCategory: value => { selectedFishCategory = value; },
+          selectedFishSize: value => { selectedFishSize = value; },
+          selectedFishKey: value => { selectedFishKey = value; },
+          selectedNakedSubsetSize: value => { selectedNakedSubsetSize = value; },
+          selectedNakedSubsetKey: value => { selectedNakedSubsetKey = value; },
+          selectedHiddenSubsetSize: value => { selectedHiddenSubsetSize = value; },
+          selectedHiddenSubsetKey: value => { selectedHiddenSubsetKey = value; },
+          selectedChainIndex: value => { selectedChainIndex = value; },
+        }[key])(value),
+        clearAlsSizeGroups: () => openAlsSizeGroups.clear(),
+        clearAhsSizeGroups: () => openAhsSizeGroups.clear(),
+      });
       if (solutionStepsPanelEl) solutionStepsPanelEl.open = false;
     }
 
@@ -1065,8 +1059,8 @@
 
     const { getRecords: getToyFamilyRecords } = appNamespace.toyCatalog;
 
-    const { renderAutomorphCatalog: renderAutomorphCatalogPure } = appNamespace.toyCatalog;
-    function renderToyAutomorphCatalog() { renderAutomorphCatalogPure(document, getToyFamilyRecords()); }
+    const renderToyAutomorphCatalog = () =>
+      appNamespace.toyCatalog.renderAutomorphCatalog(document, getToyFamilyRecords());
 
     const { isIdentityPermutation: toyIsIdentityPermutation } = appNamespace.toyMath;
 
@@ -1094,7 +1088,6 @@
       automorphismLabel: toyCompleteAutomorphismLabel } = appNamespace.toyMath;
     const { searchAutomorphisms: toySearchAutomorphisms } = appNamespace.toyMath;
     const { clear: clearToyMiniLexView, render: renderToyMiniLexView } = appNamespace.toyMiniLexView;
-
     const toyMiniLexViewElements = { summary: toyMiniLexSummaryEl, string: toyMiniLexStringEl, grid: toyMiniLexGridEl };
     function clearToyMiniLex() { clearToyMiniLexView(toyMiniLexViewElements); }
 
@@ -1102,10 +1095,6 @@
       const comparison = toyAutomorphSource();
       const values = comparison.source;
       const { columnMaps } = toyMiniLexLayoutMaps();
-      // Mini-lex for a puzzle is pattern-first: minimize the 0/1 clue mask,
-      // then minimize the R1-anchored digit labels within that mask. Both
-      // comparisons happen in this one pass; the previous version repeated
-      // the complete 3,359,232-layout search for the second comparison.
       const best = toyMiniLexCanonicalize(values, columnMaps, toyPermutations([0, 1, 2]), {
         orientedRows: toyMiniLexOrientedRows, rowMasks: toyMiniLexRowMasks,
         bestRowMaps: toyMiniLexBestRowMaps, compare: toyCompareNumberArrays,
@@ -1115,7 +1104,6 @@
         clearToyMiniLex();
         return null;
       }
-
       const result = {
         key: best.key,
         values: best.values,
@@ -1135,13 +1123,11 @@
       clearToyMinimizerView(toyMinimizerViewElements);
     }
 
-    function renderToyMinimizerReport(report) {
-      renderToyMinimizerView(toyMinimizerViewElements, report, toyMinimizerCellLabel);
-    }
-
     const { countToySolutions } = appNamespace.toyMath;
     const { clear: clearToyMinimizerView, render: renderToyMinimizerView } = appNamespace.toyMinimizerView;
     const toyMinimizerViewElements = { results: toyMinimizerResultsEl, replace: toyMinimizerReplaceEl };
+    const renderToyMinimizerReport = report =>
+      renderToyMinimizerView(toyMinimizerViewElements, report, toyMinimizerCellLabel);
     function toyMinimizerSolutionCount(grid) { return countToySolutions(grid, core, 2); }
 
     async function runToyMinimizer() {
@@ -1208,15 +1194,13 @@
         toyAutomorphResultsEl.textContent = 'Select at least one symmetry family.';
         return;
       }
-
       const comparison = toyAutomorphSource();
       if (toyAutomorphUseSolutionEl?.checked && !comparison.hasSolution) {
         toyAutomorphResultsEl.textContent = 'No complete solution is available for this grid. Use the grid string or solve the puzzle first.';
         setStatus('Automorphic search needs a complete solution.', 'warn');
         return;
       }
-      const occupied = comparison.source.some(value => toyCellDigits(value).length);
-      if (!occupied) {
+      if (!comparison.source.some(value => toyCellDigits(value).length)) {
         toyAutomorphResultsEl.textContent = 'There is no given, solved, or candidate information to compare.';
         setStatus('Automorphic search needs grid information.', 'warn');
         return;
@@ -1227,27 +1211,22 @@
         setStatus('Automorphic search could not build the Mini-lex grid.', 'warn');
         return;
       }
-      // The exhaustive identity count uses the displayed canonical Mini-lex
-      // source. Named classes must be checked in the selected source's coordinate
-      // frame, otherwise canonicalization conjugates the operation and hides
-      // its class name.
-      const searchTarget = miniLex.values;
-      const namedSource = comparison.source;
-      const namedTarget = comparison.target;
-
-      const records = getToyFamilyRecords();
       const fullFamilySearch = familyNames.length === Object.keys(toySearchFamilyLabels).length;
-      const search = toySearchAutomorphisms(familyNames, records, namedSource, namedTarget, searchTarget, fullFamilySearch, {
-        normalizedKey: toyNormalizedValueKey, mapValues: toyMapValues, digitPatternMap: toyDigitPatternMap,
-        verifyDigitMap: toyVerifyDigitMap, isIdentity: toyIsIdentityPermutation,
-        preserves: toyPermutationPreservesActiveVariants,
-        complete: toyCompleteAutomorphismSearch,
-      });
+      const search = toySearchAutomorphisms(
+        familyNames, getToyFamilyRecords(), comparison.source, comparison.target,
+        miniLex.values, fullFamilySearch,
+        {
+          normalizedKey: toyNormalizedValueKey, mapValues: toyMapValues,
+          digitPatternMap: toyDigitPatternMap, verifyDigitMap: toyVerifyDigitMap,
+          isIdentity: toyIsIdentityPermutation,
+          preserves: toyPermutationPreservesActiveVariants,
+          complete: toyCompleteAutomorphismSearch,
+        },
+      );
       const { matches, completeMatches, tested, total, namedTotal } = search;
-
       appNamespace.toyAutomorphView.renderSearch({ results: toyAutomorphResultsEl }, {
-        mode: comparison.mode, tested, total, namedTotal, fullFamilySearch, matches, completeMatches,
-        familyNames, labels: toySearchFamilyLabels,
+        mode: comparison.mode, tested, total, namedTotal, fullFamilySearch,
+        matches, completeMatches, familyNames, labels: toySearchFamilyLabels,
         completeLabel: toyCompleteAutomorphismLabel, formatMap: toyFormatDigitMap,
       });
       setStatus(
@@ -1302,14 +1281,18 @@
     }
 
     function addPlayerCandidate(cell, digit) {
-      if (!isPlayerEditableCell(cell) || puzzle[cell] || promotedValues[cell]) {
-        return commitPlayerEdit(() => false, '', 'Given or solved cells cannot receive pencilmarks.');
-      }
-      if (core.peersOf(cell).some(peer => puzzle[peer] === digit)) {
-        return commitPlayerEdit(() => false, '', `Candidate ${digit} conflicts with a solved peer.`);
-      }
+      const validation = validatePlayerCandidate({
+        cell,
+        digit,
+        puzzle,
+        promotedValues,
+        candidates: cand,
+        originalPuzzle,
+        core,
+      });
+      if (validation?.duplicate) return false;
+      if (validation) return commitPlayerEdit(() => false, '', validation.message);
       const values = cand[cell] || [];
-      if (values.includes(digit)) return false;
 
       selectedPlayerCell = cell;
       selectedPlayerDigit = digit;
@@ -1320,33 +1303,23 @@
     }
 
     function solvePlayerCell(cell, digit) {
-      if (!isPlayerEditableCell(cell)) {
-        return commitPlayerEdit(() => false, '', 'Given cells cannot be changed.');
-      }
-      if (puzzle[cell] || promotedValues[cell]) {
-        return commitPlayerEdit(() => false, '', 'That cell is already solved.');
-      }
-      if (!(cand[cell] || []).includes(digit)) {
-        return commitPlayerEdit(() => false, '', `Candidate ${digit} is not present in ${core.cellName(cell)}.`);
-      }
-      if (!promotionSecurityDisabled && (!solution || solution[cell] !== digit)) {
-        showLogicSafeguardNote(
-          solution
-            ? `${core.cellName(cell)} cannot be set to ${digit}: it is not the verified solution value.`
-            : 'This grid has no verified solution loaded, so a value cannot be promoted.',
-          'Sudoku is not a guessing game: use logic to assert why this can only be this value.',
-        );
+      const validation = validatePlayerPromotion({
+        cell,
+        digit,
+        puzzle,
+        promotedValues,
+        candidates: cand,
+        originalPuzzle,
+        solution,
+        promotionSecurityDisabled,
+        core,
+      });
+      if (validation?.safeguard) {
+        showLogicSafeguardNote(validation.message, validation.note);
         return false;
       }
-      if (core.peersOf(cell).some(peer => puzzle[peer] === digit)) {
-        return commitPlayerEdit(() => false, '', `Digit ${digit} conflicts with a solved peer.`);
-      }
-      if (typeof core.canPlace === 'function' && !core.canPlace(puzzle, cell, digit)) {
-        return commitPlayerEdit(
-          () => false,
-          '',
-          `Digit ${digit} conflicts with an active variation constraint.`,
-        );
+      if (validation) {
+        return commitPlayerEdit(() => false, '', validation.message);
       }
 
       selectedPlayerCell = cell;
@@ -1392,18 +1365,15 @@
 
     function clearPlayerSolvedCell(cell) {
       if (!puzzle[cell]) return false;
-      if (solution?.[cell] === puzzle[cell]) {
-        showLogicSafeguardNote(
-          `${core.cellName(cell)} contains the verified solution value ${puzzle[cell]} and cannot be deleted.`,
-          'Your logic is flawed. Double-check it.',
-        );
-        return false;
-      }
-      if (!isPlayerEditableCell(cell)) {
-        showLogicSafeguardNote(
-          `${core.cellName(cell)} is a given value and cannot be deleted.`,
-          'Your logic is flawed. Double-check it.',
-        );
+      const validation = validatePlayerClear({
+        cell,
+        puzzle,
+        solution,
+        originalPuzzle,
+        core,
+      });
+      if (validation?.safeguard) {
+        showLogicSafeguardNote(validation.message, validation.note);
         return false;
       }
       const solvedDigit = puzzle[cell];
@@ -1445,16 +1415,20 @@
       if (puzzle[cell]) return clearPlayerSolvedCell(cell);
       if (promotedValues[cell]) return clearPlayerSolvedCell(cell);
       const values = cand[cell] || [];
-      if (!values.includes(digit)) return false;
-      if (solution?.[cell] === digit) {
-        showLogicSafeguardNote(
-          `${core.cellName(cell)} must retain its verified solution candidate ${digit}.`,
-          'Your logic is flawed. Double-check it.',
-        );
+      const validation = validatePlayerCandidateRemoval({
+        cell,
+        digit,
+        candidates: cand,
+        solution,
+        core,
+      });
+      if (validation?.unchanged) return false;
+      if (validation?.safeguard) {
+        showLogicSafeguardNote(validation.message, validation.note);
         return false;
       }
-      if (values.length <= 1) {
-        return commitPlayerEdit(() => false, '', 'A cell must retain at least one candidate.');
+      if (validation) {
+        return commitPlayerEdit(() => false, '', validation.message);
       }
 
       selectedPlayerCell = cell;
@@ -1642,371 +1616,109 @@
       element.addEventListener('contextmenu', event => handlePlayerCellContextMenu(event, cell));
     }
 
-    function chainSideAtoms(side, forcedDigit = null, existingOnly = false) {
-      const atoms = [];
-      const sideDigits = side.digits || [];
-      for (const cell of side.cells || []) {
-        const cellDigits = side.digitsByCell?.[String(cell)] || sideDigits;
-        const digits = forcedDigit == null ? cellDigits : [forcedDigit];
-        for (const digit of digits) {
-          if (!cellDigits.includes(digit)) continue;
-          // A set's digit list is its union, not a claim that every digit is
-          // present in every member cell. Always require a real cell-digit
-          // atom; after Next, chainCandidateIsVisible also preserves atoms
-          // that were explicitly removed by the selected proof.
-          if (!chainCandidateIsVisible(cell, digit)) continue;
-          atoms.push(atomKey(cell, digit));
-        }
-      }
-      return atoms;
-    }
+    const visualAtomCallbacks = { chainCandidateIsVisible, atomKey };
+    const chainSideAtoms = (side, forcedDigit = null, existingOnly = false) =>
+      appNamespace.chainVisualModel.chainSideAtoms(
+        side,
+        forcedDigit,
+        existingOnly,
+        visualAtomCallbacks,
+      );
+    const addWeakDigitMarks = (weakMarks, side, digit, existingOnly = true) =>
+      appNamespace.chainVisualModel.addWeakDigitMarks(
+        weakMarks,
+        side,
+        digit,
+        existingOnly,
+        visualAtomCallbacks,
+      );
+    const addChainSideMarks = (side, marks, cells, orderByCell, order, existingOnly = true) =>
+      appNamespace.chainVisualModel.addChainSideMarks(
+        side,
+        marks,
+        cells,
+        orderByCell,
+        order,
+        existingOnly,
+        visualAtomCallbacks,
+      );
 
-    function addWeakDigitMarks(weakMarks, side, digit, existingOnly = true) {
-      if (digit == null) return;
-      for (const atom of chainSideAtoms(side, digit, existingOnly)) weakMarks.add(atom);
-    }
+    const isAlsVisualStep = step => appNamespace.chainVisualModel.isAlsVisualStep(step, core.ALS);
+    const isAhsVisualStep = appNamespace.chainVisualModel.isAhsVisualStep;
+    const isModuleVisualStep = step => appNamespace.chainVisualModel.isModuleVisualStep(step, core.ALS);
+    const isAlmostFishVisualStep = appNamespace.chainVisualModel.isAlmostFishVisualStep;
 
-    function addChainSideMarks(side, marks, cells, orderByCell, order, existingOnly = true) {
-      for (const atom of chainSideAtoms(side, null, existingOnly)) marks.add(atom);
-      for (const cell of [...(side.cells || []), ...(side.rccCells || [])]) {
-        cells.add(cell);
-        const orders = orderByCell.get(cell) || [];
-        if (!orders.includes(order)) orders.push(order);
-        orderByCell.set(cell, orders);
-      }
-    }
+    const { chainModuleSubsets, moduleVisualSides } = appNamespace.chainVisualModel;
 
-    function isAlsVisualStep(step) {
-      const family = step.family || '';
-      const typeName = String(step.linkTypeName || '').toUpperCase();
-      const linkType = Number(step.linkType);
-      const moduleSubsets = chainModuleSubsets(step.module);
-      const isBivalentCellModule = typeName === 'ALS_RCC'
-        && moduleSubsets.length === 2
-        && moduleSubsets.every(subset =>
-          (subset.cells || []).length === 1
-          && (subset.digits || []).length === 2);
-      if (isBivalentCellModule) return false;
-      return family === 'ALS'
-        || typeName === 'ALS'
-        || typeName.startsWith('ALS_')
-        || linkType === core.ALS;
-    }
+    const visibleChainEntrySide = step => appNamespace.chainVisualModel.visibleChainEntrySide(
+      step,
+      isAlsVisualStep,
+    );
+    const visibleChainExitSide = step => appNamespace.chainVisualModel.visibleChainExitSide(
+      step,
+      isAlsVisualStep,
+    );
+    const orientedDisplayChainSteps = steps => appNamespace.chainVisualModel.orientedDisplayChainSteps(
+      steps,
+      core.peersOf,
+    );
 
-    function isAhsVisualStep(step) {
-      const family = step?.family || '';
-      const typeName = String(step?.linkTypeName || '').toUpperCase();
-      return family === 'AHS'
-        || typeName === 'AHS'
-        || typeName.startsWith('AHS_');
-    }
+    const {
+      alsVisualKey,
+      alsVisualSideKey,
+      ahsVisualKey,
+      ahsVisualSideKey,
+    } = appNamespace.chainVisualModel;
 
-    function isModuleVisualStep(step) {
-      return isAlsVisualStep(step) || isAhsVisualStep(step);
-    }
+    const alsColorMapForChain = chain => appNamespace.chainVisualModel.alsColorMapForChain(
+      chain,
+      { isAlsVisualStep, moduleVisualSides, alsVisualSideKey, colorAt: alsColorAt },
+    );
 
-    function isAlmostFishVisualStep(step) {
-      return step?.view?.node?.raw?.xorConstruction?.kind === 'almost-fish';
-    }
+    const ALS_CHAIN_COLORS = appNamespace.chainVisualPalette.alsColors;
 
-    function chainModuleSubsets(module) {
-      if (!module) return [];
-      const entry = module.entrySubset
-        || module.entrySideSubset
-        || module.entrySideLs
-        || module.entryLs
-        || module.ex;
-      const exit = module.exitSubset
-        || module.exitSideSubset
-        || module.exitSideLs
-        || module.exitLs
-        || module.el;
-      return [entry, exit].filter(Boolean);
-    }
+    const alsColorAt = appNamespace.chainVisualPalette.colorAt;
 
-    function moduleVisualSides(step) {
-      const module = step.module;
-      if (!module) return { entry: step.entry, exit: step.exit };
-      return {
-        entry: module.entrySideSubset
-          || module.entrySideLs
-          || module.entrySubset
-          || module.entryLs
-          || module.ex
-          || step.entry,
-        exit: module.exitSideSubset
-          || module.exitSideLs
-          || module.exitSubset
-          || module.exitLs
-          || module.el
-          || step.exit,
-      };
-    }
-
-    function visibleChainEntrySide(step) {
-      return isAlsVisualStep(step) ? moduleVisualSides(step).entry : step.entry;
-    }
-
-    function visibleChainExitSide(step) {
-      return isAlsVisualStep(step) ? moduleVisualSides(step).exit : step.exit;
-    }
-
-    function orientedDisplayChainSteps(steps) {
-      const display = [...(steps || [])].map(step => ({ ...step }));
-      const sameLocation = (left, right) => {
-        const leftCells = left?.cells || [];
-        const rightCells = right?.cells || [];
-        return leftCells.length > 0
-          && leftCells.length === rightCells.length
-          && leftCells.every((cell, index) => cell === rightCells[index]);
-      };
-      for (let index = 0; index < display.length - 1; index++) {
-        const current = display[index];
-        const next = display[index + 1];
-        if (sameLocation(current.entry, next.entry)
-          && !sameLocation(current.exit, next.entry)) {
-          display[index] = {
-            ...current,
-            entrySide: current.exitSide,
-            exitSide: current.entrySide,
-            entry: { ...current.exit, side: 'left' },
-            exit: { ...current.entry, side: 'right' },
-          };
-        }
-      }
-      return display;
-    }
-
-    function alsVisualKey(step) {
-      return step.graphId || String(step.family || '') + ':' + String(step.linkId ?? '') + ':' + String(step.linkTypeName || '');
-    }
-
-    function alsVisualSideKey(step, side, role) {
-      if (step?.view?.node?.raw?.standaloneAls) {
-        return 'ALS-STANDALONE:' + String(step.view.node.graphId || step.linkId || '');
-      }
-      const entryCells = new Set(moduleVisualSides(step).entry?.cells || []);
-      const exitCells = new Set(moduleVisualSides(step).exit?.cells || []);
-      const overlaps = [...entryCells].some(cell => exitCells.has(cell));
-      if (overlaps) return 'ALS-OVERLAP:' + alsVisualKey(step);
-      const cells = (side?.cells || []).join(',');
-      const digits = (side?.digits || []).join('');
-      if (cells || digits) return 'ALS:' + digits + ':' + cells;
-      return alsVisualKey(step) + ':' + role;
-    }
-
-    function alsColorMapForChain(chain) {
-      const colors = new Map();
-      for (const step of chain?.steps || []) {
-        if (!isAlsVisualStep(step)) continue;
-        const moduleSides = moduleVisualSides(step);
-        for (const [role, side] of [['entry', moduleSides.entry], ['exit', moduleSides.exit]]) {
-          const key = alsVisualSideKey(step, side, role);
-          if (!colors.has(key)) colors.set(key, alsColorAt(colors.size));
-        }
-      }
-      return colors;
-    }
-
-    const ALS_CHAIN_COLORS = [
-      { bg: 'rgba(0, 158, 115, .34)', stroke: 'rgba(0, 103, 75, .88)', ink: '#065f46' },
-      { bg: 'rgba(0, 74, 130, .42)', stroke: 'rgba(0, 49, 95, .92)', ink: '#073b78' },
-      { bg: 'rgba(104, 120, 62, .32)', stroke: 'rgba(65, 80, 28, .90)', ink: '#3f6212' },
-      { bg: 'rgba(0, 170, 170, .34)', stroke: 'rgba(0, 105, 105, .88)', ink: '#0f4c5c' },
-      { bg: 'rgba(112, 82, 190, .32)', stroke: 'rgba(74, 46, 145, .88)', ink: '#4c1d95' },
-      { bg: 'rgba(90, 160, 80, .34)', stroke: 'rgba(45, 105, 40, .88)', ink: '#166534' },
-      { bg: 'rgba(72, 149, 113, .34)', stroke: 'rgba(35, 103, 76, .90)', ink: '#14532d' },
-      { bg: 'rgba(17, 82, 147, .40)', stroke: 'rgba(9, 51, 102, .92)', ink: '#062e68' },
-      { bg: 'rgba(145, 75, 175, .32)', stroke: 'rgba(95, 35, 125, .88)', ink: '#6b21a8' },
-      { bg: 'rgba(20, 175, 150, .34)', stroke: 'rgba(0, 115, 95, .88)', ink: '#115e59' },
-      { bg: 'rgba(29, 78, 160, .40)', stroke: 'rgba(18, 52, 112, .92)', ink: '#172554' },
-      { bg: 'rgba(159, 132, 54, .30)', stroke: 'rgba(100, 82, 24, .90)', ink: '#713f12' },
-    ];
-
-    function alsColorAt(index) {
-      if (ALS_CHAIN_COLORS[index]) return ALS_CHAIN_COLORS[index];
-
-      // Keep colors unique even when a long chain has more ALS nodes than
-      // the fixed, color-blind-friendly palette.
-      const hue = 180 + ((index * 47) % 151);
-      return {
-        bg: `hsla(${hue}, 72%, 46%, .28)`,
-        stroke: `hsla(${hue}, 78%, 30%, .88)`,
-        ink: `hsl(${hue}, 72%, 24%)`,
-      };
-    }
-
-    const AHS_RECORD_COLOR = {
-      bg: 'rgba(147, 197, 253, .24)',
-      stroke: 'rgba(29, 78, 216, .68)',
-      ink: '#1e40af',
-    };
+    const AHS_RECORD_COLOR = appNamespace.chainVisualPalette.ahsRecordColor;
 
     // AHS structures are independent chain nodes. Keep the original blue for
     // standalone records, but distinguish multiple AHS nodes in one chain.
-    const AHS_CHAIN_COLORS = [
-      AHS_RECORD_COLOR,
-      { bg: 'rgba(251, 191, 36, .25)', stroke: 'rgba(180, 83, 9, .78)', ink: '#92400e' },
-      { bg: 'rgba(244, 114, 182, .24)', stroke: 'rgba(190, 24, 93, .76)', ink: '#9d174d' },
-      { bg: 'rgba(167, 139, 250, .24)', stroke: 'rgba(109, 40, 217, .76)', ink: '#5b21b6' },
-      { bg: 'rgba(45, 212, 191, .24)', stroke: 'rgba(13, 116, 144, .76)', ink: '#115e59' },
-      { bg: 'rgba(251, 146, 60, .24)', stroke: 'rgba(194, 65, 12, .76)', ink: '#9a3412' },
-      { bg: 'rgba(134, 239, 172, .24)', stroke: 'rgba(22, 101, 52, .76)', ink: '#166534' },
-      { bg: 'rgba(125, 211, 252, .24)', stroke: 'rgba(3, 105, 161, .76)', ink: '#075985' },
-    ];
+    const AHS_CHAIN_COLORS = appNamespace.chainVisualPalette.ahsColors;
 
-    function ahsVisualKey(step) {
-      const sides = moduleVisualSides(step);
-      const sideKey = side => `${(side?.cells || []).join(',')}:${(side?.digits || []).join('')}`;
-      const commonDigits = (step?.module?.common?.digits || []).join('');
-      return [
-        step?.graphId || '',
-        step?.linkId ?? '',
-        sideKey(sides.entry),
-        sideKey(sides.exit),
-        commonDigits,
-      ].join('|');
-    }
+    const ahsColorMapForChain = chain => appNamespace.chainVisualModel.ahsColorMapForChain(
+      chain,
+      { isAhsVisualStep, moduleVisualSides, ahsVisualSideKey, ahsColors: AHS_CHAIN_COLORS },
+    );
 
-    function ahsVisualSideKey(step, side, role) {
-      const cells = (side?.cells || []).join(',');
-      const digits = (side?.digits || []).join('');
-      if (cells || digits) return `AHS:${digits}:${cells}`;
-      return `${ahsVisualKey(step)}:${role}`;
-    }
+    const hashString = appNamespace.chainVisualPalette.hashString;
+    const ahsColorForSide = (step, side, role, colorMap = null) =>
+      appNamespace.chainVisualModel.ahsColorForSide(
+        step,
+        side,
+        role,
+        colorMap,
+        { ahsVisualSideKey, ahsRecordColor: AHS_RECORD_COLOR },
+      );
+    const alsColorForSide = (step, side, role, colorMap = null) =>
+      appNamespace.chainVisualModel.alsColorForSide(
+        step,
+        side,
+        role,
+        colorMap,
+        { alsVisualSideKey, alsColors: ALS_CHAIN_COLORS, hashString },
+      );
 
-    function ahsColorMapForChain(chain) {
-      const colors = new Map();
-      for (const step of chain?.steps || []) {
-        if (!isAhsVisualStep(step)) continue;
-        const sides = moduleVisualSides(step);
-        for (const [role, side] of [['entry', sides.entry], ['exit', sides.exit]]) {
-          const key = ahsVisualSideKey(step, side, role);
-          if (!colors.has(key)) {
-            colors.set(key, AHS_CHAIN_COLORS[colors.size % AHS_CHAIN_COLORS.length]);
-          }
-        }
-      }
-      return colors;
-    }
+    const {
+      applyAlsColorVars,
+      applyAlsPartitionColors,
+      applyAhsColorVars,
+    } = appNamespace.chainVisualPalette;
 
-    function ahsColorForSide(step, side, role, colorMap = null) {
-      return colorMap?.get(ahsVisualSideKey(step, side, role)) || AHS_RECORD_COLOR;
-    }
-
-    function hashString(value) {
-      let hash = 0;
-      for (let index = 0; index < value.length; index++) {
-        hash = ((hash << 5) - hash + value.charCodeAt(index)) | 0;
-      }
-      return Math.abs(hash);
-    }
-
-    function alsColorForSide(step, side, role, colorMap = null) {
-      const key = alsVisualSideKey(step, side, role);
-      if (colorMap?.has(key)) return colorMap.get(key);
-      return ALS_CHAIN_COLORS[hashString(String(key)) % ALS_CHAIN_COLORS.length];
-    }
-
-    function applyAlsColorVars(el, color) {
-      if (!color) return;
-      el.style.setProperty('--chain-als-bg', color.bg);
-      el.style.setProperty('--chain-als-stroke', color.stroke);
-      el.style.setProperty('--chain-als-ink', color.ink);
-    }
-
-    function applyAlsPartitionColors(el, colors) {
-      const distinct = [...new Map((colors || []).filter(Boolean).map(color => [
-        `${color.bg}|${color.stroke}|${color.ink}`,
-        color,
-      ])).values()];
-      if (distinct.length <= 1) {
-        applyAlsColorVars(el, distinct[0]);
-        return;
-      }
-      const width = 100 / distinct.length;
-      const stops = distinct.map((color, index) =>
-        `${color.bg} ${index * width}% ${(index + 1) * width}%`
-      ).join(', ');
-      el.style.background = `linear-gradient(90deg, ${stops}), ${el.classList.contains('given') ? '#e9eef5' : 'var(--panel)'}`;
-      el.style.setProperty('--chain-als-stroke', distinct[0].stroke);
-      el.style.setProperty('--chain-als-ink', distinct[0].ink);
-      el.style.boxShadow = `inset 0 0 0 1px ${distinct[0].stroke}`;
-    }
-
-    function applyAhsColorVars(el, color) {
-      if (!color) return;
-      el.style.setProperty('--ahs-record-bg', color.bg);
-      el.style.setProperty('--ahs-record-stroke', color.stroke);
-      el.style.setProperty('--ahs-record-ink', color.ink);
-    }
-
-    function digitAnchor(cell, digit) {
-      const cellSize = 100 / 9;
-      const markSize = cellSize / 3;
-      const cellEl = boardEl?.children?.[cell];
-      const markEl = cellEl?.querySelector?.('.marks')?.children?.[digit - 1];
-      const boardRect = boardEl?.getBoundingClientRect?.();
-      const markRect = markEl?.getBoundingClientRect?.();
-      if (boardRect?.width && boardRect?.height && markRect?.width && markRect?.height) {
-        return {
-          cell,
-          digit,
-          markSize: Math.min(markRect.width / boardRect.width, markRect.height / boardRect.height) * 100,
-          x: ((markRect.left + markRect.width / 2) - boardRect.left) / boardRect.width * 100,
-          y: ((markRect.top + markRect.height / 2) - boardRect.top) / boardRect.height * 100,
-        };
-      }
-      return {
-        cell,
-        digit,
-        markSize,
-        x: (cell % 9) * cellSize + (((digit - 1) % 3) + 0.5) * markSize,
-        y: Math.floor(cell / 9) * cellSize + (Math.floor((digit - 1) / 3) + 0.5) * markSize,
-      };
-    }
-
-    function vantageCellSlot(view, cell) {
-      const row = Math.floor(cell / 9);
-      const col = cell % 9;
-
-      if (view === 'Rn') return { sector: row, position: col };
-      if (view === 'Cn') return { sector: col, position: row };
-
-      const box = Math.floor(row / 3) * 3 + Math.floor(col / 3);
-      const position = (row % 3) * 3 + (col % 3);
-      return { sector: box, position };
-    }
-
-    function vantageCellFromSlot(view, sector, position) {
-      if (view === 'Rn') return sector * 9 + position;
-      if (view === 'Cn') return position * 9 + sector;
-
-      const boxRow = Math.floor(sector / 3);
-      const boxCol = sector % 3;
-      const row = boxRow * 3 + Math.floor(position / 3);
-      const col = boxCol * 3 + (position % 3);
-      return row * 9 + col;
-    }
-
-    function vantageAtomAnchor(cell, digit) {
-      const { sector, position } = vantageCellSlot(gridView, cell);
-      const tileIndex = sector * 9 + (digit - 1);
-      const tileRow = Math.floor(tileIndex / 9);
-      const tileCol = tileIndex % 9;
-      const positionRow = Math.floor(position / 3);
-      const positionCol = position % 3;
-      const tileSize = 100 / 9;
-      const markSize = tileSize / 3;
-
-      return {
-        cell,
-        digit,
-        markSize,
-        x: tileCol * tileSize + (positionCol + 0.5) * markSize,
-        y: tileRow * tileSize + (positionRow + 0.5) * markSize,
-      };
-    }
+    const digitAnchor = (cell, digit) => appNamespace.chainVisualGeometry.digitAnchor(boardEl, cell, digit);
+    const vantageCellSlot = appNamespace.chainVisualGeometry.vantageCellSlot;
+    const vantageCellFromSlot = appNamespace.chainVisualGeometry.vantageCellFromSlot;
+    const vantageAtomAnchor = (cell, digit) =>
+      appNamespace.chainVisualGeometry.vantageAtomAnchor(gridView, cell, digit);
 
     function vantageSideAnchors(side, forcedDigit = null, existingOnly = true) {
       const sideDigits = side?.digits || [];
@@ -2162,54 +1874,48 @@
       boardEl.appendChild(svg);
     }
 
-    function digitBoxBounds(anchor, pad = 0.12) {
-      const half = anchor.markSize * 0.42;
-      return {
-        left: anchor.x - half - pad,
-        top: anchor.y - half - pad,
-        right: anchor.x + half + pad,
-        bottom: anchor.y + half + pad,
-      };
-    }
-
-    function sideAnchors(side, forcedDigit = null, existingOnly = true) {
-      const sideDigits = side.digits || [];
-      const digits = forcedDigit == null ? sideDigits : [forcedDigit];
-      const anchors = [];
-
-      for (const cell of side.cells || []) {
-        for (const digit of digits) {
-          if (!sideDigits.includes(digit)) continue;
-          if (existingOnly && !chainCandidateIsVisible(cell, digit)) continue;
-          anchors.push(digitAnchor(cell, digit));
-        }
-      }
-
-      return anchors;
-    }
-
-    function closestAnchorPair(
+    const digitBoxBounds = appNamespace.chainVisualGeometry.digitBoxBounds;
+    const visualGeometryCallbacks = { digitAnchor, chainCandidateIsVisible };
+    const sideAnchors = (side, forcedDigit = null, existingOnly = true) =>
+      appNamespace.chainVisualGeometry.sideAnchors(
+        side,
+        forcedDigit,
+        existingOnly,
+        visualGeometryCallbacks,
+      );
+    const sideDigitGroups = side => appNamespace.chainVisualGeometry.sideDigitGroups(side, sideAnchors);
+    const digitBoundsFromAnchors = appNamespace.chainVisualGeometry.digitBoundsFromAnchors;
+    const groupedSideDigits = side => appNamespace.chainVisualGeometry.groupedSideDigits(side, sideDigitGroups);
+    const boxEdgeAnchor = appNamespace.chainVisualGeometry.boxEdgeAnchor;
+    const crossDigitAnchorPair = (
+      fromSide, toSide, fromDigits, toDigits,
+    ) => appNamespace.chainVisualGeometry.crossDigitAnchorPair(
+      fromSide,
+      toSide,
+      fromDigits,
+      toDigits,
+      sideAnchors,
+    );
+    const chainSectorFrameData = sectors => appNamespace.chainVisualGeometry.chainSectorFrameData(
+      sectors,
+      core.variantUnitName,
+      sectorFrameRects,
+    );
+    const superMultiGroupBounds = appNamespace.chainVisualGeometry.superMultiGroupBounds;
+    const closestAnchorPair = (
       fromSide,
       toSide,
       forcedDigit = null,
       toDigit = forcedDigit,
       existingOnly = true,
-    ) {
-      const fromAnchors = sideAnchors(fromSide, forcedDigit, existingOnly);
-      const toAnchors = sideAnchors(toSide, toDigit, existingOnly);
-      let best = null;
-
-      for (const from of fromAnchors) {
-        for (const to of toAnchors) {
-          const dx = from.x - to.x;
-          const dy = from.y - to.y;
-          const distance = dx * dx + dy * dy;
-          if (!best || distance < best.distance) best = { from, to, distance };
-        }
-      }
-
-      return best;
-    }
+    ) => appNamespace.chainVisualGeometry.closestAnchorPair(
+      fromSide,
+      toSide,
+      forcedDigit,
+      toDigit,
+      existingOnly,
+      visualGeometryCallbacks,
+    );
 
     function resolvedWeakDigits(fromSide, toSide, fromDigit, toDigit) {
       if (fromDigit == null && toDigit == null
@@ -2242,111 +1948,16 @@
       return shared.length === 1 ? shared[0] : null;
     }
 
-    function anchorRow(anchor) {
-      return Math.floor(anchor.cell / 9);
-    }
+    const { anchorRow, anchorCol } = appNamespace.chainVisualGeometry;
 
-    function anchorCol(anchor) {
-      return anchor.cell % 9;
-    }
-
-    function orderedEdgeArc(from, to) {
-      const fromRow = anchorRow(from);
-      const toRow = anchorRow(to);
-      const fromCol = anchorCol(from);
-      const toCol = anchorCol(to);
-      const sameRow = fromRow === toRow;
-      const sameCol = fromCol === toCol;
-
-      if (sameRow && fromRow === 8) {
-        return from.x <= to.x ? { from, to, edge: 'row' } : { from: to, to: from, edge: 'row' };
-      }
-
-      if (sameRow && fromRow === 0) {
-        return from.x >= to.x ? { from, to, edge: 'row' } : { from: to, to: from, edge: 'row' };
-      }
-
-      if (sameCol && fromCol === 8) {
-        return from.y <= to.y ? { from, to, edge: 'col' } : { from: to, to: from, edge: 'col' };
-      }
-
-      if (sameCol && fromCol === 0) {
-        return from.y >= to.y ? { from, to, edge: 'col' } : { from: to, to: from, edge: 'col' };
-      }
-
-      return { from, to, edge: null };
-    }
-
-    function arcControlPoint(from, to, bendSign = 1, lane = 0) {
-      const dx = to.x - from.x;
-      const dy = to.y - from.y;
-      const length = Math.hypot(dx, dy);
-      if (length < 0.01) return { x: from.x, y: from.y };
-
-      const normalX = -dy / length;
-      const normalY = dx / length;
-      const curve = Math.max(2.2, Math.min(7.5, length * 0.18)) * bendSign;
-      return {
-        x: (from.x + to.x) / 2 + normalX * (curve + lane),
-        y: (from.y + to.y) / 2 + normalY * (curve + lane),
-      };
-    }
-
-    function boardOverflow(point, margin = 0.75) {
-      return Math.max(
-        0,
-        margin - point.x,
-        point.x - (100 - margin),
-        margin - point.y,
-        point.y - (100 - margin),
-      );
-    }
-
-    function bendSignForArc(from, to, preferredSign = 1, lane = 0, edge = null) {
-      if (edge === 'row') return -1;
-      if (edge === 'col') return 1;
-
-      const preferredOverflow = boardOverflow(arcControlPoint(from, to, preferredSign, lane));
-      const flippedOverflow = boardOverflow(arcControlPoint(from, to, -preferredSign, lane));
-      return flippedOverflow < preferredOverflow ? -preferredSign : preferredSign;
-    }
-
-    function routeArc(from, to, bend = 4, lane = 0) {
-      const ordered = orderedEdgeArc(from, to);
-      const magnitude = Math.abs(bend || 4);
-      const preferredSign = Math.sign(bend || 1);
-      const sign = bendSignForArc(ordered.from, ordered.to, preferredSign, lane, ordered.edge);
-      return {
-        from: ordered.from,
-        to: ordered.to,
-        bend: magnitude * sign,
-        lane,
-      };
-    }
-
-    function arcPath(from, to, bend = 4, lane = 0) {
-      const dx = to.x - from.x;
-      const dy = to.y - from.y;
-      const length = Math.hypot(dx, dy);
-
-      if (length < 0.01) {
-        const radius = 1.2 + Math.abs(lane);
-        return 'M ' + (from.x + radius) + ' ' + from.y + ' '
-          + 'C ' + (from.x + radius) + ' ' + (from.y - radius * 1.5) + ', ' + (from.x - radius) + ' ' + (from.y - radius * 1.5) + ', ' + (from.x - radius) + ' ' + from.y + ' '
-          + 'C ' + (from.x - radius) + ' ' + (from.y + radius * 1.5) + ', ' + (from.x + radius) + ' ' + (from.y + radius * 1.5) + ', ' + (from.x + radius) + ' ' + from.y;
-      }
-
-      const normalX = -dy / length;
-      const normalY = dx / length;
-      const curve = Math.max(2.2, Math.min(7.5, length * 0.18)) * Math.sign(bend || 1);
-      const startX = from.x + normalX * lane;
-      const startY = from.y + normalY * lane;
-      const endX = to.x + normalX * lane;
-      const endY = to.y + normalY * lane;
-      const controlX = (from.x + to.x) / 2 + normalX * (curve + lane);
-      const controlY = (from.y + to.y) / 2 + normalY * (curve + lane);
-      return 'M ' + startX + ' ' + startY + ' Q ' + controlX + ' ' + controlY + ' ' + endX + ' ' + endY;
-    }
+    const {
+      orderedEdgeArc,
+      arcControlPoint,
+      boardOverflow,
+      bendSignForArc,
+      routeArc,
+      arcPath,
+    } = appNamespace.chainVisualGeometry;
 
     function drawArc(svg, from, to, className, bend = 4, lane = 0) {
       const route = routeArc(from, to, bend, lane);
@@ -2355,28 +1966,6 @@
       path.setAttribute('class', className);
       svg.appendChild(path);
       return path;
-    }
-
-    function sideDigitGroups(side) {
-      const groups = new Map();
-      for (const anchor of sideAnchors(side, null, true)) {
-        const group = groups.get(anchor.digit) || [];
-        group.push(anchor);
-        groups.set(anchor.digit, group);
-      }
-      return [...groups.values()];
-    }
-
-    function digitBoundsFromAnchors(anchors, includeSingleCell = false) {
-      if (!anchors.length || (!includeSingleCell
-        && new Set(anchors.map(anchor => anchor.cell)).size <= 1)) return null;
-      const bounds = anchors.map(anchor => digitBoxBounds(anchor));
-      return {
-        left: Math.max(0, Math.min(...bounds.map(box => box.left))),
-        top: Math.max(0, Math.min(...bounds.map(box => box.top))),
-        right: Math.min(100, Math.max(...bounds.map(box => box.right))),
-        bottom: Math.min(100, Math.max(...bounds.map(box => box.bottom))),
-      };
     }
 
     function drawSideDigitBoxes(svg, side, className, color = null, onlyDigits = null) {
@@ -2395,13 +1984,6 @@
         applyAlsColorVars(rect, color);
         svg.appendChild(rect);
       }
-    }
-
-    function groupedSideDigits(side) {
-      return sideDigitGroups(side)
-        .filter(anchors => new Set(anchors.map(anchor => anchor.cell)).size > 1)
-        .map(anchors => anchors[0]?.digit)
-        .filter(digit => digit != null);
     }
 
     function drawGroupedEndpointBox(svg, side, className) {
@@ -2474,20 +2056,6 @@
       );
     }
 
-    function boxEdgeAnchor(box, target, fallback) {
-      const center = { x: (box.left + box.right) / 2, y: (box.top + box.bottom) / 2 };
-      const dx = target.x - center.x;
-      const dy = target.y - center.y;
-      if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01) return fallback;
-      const halfWidth = Math.max(0.1, (box.right - box.left) / 2 - 0.15);
-      const halfHeight = Math.max(0.1, (box.bottom - box.top) / 2 - 0.15);
-      const scale = Math.min(
-        Math.abs(dx) < 0.01 ? Infinity : halfWidth / Math.abs(dx),
-        Math.abs(dy) < 0.01 ? Infinity : halfHeight / Math.abs(dy),
-      );
-      return { ...fallback, x: center.x + dx * scale, y: center.y + dy * scale };
-    }
-
     function groupedAnchorPair(
       fromSide,
       toSide,
@@ -2551,23 +2119,6 @@
       );
       if (!pair) return;
       drawArc(svg, pair.from, pair.to, 'chain-weak-line', -4.5, 0);
-    }
-
-    function crossDigitAnchorPair(fromSide, toSide, fromDigits, toDigits) {
-      const fromAnchors = (fromDigits || []).flatMap(digit =>
-        sideAnchors(fromSide, digit, true));
-      const toAnchors = (toDigits || []).flatMap(digit =>
-        sideAnchors(toSide, digit, true));
-      let best = null;
-      for (const from of fromAnchors) {
-        for (const to of toAnchors) {
-          const dx = from.x - to.x;
-          const dy = from.y - to.y;
-          const distance = dx * dx + dy * dy;
-          if (!best || distance < best.distance) best = { from, to, distance };
-        }
-      }
-      return best;
     }
 
     function drawAhsXzBridgeConnections(svg, step) {
@@ -2646,24 +2197,15 @@
     }
 
     function drawChainSectorFrames(svg, sectors) {
-      for (const sector of sectors || []) {
-        const name = core.variantUnitName?.(sector);
-        if (!name) continue;
-        const type = name === 'D1'
-          ? 'diagonal'
-          : name === 'AD1'
-            ? 'anti-diagonal'
-            : 'variant-sector';
-        for (const rect of sectorFrameRects({ type, indices: [sector] })) {
-          const frame = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-          frame.setAttribute('x', String(rect.left));
-          frame.setAttribute('y', String(rect.top));
-          frame.setAttribute('width', String(rect.width));
-          frame.setAttribute('height', String(rect.height));
-          frame.setAttribute('class', 'chain-sector-frame');
-          frame.dataset.sector = name;
-          svg.appendChild(frame);
-        }
+      for (const { name, rect } of chainSectorFrameData(sectors)) {
+        const frame = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        frame.setAttribute('x', String(rect.left));
+        frame.setAttribute('y', String(rect.top));
+        frame.setAttribute('width', String(rect.width));
+        frame.setAttribute('height', String(rect.height));
+        frame.setAttribute('class', 'chain-sector-frame');
+        frame.dataset.sector = name;
+        svg.appendChild(frame);
       }
     }
 
@@ -2816,17 +2358,6 @@
       }
 
       boardEl.appendChild(svg);
-    }
-
-    function superMultiGroupBounds(anchors, pad = 0.65) {
-      if (!anchors?.length) return null;
-      const half = Math.max(...anchors.map(anchor => anchor.markSize || 1)) * 0.42 + pad;
-      return {
-        left: Math.max(0, Math.min(...anchors.map(anchor => anchor.x)) - half),
-        top: Math.max(0, Math.min(...anchors.map(anchor => anchor.y)) - half),
-        right: Math.min(100, Math.max(...anchors.map(anchor => anchor.x)) + half),
-        bottom: Math.min(100, Math.max(...anchors.map(anchor => anchor.y)) + half),
-      };
     }
 
     function renderSuperMultiGroupOverlay(record, vantage = false) {
@@ -3268,287 +2799,24 @@
       };
     }
 
-    function colouringNodeKey(node) {
-      return `${node.cell}:${node.digit ?? ''}`;
-    }
-
-    function selectedColouringRecord(method) {
-      if (method === 'simple') return simpleColoringReport?.[selectedSimpleColoringIndex] || null;
-      if (method === 'multi') return multiColoringReport?.[selectedMultiColoringIndex] || null;
-      if (method === 'superMulti') return superMultiColoringReport?.[selectedSuperMultiColoringIndex] || null;
-      if (method === 'medusa') return threeDMedusaReport?.[selectedThreeDMedusaIndex] || null;
-      return threeDMedusaMultiReport?.[selectedThreeDMedusaMultiIndex] || null;
-    }
-
-    function colouringSequenceNodes(record, method) {
-      if (!record) return [];
-      if (method === 'simple') {
-        return (record.cellColors || []).map(item => ({
-          cell: item.cell,
-          digit: record.digit,
-          colors: item.colors || [],
-          breadth: item.breadth,
-        }));
-      }
-      if (method === 'multi' || method === 'superMulti') {
-        return !record.source
-          ? (record.cellColours || record.nodes || [])
-          : (record.nodes || record.cellColours || []);
-      }
-      // The multi-colour Medusa report keeps its named pair tokens on
-      // cellColours. Bare graph nodes only carry numeric parity, so using
-      // them here makes the renderer lose the two visible sides of a node.
-      if (method === 'medusaMulti') {
-        return record.cellColours || record.nodes || [];
-      }
-      return record.nodes || [];
-    }
-
-    function colouringSequenceLinkLevels(record) {
-      const links = record?.linkColours || [];
-      if (!links.length) return new Map();
-      const endpointKeys = links.map(link => new Set(
-        (link.endpoints || []).map(endpoint => colouringNodeKey(endpoint)),
-      ));
-      const graphAdjacency = new Map();
-      for (const edge of record.edges || []) {
-        const left = edge.left?.cell == null ? null : colouringNodeKey(edge.left);
-        const right = edge.right?.cell == null ? null : colouringNodeKey(edge.right);
-        if (!left || !right || left === right) continue;
-        if (!graphAdjacency.has(left)) graphAdjacency.set(left, new Set());
-        if (!graphAdjacency.has(right)) graphAdjacency.set(right, new Set());
-        graphAdjacency.get(left).add(right);
-        graphAdjacency.get(right).add(left);
-      }
-      const linkAdjacency = links.map(() => new Set());
-      for (let leftIndex = 0; leftIndex < links.length; leftIndex++) {
-        for (let rightIndex = leftIndex + 1; rightIndex < links.length; rightIndex++) {
-          let connected = [...endpointKeys[leftIndex]].some(key =>
-            endpointKeys[rightIndex].has(key));
-          if (!connected) {
-            connected = [...endpointKeys[leftIndex]].some(leftKey =>
-              [...endpointKeys[rightIndex]].some(rightKey =>
-                graphAdjacency.get(leftKey)?.has(rightKey)));
-          }
-          if (!connected) continue;
-          linkAdjacency[leftIndex].add(rightIndex);
-          linkAdjacency[rightIndex].add(leftIndex);
-        }
-      }
-      const levels = new Map([[0, 1]]);
-      const queue = [0];
-      while (queue.length) {
-        const index = queue.shift();
-        const level = levels.get(index) || 1;
-        for (const neighbour of linkAdjacency[index]) {
-          if (levels.has(neighbour)) continue;
-          levels.set(neighbour, level + 1);
-          queue.push(neighbour);
-        }
-      }
-      let nextLevel = Math.max(...levels.values()) + 1;
-      for (let index = 0; index < links.length; index++) {
-        if (levels.has(index)) continue;
-        levels.set(index, nextLevel++);
-      }
-      return levels;
-    }
-
-    function colouringSequenceEdgeLevels(record) {
-      const edges = (record?.edges || []).filter(edge =>
-        edge.kind !== 'weak-inference'
-        && edge.left?.cell != null
-        && edge.right?.cell != null,
-      );
-      if (!edges.length) return { edges, levels: new Map() };
-      const endpointKeys = edges.map(edge => new Set([
-        colouringNodeKey(edge.left),
-        colouringNodeKey(edge.right),
-      ]));
-      const adjacency = edges.map(() => new Set());
-      for (let leftIndex = 0; leftIndex < edges.length; leftIndex++) {
-        for (let rightIndex = leftIndex + 1; rightIndex < edges.length; rightIndex++) {
-          if (![...endpointKeys[leftIndex]].some(key => endpointKeys[rightIndex].has(key))) continue;
-          adjacency[leftIndex].add(rightIndex);
-          adjacency[rightIndex].add(leftIndex);
-        }
-      }
-      const levels = new Map([[0, 1]]);
-      const queue = [0];
-      while (queue.length) {
-        const index = queue.shift();
-        const level = levels.get(index) || 1;
-        for (const neighbour of adjacency[index]) {
-          if (levels.has(neighbour)) continue;
-          levels.set(neighbour, level + 1);
-          queue.push(neighbour);
-        }
-      }
-      let nextLevel = Math.max(...levels.values()) + 1;
-      for (let index = 0; index < edges.length; index++) {
-        if (levels.has(index)) continue;
-        levels.set(index, nextLevel++);
-      }
-      return { edges, levels };
-    }
-
-    function colouringSequenceMedusaLevels(record, nodes) {
-      const adjacency = new Map();
-      for (const edge of record?.edges || []) {
-        if (edge.kind === 'weak-inference') continue;
-        const left = edge.left?.cell == null ? null : colouringNodeKey(edge.left);
-        const right = edge.right?.cell == null ? null : colouringNodeKey(edge.right);
-        if (!left || !right || left === right) continue;
-        if (!adjacency.has(left)) adjacency.set(left, []);
-        if (!adjacency.has(right)) adjacency.set(right, []);
-        const flip = edge.kind !== 'overlap-extension';
-        adjacency.get(left).push({ key: right, flip });
-        adjacency.get(right).push({ key: left, flip });
-      }
-
-      const stateLevels = new Map();
-      const first = nodes?.[0];
-      if (first) {
-        const queue = [[colouringNodeKey(first), first.colors?.[0] ?? 0, 1]];
-        const seen = new Set();
-        while (queue.length) {
-          const [key, color, level] = queue.shift();
-          const stateKey = `${key}:${color}`;
-          if (seen.has(stateKey)) continue;
-          seen.add(stateKey);
-          const colors = stateLevels.get(key) || new Map();
-          if (!colors.has(color) || level < colors.get(color)) colors.set(color, level);
-          stateLevels.set(key, colors);
-          for (const edge of adjacency.get(key) || []) {
-            queue.push([edge.key, edge.flip ? 1 - color : color, level + 1]);
-          }
-        }
-      }
-
-      const nodeLevels = new Map();
-      for (const [key, colors] of stateLevels) {
-        if (colors.size) nodeLevels.set(key, Math.min(...colors.values()));
-      }
-      let nextLevel = Math.max(0, ...nodeLevels.values()) + 1;
-      for (const node of nodes || []) {
-        const key = colouringNodeKey(node);
-        if (!nodeLevels.has(key)) nodeLevels.set(key, nextLevel++);
-      }
-
-      const linkLevels = new Map();
-      for (const [index, link] of (record?.linkColours || []).entries()) {
-        const endpointLevels = (link.endpoints || []).map(endpoint => {
-          const reached = stateLevels.get(colouringNodeKey(endpoint));
-          const levels = (endpoint.colors || [])
-            .map(color => reached?.get(color))
-            .filter(level => Number.isFinite(level));
-          return levels.length ? Math.min(...levels) : (nodeLevels.get(colouringNodeKey(endpoint)) || 1);
-        });
-        linkLevels.set(index, endpointLevels.length ? Math.max(...endpointLevels) : 1);
-      }
-
-      const stateMax = Math.max(0, ...[...stateLevels.values()]
-        .flatMap(colors => [...colors.values()]));
-      const linkMax = Math.max(0, ...linkLevels.values());
-      return {
-        stateLevels,
-        nodeLevels,
-        linkLevels,
-        max: Math.max(1, stateMax, linkMax, ...nodeLevels.values()),
-      };
-    }
-
-    function colouringSequenceLevels(record, method) {
-      const nodes = colouringSequenceNodes(record, method);
-      const levels = new Map();
-      if (!nodes.length) return levels;
-
-      if (method === 'simple') {
-        for (const node of nodes) {
-          levels.set(colouringNodeKey(node), Number.isInteger(node.breadth) ? node.breadth + 1 : 1);
-        }
-        return levels;
-      }
-
-      // Standalone Multi-colouring must use graph reachability as its visible
-      // breadth. Report order is not proof of access: a later link may be
-      // listed before its weak-NAND predecessor has been reached.
-      if ((method === 'multi' || method === 'superMulti') && !record.source) {
-        const linkLevels = colouringSequenceLinkLevels(record);
-        for (const node of nodes) {
-          const level = linkLevels.get(
-            (record.linkColours || []).findIndex(link => link.id === node.linkId),
-          ) || 1;
-          levels.set(colouringNodeKey(node), level);
-        }
-        return levels;
-      }
-
-      if (method === 'medusaMulti') {
-        return colouringSequenceMedusaLevels(record, nodes).nodeLevels;
-      }
-
-      if (method === 'medusa') {
-        const adjacency = new Map();
-        for (const edge of record.edges || []) {
-          if (edge.kind === 'weak-inference') continue;
-          const left = edge.left?.cell == null ? null : colouringNodeKey(edge.left);
-          const right = edge.right?.cell == null ? null : colouringNodeKey(edge.right);
-          if (!left || !right || left === right) continue;
-          if (!adjacency.has(left)) adjacency.set(left, new Set());
-          if (!adjacency.has(right)) adjacency.set(right, new Set());
-          adjacency.get(left).add(right);
-          adjacency.get(right).add(left);
-        }
-        const root = nodes[0] && colouringNodeKey(nodes[0]);
-        if (root) {
-          const queue = [[root, 1]];
-          while (queue.length) {
-            const [key, level] = queue.shift();
-            if (levels.has(key)) continue;
-            levels.set(key, level);
-            for (const neighbour of adjacency.get(key) || []) {
-              if (!levels.has(neighbour)) queue.push([neighbour, level + 1]);
-            }
-          }
-        }
-        let nextLevel = Math.max(0, ...levels.values()) + 1;
-        for (const node of nodes) {
-          const key = colouringNodeKey(node);
-          if (!levels.has(key)) levels.set(key, nextLevel++);
-        }
-        return levels;
-      }
-
-      const nodeKeys = new Set(nodes.map(colouringNodeKey));
-      const adjacency = new Map([...nodeKeys].map(key => [key, new Set()]));
-      for (const edge of record.edges || []) {
-        const left = edge.left?.cell == null ? null : colouringNodeKey(edge.left);
-        const right = edge.right?.cell == null ? null : colouringNodeKey(edge.right);
-        if (!left || !right || left === right) continue;
-        if (!adjacency.has(left)) adjacency.set(left, new Set());
-        if (!adjacency.has(right)) adjacency.set(right, new Set());
-        adjacency.get(left).add(right);
-        adjacency.get(right).add(left);
-      }
-
-      const roots = [nodes[0], ...nodes.slice(1)].map(colouringNodeKey);
-      let nextLevel = 1;
-      for (const root of roots) {
-        if (levels.has(root)) continue;
-        const queue = [[root, nextLevel]];
-        while (queue.length) {
-          const [key, level] = queue.shift();
-          if (levels.has(key)) continue;
-          levels.set(key, level);
-          for (const neighbour of adjacency.get(key) || []) {
-            if (!levels.has(neighbour)) queue.push([neighbour, level + 1]);
-          }
-        }
-        nextLevel = Math.max(nextLevel, ...[...levels.values()]) + 1;
-      }
-      return levels;
-    }
+    const colouringNodeKey = appNamespace.colouringModel.colouringNodeKey;
+    const selectedColouringRecord = method => appNamespace.colouringModel.selectedColouringRecord({
+      simpleColoringReport,
+      selectedSimpleColoringIndex,
+      multiColoringReport,
+      selectedMultiColoringIndex,
+      superMultiColoringReport,
+      selectedSuperMultiColoringIndex,
+      threeDMedusaReport,
+      selectedThreeDMedusaIndex,
+      threeDMedusaMultiReport,
+      selectedThreeDMedusaMultiIndex,
+    }, method);
+    const colouringSequenceNodes = appNamespace.colouringModel.colouringSequenceNodes;
+    const colouringSequenceLinkLevels = appNamespace.colouringModel.colouringSequenceLinkLevels;
+    const colouringSequenceEdgeLevels = appNamespace.colouringModel.colouringSequenceEdgeLevels;
+    const colouringSequenceMedusaLevels = appNamespace.colouringModel.colouringSequenceMedusaLevels;
+    const colouringSequenceLevels = appNamespace.colouringModel.colouringSequenceLevels;
 
     function colouringSequenceColourAssignments(record, method, levels, maxBreadth, breadth) {
       const colourLevels = new Map();
@@ -3723,221 +2991,78 @@
       return { colourLevels, tokenLevels };
     }
 
-    function colouringSequenceInfo(record, method) {
-      const levels = colouringSequenceLevels(record, method);
-      const medusaWalk = method === 'medusaMulti'
-        ? colouringSequenceMedusaLevels(record, colouringSequenceNodes(record, method))
-        : null;
-      const max = Math.max(1, ...levels.values(), medusaWalk?.max || 0);
-      const state = colouringSequenceState[method];
-      const breadth = state?.enabled ? Math.min(Math.max(1, state.breadth), max) : max;
-      const visibleKeys = new Set([...levels]
-        .filter(([, level]) => level <= breadth)
-        .map(([key]) => key));
-      return { levels, max, breadth, visibleKeys, complete: breadth >= max };
-    }
+    const colouringSequenceInfo = (record, method) =>
+      appNamespace.colouringModel.colouringSequenceInfo(record, method, colouringSequenceState);
 
-    function visibleColouringNodes(record, method, info) {
-      const assignments = colouringSequenceColourAssignments(
+    const visibleColouringNodes = (record, method, info) =>
+      appNamespace.colouringModel.visibleColouringNodes(
         record,
         method,
-        info.levels,
-        info.max,
-        info.breadth,
+        info,
+        colouringSequenceColourAssignments,
       );
-      return colouringSequenceNodes(record, method)
-        .filter(node => info.visibleKeys.has(colouringNodeKey(node)))
-        .map(node => {
-          const key = colouringNodeKey(node);
-          const colors = (node.colors || []).filter(color =>
-            assignments.colourLevels.get(key)?.get(color) <= info.breadth);
-          const colourTokens = (node.colourTokens || []).filter(token =>
-            assignments.tokenLevels.get(key)?.get(token) <= info.breadth);
-          return { ...node, colors, colourTokens };
-        })
-        .filter(node => node.colors.length || node.colourTokens.length);
-    }
 
-    function plausibleColouringEliminations(record, method, info) {
-      if (!record?.eliminations?.length) return [];
-      if (info.complete) return record.eliminations;
-      const nodes = visibleColouringNodes(record, method, info);
-      if (!nodes.length) return [];
-
-      // Multi-colouring has independent A/B pairs. Numeric parity 0/1 is
-      // local to each pair; combining all zeroes and ones across the report
-      // creates eliminations that no single NAND relationship proves.
-      if (method === 'multi' || method === 'superMulti' || method === 'medusaMulti') {
-        const visibleTokensByKey = new Map(
-          nodes.map(node => [
-            colouringNodeKey(node),
-            new Set(node.colourTokens || []),
-          ]),
-        );
-        const pairGroups = new Map();
-        for (const link of record.linkColours || []) {
-          const pairColours = link.pairColours || [];
-          if (pairColours.length < 2) continue;
-          const pairKey = link.pairIndex == null
-            ? `colours:${pairColours.join('|')}`
-            : `pair:${link.pairIndex}`;
-          const endpoints = link.endpoints || [];
-          for (const endpoint of endpoints) {
-            const key = colouringNodeKey(endpoint);
-            const visibleTokens = visibleTokensByKey.get(key);
-            if (!visibleTokens) continue;
-            const endpointTokens = endpoint.colourTokens || [];
-            const endpointColors = endpoint.colors || [];
-            for (let parity = 0; parity < 2; parity++) {
-              const token = endpointTokens[endpointColors.indexOf(parity)]
-                || pairColours[parity];
-              if (!token || !visibleTokens.has(token)) continue;
-              const digit = Number(endpoint.digit);
-              if (!Number.isInteger(digit)) continue;
-              const groupKey = `${pairKey}|${digit}`;
-              const group = pairGroups.get(groupKey) || [[], []];
-              group[parity].push(endpoint.cell);
-              pairGroups.set(groupKey, group);
-            }
-          }
-        }
-
-        const candidateHasBothPairSides = item => {
-          const itemDigit = Number(item.digit);
-          if (!Number.isInteger(itemDigit)) return false;
-          for (const [groupKey, group] of pairGroups.entries()) {
-            if (!groupKey.endsWith(`|${itemDigit}`)) continue;
-            const left = [...new Set(group[0])];
-            const right = [...new Set(group[1])];
-            if (!left.length || !right.length) continue;
-            for (const leftCell of left) {
-              for (const rightCell of right) {
-                if (leftCell === rightCell || item.cell === leftCell || item.cell === rightCell) {
-                  continue;
-                }
-                const peersBoth = core.peersOf(leftCell).includes(item.cell)
-                  && core.peersOf(rightCell).includes(item.cell);
-                const sharedSector = core.UNITS.some(unit =>
-                  unit.includes(item.cell) && unit.includes(leftCell) && unit.includes(rightCell));
-                if (peersBoth || sharedSector) return true;
-              }
-            }
-          }
-          return false;
-        };
-        return record.eliminations.filter(candidateHasBothPairSides);
-      }
-
-      const byDigit = new Map();
-      for (const node of nodes) {
-        const digit = Number(node.digit);
-        if (!Number.isInteger(digit)) continue;
-        if (!byDigit.has(digit)) byDigit.set(digit, []);
-        byDigit.get(digit).push(node);
-      }
-      const plausible = item => {
-        const itemDigit = Number(item.digit);
-        const sourceDigits = Number.isInteger(record.digit)
-          ? [record.digit]
-          : [...byDigit.keys()];
-        for (const sourceDigit of sourceDigits) {
-          const sourceNodes = byDigit.get(sourceDigit) || [];
-          const terminal = sourceNodes.filter(node => (node.colors || []).length > 1);
-          if (terminal.some(node => node.cell === item.cell
-            && itemDigit !== sourceDigit)) return true;
-          if (terminal.some(node => core.peersOf(node.cell).includes(item.cell))) return true;
-
-          const sees = [0, 1].map(color => sourceNodes.some(node =>
-            (node.colors || []).includes(color)
-            && core.peersOf(node.cell).includes(item.cell)));
-          if (sees[0] && sees[1]) return true;
-
-          for (const sector of core.UNITS) {
-            if (!sector.includes(item.cell)) continue;
-            const inSector = sourceNodes.filter(node => sector.includes(node.cell));
-            if (inSector.some(node => (node.colors || []).includes(0))
-              && inSector.some(node => (node.colors || []).includes(1))) return true;
-            for (const color of [0, 1]) {
-              const sameParity = inSector.filter(node => (node.colors || []).includes(color));
-              if (sameParity.length >= 2
-                && sameParity.some(node => node.cell === item.cell)) return true;
-            }
-          }
-        }
-        return false;
-      };
-      return record.eliminations.filter(plausible);
-    }
-
-    function displayColouringRecord(record, method) {
-      if (!record || !colouringSequenceState[method]?.enabled) return record;
-      const info = colouringSequenceInfo(record, method);
-      const visibleNodes = visibleColouringNodes(record, method, info);
-      const visibleKeys = info.visibleKeys;
-      const display = {
-        ...record,
-        eliminations: plausibleColouringEliminations(record, method, info),
-      };
-      if (method === 'simple') {
-        display.cellColors = visibleNodes.map(node => ({
-          cell: node.cell,
-          colors: node.colors,
-          breadth: node.breadth,
-        }));
-        display.blueCells = visibleNodes.filter(node => node.colors.includes(0)).map(node => node.cell);
-        display.purpleCells = visibleNodes.filter(node => node.colors.includes(1)).map(node => node.cell);
-        display.trueCells = (record.trueCells || []).filter(cell => visibleKeys.has(`${cell}:${record.digit}`));
-        display.terminalTruth = (record.terminalTruth || []).filter(item =>
-          visibleKeys.has(colouringNodeKey(item)));
-        display.terminalClosure = info.complete ? record.terminalClosure : null;
-        return display;
-      }
-      const visibleNodeKeys = new Set(visibleNodes.map(colouringNodeKey));
-      const visibleByKey = new Map(
-        visibleNodes.map(node => [colouringNodeKey(node), node]),
+    const plausibleColouringEliminations = (record, method, info) =>
+      appNamespace.colouringModel.plausibleColouringEliminations(
+        record,
+        method,
+        info,
+        visibleColouringNodes,
+        core,
       );
-      display.nodes = visibleNodes;
-      display.cellColours = (record.cellColours || [])
-        .map(item => {
-          const visible = visibleByKey.get(colouringNodeKey(item));
-          if (!visible) return null;
-          return {
-            ...item,
-            colors: visible.colors || [],
-            colourTokens: visible.colourTokens || [],
-          };
-        })
-        .filter(Boolean);
-      display.linkColours = method === 'multi' || method === 'superMulti'
-        ? (record.linkColours || []).filter(link => visibleNodeKeys.has(colouringNodeKey(
-          link.endpoints?.[0] || { cell: link.cells?.[0], digit: record.digit },
-        )))
-        : method === 'medusaMulti'
-          ? (record.linkColours || []).filter((link, index) =>
-            (colouringSequenceMedusaLevels(record, colouringSequenceNodes(record, method))
-              .linkLevels.get(index) || 1) <= info.breadth)
-        : record.linkColours;
-      if (method === 'superMulti') {
-        const visibleLinkIds = new Set(display.linkColours.map(link => link.id));
-        display.groupColours = (record.groupColours || [])
-          .filter(group => visibleLinkIds.has(group.id))
-          .map(group => ({
-            ...group,
-            sides: (group.sides || []).map(side => ({
-              ...side,
-              cells: [...(side.cells || [])],
-              colors: [...(side.colors || [])],
-              colourTokens: [...(side.colourTokens || [])],
-            })),
-          }));
-        display.groupEdges = (record.groupEdges || [])
-          .filter(edge => visibleLinkIds.has(edge.linkId));
-      }
-      display.terminalClosure = info.complete ? record.terminalClosure : null;
-      display.terminalTruth = (record.terminalTruth || [])
-        .filter(item => visibleNodeKeys.has(colouringNodeKey(item)));
-      return display;
-    }
+
+    const displayColouringRecord = (record, method) =>
+      appNamespace.colouringModel.displayColouringRecord(
+        record,
+        method,
+        colouringSequenceState,
+        visibleColouringNodes,
+        plausibleColouringEliminations,
+      );
+
+    const selectColouringHighlightRecords = options =>
+      appNamespace.colouringModel.selectColouringHighlightRecords({
+        ...options,
+        state: colouringSequenceState,
+        visibleNodesFn: visibleColouringNodes,
+        plausibleEliminationsFn: plausibleColouringEliminations,
+      });
+
+    const buildColouringHighlightMarks = options =>
+      appNamespace.colouringModel.buildColouringHighlightMarks({
+        ...options,
+        atomKeyFn: atomKey,
+        cellHasCandidateFn: cellHasCandidate,
+      });
+
+    const buildActiveStepHighlightContext = options =>
+      appNamespace.highlightContext.buildActiveStepHighlightContext({
+        ...options,
+        cellsForSectorsFn: cellsForSectors,
+        cellsForHouseFn: cellsForHouse,
+      });
+
+    const buildStrongLinkHighlightContext = options =>
+      appNamespace.highlightContext.buildStrongLinkHighlightContext({
+        ...options,
+        cellHasCandidateFn: cellHasCandidate,
+      });
+
+    const buildAlsAhsHighlightContext = options =>
+      appNamespace.highlightContext.buildAlsAhsHighlightContext({
+        ...options,
+        alsColorAtFn: alsColorAt,
+        alsChainColors: ALS_CHAIN_COLORS,
+        hashStringFn: hashString,
+        cellHasCandidateFn: cellHasCandidate,
+        atomKeyFn: atomKey,
+        ahsRecordColor: AHS_RECORD_COLOR,
+      });
+
+    const resetAnalysisSelections = appNamespace.analysisState.resetAnalysisSelections;
+
+    const mergeChainHighlightView = (target, source) =>
+      appNamespace.highlightContext.mergeChainHighlightView(target, source);
 
     function updateColouringSequenceControls() {
       for (const method of Object.keys(colouringSequenceState)) {
@@ -3960,17 +3085,22 @@
     }
 
     function setColouringSequenceEnabled(method, enabled) {
-      colouringSequenceState[method].enabled = enabled;
-      if (enabled) colouringSequenceState[method].breadth = 1;
+      appNamespace.colouringModel.setColouringSequenceEnabled(
+        colouringSequenceState,
+        method,
+        enabled,
+      );
       updateColouringSequenceControls();
       renderBoard();
     }
 
     function stepColouringSequence(method, delta) {
-      const state = colouringSequenceState[method];
-      if (!state.enabled) return;
-      const info = colouringSequenceInfo(selectedColouringRecord(method), method);
-      state.breadth = Math.min(info.max, Math.max(1, state.breadth + delta));
+      appNamespace.colouringModel.stepColouringSequence(
+        colouringSequenceState,
+        method,
+        delta,
+        selectedMethod => colouringSequenceInfo(selectedColouringRecord(selectedMethod), selectedMethod),
+      );
       updateColouringSequenceControls();
       renderBoard();
     }
@@ -3996,289 +3126,140 @@
       for (const extraChain of hydraChains) {
         if (extraChain === chain) continue;
         const extraView = chainHighlights(extraChain);
-        for (const [key, value] of Object.entries(extraView)) {
-          if (value instanceof Set) for (const item of value) chainView[key].add(item);
-          else if (value instanceof Map) for (const [item, detail] of value) {
-            if (!chainView[key].has(item)) chainView[key].set(item, detail);
-          }
-        }
+        mergeChainHighlightView(chainView, extraView);
       }
       const alsRecord = selectedAlsRecord();
       const alsDofRecord = selectedDofRecord || hydraRecord;
       const ahsRecord = selectedAhsRecord();
       const ahsDofChainRecord = selectedAhsDofChainRecord();
       const ahsDofRecord = ahsDofChainRecord ? null : selectedAhsDofNetRecord();
-      const alsRecordCells = new Set(alsRecord?.alsAllCells || []);
-      const alsRecordMarks = new Set();
-      for (const cell of alsRecord?.alsAllCells || []) {
-        for (const digit of alsRecord?.alsDigits || []) {
-          if (cellHasCandidate(cell, digit)) alsRecordMarks.add(atomKey(cell, digit));
-        }
-      }
-      const alsRecordColor = alsRecord
-        ? ALS_CHAIN_COLORS[hashString(String(alsRecord.uniqueID)) % ALS_CHAIN_COLORS.length]
-        : null;
-      const alsDofMarks = new Set();
-      const alsDofCells = new Set();
-      const alsDofStyleByCell = new Map();
-      const alsDofStylesByCell = new Map();
-      const alsDofStyleByAtom = new Map();
-      if (alsDofRecord) {
-        const auxiliary = alsDofRecord.auxiliary || [];
-        const nodes = [
-          { node: alsDofRecord.primaryA, color: alsColorAt(0) },
-          ...auxiliary.map((node, index) => ({
-            node,
-            color: alsColorAt(index + 1),
-          })),
-          ...(alsDofRecord.primaryC
-            ? [{ node: alsDofRecord.primaryC, color: alsColorAt(auxiliary.length + 1) }]
-            : []),
-        ];
-        for (const { node, color } of nodes) {
-          for (const cell of node?.cells || []) {
-            alsDofCells.add(cell);
-            const cellColors = alsDofStylesByCell.get(cell) || [];
-            if (!cellColors.includes(color)) cellColors.push(color);
-            alsDofStylesByCell.set(cell, cellColors);
-            if (!alsDofStyleByCell.has(cell)) alsDofStyleByCell.set(cell, color);
-            for (const digit of node?.digits || []) {
-              if (!cellHasCandidate(cell, digit)) continue;
-              const atom = atomKey(cell, digit);
-              alsDofMarks.add(atom);
-              alsDofStyleByAtom.set(atom, color);
-            }
-          }
-        }
-      }
-      const alsDofElimMarks = new Set(
-        (alsDofRecord?.eliminations || []).map(item => atomKey(item.cell, item.digit)),
-      );
-      const ahsRecordCells = new Set(ahsRecord?.ahsAllCells || []);
-      const ahsRecordMarks = new Set();
-      for (const cell of ahsRecord?.ahsAllCells || []) {
-        for (const digit of ahsRecord?.ahsDigits || []) {
-          if (cellHasCandidate(cell, digit)) ahsRecordMarks.add(atomKey(cell, digit));
-        }
-      }
-      const ahsDofRecordCells = new Set();
-      const ahsDofRecordMarks = new Set();
-      const ahsDofDisplayNodes = ahsDofChainRecord
-        ? ahsDofChainRecord.nets.flatMap(net => [net.hub, ...(net.auxiliary || [])])
-        : ahsDofRecord ? [ahsDofRecord.hub, ...(ahsDofRecord.auxiliary || [])] : [];
-      const ahsDofRecordElimMarks = new Set(
-        (ahsDofChainRecord?.eliminations || ahsDofRecord?.eliminations || [])
-          .map(item => atomKey(item.cell, item.digit)),
-      );
-      if (ahsDofDisplayNodes.length) {
-        const nodes = ahsDofDisplayNodes.filter(Boolean);
-        for (const node of nodes) {
-          for (const cell of node.cells || []) {
-            ahsDofRecordCells.add(cell);
-            for (const digit of node.digits || []) {
-              if (cellHasCandidate(cell, digit)) ahsDofRecordMarks.add(atomKey(cell, digit));
-            }
-          }
-        }
-      }
+      const alsAhsHighlights = buildAlsAhsHighlightContext({
+        alsRecord,
+        alsDofRecord,
+        ahsRecord,
+        ahsDofChainRecord,
+        ahsDofRecord,
+      });
+      const {
+        alsRecordCells,
+        alsRecordMarks,
+        alsRecordColor,
+        alsDofMarks,
+        alsDofCells,
+        alsDofStyleByCell,
+        alsDofStylesByCell,
+        alsDofStyleByAtom,
+        alsDofElimMarks,
+        ahsRecordCells,
+        ahsRecordMarks,
+        ahsDofRecordCells,
+        ahsDofRecordMarks,
+        ahsDofRecordElimMarks,
+        ahsDofRecordColor,
+      } = alsAhsHighlights;
       const selectedStrongLinkGroup = strongLinkDisplayGroups()[selectedStrongLinkType] || [];
       const strongLink = selectedStrongLinkType === null || selectedStrongLinkIndex === null
         ? null
         : selectedStrongLinkGroup[selectedStrongLinkIndex] || null;
-      const strongLinkStartMarks = new Set();
-      const strongLinkEndMarks = new Set();
-      const strongLinkPartitionByCell = new Map();
-      if (strongLink) {
-        const visualConstruction = selectedStrongLinkType === 3
-          && strongLink.secondaryXorConstruction?.kind === 'eri'
-          ? strongLink.secondaryXorConstruction
-          : null;
-        const visualActiveCells = visualConstruction?.activeCells || strongLink.activeCells || [];
-        const visualLinkedCells = visualConstruction?.linkedCells || strongLink.linkedCells || [];
-        for (const cell of visualActiveCells) {
-          for (const digit of strongLink.startingDigits || []) {
-            if (cellHasCandidate(cell, digit)) strongLinkStartMarks.add(`${cell}:${digit}`);
-          }
-        }
-        for (const cell of visualLinkedCells) {
-          for (const digit of strongLink.linkDigits || []) {
-            if (cellHasCandidate(cell, digit)) strongLinkEndMarks.add(`${cell}:${digit}`);
-          }
-        }
-        const construction = selectedStrongLinkType === 3
-          && strongLink.secondaryXorConstruction?.kind === 'eri'
-          ? strongLink.secondaryXorConstruction
-          : strongLink.xorConstruction;
-        if (construction?.kind === 'mini-sector') {
-          for (const [index, cells] of (construction.partitionCells || []).entries()) {
-            const role = index === construction.activePartition
-              ? 'active'
-              : index === construction.linkedPartition
-                ? 'linked'
-                : index === construction.emptyPartition
-                  ? 'empty'
-                  : null;
-            if (!role) continue;
-            for (const cell of cells) strongLinkPartitionByCell.set(cell, role);
-          }
-        }
-        if (construction?.kind === 'variant-sector-xor') {
-          for (const [index, cells] of (construction.partitionCells || []).entries()) {
-            const role = index === construction.activePartition
-              ? 'active'
-              : index === construction.linkedPartition
-                ? 'linked'
-                : index === construction.emptyPartition
-                  ? 'empty'
-                  : null;
-            if (!role) continue;
-            for (const cell of cells) strongLinkPartitionByCell.set(cell, role);
-          }
-        }
-        if (construction?.kind === 'eri') {
-          for (const cell of construction.emptyCells || []) {
-            strongLinkPartitionByCell.set(cell, 'empty');
-          }
-        }
-      }
-      const superMultiColoringRawRecord = !activeStep && !chain && !alsRecord && !alsDofRecord
-        && !ahsRecord && !ahsDofRecord && !strongLink
-        ? superMultiColoringReport?.[selectedSuperMultiColoringIndex] || null
-        : null;
-      const threeDMedusaMultiRawRecord = !superMultiColoringRawRecord && !activeStep && !chain && !alsRecord && !alsDofRecord
-        && !ahsRecord && !ahsDofRecord && !strongLink
-        ? threeDMedusaMultiReport?.[selectedThreeDMedusaMultiIndex] || null
-        : null;
-      const multiColoringRawRecord = !superMultiColoringRawRecord && !threeDMedusaMultiRawRecord && !activeStep && !chain && !alsRecord && !alsDofRecord
-        && !ahsRecord && !ahsDofRecord && !strongLink
-        ? multiColoringReport?.[selectedMultiColoringIndex] || null
-        : null;
-      const threeDMedusaRawRecord = !superMultiColoringRawRecord && !threeDMedusaMultiRawRecord && !multiColoringRawRecord && !activeStep && !chain && !alsRecord && !alsDofRecord
-        && !ahsRecord && !ahsDofRecord && !strongLink
-        ? threeDMedusaReport?.[selectedThreeDMedusaIndex] || null
-        : null;
-      const superMultiColoringRecord = displayColouringRecord(superMultiColoringRawRecord, 'superMulti');
-      const threeDMedusaMultiRecord = displayColouringRecord(threeDMedusaMultiRawRecord, 'medusaMulti');
-      const multiColoringRecord = displayColouringRecord(multiColoringRawRecord, 'multi');
-      const threeDMedusaRecord = displayColouringRecord(threeDMedusaRawRecord, 'medusa');
-      const colouringRecord = threeDMedusaMultiRecord?.source === 'bivalve'
-        ? threeDMedusaMultiRecord
-        : threeDMedusaRecord;
-      const activeMultiColoringRecord = superMultiColoringRecord
-        || (threeDMedusaMultiRecord?.source === 'multi'
-          ? threeDMedusaMultiRecord
-          : multiColoringRecord);
-      const simpleColoringRawRecord = !superMultiColoringRawRecord && !threeDMedusaMultiRawRecord && !multiColoringRawRecord && !threeDMedusaRawRecord && !activeStep && !chain && !alsRecord && !alsDofRecord
-        && !ahsRecord && !ahsDofRecord && !strongLink
-        ? simpleColoringReport?.[selectedSimpleColoringIndex] || null
-        : null;
-      const simpleColoringRecord = displayColouringRecord(simpleColoringRawRecord, 'simple');
-      const simpleColoringMarks = new Map();
-      if (simpleColoringRecord) {
-        for (const item of simpleColoringRecord.cellColors || []) {
-          const role = item.colors?.length > 1
-            ? 'both'
-            : item.colors?.[0] === 0
-              ? 'blue'
-              : item.colors?.[0] === 1
-                ? 'purple'
-                : null;
-          if (!role) continue;
-          if (cellHasCandidate(item.cell, simpleColoringRecord.digit)) {
-            simpleColoringMarks.set(atomKey(item.cell, simpleColoringRecord.digit), role);
-          }
-        }
-      }
-      const simpleColoringElimMarks = new Set(
-        (simpleColoringRecord?.eliminations || [])
-          .map(item => atomKey(item.cell, item.digit)),
-      );
-      const threeDMedusaMarks = new Map();
-      if (colouringRecord) {
-        for (const node of colouringRecord.nodes || []) {
-          const role = node.colors?.length > 1
-            ? 'both'
-            : node.colors?.[0] === 0
-              ? 'blue'
-              : node.colors?.[0] === 1
-                ? 'purple'
-                : null;
-          if (!role) continue;
-          threeDMedusaMarks.set(atomKey(node.cell, node.digit), role);
-        }
-      }
-      const threeDMedusaElimMarks = new Set(
-        (colouringRecord?.eliminations || [])
-          .map(item => atomKey(item.cell, item.digit)),
-      );
-      const threeDMedusaInvalidMarks = new Set(colouringRecord?.invalidColourAtoms || []);
-      const multiColoringElimMarks = new Set(
-        (activeMultiColoringRecord?.eliminations || []).map(item => atomKey(item.cell, item.digit)),
-      );
-      const multiColoringMarks = new Map();
-      if (activeMultiColoringRecord) {
-        for (const item of activeMultiColoringRecord.cellColours || []) {
-          const tokens = [...new Set(item.colourTokens || [])];
-          if (!tokens.length) continue;
-          const key = atomKey(item.cell, item.digit);
-          const existing = multiColoringMarks.get(key) || [];
-          multiColoringMarks.set(key, [...new Set([...existing, ...tokens])]);
-        }
-      }
+      const strongLinkMarks = buildStrongLinkHighlightContext({
+        strongLink,
+        selectedStrongLinkType,
+      });
+      const {
+        startMarks: strongLinkStartMarks,
+        endMarks: strongLinkEndMarks,
+        partitionByCell: strongLinkPartitionByCell,
+      } = strongLinkMarks;
+      const colouringRecords = selectColouringHighlightRecords({
+        blocked: Boolean((activeStep && activeStep.tech !== 'colouring') || chain || alsRecord || alsDofRecord
+          || ahsRecord || ahsDofRecord || strongLink),
+        reports: {
+          superMulti: superMultiColoringReport,
+          medusaMulti: threeDMedusaMultiReport,
+          multi: multiColoringReport,
+          medusa: threeDMedusaReport,
+          simple: simpleColoringReport,
+        },
+        indices: {
+          superMulti: selectedSuperMultiColoringIndex,
+          medusaMulti: selectedThreeDMedusaMultiIndex,
+          multi: selectedMultiColoringIndex,
+          medusa: selectedThreeDMedusaIndex,
+          simple: selectedSimpleColoringIndex,
+        },
+      });
+      const {
+        raw: {
+          superMulti: superMultiColoringRawRecord,
+          medusaMulti: threeDMedusaMultiRawRecord,
+          multi: multiColoringRawRecord,
+          medusa: threeDMedusaRawRecord,
+        },
+        superMulti: superMultiColoringRecord,
+        medusaMulti: threeDMedusaMultiRecord,
+        multi: multiColoringRecord,
+        medusa: threeDMedusaRecord,
+        colouring: colouringRecord,
+        activeMulti: activeMultiColoringRecord,
+        simple: simpleColoringRecord,
+      } = colouringRecords;
+      const colouringMarks = buildColouringHighlightMarks({
+        simpleRecord: simpleColoringRecord,
+        colouringRecord,
+        activeMultiRecord: activeMultiColoringRecord,
+      });
+      const {
+        simple: simpleColoringMarks,
+        simpleEliminations: simpleColoringElimMarks,
+        medusa: threeDMedusaMarks,
+        medusaEliminations: threeDMedusaElimMarks,
+        medusaInvalid: threeDMedusaInvalidMarks,
+        multi: multiColoringMarks,
+        multiEliminations: multiColoringElimMarks,
+      } = colouringMarks;
       const removed = lastRemoved;
       const chainRemoved = chain?.eliminations || [];
       const activeStepRemoved = activeStep?.elim?.items || [];
-      const removedMarks = new Set([
-        ...removed,
-        ...chainRemoved,
-        ...activeStepRemoved,
-      ].map(item => `${item.cell}:${item.digit}`));
-      const vertices = new Set(activeStep?.vertices || activeStep?.at || []);
-      const alsDofClause = activeStep?.clause || null;
-      const alsDofClauseCells = new Set(alsDofClause?.cells || []);
-      const alsDofClauseDigit = Number.isInteger(alsDofClause?.digit)
-        ? alsDofClause.digit
-        : Number.isInteger(activeStep?.clauseDigit) ? activeStep.clauseDigit : null;
-      const isNonConsecutiveAlsDof = activeStep?.tech === 'non-consecutive-als-dof'
-        || activeStep?.tech === 'non-consecutive-als-dof-peer';
-      const isMsls = activeStep?.tech === 'msls';
-      const mslsBaseCells = new Set(activeStep?.mslsBaseCells || []);
-      const mslsCoverCells = new Set(activeStep?.mslsCoverCells || []);
-      const mslsCoverAtoms = new Set(activeStep?.mslsCoverAtoms || []);
-      const rawFins = new Set(activeStep?.fins || []);
-      const endofins = new Set(activeStep?.endofins || activeStep?.endoFins || []);
-      const patternDigits = new Set(activeStep?.digits || []);
-      const chromaticRecord = activeStep?.chromaticRecord || null;
-      const chromaticCells = new Set(chromaticRecord?.cells || []);
-      const chromaticCoreCells = new Set(chromaticRecord?.coreCells || []);
-      const chromaticGuardians = new Set(chromaticRecord?.guardians || []);
-      const chromaticDigits = new Set(chromaticRecord?.digits || []);
-      const candidateSizeFilterCells = new Set();
-      if (activeCandidateSizeFilters.size) {
-        for (let cell = 0; cell < 81; cell++) {
-          if (candidateSizeFilterMatches(cell)) candidateSizeFilterCells.add(cell);
-        }
-      }
-      const baseCells = activeStep?.baseSectors
-        ? cellsForSectors(activeStep.baseSectors)
-        : cellsForHouse(activeStep?.base);
-      const coverCells = activeStep?.coverSectors
-        ? cellsForSectors(activeStep.coverSectors)
-        : cellsForHouse(activeStep?.cover);
-      const fins = new Set([...rawFins].filter(cell => baseCells.has(cell)));
-      const fishCells = new Set(activeStep?.fishCells || [
-        ...baseCells,
-      ].filter(cell => coverCells.has(cell)));
-      const fishBaseIntersections = new Set(activeStep?.baseIntersections || []);
-      const fishPeersOfBaseIntersection = new Set(activeStep?.peersOfBaseIntersection || []);
-      const fishDoubleCover = new Set(activeStep?.overcovered || []);
-      const fishTripleCover = new Set(activeStep?.triCovered || []);
-      const isFish = ['fish', 'pointing', 'claiming', 'non-consecutive-line', 'non-consecutive-eri'].includes(activeStep?.tech);
-      const isSubset = !!activeStep
-        && activeStep.tech !== 'chain'
-        && !isFish
-        && !chromaticRecord;
-      const isHiddenSubset = !!activeStep && activeStep.tech.startsWith('hidden-');
+      const highlightContext = buildActiveStepHighlightContext({
+        activeStep,
+        removed,
+        chainRemoved,
+        activeStepRemoved,
+        activeCandidateSizeFilters,
+        candidateSizeFilterMatches,
+      });
+      const {
+        removedMarks,
+        vertices,
+        alsDofClause,
+        alsDofClauseCells,
+        alsDofClauseDigit,
+        isNonConsecutiveAlsDof,
+        isMsls,
+        mslsBaseCells,
+        mslsCoverCells,
+        mslsCoverAtoms,
+        fins,
+        endofins,
+        patternDigits,
+        isChromatic,
+        chromaticRecord,
+        chromaticCells,
+        chromaticCoreCells,
+        chromaticGuardians,
+        chromaticDigits,
+        candidateSizeFilterCells,
+        baseCells,
+        coverCells,
+        fishCells,
+        fishBaseIntersections,
+        fishPeersOfBaseIntersection,
+        fishDoubleCover,
+        fishTripleCover,
+        isFish,
+        isSubset,
+        isHiddenSubset,
+      } = highlightContext;
 
       return {
         activeDigits: activeDigitHighlights,
@@ -4390,53 +3371,36 @@
       };
     }
 
-    function renderGridViewHeaders() {
-      const isCellView = gridView === 'RC';
-      const rowPrefix = isCellView ? '' : gridView.charAt(0).toUpperCase();
-      gridViewSelector.value = gridView;
-      gridColumnTitleEl.textContent = isCellView ? 'Columns' : 'Digits';
-      gridColumnNumbersEl.textContent = '';
-      gridRowHeaderEl.textContent = '';
-
-      for (let index = 1; index <= 9; index++) {
-        const column = document.createElement('span');
-        column.textContent = String(index);
-        gridColumnNumbersEl.appendChild(column);
-
-        const row = document.createElement('span');
-        row.textContent = rowPrefix ? `${rowPrefix}${index}` : String(index);
-        gridRowHeaderEl.appendChild(row);
-      }
-    }
+    const renderGridViewHeaders = () => {
+      vantageView.renderHeaders({
+        view: gridView,
+        selector: gridViewSelector,
+        title: gridColumnTitleEl,
+        numbers: gridColumnNumbersEl,
+        rows: gridRowHeaderEl,
+      });
+    };
 
     function setGridView(view) {
-      if (!['RC', 'Rn', 'Cn', 'Bn'].includes(view)) return;
-      gridView = view;
-      gridViewSelector.value = gridView;
-      renderGridViewHeaders();
-      renderBoard();
+      vantageView.switchView(view, {
+        setView: nextView => {
+          gridView = nextView;
+          gridViewSelector.value = gridView;
+        },
+        renderHeaders: renderGridViewHeaders,
+        renderBoard,
+      });
     }
 
     function extractGridViewSlice(view) {
-      const state = core.buildSpaces(cand);
-      const offset = view === 'Rn' ? 0 : view === 'Cn' ? 9 : 18;
-
-      return Array.from({ length: 9 }, (_, sector) =>
-        Array.from({ length: 9 }, (_, digitIndex) => {
-          const mask = state.M[offset + sector][digitIndex];
-          const positions = new Set();
-          for (let position = 0; position < 9; position++) {
-            if (mask & (1 << position)) positions.add(position);
-          }
-          if (showFixedInVantage) {
-            const digit = digitIndex + 1;
-            for (let position = 0; position < 9; position++) {
-              const cell = vantageCellFromSlot(view, sector, position);
-              if (puzzle[cell] === digit) positions.add(position);
-            }
-          }
-          return positions;
-        }));
+      return vantageView.extractSlice({
+        view,
+        cand,
+        puzzle,
+        core,
+        showFixed: showFixedInVantage,
+        vantageCellFromSlot,
+      });
     }
 
     function renderVantageBoard(view, highlights = currentHighlights()) {
@@ -4647,19 +3611,7 @@
        el.className = 'cell';
        if (originalPuzzle[cell]) el.classList.add('given');
        if (promotedValues[cell]) el.classList.add('solved');
-       if (variantSettings.diagonal && cell % 10 === 0) {
-         el.classList.add('variant-diagonal-cell');
-       }
-       if (variantSettings.antiDiagonal && Math.floor(cell / 9) + (cell % 9) === 8) {
-         el.classList.add('variant-anti-diagonal-cell');
-       }
-       if (variantSettings.windoku) {
-         const row = Math.floor(cell / 9);
-         const col = cell % 9;
-         const inWindokuRegion = (row >= 1 && row <= 3 || row >= 5 && row <= 7)
-           && (col >= 1 && col <= 3 || col >= 5 && col <= 7);
-         if (inWindokuRegion) el.classList.add('variant-windoku-cell');
-       }
+       el.classList.add(...variantCellClasses(cell, variantSettings));
        if (highlights.candidateSizeFilterCells.has(cell)) {
          el.classList.add('candidate-size-filter-cell');
          applyCandidateSizeFilterStyle(el, highlights.candidateSizeFilterStyle);
@@ -4928,58 +3880,15 @@
       }
     }
 
-    function renderStrings() {
-      puzzleStringEl.textContent = core.encode(originalPuzzle);
-      const givenCount = originalPuzzle.reduce((count, value) => count + (value ? 1 : 0), 0);
-      const pencilmarkCount = cand.reduce((count, values, cell) =>
-        count + (puzzle[cell] || promotedValues[cell] ? 0 : (values || []).length), 0);
-      puzzleStateMetaEl.textContent = `Givens [${givenCount}]  Pencilmarks [${pencilmarkCount}]`;
-      solutionStringEl.textContent = solution ? solution.join('') : 'none';
-    }
+    const gridTextView = appNamespace.gridTextView.create({
+      elements: { puzzle: puzzleStringEl, meta: puzzleStateMetaEl, solution: solutionStringEl },
+      encode: core.encode,
+    });
+    const renderStrings = () => gridTextView.render({ originalPuzzle, puzzle, promotedValues, cand, solution });
+    const current729String = () => gridTextView.current729({ originalPuzzle, puzzle, promotedValues, cand });
 
-    function current729String() {
-      const cells = [];
-      for (let cell = 0; cell < 81; cell++) {
-        // Export each cell in state order: original given, promoted solution,
-        // or the cell's current remaining pencilmarks.
-        const given = originalPuzzle[cell] || 0;
-        const solved = given
-          ? 0
-          : (promotedValues[cell] || puzzle[cell] || 0);
-        const values = given
-          ? [given]
-          : solved
-            ? [solved]
-            : [...(cand[cell] || [])];
-        cells.push(values.join(''));
-      }
-      const cellWidth = Math.max(1, ...cells.map(value => value.length));
-      const boxWidth = cellWidth * 3 + 4;
-      const horizontal = '.' + Array.from({ length: 3 }, () => '-'.repeat(boxWidth)).join('.') + '.';
-      const divider = ':' + Array.from({ length: 3 }, () => '-'.repeat(boxWidth)).join('+') + ':';
-      const formatRow = row => '|' + Array.from({ length: 3 }, (_, box) => {
-        const start = row * 9 + box * 3;
-        return ` ${cells[start].padEnd(cellWidth)} ${cells[start + 1].padEnd(cellWidth)} ${cells[start + 2].padEnd(cellWidth)} `;
-      }).join('|') + '|';
-      const lines = [horizontal];
-      for (let row = 0; row < 9; row++) {
-        lines.push(formatRow(row));
-        if (row === 2 || row === 5) lines.push(divider);
-      }
-      lines.push(horizontal);
-      return lines.join('\n');
-    }
-
-    async function copyPuzzleString(text, label) {
-      const copied = await appNamespace.clipboard.copyText(text);
-      setStatus(copied ? `${label} string copied.` : `${label} string selected for copying.`, 'ok');
-    }
-
-    function solutionEurekaText() {
-      return logEntries
-        .map(entry => `${entry.cycle}. ${displayedStepDescription(entry)}`)
-        .join('\n');
-    }
+    const copyPuzzleString = (text, label) =>
+      appNamespace.clipboard.copyLabeled(text, label, setStatus);
 
     function selectedFishStep() {
       if (!fishReport || !selectedFishKey) return '';
@@ -5050,7 +3959,7 @@
 
       const ahsDofChain = selectedAhsDofChainRecord();
       if (ahsDofChain) {
-        return ahsDofChainStepFromResult(
+        return modularAhsDofChainStepFromResult(
           ahsDofChain,
           ahsDofChainReport,
           selectedAhsDofChainIndex,
@@ -5059,7 +3968,7 @@
       }
       const ahsDof = selectedAhsDofNetRecord();
       if (ahsDof) {
-        return ahsDofStepFromResult(ahsDof, ahsDofReport, selectedAhsDofNetIndex, cand);
+        return modularAhsDofStepFromResult(ahsDof, ahsDofReport, selectedAhsDofNetIndex, cand);
       }
       const alsDof = selectedAlsDofRecord();
       if (alsDof) {
@@ -5135,9 +4044,7 @@
         (cand[item.cell] || []).includes(item.digit));
     }
 
-    function cleanCopiedEureka(text) {
-      return String(text || '').replace(/^AIC\s*\(Depth\s+\d+\)(?=\s*:)/i, 'AIC');
-    }
+    const cleanCopiedEureka = appNamespace.solutionLogView.cleanCopiedEureka;
 
     function applyHighlightedMove() {
       const step = highlightedMoveStep();
@@ -5148,19 +4055,9 @@
 
       const before = snapshotState();
       if (!applyCycleChoice(before, [], { step })) return false;
-      clearSearchResultsAfterApply();
+      clearSearchResultsAfterApply(step?.tech === 'colouring' ? step.colouringMethod : null);
       render();
       return true;
-    }
-
-    function solutionListText() {
-      return logEntries
-        .map(entry => {
-          const value = formatRatingValue(entry.rating?.value);
-          const rating = value ? `Rating: (${value}) ` : 'Rating: (Unknown) ';
-          return `${entry.cycle}. ${rating}${displayedStepDescription(entry)}`;
-        })
-        .join('\n');
     }
 
     function renderSolutionActions() {
@@ -5195,144 +4092,40 @@
       window.alert(message);
     }
 
-    function nonColourableChromaticTestGrid() {
-      const rows = [
-        ['123', '456789', '456789', '123', '456789', '456789', '456789', '456789', '456789'],
-        ['456789', '123', '456789', '456789', '123', '456789', '456789', '456789', '456789'],
-        ['456789', '456789', '123', '456789', '456789', '123', '456789', '456789', '456789'],
-        ['123', '456789', '456789', '456789', '456789', '1236', '456789', '456789', '456789'],
-        ['456789', '123', '456789', '456789', '123', '456789', '456789', '456789', '456789'],
-        ['456789', '456789', '123', '123', '456789', '456789', '456789', '456789', '456789'],
-        ['456789', '456789', '456789', '456789', '456789', '456789', '456789', '456789', '456789'],
-        ['456789', '456789', '456789', '456789', '456789', '456789', '456789', '456789', '456789'],
-        ['456789', '456789', '456789', '456789', '456789', '456789', '456789', '456789', '456789'],
-      ];
-      return rows.map(row => row.join(' ')).join('\n');
-    }
-
-    function blankCandidateTestGrid() {
-      return Array.from({ length: 9 }, () =>
-        Array.from({ length: 9 }, () => '123456789').join(' '),
-      ).join('\n');
-    }
-
-    function chromaticGraphEureka(record) {
-      const digits = (record.digits || []).join('');
-      const sectors = (record.sectorNames || []).join(',');
-      const cells = core.cellGroupName(record.cells || []) || 'none';
-      const guardians = core.cellGroupName(record.guardians || []) || 'none';
-      const eliminations = core.formatRemovals(record.eliminations || []) || 'none';
-      return `${record.classification}: K=${record.k} {${digits}} over ${sectors}; `
-        + `${cells}; guardian ${guardians} => ${eliminations}`;
-    }
-
-    function chromaticStepFromResult(record) {
-      const items = core.eliminationItems({ items: record.eliminations || [] }, cand);
-      return {
-        tech: record.tech,
-        name: record.classification,
-        structureName: record.classification,
-        desc: chromaticGraphEureka(record),
-        elim: { items },
-        at: [...(record.cells || [])],
-        vertices: [...(record.cells || [])],
-        chromaticRecord: record,
-      };
-    }
+    const { eureka: chromaticGraphEureka, stepFromResult: chromaticStepFromResult,
+      renderGraphReport: renderChromaticGraphView,
+      renderAlsGraphReport: renderChromaticAlsGraphView } =
+      appNamespace.chromaticView.create({ core, getCandidates: () => cand });
 
     function renderChromaticGraphReport() {
-      chromaticGraphResultsEl.textContent = '';
-      if (!chromaticGraphReport) {
-        chromaticGraphResultsEl.textContent = 'No chromatic graph search has been run.';
-        return;
-      }
-      const summary = document.createElement('p');
-      summary.textContent = `${chromaticGraphReport.results.length} non-colourable graph${chromaticGraphReport.results.length === 1 ? '' : 's'}.`
-        + (chromaticGraphReport.stats?.truncated ? ' Search limit reached.' : '');
-      chromaticGraphResultsEl.appendChild(summary);
-      const list = document.createElement('ul');
-      list.className = 'log';
-      chromaticGraphReport.results.forEach((record, index) => {
-        const item = document.createElement('li');
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'chain-result';
-        button.textContent = `${index + 1}. ${chromaticGraphEureka(record)}`;
-        button.title = 'Highlight this chromatic graph and its guardian eliminations';
-        if (selectedChromaticGraphIndex === index) button.classList.add('selected');
-        button.addEventListener('click', () => {
+      renderChromaticGraphView({
+        element: chromaticGraphResultsEl,
+        report: chromaticGraphReport,
+        selectedIndex: selectedChromaticGraphIndex,
+        onSelect: (record, index) => {
           selectedChromaticGraphIndex = index;
           activeStep = chromaticStepFromResult(record);
           render();
           openReportPanel(chromaticGraphResultsEl);
           focusMap();
           setStatus(`Chromatic graph ${index + 1} selected.`, 'ok');
-        });
-        item.appendChild(button);
-        list.appendChild(item);
+        },
       });
-      chromaticGraphResultsEl.appendChild(list);
     }
 
     function renderChromaticAlsGraphReport() {
-      chromaticAlsGraphResultsEl.textContent = '';
-      if (!chromaticAlsGraphReport) {
-        chromaticAlsGraphResultsEl.textContent = 'No ALS chromatic graph search has been run.';
-        return;
-      }
-      const typeLabels = {
-        1: 'Type 1: one ALS DOF guardian',
-        '2a': 'Type 2A: one ALS DOF, multiple guardians',
-        '2b': 'Type 2B: two ALS DOF, shared-digit guardians',
-        '2c': 'Type 2C: three ALS DOF-1 guardians',
-      };
-      const typeOrder = [1, '2a', '2b', '2c'];
-      const typeGroups = new Map(typeOrder.map(type => [type, []]));
-      chromaticAlsGraphReport.results.forEach((record, index) => {
-        if (!typeGroups.has(record.type)) typeGroups.set(record.type, []);
-        typeGroups.get(record.type).push({ record, index });
-      });
-      const summary = document.createElement('p');
-      const typeSummary = typeOrder
-        .map(type => `${typeLabels[type]}: ${typeGroups.get(type).length}`)
-        .join(' | ');
-      const stats = chromaticAlsGraphReport.stats || {};
-      const diagnosticSummary = [
-        Number.isFinite(stats.alsRecords) ? `ALS records: ${stats.alsRecords}` : '',
-        Number.isFinite(stats.alsDofZero) ? `DOF 0: ${stats.alsDofZero}` : '',
-        Number.isFinite(stats.tested) ? `tests: ${stats.tested}` : '',
-      ].filter(Boolean).join(' | ');
-      summary.textContent = `${chromaticAlsGraphReport.results.length} ALS-backed non-colourable graph${chromaticAlsGraphReport.results.length === 1 ? '' : 's'} (${typeSummary}).`
-        + (diagnosticSummary ? ` ${diagnosticSummary}.` : '')
-        + (stats.truncated ? ' Search limit reached.' : '');
-      chromaticAlsGraphResultsEl.appendChild(summary);
-      typeGroups.forEach((entries, type) => {
-        if (!entries.length) return;
-        const heading = document.createElement('h3');
-        heading.textContent = typeLabels[type] || `Type ${type}`;
-        chromaticAlsGraphResultsEl.appendChild(heading);
-        const list = document.createElement('ul');
-        list.className = 'log';
-        entries.forEach(({ record, index }) => {
-          const item = document.createElement('li');
-          const button = document.createElement('button');
-          button.type = 'button';
-          button.className = 'chain-result';
-          if (selectedChromaticAlsGraphIndex === index) button.classList.add('selected');
-          button.textContent = `${index + 1}. ${chromaticGraphEureka(record)}`;
-          button.title = 'Highlight this ALS-backed chromatic graph and its eliminations';
-          button.addEventListener('click', () => {
-            selectedChromaticAlsGraphIndex = index;
-            activeStep = chromaticStepFromResult(record);
-            render();
-            openReportPanel(chromaticAlsGraphResultsEl);
-            focusMap();
-            setStatus(`ALS chromatic graph ${index + 1} selected.`, 'ok');
-          });
-          item.appendChild(button);
-          list.appendChild(item);
-        });
-        chromaticAlsGraphResultsEl.appendChild(list);
+      renderChromaticAlsGraphView({
+        element: chromaticAlsGraphResultsEl,
+        report: chromaticAlsGraphReport,
+        selectedIndex: selectedChromaticAlsGraphIndex,
+        onSelect: (record, index) => {
+          selectedChromaticAlsGraphIndex = index;
+          activeStep = chromaticStepFromResult(record);
+          render();
+          openReportPanel(chromaticAlsGraphResultsEl);
+          focusMap();
+          setStatus(`ALS chromatic graph ${index + 1} selected.`, 'ok');
+        },
       });
     }
 
@@ -5382,6 +4175,12 @@
       depthScaledChainRating } = appNamespace.chainScoring;
     const { chainLinkScoreModifier } = appNamespace.chainModifiers.create(
       module => chainModuleSubsets(module));
+    const { fromResult: chainStepFromResult } = appNamespace.chainStep.create({
+      core,
+      displayChainForUi,
+      chainText,
+      defaultCandidateGrid: cand,
+    });
     const { isTransportAlsXyRingShape, normalizedChainStructureName } = appNamespace.chainClassification;
     const { alsDofScore, alsDofMoveKey, alsDofMoveEnabled } = appNamespace.dofRating;
 
@@ -5639,7 +4438,12 @@
       return unknownRating(step?.desc || '');
     }
 
-    const { fromResult: alsDofStepFromResult } = appNamespace.dofStep.create({
+    const {
+      fromResult: alsDofStepFromResult,
+      fromAlsChainResult: modularAlsDofChainStepFromResult,
+      fromAhsResult: modularAhsDofStepFromResult,
+      fromAhsChainResult: modularAhsDofChainStepFromResult,
+    } = appNamespace.dofStep.create({
       core,
       rateStep: ratingForStep,
     });
@@ -6019,6 +4823,8 @@
     });
     const displayedStepDescription = solutionLogView.displayedStepDescription;
     const renderLog = () => solutionLogView.render(logEntries, historyState);
+    const solutionListText = () => solutionLogView.solutionListText(logEntries);
+    const solutionEurekaText = () => solutionLogView.solutionEurekaText(logEntries);
 
     const { renderList: renderPomList } = appNamespace.pomView.create(pomResultsEl);
 
@@ -7436,7 +6242,7 @@
       threeDMedusaMultiResultsEl.appendChild(summary);
       if (!threeDMedusaMultiReport.length) {
         const empty = document.createElement('p');
-        empty.textContent = 'No legal 3D-Medusa Multi-colouring constructions containing a bivalve were found.';
+        empty.textContent = 'No legal 3D-Medusa Multi-colouring constructions were found.';
         threeDMedusaMultiResultsEl.appendChild(empty);
         return;
       }
@@ -8684,6 +7490,13 @@
           subclass: null,
           path: chain.isRing ? ['Ring'] : [],
         });
+        locations.push({
+          family: 'Hidden XY-Chain',
+          wing: 'Strong Wing | Ring',
+          rank: strongType,
+          subclass: null,
+          path: [strongType],
+        });
       }
 
       const inversionType = inversionChainType(chain);
@@ -9134,68 +7947,27 @@
       };
     }
 
-    function phaseCombinations(values, size) {
-      if (size < 1 || size > values.length) return [];
-      const result = [];
-      const current = [];
-      const visit = start => {
-        if (current.length === size) {
-          result.push([...current]);
-          return;
-        }
-        for (let index = start; index < values.length; index++) {
-          current.push(values[index]);
-          visit(index + 1);
-          current.pop();
-        }
-      };
-      visit(0);
-      return result;
-    }
-
     function chainSearchPhasePlan(maxDepth, profile = null) {
-      const includeAls = profile?.includeAlsRcc ?? chainAlsRccEl.checked;
-      const strongLinkTypes = [...new Set(
-        (profile?.strongLinkTypes || chainStrongTypeEls
-          .map((element, index) => element.checked ? index : null)
-          .filter(index => index !== null))
-          .filter(type => Number.isInteger(type) && type >= 0 && type <= 7),
-      )].sort((left, right) => left - right);
+      const includeAls = appNamespace.phaseBuilder.resolveIncludeAls(profile, chainAlsRccEl);
+      const strongLinkTypes = appNamespace.phaseBuilder.resolveStrongLinkTypes(
+        profile,
+        chainStrongTypeEls,
+      );
       const phases = [];
-      const addPhase = (name, types, options = {}) => {
-        const phaseDepth = Math.min(maxDepth, options.maxDepth || maxDepth);
-        if (phaseDepth < 2) return;
-        phases.push({
-          name,
-          includeAls: !!options.includeAls,
-          strongLinkTypes: [...types],
-          maxDepth: phaseDepth,
-          requireAls: !!options.requireAls,
-           alsCellCount: options.alsCellCount,
-           alsCellCounts: options.alsCellCounts || null,
-          alsModuleKinds: options.alsModuleKinds || null,
-          alsLinkMode: options.alsLinkMode || null,
-          barnsSize: options.barnsSize ?? null,
-          requireMixed: !!options.requireMixed,
-          minAlsNodes: options.minAlsNodes ?? null,
-          minDepth: options.minDepth ?? null,
-          family: options.family || null,
-          allowedMoveKeys: options.allowedMoveKeys || null,
-          allowedMoveGroups: options.allowedMoveGroups || null,
-          singleDigitOnly: options.singleDigitOnly === true,
-          searchLimits: options.searchLimits || null,
-        });
-      };
-
-      const addMixedStage = (name, options = {}) => {
-        if (!strongLinkTypes.length) return;
-        addPhase(name, strongLinkTypes, {
-          includeAls: true,
-          requireAls: true,
-          requireMixed: true,
-          ...options,
-        });
-      };
+      const addPhase = (name, types, options = {}) => appNamespace.phaseBuilder.addPhase(
+        phases,
+        name,
+        types,
+        maxDepth,
+        options,
+      );
+      const addMixedStage = (name, options = {}) => appNamespace.phaseBuilder.addMixedStage(
+        phases,
+        name,
+        strongLinkTypes,
+        maxDepth,
+        options,
+      );
 
       // Phase 1: B.A.R.N.S. and transport forms. B.A.R.N.S. is checked by
       // increasing size so a smaller equal-cell/equal-digit form wins first.
@@ -9227,7 +7999,7 @@
       // sequence as types 0 through 3.
       for (const type of strongLinkTypes) addPhase(`strong-${type}`, [type]);
       for (let size = 2; size <= 4; size++) {
-        for (const types of phaseCombinations(strongLinkTypes, size)) {
+        for (const types of appNamespace.phaseBuilder.combinations(strongLinkTypes, size)) {
           addPhase(`strong-${types.join('-')}`, types);
         }
       }
@@ -9311,162 +8083,26 @@
       return phases;
     }
 
-    function solverChainPhasePlan(maxDepth, profile = null) {
-      const phases = chainSearchPhasePlan(maxDepth, profile);
-      const firstStrongIndex = phases.findIndex(phase => phase.name.startsWith('strong-'));
-      if (firstStrongIndex < 0) return phases;
+    const solverChainPhasePlan = (maxDepth, profile = null) => appNamespace.solverPhase.chainPhasePlan(
+      maxDepth,
+      profile,
+      chainSearchPhasePlan,
+    );
 
-      const strongLinkTypes = [...new Set(
-        phases
-          .filter(phase => phase.name.startsWith('strong-'))
-          .flatMap(phase => phase.strongLinkTypes),
-      )].sort((left, right) => left - right);
-      if (!strongLinkTypes.length) return phases;
+    const chainAlsNodeCount = chain => appNamespace.solverPhase.alsNodeCount(chain, chainModuleSubsets);
 
-      // A single graph walk with the selected strong-link types replaces the
-      // individual type and combination walks used by the report buttons.
-      // Next/generator still evaluates every returned chain by rating, while
-      // avoiding repeated construction and traversal of the same graph.
-      const pureStrongPhase = {
-        name: 'strong-all',
-        includeAls: false,
-        strongLinkTypes,
-        maxDepth: Math.min(maxDepth, profile?.maxDepth || maxDepth),
-        requireAls: false,
-        requireMixed: false,
-        minDepth: null,
-        family: null,
-      };
-      return [
-        ...phases.slice(0, firstStrongIndex),
-        pureStrongPhase,
-        ...phases.slice(firstStrongIndex).filter(phase => !phase.name.startsWith('strong-')),
-      ];
-    }
+    const chainMatchesSearchPhase = (chain, phase) => appNamespace.solverPhase.matchesSearchPhase(chain, phase, {
+      chainUniqueDigitCount,
+      chainModuleSubsets,
+      barnsTransportChainInfo,
+      barnsChainInfo,
+      chainMoveKeys,
+      alsSizeOneChainInfo,
+    });
 
-    function chainAlsNodeCount(chain) {
-      const nodes = new Set();
-      for (const step of chain?.steps || []) {
-        if (step.family !== 'ALS' || step.linkTypeName !== 'ALS_RCC') continue;
-        for (const subset of chainModuleSubsets(step.module)) {
-          if (!subset) continue;
-          nodes.add([
-            subset.id ?? '',
-            (subset.cells || []).join(','),
-            (subset.digits || []).join(''),
-          ].join('|'));
-        }
-      }
-      return nodes.size;
-    }
+    const phaseProfile = (profile, phase) => appNamespace.solverPhase.phaseProfile(profile, phase);
 
-    function chainMatchesSearchPhase(chain, phase) {
-      const alsSteps = (chain?.steps || []).filter(step => step.family === 'ALS');
-      const ahsSteps = (chain?.steps || []).filter(step => step.family === 'AHS');
-      const alcSteps = (chain?.steps || []).filter(step => step.family === 'ALC');
-      // The generic AIC phases are ordinary-link passes.  The walker can
-      // still return a mixed node when its graph inventory was built broadly,
-      // so enforce the phase boundary here instead of relying only on the
-      // search options.  Dedicated ALS/AHS/ALC phases opt back in explicitly.
-      if (phase?.includeAls !== true && (alsSteps.length || alcSteps.length)) return false;
-      if (phase?.includeAhs !== true && (ahsSteps.length || alcSteps.length)) return false;
-      if (phase.requireAls && !alsSteps.length) return false;
-      if (phase.minDepth != null && Number(chain?.length) < phase.minDepth) return false;
-      if (phase.maxDepth != null && Number(chain?.length) > phase.maxDepth) return false;
-      if (phase.singleDigitOnly && chainUniqueDigitCount(chain) !== 1) return false;
-      if (phase.genericAicOnly
-        && (!/^AIC(?:\s*\+\s*(?:ALS|AHS|ALC))?$/i.test(String(chain?.structureName || '').trim())
-          || chainUniqueDigitCount(chain) <= 1)) return false;
-      if (phase.requireMixed
-        && (!alsSteps.length || !(chain?.steps || []).some(step => step.family === 'SL'))) return false;
-      if (phase.alsCellCount != null || Array.isArray(phase.alsCellCounts)) {
-        const allowed = phase.alsCellCount != null
-          ? new Set([phase.alsCellCount])
-          : new Set(phase.alsCellCounts.map(Number));
-        if (alsSteps.some(step => {
-          const [entrySubset, exitSubset] = chainModuleSubsets(step.module);
-          const entrySize = (entrySubset?.cells || []).length;
-          const exitSize = (exitSubset?.cells || []).length;
-          return !allowed.has(entrySize) && !allowed.has(exitSize);
-        })) return false;
-      }
-
-      const alsNodeCount = chainAlsNodeCount(chain);
-      if (phase.minAlsNodes != null && alsNodeCount < phase.minAlsNodes) return false;
-
-      if (phase.barnsSize != null) {
-        const info = phase.family === 'barns-transport'
-          ? barnsTransportChainInfo(chain)
-          : barnsChainInfo(chain);
-        if (!info || info.sizeName.length !== phase.barnsSize) return false;
-      }
-
-      const keys = chainMoveKeys(chain);
-      if (Array.isArray(phase.allowedMoveKeys)
-        && !phase.allowedMoveKeys.some(key => keys.has(key))) return false;
-      if (Array.isArray(phase.allowedMoveGroups)
-        && !phase.allowedMoveGroups.some(group => group.some(key => keys.has(key)))) return false;
-      // Dedicated AHS families have their own XZ -> XY -> Chain phases.
-      // Their compact graph depth must not let them enter an earlier AIC phase.
-      if (!phase.family && ['ahs-xz', 'ahs-xy', 'ahs-chain'].some(key => keys.has(key))) return false;
-      if (!phase.family) return true;
-      if (phase.family === 'barns') return keys.has('barns');
-      if (phase.family === 'barns-transport') return keys.has('barns-transport');
-      if (phase.family === 'als-named') return keys.has('als-named');
-      if (phase.family === 'ahs-named') return keys.has('ahs-named');
-      if (phase.family === 'alc-named') return keys.has('alc-named');
-      if (phase.family === 'als-xz') {
-        return keys.has('als-xz') || keys.has('t-als-xz')
-          || keys.has('als-named') || alsNodeCount === 2;
-      }
-      if (phase.family === 'ahs-xz') return keys.has('ahs-xz');
-      if (phase.family === 'alc-xz') return keys.has('alc-xz');
-      if (phase.family === 'als-xy') {
-        // A pure ALS-XY wing can be made from three size-1 ALSs: the
-        // ordinary bivalent XY-Wing. Those nodes arrive as type-4 cell ALS
-        // links rather than ALS_RCC modules, so alsNodeCount is zero for
-        // them. Keep the explicit three-module test for larger ALS-XY forms.
-        const sizeOne = alsSizeOneChainInfo(chain);
-        return keys.has('als-xy')
-          || keys.has('t-als-xy')
-          || alsNodeCount === 3
-          || sizeOne?.breakdown === 'XY-Wing';
-      }
-      if (phase.family === 'ahs-xy') return keys.has('ahs-xy');
-      if (phase.family === 'alc-xy') return keys.has('alc-xy');
-      if (phase.family === 'als-chain') return keys.has('als-chain') || alsNodeCount > 3;
-      if (phase.family === 'ahs-chain') return keys.has('ahs-chain');
-      if (phase.family === 'alc-chain') return keys.has('alc-chain');
-      if (phase.family === 'alc-dof') return keys.has('alc-dof');
-      if (phase.family === 'aic-als') return keys.has('aic-als') || keys.has('als-named') || keys.has('w-transport');
-      return true;
-    }
-
-    function phaseProfile(profile, phase) {
-      const selectedStrongTypes = Array.isArray(profile?.interactiveStrongLinkTypes)
-        ? new Set(profile.interactiveStrongLinkTypes)
-        : null;
-      const phaseStrongTypes = Array.isArray(phase.strongLinkTypes)
-        ? phase.strongLinkTypes
-        : [];
-      const configuredDepth = Number(profile?.interactiveMaxDepth);
-      return {
-        ...(profile || {}),
-        includeAlsRcc: phase.includeAls === true
-          && profile?.interactiveIncludeAls !== false,
-        includeAhs: phase.includeAhs === true
-          && profile?.interactiveIncludeAhs !== false,
-        ahsMaxCells: phase.ahsMaxCells ?? profile?.ahsMaxCells ?? null,
-        strongLinkTypes: selectedStrongTypes
-          ? phaseStrongTypes.filter(type => selectedStrongTypes.has(type))
-          : phaseStrongTypes,
-        maxDepth: Number.isInteger(configuredDepth)
-          ? Math.min(phase.maxDepth, configuredDepth)
-          : phase.maxDepth,
-      };
-    }
-
-    function bestChainFromReport(
+    function legacyBestChainFromReport(
       report,
       phase,
       enabledTypes,
@@ -9485,21 +8121,6 @@
         safetyRejected: 0,
         ratingRejected: 0,
         accepted: 0,
-      };
-      const phaseTechniqueOrder = chain => {
-        if (Array.isArray(phase?.allowedMoveGroups) && phase.allowedMoveGroups.length) {
-          const keys = chainMoveKeys(chain);
-          const groupIndex = phase.allowedMoveGroups.findIndex(
-            group => group.some(key => keys.has(key)),
-          );
-          return groupIndex >= 0 ? groupIndex : Number.POSITIVE_INFINITY;
-        }
-        if (!Array.isArray(phase?.allowedMoveKeys) || !phase.allowedMoveKeys.length) {
-          return moveTieOrder(chain, null);
-        }
-        const keys = chainMoveKeys(chain);
-        const index = phase.allowedMoveKeys.findIndex(key => keys.has(key));
-        return index >= 0 ? index : Number.POSITIVE_INFINITY;
       };
       let best = null;
       const acceptedChains = [];
@@ -9566,7 +8187,12 @@
             // before comparing link-modified scores, so a later named form
             // cannot outrank an earlier X-chain/Skyscraper/Kite form.
             priority: [
-              phaseTechniqueOrder(chain),
+              appNamespace.solverPhase.phaseTechniqueOrder(
+                chain,
+                phase,
+                chainMoveKeys,
+                moveTieOrder,
+              ),
               // Prefer the smallest valid proof within a hierarchy phase.
               // A longer walk may contain this chain, but it must not hide it
               // or win merely because it exposes more cumulative exclusions.
@@ -9583,252 +8209,30 @@
       return best;
     }
 
-    function chainStepFromResult(chain, report, index, candidateGrid = cand) {
-      chain = displayChainForUi(chain);
-      const explanationGrid = report?.candidateGrid || candidateGrid;
-      const items = core.eliminationItems({ items: chain.eliminations || [] }, explanationGrid);
-      // The report may contain several alternatives from one search pass.
-      // Normalize each displayed chain against the same pre-apply grid so
-      // every alternative keeps all of its exclusions when selected later.
-      const displayedChain = {
-        ...chain,
-        eliminations: items,
-      };
-      return {
-        tech: 'chain',
-        name: displayedChain.structureName,
-        structureName: displayedChain.structureName,
-        chainLength: displayedChain.length,
-        chain: displayedChain,
-        chainReport: report,
-        chainIndex: index,
-        desc: chainText(displayedChain),
-        elim: { items },
-        digits: [...new Set(items.map(item => item.digit))],
-        at: [...new Set((displayedChain.steps || []).flatMap(step => [
-          ...(step.entry?.cells || []),
-          ...(step.exit?.cells || []),
-        ]))],
-        vertices: [...new Set((displayedChain.steps || []).flatMap(step => [
-          ...(step.entry?.cells || []),
-          ...(step.exit?.cells || []),
-        ]))],
-      };
-    }
-
-    function chainMoveKeys(chain) {
-      const fullName = String(chain?.structureName || '');
-      const name = fullName
-        .replace(/^\s*(?:AIC\s*\+\s*ALS|ALS|AHS)\s*-\s*/i, '')
-        .trim();
-      const keys = new Set();
-
-      if (/^(?:X-Chain|AIC)$/i.test(name)) {
-        if (chainUniqueDigitCount(chain) === 1) keys.add('x-chain');
-        else keys.add('aic-generic');
-      }
-      if (/^Empty Rectangle$/i.test(name)) keys.add('empty-rectangle');
-      if (/^Dual Empty Rectangle$/i.test(name)) keys.add('dual-empty-rectangle');
-      if (/^Rec'T Kite$/i.test(name)) keys.add('rect-kite');
-      if (/^(?:Bridged ERI|Bridged Empty Rectangle)$/i.test(name)) keys.add('bridged-eri');
-      if (/^3x ERI$/i.test(name)) keys.add('eri-chain');
-      if (/^2-String Kite$/i.test(name)) keys.add('2-string-kite');
-      if (/^Skyscraper$/i.test(name)) keys.add('skyscraper');
-      if (/^X-Wing$/i.test(name)) keys.add('chain-x-wing');
-      if (/^Finned X-Wing$/i.test(name)) keys.add('finned-x-wing');
-      if (/^Sashimi X-Wing$/i.test(name)) keys.add('sashimi-x-wing');
-
-      if (/^XY-Chain$/i.test(name)) keys.add('xy-chain');
-      if (/^XY-Wing$/i.test(name)) keys.add('xy-wing');
-      if (/^Remote Pair$/i.test(name)) keys.add('remote-pair');
-      if (/^Hidden XY-Chain$/i.test(name)) keys.add('hidden-xy-chain');
-      if (/^Hidden Remote Pair$/i.test(name)) keys.add('hidden-remote-pair');
-
-      if (/^W-(?:Wing|Ring)$/i.test(name)) keys.add('w-wing');
-      if (/^S-(?:Wing|Ring)$/i.test(name)) keys.add('s-wing');
-      if (/^M(?:\(2\)|2)-(?:Wing|Ring)$/i.test(name)) keys.add('m2-wing');
-      if (/^M(?:\(3\)|3)-(?:Wing|Ring)$/i.test(name)) keys.add('m3-wing');
-      if (/^L(?:\(1\)|1)-(?:Wing|Ring)$/i.test(name)) keys.add('l1-wing');
-      if (/^L(?:\(2\)|2)-(?:Wing|Ring)$/i.test(name)) keys.add('l2-wing');
-      if (/^L(?:\(3\)|3)-(?:Wing|Ring)$/i.test(name)) keys.add('l3-wing');
-      if (/^H(?:\(1\)|1)-(?:Wing|Ring)$/i.test(name)) keys.add('h1-wing');
-      if (/^H(?:\(2\)|2)-(?:Wing|Ring)$/i.test(name)) keys.add('h2-wing');
-      if (/^H(?:\(3\)|3)-(?:Wing|Ring)$/i.test(name)) keys.add('h3-wing');
-      if (/^L-(?:Wing|Ring)$/i.test(name)) keys.add('l-named');
-      if (/^M-(?:Wing|Ring)$/i.test(name)) keys.add('m-named');
-      if (/^H-(?:Wing|Ring)$/i.test(name)) keys.add('h-named');
-      if (/^Strong[- ](?:Wing|Ring)/i.test(name)) keys.add('strong-wing');
-      if (/^i[SWMLH]/i.test(name)) keys.add('inversion');
-
-      if (/^AIC\s*\+\s*ALS\s*-\s*.+(?:Wing|Ring)$/i.test(fullName)
-        || /^ALS\s*-\s*.+(?:Wing|Ring)$/i.test(fullName)) {
-        keys.add('als-named');
-      }
-      if (/^AHS\s*-\s*.+(?:Wing|Ring)$/i.test(fullName)) keys.add('ahs-named');
-      if (/^ALC\s*-\s*.+(?:Wing|Ring)$/i.test(fullName)) keys.add('alc-named');
-
-      if (/^ALS\s*-\s*XZ$/i.test(fullName)) keys.add('als-xz');
-      if (/^T\s*-\s*ALS\s*-\s*XZ(?:\s+Ring)?$/i.test(fullName)) keys.add('t-als-xz');
-      if (/^ALS\s*-\s*XY$/i.test(fullName)) keys.add('als-xy');
-      if (/^ALC\s*-\s*XZ(?:\s+Ring)?$/i.test(fullName)) keys.add('alc-xz');
-      if (/^ALC\s*-\s*XY(?:\s+Ring)?$/i.test(fullName)) keys.add('alc-xy');
-      if (/^ALC\s*-\s*Chain(?:\s+Ring)?$/i.test(fullName)) keys.add('alc-chain');
-      if (/^ALC\s*-\s*DOF\s+Chain(?:\s+Ring)?$/i.test(fullName)) keys.add('alc-dof');
-      if (/^AHS\s*-\s*XZ(?:\s+Ring)?$/i.test(fullName)) keys.add('ahs-xz');
-      if (/^AHS\s*-\s*XY(?:\s+Ring)?$/i.test(fullName)) keys.add('ahs-xy');
-      if (/^AHS\s*-\s*Chain(?:\s+Ring)?$/i.test(fullName)) keys.add('ahs-chain');
-      if (/^T\s*-\s*ALS\s*-\s*XY(?:\s+Ring)?$/i.test(fullName)) keys.add('t-als-xy');
-      if (/^ALS\s*-\s*Chain$/i.test(fullName)) keys.add('als-chain');
-      if (/AIC\s*\+\s*ALS/i.test(fullName)) keys.add('aic-als');
-
-      if (isEriOnlyXChain(chain) && !keys.has('bridged-eri')) keys.add('eri-chain');
-
-      const barns = barnsChainInfo(chain);
-      const barnsTransport = barnsTransportChainInfo(chain);
-      if (barns) keys.add('barns');
-      // A transported ALS-XZ can have the same broad three-stage shape as
-      // the legacy B.A.R.N.S. transport helper.  Its classified name is the
-      // authoritative family; do not let the structural fallback mask it.
-      if (barnsTransport && !keys.has('t-als-xz')) keys.add('barns-transport');
-
-      const alsOne = alsSizeOneChainInfo(chain);
-      if (alsOne) {
-        if (alsOne.remotePair) keys.add('remote-pair');
-        else if (alsOne.breakdown === 'XY-Wing') keys.add('xy-wing');
-        else keys.add('xy-chain');
-      }
-
-      const hidden = hiddenXyChainInfo(chain);
-      if (hidden) {
-        keys.add('hidden-xy-chain');
-        if (hidden.remotePair) keys.add('hidden-remote-pair');
-      }
-
-      return keys;
-    }
-
-    function chainMoveEnabled(chain, enabledTypes) {
-      if (!enabledTypes.has('chains')) return false;
-      const classKeys = [...chainMoveKeys(chain)]
-        .filter(key => solverMoveTypeEls.has(key));
-      return !classKeys.length || classKeys.some(key => enabledTypes.has(key));
-    }
-
-    const SOLVER_TIE_ORDER = Object.freeze({
-      'last-man-standing': 0,
-      'hidden-single': 1,
-      'naked-single': 2,
-      'box-line': 3,
-      'hidden-pair': 4,
-      'naked-pair': 5,
-      'x-wing': 6,
-      'aic-x-wing': 7,
-      'x-chain-2': 7,
-      skyscraper: 8,
-      '2-string-kite': 9,
-      'finned-x-wing': 10,
-      'sashimi-x-wing': 11,
-      'empty-rectangle': 12,
-      '2x2+k-fish-k1': 13,
-      '2x2+k-fish-k2': 14,
-      'hidden-triple': 15,
-      'naked-triple': 16,
-      swordfish: 17,
-      'l1-wing': 18,
-      '3x-eri': 19,
-      'dual-empty-rectangle': 20,
-      'rect-kite': 21,
-      'bridged-eri': 22,
-      'x-chain-3': 22.5,
-      '3x3+k-fish-k1': 23,
-      '3x3+k-fish-k2': 24,
-      barns: 25,
-      'xy-wing': 26,
-      'hidden-quad': 27,
-      'naked-quad': 28,
-      jellyfish: 29,
-      '4x4+k-fish-k1': 30,
-      '4x-eri': 31,
-      'x-chain-4': 32,
-      '4x4+k-fish-k2': 33,
-      'barns-xyz-transport': 34,
-      'barns-wxyz': 35,
-      'x-chain-long': 36,
-      'eri-chain-long': 37,
-      'remote-pair': 38,
-      'xy-chain': 39,
-      'hidden-remote-pair': 40,
-      'hidden-xy-chain': 41,
-      'hidden-xy-ring': 42,
-      'l2-wing': 43,
-      'l3-wing': 44,
-      'w-wing': 45,
-      'w-transport': 46,
-      's-wing': 47,
-      'm-wing': 48,
-      'h-wing': 49,
-      'barns-wxyz-transport': 50,
-      'als-xz': 51,
-      'ahs-xz': 51.5,
-      't-als-xz': 52,
-      'als-xy': 53,
-      'ahs-xy': 53.5,
-      't-als-xy': 54,
-      'als-named': 55,
-      'als-chain': 56,
-      'ahs-chain': 56.5,
-      'aic-als': 57,
-      'aic-generic': 58,
-      'als-dof': 58,
-      dds: 59,
-      adds: 60,
-      'ahs-dof': 61,
-      'ahs-dof-chain': 62,
-      'alc-xz': 63,
-      'alc-xy': 64,
-      'alc-chain': 65,
-      'alc-dof': 66,
+    const chainMoveKeys = chain => appNamespace.chainClassification.moveKeys(chain, {
+      chainUniqueDigitCount,
+      isEriOnlyXChain,
+      barnsChainInfo,
+      barnsTransportChainInfo,
+      alsSizeOneChainInfo,
+      hiddenXyChainInfo,
     });
 
-    function directMoveTieKey(step) {
-      const tech = String(step?.tech || '');
-      if (tech === 'pointing' || tech === 'claiming' || tech === 'non-consecutive-line' || tech === 'non-consecutive-eri' || tech === 'non-consecutive-als' || tech === 'non-consecutive-als-dof' || tech === 'non-consecutive-als-dof-peer') return 'box-line';
-      if (tech === 'als-dof') return alsDofMoveKey(step);
-      if (tech === 'fish') {
-        const size = Number(step?.size);
-        const k = Number(step?.k || 0);
-        if (size === 2 && k === 0) return 'x-wing';
-        if (size === 2 && k === 1) return '2x2+k-fish-k1';
-        if (size === 2 && k === 2) return '2x2+k-fish-k2';
-        if (size === 3 && k === 0) return 'swordfish';
-        if (size === 3 && k === 1) return '3x3+k-fish-k1';
-        if (size === 3 && k === 2) return '3x3+k-fish-k2';
-        if (size === 4 && k === 0) return 'jellyfish';
-        if (size === 4 && k === 1) return '4x4+k-fish-k1';
-        if (size === 4 && k === 2) return '4x4+k-fish-k2';
-      }
-      return tech;
-    }
+    const chainMoveEnabled = (chain, enabledTypes) => appNamespace.solverPhase.chainMoveEnabled(
+      chain,
+      enabledTypes,
+      chainMoveKeys,
+      solverMoveTypeEls,
+    );
 
-    function chainComplexityRank(chain) {
-      let rank = 0;
-      for (const step of chain?.steps || []) {
-        if (step.family === 'ALS') {
-          rank += chainModuleSubsets(step.module)
-            .reduce((total, subset) => total + (subset.digits || []).length, 0);
-        } else if (step.family === 'AHS') {
-          rank += chainModuleSubsets(step.module)
-            .reduce((total, subset) => total + (subset.cells || []).length, 0);
-        }
-      }
-      if (chain?.alcXz) {
-        rank += (chain.alcXz.als?.digits || []).length;
-        rank += (chain.alcXz.ahs?.cells || []).length;
-      }
-      return rank || Number.POSITIVE_INFINITY;
-    }
+    const SOLVER_TIE_ORDER = appNamespace.chainScoring.solverTieOrder;
 
-    function chainMoveTieKey(chain) {
+    const chainComplexityRank = chain => appNamespace.chainClassification.complexityRank(
+      chain,
+      chainModuleSubsets,
+    );
+
+    function legacyChainMoveTieKey(chain) {
       const fullName = String(chain?.structureName || '');
       const name = fullName
         .replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS)\s*-\s*/i, '')
@@ -9909,69 +8313,52 @@
       return 'x-chain-long';
     }
 
-    function moveTieOrder(chain, step) {
-      const key = chain ? chainMoveTieKey(chain) : directMoveTieKey(step);
-      return SOLVER_TIE_ORDER[key] ?? Number.POSITIVE_INFINITY;
-    }
+    const chainMoveTieKey = chain => appNamespace.chainClassification.tieKey(chain, {
+      chainEriCount,
+      isEriOnlyXChain,
+      barnsChainInfo,
+      barnsTransportChainInfo,
+      alsSizeOneChainInfo,
+      hiddenXyChainInfo,
+    }) || legacyChainMoveTieKey(chain);
 
-    function solverMovePriority(chain, step, searchDepth, reportIndex) {
-      const rating = step.rating || ratingForStep(step);
-      const value = rating.category === 'Unknown'
-        ? Number.POSITIVE_INFINITY
-        : Number.isFinite(Number(rating.value))
-        ? Number(rating.value)
-        : Number.POSITIVE_INFINITY;
-      const length = Number(chain.length || chain.steps?.length || searchDepth || Infinity);
-      return [value, moveTieOrder(chain, step), chainComplexityRank(chain), length, searchDepth, reportIndex];
-    }
+    const solverRanking = appNamespace.solverRanking.create({
+      chainScoring: appNamespace.chainScoring,
+      solverTieOrder: SOLVER_TIE_ORDER,
+      alsDofMoveKey,
+      chainMoveTieKey,
+      chainComplexityRank,
+      ratingForStep,
+    });
+    const {
+      directMoveTieKey,
+      moveTieOrder,
+      solverMovePriority,
+      directMovePriority,
+      chooseBestSolverMove,
+      isHigherPriorityMove,
+    } = solverRanking;
 
-    function isHigherPriorityMove(candidate, current) {
-      if (!current) return true;
-      const nextPriority = candidate.priority;
-      const currentPriority = current.priority;
-      for (let index = 0; index < nextPriority.length; index++) {
-        if (nextPriority[index] !== currentPriority[index]) {
-          return nextPriority[index] < currentPriority[index];
-        }
-      }
-      return false;
-    }
-
-    function directMovePriority(step) {
-      const rating = step?.rating || ratingForStep(step);
-      const value = Number.isFinite(Number(rating.value))
-        ? Number(rating.value)
-        : Number.POSITIVE_INFINITY;
-      return [
-        rating.category === 'Unknown' ? Number.POSITIVE_INFINITY : value,
-        moveTieOrder(null, step),
-        0,
-        0,
-        0,
-      ];
-    }
-
-    function chooseBestSolverMove(choices = []) {
-      let best = null;
-      for (const choice of choices) {
-        if (!choice?.step) continue;
-        const candidate = {
-          ...choice,
-          priority: choice.priority || (choice.chain
-            ? solverMovePriority(
-                choice.chain,
-                choice.step,
-                choice.step?.chainLength,
-                choice.index,
-              )
-            : directMovePriority(choice.step)),
-        };
-        if (isHigherPriorityMove(candidate, best)) best = candidate;
-      }
-      if (!best) return null;
-      const { priority, ...result } = best;
-      return result;
-    }
+    const modularBestChainFromReport = appNamespace.chainSelection.create({
+      core,
+      displayChainForUi,
+      chainMatchesSearchPhase,
+      chainMoveEnabled,
+      chainStepFromResult,
+      chainSafetyFlags,
+      chainText,
+      ratingForStep,
+      phaseTechniqueOrder: appNamespace.solverPhase.phaseTechniqueOrder,
+      chainMoveKeys,
+      moveTieOrder,
+      solverMovePriority,
+      isHigherPriorityMove,
+      onDiagnostics: diagnostics => {
+        lastChainSelectionDiagnostics = diagnostics;
+      },
+    }).bestFromReport;
+    const bestChainFromReport = (...args) =>
+      modularBestChainFromReport(...args) || legacyBestChainFromReport(...args);
 
     function chooseLowerScoringMove(simple, chainResult) {
       return chooseBestSolverMove([
@@ -9980,25 +8367,20 @@
       ]);
     }
 
-    function bestAlsDofMoveFromReport(candidateGrid, report, enabledTypes, profile = null) {
-      let best = null;
-      for (let index = 0; index < (report?.results || []).length; index++) {
-        const result = report.results[index];
-        if (!alsDofMoveEnabled(result, enabledTypes)) continue;
-        const step = alsDofStepFromResult(result, report, index, candidateGrid);
-        if (!step) continue;
-        if (profile?.maxRank !== undefined && step.rating.rank > profile.maxRank) continue;
-        const candidate = {
-          step,
-          chain: null,
-          alsDofReport: report,
-          alsDofIndex: index,
-          priority: directMovePriority(step),
-        };
-        if (isHigherPriorityMove(candidate, best)) best = candidate;
-      }
-      return best;
-    }
+    const bestAlsDofMoveFromReport = (candidateGrid, report, enabledTypes, profile = null) => {
+      return appNamespace.alsDofSelection.bestMove(
+        candidateGrid,
+        report,
+        enabledTypes,
+        profile,
+        {
+          moveEnabled: alsDofMoveEnabled,
+          stepFromResult: alsDofStepFromResult,
+          directPriority: directMovePriority,
+          isHigherPriority: isHigherPriorityMove,
+        },
+      );
+    };
 
     function findSolverAlsDofMove(
       candidateGrid = cand,
@@ -10050,45 +8432,18 @@
       return bestAlsDofMoveFromReport(candidateGrid, report, enabledTypes, profile);
     }
 
-    function ahsDofStepFromResult(result, report, index, candidateGrid) {
-      const items = core.eliminationItems({ items: result?.eliminations || [] }, candidateGrid);
-      if (!items.length) return null;
-      const step = {
-        tech: 'ahs-dof',
-        name: result.name || 'AHS - DOF',
-        structureName: result.name || 'AHS - DOF',
-        size: result.dof || result.ahsDOF || result.ahsDof || 1,
-        isRing: !!result.isRing,
-        record: result,
-        ahsDofReport: report,
-        ahsDofIndex: index,
-        desc: core.formatAhsDof({ ...result, eliminations: items }),
-        elim: { items },
-        digits: [...new Set(items.map(item => item.digit))],
-        at: [...new Set((result.primaryA?.cells || result.hub?.cells || [])
-          .concat((result.auxiliary || []).flatMap(node => node.cells || [])))],
-      };
-      step.rating = ratingForStep(step);
-      return step;
-    }
-
-    function bestAhsDofMoveFromReport(candidateGrid, report, profile = null) {
-      let best = null;
-      for (let index = 0; index < (report?.results || []).length; index++) {
-        const step = ahsDofStepFromResult(report.results[index], report, index, candidateGrid);
-        if (!step) continue;
-        if (profile?.maxRank !== undefined && step.rating.rank > profile.maxRank) continue;
-        const candidate = {
-          step,
-          chain: null,
-          ahsDofReport: report,
-          ahsDofIndex: index,
-          priority: directMovePriority(step),
-        };
-        if (isHigherPriorityMove(candidate, best)) best = candidate;
-      }
-      return best;
-    }
+    const bestAhsDofMoveFromReport = (candidateGrid, report, profile = null) => {
+      return appNamespace.alsDofSelection.bestAhsMove(
+        candidateGrid,
+        report,
+        profile,
+        {
+          stepFromResult: modularAhsDofStepFromResult,
+          directPriority: directMovePriority,
+          isHigherPriority: isHigherPriorityMove,
+        },
+      );
+    };
 
     function findSolverAhsDofMove(candidateGrid = cand, budget = 'interactive', profile = null) {
       const maxCells = Math.min(9, Math.max(2, Number(profile?.ahsMaxCells) || 6));
@@ -10123,49 +8478,20 @@
       return bestAhsDofMoveFromReport(candidateGrid, report, profile);
     }
 
-    function alsDofChainStepFromResult(result, report, index, candidateGrid) {
-      const items = core.eliminationItems({ items: result?.eliminations || [] }, candidateGrid);
-      if (!items.length) return null;
-      const step = {
-        tech: 'als-dof-chain',
-        name: result.name || 'ALS-DOF Chain',
-        structureName: result.name || 'ALS-DOF Chain',
-        mode: result.mode || 'chain',
-        isRing: !!result.isRing,
-        ringForm: result.ringForm,
-        size: result.size,
-        alsDofRecord: result,
-        alsDofChainReport: report,
-        alsDofChainIndex: index,
-        desc: core.formatAlsDof({ ...result, eliminations: items }),
-        elim: { items },
-        digits: [...new Set(items.map(item => item.digit))],
-        at: [...new Set((result.primaryA?.cells || [])
-          .concat((result.auxiliary || []).flatMap(node => node.cells || []))
-          .concat(result.primaryC?.cells || [])
-          .concat((result.hydraBranches || []).flatMap(branch => branch.chainCells || [])))],
-      };
-      step.rating = ratingForStep(step);
-      return step;
-    }
-
-    function bestAlsDofChainMoveFromReport(candidateGrid, report, profile = null) {
-      let best = null;
-      for (let index = 0; index < (report?.results || []).length; index++) {
-        const step = alsDofChainStepFromResult(report.results[index], report, index, candidateGrid);
-        if (!step) continue;
-        if (profile?.maxRank !== undefined && step.rating.rank > profile.maxRank) continue;
-        const candidate = {
-          step,
-          chain: null,
-          alsDofChainReport: report,
-          alsDofChainIndex: index,
-          priority: directMovePriority(step),
-        };
-        if (isHigherPriorityMove(candidate, best)) best = candidate;
-      }
-      return best;
-    }
+    const bestAlsDofChainMoveFromReport = (candidateGrid, report, profile = null) => {
+      return appNamespace.alsDofSelection.bestChainMove(
+        candidateGrid,
+        report,
+        profile,
+        {
+          stepFromResult: modularAlsDofChainStepFromResult,
+          directPriority: directMovePriority,
+          isHigherPriority: isHigherPriorityMove,
+          reportKey: 'alsDofChainReport',
+          indexKey: 'alsDofChainIndex',
+        },
+      );
+    };
 
     function findSolverAlsDofChainMove(candidateGrid = cand, budget = 'interactive', profile = null) {
       const payload = {
@@ -10197,46 +8523,20 @@
       return bestAlsDofChainMoveFromReport(candidateGrid, report, profile);
     }
 
-    function ahsDofChainStepFromResult(result, report, index, candidateGrid) {
-      const items = core.eliminationItems({ items: result?.eliminations || [] }, candidateGrid);
-      if (!items.length) return null;
-      const step = {
-        tech: 'ahs-dof-chain',
-        name: result.name || 'AHS - DOF Chain',
-        structureName: result.name || 'AHS - DOF Chain',
-        isRing: !!result.isRing,
-        record: result,
-        ahsDofChainReport: report,
-        ahsDofChainIndex: index,
-        desc: core.formatAhsDofChain({ ...result, eliminations: items }),
-        elim: { items },
-        digits: [...new Set(items.map(item => item.digit))],
-        at: [...new Set((result.nets || []).flatMap(net => [
-          ...(net.primaryA?.cells || net.hub?.cells || []),
-          ...(net.auxiliary || []).flatMap(node => node.cells || []),
-        ]))],
-      };
-      step.rating = ratingForStep(step);
-      return step;
-    }
-
-    function bestAhsDofChainMoveFromReport(candidateGrid, report, profile = null) {
-      let best = null;
-      for (let index = 0; index < (report?.results || []).length; index++) {
-        const step = ahsDofChainStepFromResult(report.results[index], report, index, candidateGrid);
-        if (!step) continue;
-        if (profile?.maxRank !== undefined && step.rating.rank > profile.maxRank) continue;
-        const candidate = {
-          step,
-          chain: null,
-          ahsDofChainReport: report,
-          ahsDofChainIndex: index,
-          priority: directMovePriority(step),
-        };
-        if (isHigherPriorityMove(candidate, best)) best = candidate;
-      }
-      return best;
-    }
+    const bestAhsDofChainMoveFromReport = (candidateGrid, report, profile = null) => {
+      return appNamespace.alsDofSelection.bestChainMove(
+        candidateGrid,
+        report,
+        profile,
+        {
+          stepFromResult: modularAhsDofChainStepFromResult,
+          directPriority: directMovePriority,
+          isHigherPriority: isHigherPriorityMove,
+          reportKey: 'ahsDofChainReport',
+          indexKey: 'ahsDofChainIndex',
+        },
+      );
+    };
 
     function findSolverAhsDofChainMove(candidateGrid = cand, budget = 'interactive', profile = null) {
       const payload = {
@@ -10276,84 +8576,20 @@
       return bestAhsDofChainMoveFromReport(candidateGrid, report, profile);
     }
 
-    function alcSearchOptions(phase, candidateGrid, budget = 'interactive') {
-      const nodeLimits = chainNodeLimitOptions('alc');
-      const fullFoxRange = phase?.fullFoxRange === true;
-      const maxResults = budget === 'generator' ? 250 : 500;
-      const common = {
-        maxChains: maxResults,
-        maxResultAttempts: budget === 'generator' ? 12000 : 30000,
-        maxResultAttemptsPerStart: budget === 'generator' ? 600 : 1500,
-        maxStates: budget === 'generator' ? 30000 : 60000,
-        maxQueue: budget === 'generator' ? 30000 : 60000,
-        maxBranching: budget === 'generator' ? 120 : 200,
-      };
-      if (phase.alcType === 'xz') return {
-        ...common,
-        maxAlsCells: fullFoxRange ? Math.min(8, nodeLimits.alsMaxCells ?? 8) : (nodeLimits.alsMaxCells ?? 5),
-        maxAhsDigits: fullFoxRange ? Math.min(8, nodeLimits.ahsMaxDigits ?? 8) : 5,
-        maxAhsCells: fullFoxRange ? Math.min(9, nodeLimits.ahsMaxCells ?? 9) : 7,
-        maxAhsDof: 5,
-        ...(nodeLimits.alsMaxSizeDOF == null ? {} : { alsMaxSizeDOF: nodeLimits.alsMaxSizeDOF }),
-        ...(nodeLimits.alsMaxSizeFox == null ? {} : { alsMaxSizeFox: nodeLimits.alsMaxSizeFox }),
-        ...(nodeLimits.ahsMaxSize == null ? {} : { ahsMaxSize: nodeLimits.ahsMaxSize }),
-        ...(nodeLimits.ahsMaxFox == null ? {} : { ahsMaxFox: nodeLimits.ahsMaxFox }),
-        ...(nodeLimits.ahsMaxCells == null ? {} : { maxAhsCells: Math.min(7, nodeLimits.ahsMaxCells) }),
-      };
-      if (phase.alcType === 'xy') return {
-        ...common,
-        maxDepth: 3,
-        maxAlsCells: nodeLimits.alsMaxCells ?? 5,
-        maxAhsDigits: 5,
-        maxAhsCells: 7,
-        ...(nodeLimits.alsMaxSizeDOF == null ? {} : { alsMaxSizeDOF: nodeLimits.alsMaxSizeDOF }),
-        ...(nodeLimits.alsMaxSizeFox == null ? {} : { alsMaxSizeFox: nodeLimits.alsMaxSizeFox }),
-        ...(nodeLimits.ahsMaxSize == null ? {} : { ahsMaxSize: nodeLimits.ahsMaxSize }),
-        ...(nodeLimits.ahsMaxFox == null ? {} : { ahsMaxFox: nodeLimits.ahsMaxFox }),
-        ...(nodeLimits.ahsMaxCells == null ? {} : { maxAhsCells: Math.min(7, nodeLimits.ahsMaxCells) }),
-      };
-      if (phase.alcType === 'chain') return {
-        ...common,
-        maxDepth: Math.max(4, phase.maxDepth || 8),
-        maxAlsCells: nodeLimits.alsMaxCells ?? 5,
-        maxAhsDigits: 5,
-        maxAhsCells: 7,
-        ...(nodeLimits.alsMaxSizeDOF == null ? {} : { alsMaxSizeDOF: nodeLimits.alsMaxSizeDOF }),
-        ...(nodeLimits.alsMaxSizeFox == null ? {} : { alsMaxSizeFox: nodeLimits.alsMaxSizeFox }),
-        ...(nodeLimits.ahsMaxSize == null ? {} : { ahsMaxSize: nodeLimits.ahsMaxSize }),
-        ...(nodeLimits.ahsMaxFox == null ? {} : { ahsMaxFox: nodeLimits.ahsMaxFox }),
-        ...(nodeLimits.ahsMaxCells == null ? {} : { maxAhsCells: Math.min(7, nodeLimits.ahsMaxCells) }),
-      };
-      return {
-        ...common,
-        maxDepth: Math.max(3, phase.maxDepth || 8),
-        maxDofRoots: budget === 'generator' ? 250 : 500,
-        maxAlsDigits: nodeLimits.alsMaxSizeDOF == null ? 5 : nodeLimits.alsMaxSizeDOF + 1,
-        maxAlsAuxiliary: 5,
-        maxAhsDof: 3,
-        maxAhsAuxiliary: 5,
-        maxAhsCells: nodeLimits.ahsMaxCells ?? 7,
-        maxSearchChains: budget === 'generator' ? 500 : 1000,
-      };
-    }
+    const alcSearchOptions = (phase, candidateGrid, budget = 'interactive') =>
+      appNamespace.alcSearch.options(phase, budget, chainNodeLimitOptions('alc'));
 
-    function bestAlcMoveFromReport(candidateGrid, report, phase, fixedGrid, expectedSolution, profile) {
-      const chainPhase = {
-        ...(phase.chainPhase || {}),
-        alcType: phase.alcType,
-        family: `alc-${phase.alcType}`,
-      };
-      return bestChainFromReport(
-        report,
-        chainPhase,
-        new Set(['chains']),
+    const bestAlcMoveFromReport = (candidateGrid, report, phase, fixedGrid, expectedSolution, profile) => {
+      return appNamespace.alcSearch.bestMoveFromReport(
         candidateGrid,
+        report,
+        phase,
         fixedGrid,
         expectedSolution,
-        chainPhase.maxDepth || 8,
         profile,
+        bestChainFromReport,
       );
-    }
+    };
 
     function findSolverAlcMove(
       candidateGrid = cand,
@@ -10365,11 +8601,7 @@
     ) {
       if (!phase?.alcType) return null;
       const options = alcSearchOptions(phase, candidateGrid, budget);
-      let report;
-      if (phase.alcType === 'xz') report = core.findAlcXz(candidateGrid, options);
-      else if (phase.alcType === 'xy') report = core.findAlcXy(candidateGrid, options);
-      else if (phase.alcType === 'chain') report = core.findAlcChain(candidateGrid, options);
-      else report = core.findAlcDofChains(candidateGrid, options);
+      const report = appNamespace.alcSearch.run(core, candidateGrid, phase, options);
       const best = bestAlcMoveFromReport(
         candidateGrid,
         report,
@@ -10392,10 +8624,10 @@
     ) {
       if (!phase?.alcType) return null;
       const options = alcSearchOptions(phase, candidateGrid, budget);
-      const report = await runSearchWorker(`alc-${phase.alcType}`, {
-        candidateGrid,
-        ...options,
-      });
+      const report = await runSearchWorker(
+        `alc-${phase.alcType}`,
+        appNamespace.alcSearch.workerPayload(candidateGrid, options),
+      );
       const best = bestAlcMoveFromReport(
         candidateGrid,
         report,
@@ -10408,44 +8640,16 @@
       return best;
     }
 
-    function solverMslsOptions(budget = 'interactive') {
-      const maxSize = 5;
-      return {
-        minBaseSectors: 3,
-        minCoverSectors: 3,
-        maxBaseSectors: maxSize,
-        maxCoverSectors: maxSize,
-        mixedCovers: true,
-        maxRemovedCells: 1,
-        fastCover: true,
-        maxK: 1,
-        maxLinks: 81,
-        maxCells: maxSize * 9,
-        maxStates: budget === 'generator' ? 5000000 : 20000000,
-        maxResults: budget === 'generator' ? 250 : 1000,
-      };
-    }
+    const solverMslsOptions = (budget = 'interactive') => appNamespace.mslsSearch.solverOptions(budget);
 
-    function bestMslsMoveFromReport(candidateGrid, report, profile = null) {
-      let best = null;
-      for (let index = 0; index < (report?.results || []).length; index++) {
-        const step = mslsStepFromResult(report.results[index]);
-        step.mslsReport = report;
-        step.mslsIndex = index;
-        step.rating = ratingForStep(step);
-        if (profile?.maxRank !== undefined && step.rating.rank > profile.maxRank) continue;
-        if (!step.elim.items.length) continue;
-        const candidate = {
-          step,
-          chain: null,
-          mslsReport: report,
-          mslsIndex: index,
-          priority: directMovePriority(step),
-        };
-        if (isHigherPriorityMove(candidate, best)) best = candidate;
-      }
-      return best;
-    }
+    const bestMslsMoveFromReport = (candidateGrid, report, profile = null) => {
+      return appNamespace.mslsSearch.bestSolverMove(report, profile, {
+        stepFromResult: mslsStepFromResult,
+        ratingForStep,
+        directPriority: directMovePriority,
+        isHigherPriority: isHigherPriorityMove,
+      });
+    };
 
     function findSolverMslsMove(candidateGrid = cand, budget = 'interactive', profile = null) {
       const options = solverMslsOptions(budget);
@@ -10461,224 +8665,40 @@
       return bestMslsMoveFromReport(candidateGrid, report, profile);
     }
 
-    function chainPhaseMinimumRating(phase) {
-      if (phase?.name === 'strong-all') return 2.25;
-      if (phase?.name === 'strong-depth-2-0-3') return 2.25;
-      if (phase?.name === 'strong-depth-3-0-3') return 3.25;
-      if (phase?.name === 'strong-depth-4-0-3') return 4.25;
-      if (phase?.name === 'strong-depth-5-plus') return 5.25;
-      if (phase?.name === 'generic-aic-depth-5-plus') return 5.25;
-      if (phase?.name === 'aic-full-depth') return 4.25;
-      if (phase?.family === 'barns') {
-        const size = Number(phase.barnsSize);
-        if (size >= 6) return 6;
-        if (size >= 5) return 5;
-        return 3.25;
-      }
-      if (phase?.family === 'barns-transport') {
-        return Number(phase.barnsSize) >= 5 ? 6 : 4.75;
-      }
-      // Moderate ALS-XZ also owns the B.A.R.N.S. XYZ wing/ring form.
-      if (phase?.name === 'moderate-als-xz') return 3.25;
-      if (phase?.family === 'als-xz') return 7;
-      if (phase?.family === 'ahs-xz') return 7;
-      if (phase?.family === 'als-xy') return 8;
-      if (phase?.family === 'ahs-xy') return 8;
-      if (phase?.family === 'als-chain') return 10;
-      if (phase?.family === 'ahs-chain') return 10;
-      // ALS-XZ, AHS-XZ, and ALC-XZ are peer techniques at this depth.
-      // Their mental difficulty is equal; ALC's mixed representation does
-      // not make this phase harder than the other two.
-      if (phase?.family === 'alc-xz') return 7;
-      if (phase?.family === 'alc-xy') return 8.5;
-      if (phase?.family === 'alc-chain') return 10.5;
-      if (phase?.family === 'alc-dof') return 12.5;
-      if (phase?.family === 'aic-als') return 11;
-      return 0;
-    }
+    const chainPhaseMinimumRating = appNamespace.solverPhase.minimumRating;
 
-    function solverAlsMaxDigits(phase, profile = null, budget = 'interactive') {
-      if (!phase?.includeAls) return null;
-      const configured = Number(profile?.alsMaxDigits);
-      const phaseLimit = Number(phase?.alsMaxDigits);
-      if (Number.isInteger(configured) && configured > 0) return configured;
-      if (Number.isInteger(phaseLimit) && phaseLimit > 0) return phaseLimit;
-      return null;
-    }
+    const solverAlsMaxDigits = appNamespace.solverPhase.alsMaxDigits;
+    const solverAlsDigitPasses = appNamespace.solverPhase.alsDigitPasses;
 
-    function solverAlsDigitPasses(phase, profile = null, budget = 'interactive') {
-      const maxDigits = solverAlsMaxDigits(phase, profile, budget);
-      if (maxDigits == null) return [null];
-      return Array.from({ length: maxDigits - 1 }, (_, index) => index + 2);
-    }
-
-    function solverAhsMaxDigits(phase, profile = null) {
-      if (!phase?.includeAhs) return null;
-      if (phase?.fullFoxRange) {
-        const configured = Number(profile?.ahsMaxDigits);
-        const selected = Number(chainNodeLimitOptions('chain').ahsMaxDigits);
-        return Math.min(8, Number.isInteger(configured) && configured >= 2
-          ? configured
-          : Number.isInteger(selected) && selected >= 2 ? selected : 8);
-      }
-      const configured = Number(profile?.ahsMaxDigits);
-      const phaseLimit = Number(phase?.ahsMaxDigits);
-      const configuredNode = Number(chainNodeLimitOptions('chain').ahsMaxDigits);
-      const values = [configured, phaseLimit, configuredNode]
-        .filter(value => Number.isInteger(value) && value >= 2);
-      return values.length ? Math.min(9, ...values) : null;
-    }
-
-    function solverAhsMaxCells(phase, profile = null) {
-      if (!phase?.includeAhs) return null;
-      const configured = Number(profile?.ahsMaxCells);
-      const phaseLimit = Number(phase?.ahsMaxCells);
-      const configuredNode = Number(chainNodeLimitOptions('chain').ahsMaxCells);
-      const values = [configured, phaseLimit, configuredNode]
-        .filter(value => Number.isInteger(value) && value >= 2);
-      return values.length ? Math.min(9, ...values) : null;
-    }
-
-    function solverAhsCellPasses(phase, profile = null) {
-      const maxDigits = solverAhsMaxDigits(phase, profile);
-      if (maxDigits == null) return [null];
-      return Array.from({ length: maxDigits - 1 }, (_, index) => index + 2);
-    }
+    const solverAhsMaxDigits = (phase, profile = null) =>
+      appNamespace.solverPhase.ahsMaxDigits(phase, profile, chainNodeLimitOptions);
+    const solverAhsMaxCells = (phase, profile = null) =>
+      appNamespace.solverPhase.ahsMaxCells(phase, profile, chainNodeLimitOptions);
+    const solverAhsCellPasses = (phase, profile = null) =>
+      appNamespace.solverPhase.ahsCellPasses(phase, profile, chainNodeLimitOptions);
 
     // Combined ALS/AHS phases use cumulative node breadth. ALS size means
     // cell count here; it must not be treated as a digit-count ceiling because
     // a two-cell ALS normally carries three digits.
-    function solverAlsCellPasses(phase, profile = null) {
-      if (!phase?.includeAls) return [null];
-      if (phase?.fullFoxRange) {
-        const configured = Number(profile?.alsMaxCells);
-        const selected = Number(chainNodeLimitOptions('chain').alsMaxCells);
-        const maxCells = Math.min(8, Number.isInteger(configured) && configured >= 2
-          ? configured
-          : Number.isInteger(selected) && selected >= 2 ? selected : 8);
-        return Array.from({ length: Math.max(0, maxCells - 1) }, (_, index) => index + 2);
-      }
-      const configured = Number(profile?.alsMaxCells);
-      const phaseLimit = Number(phase?.alsMaxCells);
-      const configuredMax = Number.isInteger(configured) && configured >= 2
-        ? Math.min(9, configured)
-        : null;
-      const phaseMax = Number.isInteger(phaseLimit) && phaseLimit >= 2
-        ? Math.min(9, phaseLimit)
-        : null;
-      const maxCells = Math.min(
-        chainNodeLimitOptions('chain').alsMaxCells ?? 9,
-        configuredMax ?? phaseMax ?? 9,
-      );
-      if (phase?.alsCellCount != null) return [Number(phase.alsCellCount)];
-      if (Array.isArray(phase?.alsCellCounts) && phase.alsCellCounts.length) {
-        return [...new Set(phase.alsCellCounts.map(Number))].sort((a, b) => a - b);
-      }
-      return Array.from({ length: Math.max(0, maxCells - 1) }, (_, index) => index + 2);
-    }
+    const solverAlsCellPasses = (phase, profile = null) =>
+      appNamespace.solverPhase.alsCellPasses(phase, profile, chainNodeLimitOptions);
 
     // A phase is advanced cumulatively: 2, then 2-3, then 2-4, and so on.
     // This keeps the small-node search fast without excluding smaller nodes.
-    function solverSearchPasses(phase, profile = null, budget = 'interactive') {
-      const alsPasses = solverAlsCellPasses(phase, profile);
-      const ahsPasses = solverAhsCellPasses(phase, profile);
-      const hasAls = alsPasses.some(value => value != null);
-      const hasAhs = ahsPasses.some(value => value != null);
-      const ahsMaxCells = solverAhsMaxCells(phase, profile);
-      const ahsCellsForDigits = digits => ahsMaxCells == null
-        ? null
-        : Math.min(9, digits + 3, ahsMaxCells);
-      if (!hasAls || !hasAhs) {
-        const values = hasAls ? alsPasses : ahsPasses;
-        return values.map(value => ({
-          alsMaxDigits: null,
-          alsCellCounts: hasAls ? alsPasses.filter(item => item <= value) : null,
-          ahsMaxDigits: hasAhs ? value : null,
-          ahsMaxCells: hasAhs ? ahsCellsForDigits(value) : null,
-        }));
-      }
+    const solverSearchPasses = (phase, profile = null, budget = 'interactive') =>
+      appNamespace.solverPhase.searchPasses(phase, profile, budget, {
+        alsCellPasses: solverAlsCellPasses,
+        ahsCellPasses: solverAhsCellPasses,
+        ahsMaxCells: solverAhsMaxCells,
+      });
+    const solverAlsMinimumNodeCount = appNamespace.solverPhase.alsMinimumNodeCount;
+    const solverAlsMaxCells = (phase, profile = null) =>
+      appNamespace.solverPhase.alsMaxCells(phase, profile, chainNodeLimitOptions);
 
-      const maxBreadth = Math.max(
-        alsPasses[alsPasses.length - 1],
-        ahsPasses[ahsPasses.length - 1],
-      );
-      return Array.from({ length: maxBreadth - 1 }, (_, index) => index + 2)
-        .map(breadth => ({
-          alsMaxDigits: null,
-          alsCellCounts: alsPasses.filter(item => item <= breadth),
-          ahsMaxDigits: ahsPasses.includes(breadth)
-            ? breadth
-            : ahsPasses[ahsPasses.length - 1],
-          ahsMaxCells: ahsCellsForDigits(ahsPasses.includes(breadth)
-            ? breadth
-            : ahsPasses[ahsPasses.length - 1]),
-        }))
-        .filter((pass, index, passes) => index === 0
-          || pass.alsCellCounts.join(',') !== passes[index - 1].alsCellCounts.join(',')
-          || pass.ahsMaxDigits !== passes[index - 1].ahsMaxDigits);
-    }
-    function solverAlsMinimumNodeCount(phase) {
-      if (phase?.family === 'als-xy') return 3;
-      if (phase?.family === 'als-chain') return 4;
-      return 2;
-    }
+    const solverAlsPassCanStop = appNamespace.solverPhase.alsPassCanStop;
+    const solverAhsPassCanStop = appNamespace.solverPhase.ahsPassCanStop;
 
-    function solverAlsMaxCells(phase, profile = null) {
-      if (!phase?.includeAls) return null;
-      const configured = Number(profile?.alsMaxCells);
-      const phaseLimit = Number(phase?.alsMaxCells);
-      const configuredNode = Number(chainNodeLimitOptions('chain').alsMaxCells);
-      const values = [configured, phaseLimit, configuredNode]
-        .filter(value => Number.isInteger(value) && value >= 2);
-      return values.length ? Math.min(9, ...values) : null;
-    }
-
-    function solverAlsPassCanStop(phase, best, cellLimit, maxCells) {
-      // Do not use score-derived breadth cutoffs. Every configured pass is
-      // part of the method and must be searched explicitly.
-      return false;
-      /*
-      if (!best || cellLimit == null || maxCells == null || cellLimit >= maxCells) return false;
-
-      // The solver walks node breadth cumulatively. Once a valid ALS-XZ has
-      // been found at the smallest pass, larger ALS nodes are a later,
-      // higher-complexity technique and must not delay Next/Run-All.
-      if (phase?.family === 'als-xz') return true;
-
-      const bestScore = Number(best.step?.rating?.value);
-      if (!Number.isFinite(bestScore)) return false;
-      const nextLowerBound = chainPhaseMinimumRating(phase)
-        + ((cellLimit + 1) * 0.02);
-      return bestScore <= nextLowerBound + 1e-9;
-      */
-    }
-
-    function solverAhsPassCanStop(phase, best, cellLimit, maxCells) {
-      // Kept as a compatibility hook for callers; no implicit score pruning.
-      return false;
-      /*
-      if (!best || cellLimit == null || cellLimit >= maxCells) return false;
-      const bestScore = Number(best.step?.rating?.value);
-      if (!Number.isFinite(bestScore)) return false;
-      const lowerBound = chainPhaseMinimumRating(phase) + (cellLimit * 0.02);
-      return bestScore < lowerBound - 1e-9;
-      */
-    }
-
-    function chainPhaseDepthForCeiling(phase, ceiling) {
-      const numericCeiling = Number(ceiling);
-      if (!Number.isFinite(numericCeiling) || phase?.name !== 'strong-all') {
-        return phase?.maxDepth;
-      }
-
-      // Generic strong-link chains score at least length + 0.25. A shorter
-      // chain therefore cannot be beaten by a longer chain once the current
-      // move has established the score ceiling.
-      return Math.min(
-        phase.maxDepth,
-        Math.max(2, Math.floor(numericCeiling - 0.25 + 1e-9)),
-      );
-    }
+    const chainPhaseDepthForCeiling = appNamespace.solverPhase.depthForCeiling;
 
     function findSolverChainMove(
       candidateGrid = cand,
@@ -10788,38 +8808,27 @@
       return result;
     }
 
-    function solverFishSizes(moveTypes = null, maxFishSize = 4) {
+    const solverFishSizes = (moveTypes = null, maxFishSize = 4) => {
       const enabledTypes = currentSolverMoveTypes(moveTypes);
-      return Array.from({ length: 8 }, (_, index) => index + 2)
-        .filter(size => size <= maxFishSize).filter(size => {
-          const basic = size === 2 ? 'x-wing' : size === 3 ? 'swordfish'
-            : size === 4 ? 'jellyfish' : `${size}x${size}-fish`;
-          return enabledTypes.has(basic) || enabledTypes.has(`${size}x${size}+k-fish`);
-        });
-    }
+      return appNamespace.solverPhase.fishSizes(enabledTypes, maxFishSize, basicFishMoveType);
+    };
 
-    function basicFishMoveType(size) {
-      return size === 2 ? 'x-wing' : size === 3 ? 'swordfish'
-        : size === 4 ? 'jellyfish' : `${size}x${size}-fish`;
-    }
+    const basicFishMoveType = appNamespace.solverPhase.basicMoveType;
 
-    function solverFishMoveType(spec, k, category = 'Basic') {
-      // Basic K0 uses the ordinary fish toggle. Franken/Mutant K0 is still
-      // an extended-fish move and must not inherit the basic X-Wing toggle.
-      if (category === 'Basic' && k === 0) return basicFishMoveType(spec.size);
-      return `${spec.size}x${spec.size}+k-fish`;
-    }
+    const solverFishMoveType = (spec, k, category = 'Basic') =>
+      appNamespace.solverPhase.moveType(spec, k, category, basicFishMoveType);
 
-    function solverFishOptions(candidateGrid, fixedGrid, moveTypes = null, profile = null) {
+    const solverFishOptions = (candidateGrid, fixedGrid, moveTypes = null, profile = null) => {
       const enabledTechniques = currentSolverMoveTypes(moveTypes);
-      return {
-        ...currentPomFishOptions(),
-        grid: [...fixedGrid],
-        omissionFishSearch: core.omissionFishStep,
+      return appNamespace.solverPhase.fishOptions(
+        candidateGrid,
+        fixedGrid,
         enabledTechniques,
-        fishSizes: solverFishSizes(enabledTechniques, profile?.maxFishSize ?? 4),
-      };
-    }
+        currentPomFishOptions(),
+        core.omissionFishStep,
+        solverFishSizes(enabledTechniques, profile?.maxFishSize ?? 4),
+      );
+    };
 
     function generatorWorkerConfig(candidateGrid, fixedGrid, profile, budget = 'generator', phase = null) {
       const requestedDepth = Math.min(8, Math.max(2, Number(chainDepthEl.value) || 8));
@@ -11897,27 +9906,8 @@
       });
     }
 
-    function solverPhaseAllowsType(phase, enabledTypes, spec = null) {
-      if (phase.kind === 'als-dof') {
-        return ['als-dof', 'dds', 'adds'].some(type => enabledTypes.has(type));
-      }
-      if (phase.kind === 'ahs-dof') return enabledTypes.has('ahs-dof');
-      if (phase.kind === 'als-dof-chain') return enabledTypes.has('als-dof-chain');
-      if (phase.kind === 'ahs-dof-chain') return enabledTypes.has('ahs-dof-chain');
-      if (phase.kind === 'msls') return enabledTypes.has('msls');
-      if (phase.kind === 'chain') {
-        return phase.requiredTypes.every(type => enabledTypes.has(type))
-          || (phase.requiredTypes.includes('chains')
-            && phase.requiredTypes.slice(1).some(type => enabledTypes.has(type))
-            && enabledTypes.has('chains'));
-      }
-      if (phase.kind === 'alc') return enabledTypes.has('alc-' + phase.alcType);
-      if (spec?.kind === 'fish') {
-        return (spec.k || [0]).some(k => (spec.categories || ['Basic'])
-          .some(category => enabledTypes.has(solverFishMoveType(spec, k, category))));
-      }
-      return enabledTypes.has(spec?.type);
-    }
+    const solverPhaseAllowsType = (phase, enabledTypes, spec = null) =>
+      appNamespace.solverPhase.allowsType(phase, enabledTypes, spec, solverFishMoveType);
 
     function fishPhaseStep(candidateGrid, fixedGrid, spec, enabledTypes, profile) {
       let best = null;
@@ -13560,7 +11550,7 @@
       return true;
     }
 
-    function clearSearchResultsAfterApply() {
+    function clearSearchResultsAfterApply(preserveColouringMethod = null) {
       pomReport = null;
       alsReport = null;
       alsLinkReport = null;
@@ -13581,11 +11571,6 @@
       alcDofReport = null;
       mslsReport = null;
       strongLinkReport = null;
-      simpleColoringReport = null;
-      threeDMedusaReport = null;
-      threeDMedusaMultiReport = null;
-      multiColoringReport = null;
-      superMultiColoringReport = null;
       fishReport = null;
       boxLineReport = null;
       nakedSubsetReport = null;
@@ -13607,11 +11592,16 @@
       selectedHiddenSubsetKey = null;
       selectedChainIndex = null;
       selectedMslsIndex = null;
-      selectedSimpleColoringIndex = null;
-      selectedThreeDMedusaIndex = null;
-      selectedThreeDMedusaMultiIndex = null;
-      selectedMultiColoringIndex = null;
-      selectedSuperMultiColoringIndex = null;
+      if (preserveColouringMethod !== 'simple') simpleColoringReport = null;
+      if (preserveColouringMethod !== 'medusa') threeDMedusaReport = null;
+      if (preserveColouringMethod !== 'medusaMulti') threeDMedusaMultiReport = null;
+      if (preserveColouringMethod !== 'multi') multiColoringReport = null;
+      if (preserveColouringMethod !== 'superMulti') superMultiColoringReport = null;
+      if (preserveColouringMethod !== 'simple') selectedSimpleColoringIndex = null;
+      if (preserveColouringMethod !== 'medusa') selectedThreeDMedusaIndex = null;
+      if (preserveColouringMethod !== 'medusaMulti') selectedThreeDMedusaMultiIndex = null;
+      if (preserveColouringMethod !== 'multi') selectedMultiColoringIndex = null;
+      if (preserveColouringMethod !== 'superMulti') selectedSuperMultiColoringIndex = null;
       // Dedicated ALS/AHS/ALC result panes are rendered only by their own
       // search handlers, so clear their visible lists explicitly as well.
       for (const [element, message] of [
@@ -14526,12 +12516,13 @@
           );
         } catch (error) {
           if (isSearchCancelled(error)) return;
+          console.error(`Could not search ${label}.`, error);
           alsSearchFamily = null;
           chainReport = null;
           selectedChainIndex = null;
           renderChainReport();
           renderAlsSearchResults();
-          setStatus(`Could not search ${label}.`, 'warn');
+          setStatus(`Could not search ${label}: ${error?.message || error}`, 'warn');
         } finally {
           setBusy(false, searchToken);
         }
@@ -15465,15 +13456,11 @@
       apply: applyVariantSettings,
     });
     appNamespace.exampleEvents.install({
-      buttons: document.querySelectorAll('[data-example-puzzle], [data-example-key]'),
+      buttons: document.querySelectorAll('[data-example-puzzle]'),
       input: inputEl,
       load: loadPuzzle,
       closePanel: () => { examplesPanelEl.open = false; },
       scrollBoard: () => boardEl.scrollIntoView({ behavior: 'smooth', block: 'start' }),
-      special: {
-        nonColourable: nonColourableChromaticTestGrid,
-        blankCandidate: blankCandidateTestGrid,
-      },
     });
 
     initSearchStopButtons();

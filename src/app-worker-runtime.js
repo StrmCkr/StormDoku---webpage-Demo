@@ -23,7 +23,7 @@
     }
     if (!offlineSourcePromise) {
       offlineSourcePromise = loadLocalScript(
-        './src/search-worker-source.js?v=20261027-15',
+        './src/search-worker-source.js?v=20261029-01',
         'StormDokuSearchWorkerSource',
         'Offline search worker source could not be loaded.',
       );
@@ -39,5 +39,44 @@
     return new Worker(resolveWorkerUrl(path), options);
   }
 
-  app.workerRuntime = { loadLocalScript, loadOfflineWorkerSource, resolveWorkerUrl, createWorker };
+  async function createOfflineWorkerBlobUrl() {
+    const source = await loadOfflineWorkerSource();
+    return URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
+  }
+
+  function withVariantSettings(payload, variantSettings) {
+    return payload && typeof payload === 'object'
+      ? { ...payload, variantSettings: { ...variantSettings } }
+      : payload;
+  }
+
+  function diagnosticsPayload(payload, options = {}, activePhase = null) {
+    return {
+      ...payload,
+      diagnosticPhase: options.diagnosticPhase
+        || payload?.diagnosticPhase
+        || activePhase,
+    };
+  }
+
+  function describeWorkerErrorEvent(event) {
+    return [
+      event?.message,
+      event?.filename && `(${event.filename})`,
+      event?.lineno && `line ${event.lineno}`,
+      event?.colno && `column ${event.colno}`,
+      event?.type === 'error' && !event?.message ? 'uncaught worker error' : null,
+    ].filter(Boolean).join(' ');
+  }
+
+  app.workerRuntime = {
+    loadLocalScript,
+    loadOfflineWorkerSource,
+    resolveWorkerUrl,
+    createWorker,
+    createOfflineWorkerBlobUrl,
+    withVariantSettings,
+    diagnosticsPayload,
+    describeWorkerErrorEvent,
+  };
 })(window);

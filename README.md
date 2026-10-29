@@ -323,36 +323,9 @@ Unknown rather than being presented as solved.
 ## Source Layout
 
 The browser entry point is `index.html`. It loads the no-build browser copies
-from `src/*-core.js`; editing a TypeScript source file does not automatically
-rebuild its browser copy.
+from `src/*-core.js`; edit the browser JavaScript modules directly.
 
-- `src/sudoku.ts` - grids, candidates, peers, DLX solution counting, full
-  solving, generation, encoding/decoding, basic subsets, box-line reduction,
-  fish dispatch, and candidate application.
-- `src/spaces.ts` - row/column/box candidate-space construction and the basic
-  size 2-4 fish implementation.
-- `src/set-tools.ts` - combinations, set operations, power-set indexes, RCC
-  sectors, and peer elimination helpers.
-- `src/cardinals.ts` - row, column, box, position, and peer lookup tables.
-- `src/pom.ts` - template catalog, omissions, template-space subset checks,
-  TK-delete checks, and omission-triggered N x (N + K) fish.
-- `src/mini-sectors.ts` - RCB mini-sector candidate tables.
-- `src/als.ts` - LS/ALS construction and DOF/FOX records.
-- `src/ahs.ts` - HS/AHS construction and DOF/FOX records.
-- `src/als-link.ts` - ALS RCC graph construction.
-- `src/strong-link.ts` - the five strong-link buckets and XOR geometry.
-- `src/chain.ts` - chain graph construction, BFS walking, ring evaluation,
-  classifications, and Eureka/verbose formatting.
 - `src/*-core.js` - browser-compatible mirrors loaded by `index.html`.
-
-The TypeScript sources can be type-checked directly when `tsc` is available:
-
-```bash
-tsc --noEmit --target ES2020 --module ESNext --strict \
-  src/sudoku.ts src/spaces.ts src/set-tools.ts src/cardinals.ts src/pom.ts \
-  src/mini-sectors.ts src/als.ts src/ahs.ts src/als-link.ts \
-  src/strong-link.ts src/chain.ts
-```
 
 ## Current Boundaries
 

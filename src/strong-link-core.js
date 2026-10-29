@@ -3377,7 +3377,6 @@
     const linkset = strongLinkSet || buildStrongLinks(cand);
     return buildThreeDMedusa(cand, linkset, {
       includeWeakPeers: true,
-      requireBivalve: true,
       multiColouring: true,
     });
   }

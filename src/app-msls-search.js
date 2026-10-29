@@ -58,5 +58,37 @@
     return { run };
   }
 
-  app.mslsSearch = { create };
+  function solverOptions(budget = 'interactive') {
+    const maxSize = 5;
+    return {
+      minBaseSectors: 3, minCoverSectors: 3,
+      maxBaseSectors: maxSize, maxCoverSectors: maxSize,
+      mixedCovers: true, maxRemovedCells: 1, fastCover: true,
+      maxK: 1, maxLinks: 81, maxCells: maxSize * 9,
+      maxStates: budget === 'generator' ? 5000000 : 20000000,
+      maxResults: budget === 'generator' ? 250 : 1000,
+    };
+  }
+
+  function bestSolverMove(report, profile, {
+    stepFromResult, ratingForStep, directPriority, isHigherPriority,
+  }) {
+    let best = null;
+    for (let index = 0; index < (report?.results || []).length; index++) {
+      const step = stepFromResult(report.results[index]);
+      step.mslsReport = report;
+      step.mslsIndex = index;
+      step.rating = ratingForStep(step);
+      if (profile?.maxRank !== undefined && step.rating.rank > profile.maxRank) continue;
+      if (!step.elim.items.length) continue;
+      const candidate = {
+        step, chain: null, mslsReport: report, mslsIndex: index,
+        priority: directPriority(step),
+      };
+      if (isHigherPriority(candidate, best)) best = candidate;
+    }
+    return best;
+  }
+
+  app.mslsSearch = { create, solverOptions, bestSolverMove };
 })(window);

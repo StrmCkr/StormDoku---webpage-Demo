@@ -40,8 +40,28 @@
       }
     }
 
-    return { render, displayedStepDescription };
+    function solutionListText(entries) {
+      return entries
+        .map(entry => {
+          const value = formatRatingValue(entry.rating?.value);
+          const rating = value ? `Rating: (${value}) ` : 'Rating: (Unknown) ';
+          return `${entry.cycle}. ${rating}${displayedStepDescription(entry)}`;
+        })
+        .join('\n');
+    }
+
+    function solutionEurekaText(entries) {
+      return entries
+        .map(entry => `${entry.cycle}. ${displayedStepDescription(entry)}`)
+        .join('\n');
+    }
+
+    return { render, displayedStepDescription, solutionListText, solutionEurekaText };
   }
 
-  app.solutionLogView = { create };
+  function cleanCopiedEureka(text) {
+    return String(text || '').replace(/^AIC\s*\(Depth\s+\d+\)(?=\s*:)/i, 'AIC');
+  }
+
+  app.solutionLogView = { create, cleanCopiedEureka };
 })(window);

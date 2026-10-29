@@ -2822,6 +2822,21 @@
     return 'Strong-Wing';
   }
 
+  // The walker stores the closing traversal as a repeated copy of the
+  // starting node so that the closing weak inference can be evaluated.  It is
+  // not a third logical node, and must not affect naming, node counts, or the
+  // public proof.  The formatter has always hidden this same repeated step;
+  // keep the structural classifier consistent with the displayed Eureka.
+  function publicRingSteps(steps, isRing) {
+    if (!isRing || steps.length < 2) return steps;
+    const side = (step, name) => step?.[name] || step?.view?.[name];
+    const firstEntry = side(steps[0], 'entry');
+    const lastExit = side(steps[steps.length - 1], 'exit');
+    if (!firstEntry?.cells?.length || !lastExit?.cells?.length) return steps;
+    if (cellsKey(firstEntry.cells) !== cellsKey(lastExit.cells)) return steps;
+    return steps.slice(0, -1);
+  }
+
   function classifyChain(steps, isRing, ringWeakDigit = null, semanticDepth = steps.length) {
     if (steps.length === 1 && steps[0].module?.moduleKind) {
       const moduleKind = steps[0].module.moduleKind;
@@ -2882,12 +2897,21 @@
       if (semanticDepth === 3 && semanticPattern === 'VLV' && hasWRingValueNodes(steps)) {
         return prefixedStructureName('W-Ring', steps);
       }
+      // Four all-strong-link nodes are the ring counterpart of Strong-Wing.
+      // Do not name this by distinct digit count: a four-node ring can use
+      // only three digits when its closing digit repeats at the start.
+      if (pattern === 'LLLL' && steps.length === 4) {
+        return prefixedStructureName('Strong-Ring', steps);
+      }
       if (ringPatternMatches(pattern, 'LLLLV')) return prefixedStructureName('Strong-Ring', steps);
       if (pattern && pattern.split('').every(token => token === 'L')) {
         return prefixedNamedWingName(`L(${Math.max(1, digits.length)})-Ring`, steps);
       }
       if (isPureRemotePairChain(steps)) {
-        return prefixedStructureName('Remote Pair', steps);
+        return prefixedStructureName('YZ Ring', steps);
+      }
+      if (steps.length === 2 && steps.every(isBivalveStep)) {
+        return prefixedStructureName('YZ Ring', steps);
       }
       // A pure bivalve cycle is still an XY structure.  The ring state is
       // carried separately, so keep the XY-Chain name and let the formatter
@@ -3161,8 +3185,14 @@
   ) {
     if (!eliminations.length) return 'empty';
     const rankKey = `${String(logicalDepth(steps)).padStart(3, '0')}|${canonicalPathKey(steps, isRing, ringWeak)}`;
-    const publicSteps = steps.map(publicStep);
     const publicIsRing = isRing && !isTerminal;
+    // Keep the internal walker representation for structural calculations.
+    // `publicStep()` intentionally removes `.view`; passing the public copy
+    // to `logicalDepth()` makes every search dereference `view.node` on an
+    // undefined value.
+    const logicalSteps = publicRingSteps(steps, publicIsRing);
+    const publicSteps = logicalSteps.map(publicStep);
+    const publicDepth = logicalDepth(logicalSteps);
     const eriSubclass = terminalStructureName
       || classifyEriWingSubclass(publicSteps);
     const structureName = terminalStructureName
@@ -3185,7 +3215,7 @@
         chainsByKey.set(key, {
           rankKey,
           chain: {
-            length: logicalDepth(steps),
+            length: publicDepth,
             structureName,
             structureFamily: terminalFamily,
             structureWing: terminalWing,
@@ -3213,7 +3243,7 @@
     chainsByKey.set(key, {
       rankKey,
       chain: {
-        length: logicalDepth(steps),
+        length: publicDepth,
         structureName,
         structureFamily: terminalFamily,
         structureWing: terminalWing,
@@ -3719,6 +3749,13 @@
 
   function orientedDisplaySteps(steps) {
     const display = [...(steps || [])].map(step => ({ ...step }));
+    const sideSees = (left, right) => {
+      const leftCells = left?.cells || [];
+      const rightCells = right?.cells || [];
+      return leftCells.length > 0 && rightCells.length > 0
+        && leftCells.every(leftCell => rightCells.every(rightCell =>
+          leftCell !== rightCell && core.peersOf(leftCell).includes(rightCell)));
+    };
     for (let index = 0; index < display.length - 1; index++) {
       const current = display[index];
       const next = display[index + 1];
@@ -3726,8 +3763,11 @@
       // the chain walk. If the current entry is the handoff to the next
       // entry, reverse only this link so the notation reads, for example,
       // (4)r9c5=(4)r7c4 - (3)r7c4 ... rather than backwards.
-      if (sameEurekaLocation(current.entry, next.entry)
-        && !sameEurekaLocation(current.exit, next.entry)) {
+      const entryAligned = sameEurekaLocation(current.entry, next.entry)
+        || sideSees(current.entry, next.entry);
+      const exitAligned = sameEurekaLocation(current.exit, next.entry)
+        || sideSees(current.exit, next.entry);
+      if (entryAligned && !exitAligned) {
         display[index] = {
           ...current,
           entrySide: current.exitSide,

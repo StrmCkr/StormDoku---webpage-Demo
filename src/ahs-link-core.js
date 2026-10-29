@@ -1507,6 +1507,13 @@
     const seen = new Set();
 
     if (opts.mode !== 'xy') {
+      // Build the bounded, exact RCC/XZ forms first.  The distributed pass
+      // is much broader and can otherwise consume the shared link budget
+      // before these direct AHS-XZ objects are even considered.
+      if (!buildAhsTwoRccBranchXzLinks(cand, ahsList, buckets[AHS_RCC], seen, opts.maxLinks)) return buckets;
+      if (!buildAhsTwoRccXzLinks(cand, ahsList, buckets[AHS_RCC], seen, opts.maxLinks)) return buckets;
+      if (!buildAhsXzLinks(cand, ahsList, buckets[AHS_RCC], seen, opts.maxLinks)) return buckets;
+      if (!buildAhsSingleRccXzLinks(cand, ahsList, buckets[AHS_RCC], seen, opts.maxLinks)) return buckets;
       if (!buildAhsDistributedXzLinks(
         cand,
         ahsList,
@@ -1515,10 +1522,6 @@
         seen,
         opts.maxLinks,
       )) return buckets;
-      if (!buildAhsTwoRccBranchXzLinks(cand, ahsList, buckets[AHS_RCC], seen, opts.maxLinks)) return buckets;
-      if (!buildAhsTwoRccXzLinks(cand, ahsList, buckets[AHS_RCC], seen, opts.maxLinks)) return buckets;
-      if (!buildAhsXzLinks(cand, ahsList, buckets[AHS_RCC], seen, opts.maxLinks)) return buckets;
-      if (!buildAhsSingleRccXzLinks(cand, ahsList, buckets[AHS_RCC], seen, opts.maxLinks)) return buckets;
     }
 
     if (opts.mode === 'xy') {

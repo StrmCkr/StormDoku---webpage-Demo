@@ -33,5 +33,10 @@
     }
   }
 
-  app.clipboard = { readText, writeText, copyText };
+  async function copyLabeled(value, label, setStatus) {
+    const copied = await copyText(value);
+    setStatus(copied ? `${label} string copied.` : `${label} string selected for copying.`, 'ok');
+  }
+
+  app.clipboard = { readText, writeText, copyText, copyLabeled };
 })(window);
