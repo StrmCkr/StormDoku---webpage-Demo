@@ -61,6 +61,7 @@
         }
         const step = {
           ...chainStepFromResult(chain, report, index, candidateGrid),
+          hierarchyPhase: phase?.hierarchyPhase || phase?.name || '',
           elim: { items },
           desc: chainText({ ...chain, eliminations: items }),
         };
@@ -78,6 +79,7 @@
         const { chain, items, rating } = entry;
         const step = {
           ...chainStepFromResult(chain, displayReport, displayIndex, candidateGrid),
+          hierarchyPhase: phase?.hierarchyPhase || phase?.name || '',
           elim: { items },
           desc: chainText({ ...chain, eliminations: items }),
         };
