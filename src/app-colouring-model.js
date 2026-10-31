@@ -8,7 +8,6 @@
   function selectedColouringRecord(state, method) {
     if (method === 'simple') return state.simpleColoringReport?.[state.selectedSimpleColoringIndex] || null;
     if (method === 'multi') return state.multiColoringReport?.[state.selectedMultiColoringIndex] || null;
-    if (method === 'superMulti') return state.superMultiColoringReport?.[state.selectedSuperMultiColoringIndex] || null;
     if (method === 'medusa') return state.threeDMedusaReport?.[state.selectedThreeDMedusaIndex] || null;
     return state.threeDMedusaMultiReport?.[state.selectedThreeDMedusaMultiIndex] || null;
   }
@@ -23,7 +22,7 @@
         breadth: item.breadth,
       }));
     }
-    if (method === 'multi' || method === 'superMulti') {
+    if (method === 'multi') {
       return !record.source
         ? (record.cellColours || record.nodes || [])
         : (record.nodes || record.cellColours || []);
@@ -194,7 +193,7 @@
       }
       return levels;
     }
-    if ((method === 'multi' || method === 'superMulti') && !record.source) {
+    if (method === 'multi' && !record.source) {
       const linkLevels = colouringSequenceLinkLevels(record);
       for (const node of nodes) {
         const level = linkLevels.get(
@@ -305,7 +304,7 @@
     if (info.complete) return record.eliminations;
     const nodes = visibleNodesFn(record, method, info);
     if (!nodes.length) return [];
-    if (method === 'multi' || method === 'superMulti' || method === 'medusaMulti') {
+    if (method === 'multi' || method === 'medusaMulti') {
       const visibleTokensByKey = new Map(nodes.map(node => [
         colouringNodeKey(node),
         new Set(node.colourTokens || []),
@@ -423,7 +422,7 @@
         return { ...item, colors: visible.colors || [], colourTokens: visible.colourTokens || [] };
       })
       .filter(Boolean);
-    display.linkColours = method === 'multi' || method === 'superMulti'
+    display.linkColours = method === 'multi'
       ? (record.linkColours || []).filter(link => visibleNodeKeys.has(colouringNodeKey(
         link.endpoints?.[0] || { cell: link.cells?.[0], digit: record.digit },
       )))
@@ -432,21 +431,6 @@
           (colouringSequenceMedusaLevels(record, colouringSequenceNodes(record, method))
             .linkLevels.get(index) || 1) <= info.breadth)
         : record.linkColours;
-    if (method === 'superMulti') {
-      const visibleLinkIds = new Set(display.linkColours.map(link => link.id));
-      display.groupColours = (record.groupColours || [])
-        .filter(group => visibleLinkIds.has(group.id))
-        .map(group => ({
-          ...group,
-          sides: (group.sides || []).map(side => ({
-            ...side,
-            cells: [...(side.cells || [])],
-            colors: [...(side.colors || [])],
-            colourTokens: [...(side.colourTokens || [])],
-          })),
-        }));
-      display.groupEdges = (record.groupEdges || []).filter(edge => visibleLinkIds.has(edge.linkId));
-    }
     display.terminalClosure = info.complete ? record.terminalClosure : null;
     display.terminalTruth = (record.terminalTruth || [])
       .filter(item => visibleNodeKeys.has(colouringNodeKey(item)));
@@ -463,22 +447,19 @@
   } = {}) {
     const pick = (report, index) => report?.[index] || null;
     const raw = {
-      superMulti: !blocked ? pick(reports.superMulti, indices.superMulti) : null,
       medusaMulti: !blocked ? pick(reports.medusaMulti, indices.medusaMulti) : null,
       multi: !blocked ? pick(reports.multi, indices.multi) : null,
       medusa: !blocked ? pick(reports.medusa, indices.medusa) : null,
     };
     const display = record => displayColouringRecord(
       record,
-      record === raw.superMulti ? 'superMulti' :
-        record === raw.medusaMulti ? 'medusaMulti' :
+      record === raw.medusaMulti ? 'medusaMulti' :
           record === raw.multi ? 'multi' : 'medusa',
       state,
       visibleNodesFn,
       plausibleEliminationsFn,
     );
     const records = {
-      superMulti: display(raw.superMulti),
       medusaMulti: display(raw.medusaMulti),
       multi: display(raw.multi),
       medusa: display(raw.medusa),
@@ -486,9 +467,8 @@
     records.colouring = records.medusaMulti?.source === 'bivalve'
       ? records.medusaMulti
       : records.medusa;
-    records.activeMulti = records.superMulti
-      || (records.medusaMulti?.source === 'multi' ? records.medusaMulti : records.multi);
-    const simpleRaw = !blocked && !raw.superMulti && !raw.medusaMulti
+    records.activeMulti = records.medusaMulti?.source === 'multi' ? records.medusaMulti : records.multi;
+    const simpleRaw = !blocked && !raw.medusaMulti
       && !raw.multi && !raw.medusa
       ? pick(reports.simple, indices.simple)
       : null;
@@ -507,7 +487,6 @@
     colouringRecord = null,
     activeMultiRecord = null,
     atomKeyFn,
-    cellHasCandidateFn,
   } = {}) {
     const colourRole = colors => colors?.length > 1
       ? 'both'
@@ -520,7 +499,11 @@
     if (simpleRecord) {
       for (const item of simpleRecord.cellColors || []) {
         const role = colourRole(item.colors);
-        if (!role || !cellHasCandidateFn(item.cell, simpleRecord.digit)) continue;
+        // Keep the colouring snapshot visible after Apply removes a
+        // candidate.  The report describes the pre-application graph, so a
+        // coloured atom must not disappear merely because it is now an
+        // elimination mark.
+        if (!role) continue;
         simple.set(atomKeyFn(item.cell, simpleRecord.digit), role);
       }
     }
@@ -570,6 +553,99 @@
     sequence.breadth = Math.min(info.max, Math.max(1, sequence.breadth + delta));
   }
 
+  function simpleColoringEureka(core, record) {
+    const cellsText = cells => core.cellGroupName([...(cells || [])].sort((a, b) => a - b)) || 'none';
+    const blue = cellsText(record.blueCells);
+    const purple = cellsText(record.purpleCells);
+    const eliminations = core.formatRemovals(record.eliminations || []) || 'none';
+    const closure = record.terminalClosure?.cells?.length
+      ? ` -> terminal ${core.cellGroupName(record.terminalClosure.cells)}`
+      : '';
+    const witnesses = [];
+    for (const conflict of record.sectorParityConflicts || []) {
+      const colour = conflict.color === 0 ? 'Blue' : 'Purple';
+      witnesses.push(
+        `${colour} repeats in ${core.sectorGroupName([conflict.sector])}`
+        + ` (${cellsText(conflict.cells || [])})`,
+      );
+    }
+    for (const sector of record.mixedSectors || []) {
+      witnesses.push(`both parities in ${core.sectorGroupName([sector])}`);
+    }
+    if ((record.bothParityPeerEliminations || []).length) {
+      witnesses.push(
+        `candidate sees both parities at ${cellsText(record.bothParityPeerEliminations)}`,
+      );
+    }
+    for (const conflict of record.terminalTruthConflicts || []) {
+      witnesses.push(`terminal truths conflict at ${cellsText(conflict.cells || [])}`);
+    }
+    const witness = witnesses.length ? ` [${witnesses.join(' ; ')}]` : '';
+    return `Simple Colouring: (${record.digit}) Blue ${blue} - Purple ${purple}${closure}${witness} => ${eliminations}`;
+  }
+
+  function threeDMedusaEureka(core, record) {
+    const colour = node => node.colors?.length > 1
+      ? 'both'
+      : node.colors?.[0] === 0
+        ? 'blue'
+        : node.colors?.[0] === 1
+          ? 'purple'
+          : 'uncoloured';
+    const nodesText = (record.nodes || []).map(node =>
+      `(${node.digit})${core.cellGroupName([node.cell])} ${colour(node)}`,
+    ).join(', ') || 'none';
+    const eliminations = core.formatRemovals(record.eliminations || []) || 'none';
+    const closure = record.terminalClosure?.cells?.length
+      ? ` -> terminal ${core.cellGroupName(record.terminalClosure.cells)}`
+      : record.ring ? ' -> ring' : '';
+    const alsDofRule = [...new Set((record.alsDofConflicts || []).map(conflict => {
+      const cells = core.cellGroupName(conflict.cells || []) || 'unknown cells';
+      const removed = (conflict.colouredDigits || []).join('') || 'none';
+      const remaining = (conflict.remainingDigits || []).join('') || 'none';
+      return `ALS-DOF ${conflict.color === 0 ? 'blue' : 'purple'} false ${cells} -${removed} leaves ${remaining}`;
+    }))].join(' ; ');
+    const ahsDofRule = (record.ahsDofConflicts || []).map(conflict => {
+      const cells = core.cellGroupName(conflict.ahsCells || []) || 'unknown cells';
+      const removed = core.cellGroupName(conflict.removedCells || []) || 'none';
+      const digits = (conflict.ahsDigits || []).join('') || 'none';
+      return `AHS-DOF ${conflict.color === 0 ? 'blue' : 'purple'} false ${cells} digits ${digits} -cells ${removed}`;
+    }).join(' ; ');
+    const cellParityRule = (record.cellParityConflicts || []).map(conflict =>
+      `cell ${core.cellGroupName([conflict.cell])} has multiple digits in `
+      + `${conflict.color === 0 ? 'blue' : 'purple'} parity (${(conflict.digits || []).join('')})`,
+    ).join(' ; ');
+    const sectorParityRule = (record.conflicts || [])
+      .filter(conflict => conflict.kind === 'sector')
+      .map(conflict => `${conflict.color === 0 ? 'blue' : 'purple'} parity repeats digit ${conflict.digit}`
+        + ` in ${core.sectorGroupName([conflict.sector])}`).join(' ; ');
+    const sameParityPeerRule = (record.conflicts || [])
+      .filter(conflict => conflict.kind === 'peer')
+      .map(conflict => `${conflict.color === 0 ? 'blue' : 'purple'} same-digit peers conflict at `
+        + `${core.cellGroupName([conflict.left.cell, conflict.right.cell])}`).join(' ; ');
+    const bothParityPeerRule = (record.conflicts || [])
+      .filter(conflict => conflict.kind === 'coloured-cell-sees-both')
+      .map(conflict => `${core.cellGroupName([conflict.cell])} sees both parities for ${conflict.digit}`)
+      .join(' ; ');
+    const sectorPeerRule = (record.conflicts || [])
+      .filter(conflict => conflict.kind === 'sector-peer-union')
+      .map(conflict => `sector union ${core.sectorGroupName([conflict.sector])} digit ${conflict.digit}`
+        + ` ${conflict.color === 0 ? 'blue' : 'purple'} false: peers cover `
+        + `${core.cellGroupName(conflict.viableCells || []) || 'none'}`).join(' ; ');
+    const form = record.kind === 'bivalve-ring'
+      ? ' Bivalve Ring'
+      : record.kind === 'bivalve-chain' ? ' Bivalve Chain' : '';
+    const oppositeParityRule = (record.rules || []).includes('opposite-parity-peer')
+      ? 'uncoloured candidate sees the opposite parity of a coloured clue'
+      : '';
+    const witnessText = [
+      alsDofRule, ahsDofRule, cellParityRule, sectorParityRule,
+      sameParityPeerRule, bothParityPeerRule, sectorPeerRule, oppositeParityRule,
+    ].filter(Boolean).join(' ; ');
+    return `3D - Medusa {Simple}${form}: ${nodesText}${closure}`
+      + `${witnessText ? ` [${witnessText}]` : ''} => ${eliminations}`;
+  }
+
   app.colouringModel = {
     colouringNodeKey,
     selectedColouringRecord,
@@ -586,5 +662,7 @@
     buildColouringHighlightMarks,
     setColouringSequenceEnabled,
     stepColouringSequence,
+    simpleColoringEureka,
+    threeDMedusaEureka,
   };
 })(window);

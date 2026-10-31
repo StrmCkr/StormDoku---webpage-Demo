@@ -16,6 +16,7 @@
       key: best.key,
       values: best.values,
       label: best.orientation ? 'Transpose + full structural search' : 'Full structural search',
+      transformation: best.transformation,
     };
   }
 

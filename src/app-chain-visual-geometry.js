@@ -256,17 +256,6 @@
     return frames;
   }
 
-  function superMultiGroupBounds(anchors, pad = 0.65) {
-    if (!anchors?.length) return null;
-    const half = Math.max(...anchors.map(anchor => anchor.markSize || 1)) * 0.42 + pad;
-    return {
-      left: Math.max(0, Math.min(...anchors.map(anchor => anchor.x)) - half),
-      top: Math.max(0, Math.min(...anchors.map(anchor => anchor.y)) - half),
-      right: Math.min(100, Math.max(...anchors.map(anchor => anchor.x)) + half),
-      bottom: Math.min(100, Math.max(...anchors.map(anchor => anchor.y)) + half),
-    };
-  }
-
   app.chainVisualGeometry = {
     digitAnchor,
     vantageCellSlot,
@@ -289,6 +278,5 @@
     boxEdgeAnchor,
     crossDigitAnchorPair,
     chainSectorFrameData,
-    superMultiGroupBounds,
   };
 })(window);

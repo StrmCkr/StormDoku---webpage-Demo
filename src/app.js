@@ -92,7 +92,6 @@
     const threeDMedusaResultsEl = document.getElementById('threeDMedusaResults');
     const threeDMedusaMultiResultsEl = document.getElementById('threeDMedusaMultiResults');
     const multiColoringResultsEl = document.getElementById('multiColoringResults');
-    const superMultiColoringResultsEl = document.getElementById('superMultiColoringResults');
     const chromaticGraphResultsEl = document.getElementById('chromaticGraphResults');
     const chromaticAlsGraphResultsEl = document.getElementById('chromaticAlsGraphResults');
     const fishResultsEl = document.getElementById('fishResults');
@@ -151,7 +150,6 @@
     const alcChainBuildEl = document.getElementById('alcChainBuild');
     const alcDofBuildEl = document.getElementById('alcDofBuild');
     const alcHydraBuildEl = document.getElementById('alcHydraBuild');
-    const alsAhsAlcSettingsButtonEl = document.getElementById('alsAhsAlcSettingsButton');
     const ahsXyBuildEl = document.getElementById('ahsXyBuild');
     const ahsChainBuildEl = document.getElementById('ahsChainBuild');
     const mslsBuildEl = document.getElementById('mslsBuild');
@@ -378,8 +376,6 @@
     let selectedThreeDMedusaMultiIndex = null;
     let multiColoringReport = null;
     let selectedMultiColoringIndex = null;
-    let superMultiColoringReport = null;
-    let selectedSuperMultiColoringIndex = null;
     let chromaticGraphReport = null;
     let selectedChromaticGraphIndex = null;
     let chromaticAlsGraphReport = null;
@@ -387,7 +383,6 @@
     const colouringSequenceState = {
       simple: { enabled: false, breadth: 1 },
       multi: { enabled: false, breadth: 1 },
-      superMulti: { enabled: false, breadth: 1 },
       medusa: { enabled: false, breadth: 1 },
       medusaMulti: { enabled: false, breadth: 1 },
     };
@@ -659,12 +654,10 @@
       }
 
       try {
-      const workerPath = './src/search-worker.js?v=20261029-01';
+        const workerPath = './src/search-worker.js?v=20261031-01';
         releaseSearchWorkerBlobUrl();
         let workerUrl = new URL(workerPath, document.baseURI);
         if (document.baseURI.startsWith('file:')) {
-          // A file-origin worker cannot import local scripts. Embed its cores
-          // in the Blob so offline Next and Run All share the same worker.
           searchWorkerBlobUrl = await workerRuntime.createOfflineWorkerBlobUrl();
           workerUrl = searchWorkerBlobUrl;
         }
@@ -695,9 +688,8 @@
           const details = workerRuntime.describeWorkerErrorEvent(event);
           const error = new Error(details || 'Search worker failed.');
           finishSearchDiagnostics(error.message);
-          const failedWorker = searchWorker;
           searchWorker = null;
-          if (failedWorker) failedWorker.terminate();
+          currentWorker.terminate();
           releaseSearchWorkerBlobUrl();
           for (const job of searchWorkerJobs.values()) job.reject(error);
           searchWorkerJobs.clear();
@@ -792,9 +784,16 @@
       return uiState.setBusy(nextBusy, epoch);
     }
 
+    const historyControlsView = appNamespace.historyControlsView.create({
+      undo: undoEl,
+      redo: redoEl,
+    });
     function updateHistoryButtons() {
-      undoEl.disabled = busy || undoStack.length === 0;
-      redoEl.disabled = busy || redoStack.length === 0;
+      historyControlsView.render({
+        busy,
+        undoCount: undoStack.length,
+        redoCount: redoStack.length,
+      });
     }
 
     function setStatus(text, kind = '') {
@@ -818,10 +817,6 @@
 
     function clearDigitFilter() {
       candidateControls.clearDigits();
-    }
-
-    function candidateSizeDigits(cell) {
-      return candidateFilter.digits(cell);
     }
 
     function candidateSizeFilterStyle() {
@@ -878,9 +873,6 @@
       alsDofReport, alsDofChainReport, selectedAlsDofSource, selectedAlsDofIndex);
     const selectedHydraRecord = () => reportSelection.hydra(
       alsHydraReport, ahsHydraReport, alcHydraReport, selectedHydraFamily, selectedAlsHydraIndex);
-    const selectedAlsHydraRecord = () => (selectedHydraFamily === 'ALS' || selectedHydraFamily === null)
-      ? selectedHydraRecord() : null;
-
     const hydraStep = appNamespace.hydraStep.create({ core, rateStep: ratingForStep });
     const formatHydraResult = hydraStep.format;
     const alsHydraStepFromResult = hydraStep.fromResult;
@@ -949,8 +941,6 @@
       selectedThreeDMedusaMultiIndex = null;
       multiColoringReport = null;
       selectedMultiColoringIndex = null;
-      superMultiColoringReport = null;
-      selectedSuperMultiColoringIndex = null;
       chromaticGraphReport = null;
       chromaticAlsGraphReport = null;
       fishReport = null;
@@ -966,7 +956,6 @@
           selectedThreeDMedusaIndex: value => { selectedThreeDMedusaIndex = value; },
           selectedThreeDMedusaMultiIndex: value => { selectedThreeDMedusaMultiIndex = value; },
           selectedMultiColoringIndex: value => { selectedMultiColoringIndex = value; },
-          selectedSuperMultiColoringIndex: value => { selectedSuperMultiColoringIndex = value; },
           selectedChromaticGraphIndex: value => { selectedChromaticGraphIndex = value; },
           selectedChromaticAlsGraphIndex: value => { selectedChromaticAlsGraphIndex = value; },
           selectedAlsDof: value => { selectedAlsDof = value; },
@@ -1109,6 +1098,7 @@
         values: best.values,
         label: best.orientation ? 'Transpose + full structural search' : 'Full structural search',
         sourceMode: comparison.mode,
+        transformation: best.transformation,
       };
       renderToyMiniLexView(toyMiniLexViewElements, result);
       return result;
@@ -1473,102 +1463,9 @@
       selectPlayerTarget(cell);
     }
 
-    function movePlayerSelection(rowDelta, colDelta) {
-      const current = selectedPlayerCell ?? 0;
-      const row = Math.floor(current / 9);
-      const col = current % 9;
-      const wrap = value => (value + 9) % 9;
-      const nextRow = wrap(row + rowDelta);
-      const nextCol = wrap(col + colDelta);
-      selectPlayerTarget(nextRow * 9 + nextCol);
-    }
-
-    function isPlayerTextEntryTarget(target) {
-      return target instanceof Element
-        && Boolean(target.closest('input, select, textarea, button, [contenteditable="true"]'));
-    }
-
+    let playerKeyboard;
     function handlePlayerKeydown(event) {
-      if (busy || selectedPlayerCell === null || isPlayerTextEntryTarget(event.target)) return;
-
-      if (event.ctrlKey || event.metaKey) {
-        const ctrlDigitMatch = /^(?:Digit|Numpad)([1-9])$/.exec(event.code);
-        if (ctrlDigitRemovesCandidate && ctrlDigitMatch) {
-          event.preventDefault();
-          const digit = Number(ctrlDigitMatch[1]);
-          if (puzzle[selectedPlayerCell] || promotedValues[selectedPlayerCell]) {
-            setStatus('Solved cells cannot have candidates removed.', 'warn');
-          } else {
-            removePlayerDigit(selectedPlayerCell, digit);
-          }
-          playerPromotionMode = false;
-          return;
-        }
-        if (event.key.toLowerCase() === 'z') {
-          event.preventDefault();
-          undoCycle();
-        } else if (event.key.toLowerCase() === 'y' || (event.shiftKey && event.key.toLowerCase() === 'z')) {
-          event.preventDefault();
-          redoCycle();
-        }
-        return;
-      }
-
-      if (event.code === 'Space') {
-        event.preventDefault();
-        playerPromotionMode = true;
-        return;
-      }
-
-      const digitMatch = /^(?:Digit|Numpad)([1-9])$/.exec(event.code);
-      const digit = /^[1-9]$/.test(event.key)
-        ? Number(event.key)
-        : digitMatch ? Number(digitMatch[1]) : null;
-      if (digit !== null && !event.altKey) {
-        event.preventDefault();
-        if (playerPromotionMode) solvePlayerCell(selectedPlayerCell, digit);
-        else addPlayerCandidate(selectedPlayerCell, digit);
-        playerPromotionMode = false;
-        return;
-      }
-
-      if (event.key === 'Backspace' || event.key === 'Delete') {
-        event.preventDefault();
-        if (puzzle[selectedPlayerCell] || promotedValues[selectedPlayerCell]) {
-          clearPlayerSolvedCell(selectedPlayerCell);
-        } else if (selectedPlayerDigit !== null) {
-          removePlayerDigit(selectedPlayerCell, selectedPlayerDigit);
-        } else {
-          setStatus('Select a candidate before deleting it.', 'warn');
-        }
-        return;
-      }
-
-      if (event.key === 'Home') {
-        event.preventDefault();
-        selectPlayerTarget(0);
-      } else if (event.key === 'End') {
-        event.preventDefault();
-        selectPlayerTarget(80);
-      } else if (event.key === 'ArrowUp') {
-        event.preventDefault();
-        movePlayerSelection(-1, 0);
-      } else if (event.key === 'ArrowDown') {
-        event.preventDefault();
-        movePlayerSelection(1, 0);
-      } else if (event.key === 'ArrowLeft') {
-        event.preventDefault();
-        movePlayerSelection(0, -1);
-      } else if (event.key === 'ArrowRight') {
-        event.preventDefault();
-        movePlayerSelection(0, 1);
-      } else if (event.key === 'Escape') {
-        event.preventDefault();
-        selectedPlayerCell = null;
-        selectedPlayerDigit = null;
-        playerPromotionMode = false;
-        renderBoard();
-      }
+      return playerKeyboard.handleKeydown(event);
     }
 
     function bindPlayerDigitElement(element, cell, digit) {
@@ -1796,84 +1693,25 @@
       }
 
       const center = (digits.length - 1) / 2;
-      for (let index = 0; index < digits.length; index++) {
-        const pair = vantageClosestAnchorPair(fromSide, toSide, digits[index]);
-        if (!pair) continue;
-        drawArc(svg, pair.from, pair.to, 'chain-weak-line', -4.5, (index - center) * .7);
+      for (let index = 0; index < digits.length; index += 1) {
+        drawVantageWeakConnection(
+          svg,
+          fromSide,
+          toSide,
+          digits[index],
+          digits[index],
+        );
       }
     }
 
+    let vantageOverlayRenderer;
     function renderVantageChainOverlay(chain) {
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('class', 'chain-overlay');
-      svg.setAttribute('viewBox', '0 0 100 100');
-      svg.setAttribute('aria-hidden', 'true');
-
-      const steps = orientedDisplayChainSteps(chain.steps);
-
-      for (let index = 0; index < steps.length; index++) {
-        const step = steps[index];
-        if (index > 0) {
-          const fromSide = visibleChainExitSide(steps[index - 1]);
-          const toSide = visibleChainEntrySide(step);
-          const weakFromDigit = step.weakFromDigit ?? step.weakDigit;
-          const weakToDigit = step.weakToDigit ?? step.weakDigit;
-          drawVantageWeakConnection(svg, fromSide, toSide, weakFromDigit, weakToDigit);
-        }
-
-        if (isAlsVisualStep(step) && step.module?.common) {
-          const moduleSides = moduleVisualSides(step);
-          const common = step.module.common;
-          const weakDigits = common.restrictedDigits?.length
-            ? common.restrictedDigits
-            : (common.digits || []);
-          drawVantageWeakConnections(svg, moduleSides.entry, moduleSides.exit, weakDigits);
-        }
-
-        if (!isAlsVisualStep(step) && !isAlmostFishVisualStep(step)) {
-          drawVantageStrongConnection(svg, step.entry, step.exit);
-        }
-      }
-
-      if (chain.isRing && steps.length) {
-        drawVantageWeakConnection(
-          svg,
-          visibleChainExitSide(steps[steps.length - 1]),
-          visibleChainEntrySide(steps[0]),
-          chain.ringWeakFromDigit ?? chain.ringWeakDigit,
-          chain.ringWeakToDigit ?? chain.ringWeakDigit,
-        );
-      }
-
-      boardEl.appendChild(svg);
+      return vantageOverlayRenderer.renderChainOverlay(chain);
     }
 
     function renderVantageStrongLinkOverlay(strongLink) {
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('class', 'chain-overlay strong-link-overlay');
-      svg.setAttribute('viewBox', '0 0 100 100');
-      svg.setAttribute('aria-hidden', 'true');
-
-      const startSide = {
-        cells: strongLink.activeCells || [],
-        digits: strongLink.startingDigits || [],
-      };
-      const endSide = {
-        cells: strongLink.linkedCells || [],
-        digits: strongLink.linkDigits || [],
-      };
-      drawVantageSideBoxes(svg, startSide, 'strong-link-side-box strong-link-start-box');
-      drawVantageSideBoxes(svg, endSide, 'strong-link-side-box strong-link-end-box');
-
-      const pair = vantageClosestAnchorPair(startSide, endSide);
-      if (pair) {
-        drawArc(svg, pair.from, pair.to, 'strong-link-arc', 5, -.22);
-        drawArc(svg, pair.from, pair.to, 'strong-link-arc', 5, .22);
-      }
-
-      boardEl.appendChild(svg);
+      return vantageOverlayRenderer.renderStrongLinkOverlay(strongLink);
     }
-
     const digitBoxBounds = appNamespace.chainVisualGeometry.digitBoxBounds;
     const visualGeometryCallbacks = { digitAnchor, chainCandidateIsVisible };
     const sideAnchors = (side, forcedDigit = null, existingOnly = true) =>
@@ -1901,7 +1739,6 @@
       core.variantUnitName,
       sectorFrameRects,
     );
-    const superMultiGroupBounds = appNamespace.chainVisualGeometry.superMultiGroupBounds;
     const closestAnchorPair = (
       fromSide,
       toSide,
@@ -2196,617 +2033,52 @@
       return drawn;
     }
 
+    let chainSectorFrameRenderer;
     function drawChainSectorFrames(svg, sectors) {
-      for (const { name, rect } of chainSectorFrameData(sectors)) {
-        const frame = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        frame.setAttribute('x', String(rect.left));
-        frame.setAttribute('y', String(rect.top));
-        frame.setAttribute('width', String(rect.width));
-        frame.setAttribute('height', String(rect.height));
-        frame.setAttribute('class', 'chain-sector-frame');
-        frame.dataset.sector = name;
-        svg.appendChild(frame);
-      }
+      return chainSectorFrameRenderer.render(svg, sectors);
     }
 
+    let chainOverlayRenderer;
     function renderChainOverlay(chain) {
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('class', 'chain-overlay');
-      svg.setAttribute('viewBox', '0 0 100 100');
-      svg.setAttribute('aria-hidden', 'true');
-      const steps = orientedDisplayChainSteps(chain.steps);
-      const isPureXyChain = steps.length > 0
-        && steps.every(step =>
-          step.family === 'SL' && Number(step.linkType) === 4);
-
-      if (chain.ahsXy) {
-        for (const [index, step] of steps.entries()) {
-          const boxClass = index % 2
-            ? 'strong-link-side-box strong-link-end-box'
-            : 'strong-link-side-box strong-link-start-box';
-          drawSideDigitBoxes(svg, step.entry, boxClass);
-        }
-        for (const bridge of chain.ahsXy.bridges || []) {
-          if (bridge?.kind !== 'Position') continue;
-          for (const pair of bridge.pairs || []) {
-            if (!Array.isArray(pair) || pair.length < 2) continue;
-            drawWeakConnection(
-              svg,
-              { cells: [pair[0]], digits: [bridge.digit] },
-              { cells: [pair[1]], digits: [bridge.digit] },
-            );
-          }
-        }
-        boardEl.appendChild(svg);
-        return;
-      }
-
-      for (let index = 0; index < steps.length; index++) {
-        const step = steps[index];
-        drawAlmostFishOverlay(svg, step);
-        if (!isModuleVisualStep(step) && !isPureXyChain) {
-          // The chain endpoints already have their green/blue node graphics.
-          // Add digit boxes only for intermediate sides.
-          if (index > 0) {
-            drawSideDigitBoxes(
-              svg,
-              step.entry,
-              'strong-link-side-box strong-link-start-box',
-            );
-          }
-          if (index < steps.length - 1) {
-            drawSideDigitBoxes(
-              svg,
-              step.exit,
-              'strong-link-side-box strong-link-end-box',
-            );
-          }
-        }
-        // A grouped endpoint needs one enclosing box for the whole link.
-        // Single-cell endpoints keep their existing green/blue node graphics;
-        // boxing those again would double-stamp the chain start/end.
-        if (!isModuleVisualStep(step) && !isPureXyChain) {
-          if (index === 0) {
-            drawGroupedEndpointBox(
-              svg,
-              step.entry,
-              'strong-link-side-box strong-link-start-box',
-            );
-          }
-          if (index === steps.length - 1) {
-            drawGroupedEndpointBox(
-              svg,
-              step.exit,
-              'strong-link-side-box strong-link-end-box',
-            );
-          }
-        }
-        if (index > 0) {
-          const fromSide = visibleChainExitSide(steps[index - 1]);
-          const toSide = visibleChainEntrySide(step);
-          const weakFromDigit = step.weakFromDigit ?? step.weakDigit;
-          const weakToDigit = step.weakToDigit ?? step.weakDigit;
-          drawChainSectorFrames(svg, step.weakSectors);
-          const drewDirectAlc = chain?.alcXz
-            && steps.length === 2
-            && drawDirectAlcContacts(svg, chain, fromSide, toSide);
-          if (!drewDirectAlc) {
-            drawWeakConnection(svg, fromSide, toSide, weakFromDigit, weakToDigit, true);
-          }
-        }
-        if (isModuleVisualStep(step) && step.module?.common) {
-          const moduleSides = moduleVisualSides(step);
-          const common = step.module.common;
-          const drewAhsBridge = step.family === 'AHS'
-            && drawAhsXzBridgeConnections(svg, step);
-          if (!drewAhsBridge) {
-            const weakDigits = common.restrictedDigits?.length
-              ? common.restrictedDigits
-              : (common.digits || []);
-            drawWeakConnections(svg, moduleSides.entry, moduleSides.exit, weakDigits);
-          }
-        }
-        if (!isModuleVisualStep(step) && !isAlmostFishVisualStep(step)) {
-          // Keep the proof visible even when an earlier move removed a
-          // candidate that the selected chain still uses as an anchor. The
-          // fallback is only a geometric slot; it does not recreate the mark.
-          drawStrongConnection(svg, step.entry, step.exit, true);
-        }
-      }
-
-      if (chain.isRing && steps.length) {
-        const ringFrom = visibleChainExitSide(steps[steps.length - 1]);
-        const ringTo = visibleChainEntrySide(steps[0]);
-        // The direct ALC handoff already draws both RCC contacts. Repeating
-        // them here would turn the two weak inferences into four lines.
-        const directAlcRing = chain?.alcXz && steps.length === 2;
-        if (!directAlcRing) {
-          drawWeakConnection(
-            svg,
-            ringFrom,
-            ringTo,
-            chain.ringWeakFromDigit ?? chain.ringWeakDigit,
-            chain.ringWeakToDigit ?? chain.ringWeakDigit,
-          );
-        }
-      }
-
-      boardEl.appendChild(svg);
+      return chainOverlayRenderer.render(chain);
     }
 
+    let strongLinkOverlayRenderer;
     function renderStrongLinkOverlay(strongLink) {
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('class', 'chain-overlay strong-link-overlay');
-      svg.setAttribute('viewBox', '0 0 100 100');
-      svg.setAttribute('aria-hidden', 'true');
-
-      const startSide = {
-        cells: strongLink.activeCells || [],
-        digits: strongLink.startingDigits || [],
-      };
-      const endSide = {
-        cells: strongLink.linkedCells || [],
-        digits: strongLink.linkDigits || [],
-      };
-      drawSideDigitBoxes(svg, startSide, 'strong-link-side-box strong-link-start-box');
-      drawSideDigitBoxes(svg, endSide, 'strong-link-side-box strong-link-end-box');
-
-      const pair = closestAnchorPair(startSide, endSide);
-      if (pair) {
-        drawArc(svg, pair.from, pair.to, 'strong-link-arc', 5, -0.38);
-        drawArc(svg, pair.from, pair.to, 'strong-link-arc', 5, 0.38);
-      }
-
-      boardEl.appendChild(svg);
+      return strongLinkOverlayRenderer.render(strongLink);
     }
-
-    function renderSuperMultiGroupOverlay(record, vantage = false) {
-      if (!record?.groupColours?.length) return;
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('class', 'chain-overlay super-multi-group-overlay');
-      svg.setAttribute('viewBox', '0 0 100 100');
-      svg.setAttribute('aria-hidden', 'true');
-      const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-      svg.appendChild(defs);
-
-      for (const [groupIndex, group] of record.groupColours.entries()) {
-        for (const side of group.sides || []) {
-          const visualSide = { cells: side.cells || [], digits: [record.digit] };
-          const anchors = vantage
-            ? vantageSideAnchors(visualSide, record.digit, true)
-            : sideAnchors(visualSide, record.digit, true);
-          const bounds = superMultiGroupBounds(anchors);
-          if (!bounds) continue;
-
-          const token = side.colourTokens?.[0] || group.pairColours?.[side.side];
-          const style = multiColoringStyleForToken(token);
-          const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-          rect.setAttribute('x', String(bounds.left));
-          rect.setAttribute('y', String(bounds.top));
-          rect.setAttribute('width', String(Math.max(1.1, bounds.right - bounds.left)));
-          rect.setAttribute('height', String(Math.max(1.1, bounds.bottom - bounds.top)));
-          rect.setAttribute('rx', '0.8');
-          rect.setAttribute('ry', '0.8');
-          rect.setAttribute('class', 'super-multi-group-box');
-          rect.dataset.groupId = String(group.id ?? '');
-          rect.dataset.groupLabel = `${group.label || ''}${side.side === 0 ? 'A' : 'B'}`;
-          if (style) {
-            rect.setAttribute('fill', style.fill || 'transparent');
-            rect.setAttribute('fill-opacity', '.22');
-            rect.setAttribute('stroke', style.stroke || style.ink || '#475569');
-          }
-          svg.appendChild(rect);
-        }
-
-        // ERI keeps its row/column intersection cell in both XOR sides. Mark
-        // that shared atom as a two-dimensional colour instead of allowing
-        // the second side box to visually erase the first one.
-        if ((group.sharedCells || []).length >= 1) {
-          const sharedSide = { cells: group.sharedCells, digits: [record.digit] };
-          const anchors = vantage
-            ? vantageSideAnchors(sharedSide, record.digit, true)
-            : sideAnchors(sharedSide, record.digit, true);
-          const bounds = superMultiGroupBounds(anchors, 0.8);
-          const leftStyle = multiColoringStyleForToken(group.sides?.[0]?.colourTokens?.[0]);
-          const rightStyle = multiColoringStyleForToken(group.sides?.[1]?.colourTokens?.[0]);
-          if (bounds && leftStyle && rightStyle) {
-            const gradientId = `super-multi-shared-${groupIndex}-${String(group.id).replace(/[^a-z0-9_-]/gi, '-')}`;
-            const gradient = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
-            gradient.setAttribute('id', gradientId);
-            gradient.setAttribute('x1', '0');
-            gradient.setAttribute('y1', '0');
-            gradient.setAttribute('x2', '1');
-            gradient.setAttribute('y2', '1');
-            for (const [offset, style] of [['0%', leftStyle], ['50%', leftStyle], ['50%', rightStyle], ['100%', rightStyle]]) {
-              const stop = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
-              stop.setAttribute('offset', offset);
-              stop.setAttribute('stop-color', style.fill || style.stroke);
-              stop.setAttribute('stop-opacity', '.78');
-              gradient.appendChild(stop);
-            }
-            defs.appendChild(gradient);
-            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            rect.setAttribute('x', String(bounds.left));
-            rect.setAttribute('y', String(bounds.top));
-            rect.setAttribute('width', String(Math.max(1.1, bounds.right - bounds.left)));
-            rect.setAttribute('height', String(Math.max(1.1, bounds.bottom - bounds.top)));
-            rect.setAttribute('rx', '0.8');
-            rect.setAttribute('ry', '0.8');
-            rect.setAttribute('class', 'super-multi-group-shared-box');
-            rect.setAttribute('fill', `url(#${gradientId})`);
-            rect.dataset.groupId = String(group.id ?? '');
-            rect.dataset.sharedCell = 'true';
-            svg.appendChild(rect);
-          }
-        }
-      }
-
-      boardEl.appendChild(svg);
-    }
-
+    let alsDofOverlayRenderer;
     function renderAlsDofOverlay(record, vantage = false) {
-      if (!record || !record.primaryA) return;
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('class', 'chain-overlay als-dof-overlay');
-      svg.setAttribute('viewBox', '0 0 100 100');
-      svg.setAttribute('aria-hidden', 'true');
-
-      const hubSide = {
-        cells: record.primaryA.cells || [],
-        digits: record.primaryA.digits || [],
-      };
-      const anchorPair = vantage ? vantageClosestAnchorPair : groupedAnchorPair;
-
-      const auxiliary = record.auxiliary || [];
-      const center = (auxiliary.length - 1) / 2;
-      const endpointSide = record.primaryC
-        ? {
-            cells: record.primaryC.cells || [],
-            digits: record.primaryC.digits || [],
-          }
-        : null;
-      if (endpointSide) {
-      }
-      if (record.chainForm === 'auxiliary-hub-path' && endpointSide) {
-        const pathSides = [
-          hubSide,
-          ...auxiliary.map(node => ({
-            cells: node.cells || [],
-            digits: node.digits || [],
-          })),
-          endpointSide,
-        ];
-        for (let index = 0; index < pathSides.length - 1; index += 1) {
-          const left = pathSides[index];
-          const right = pathSides[index + 1];
-          const bridgeList = index === 0
-            ? auxiliary[0]?.pathPrevBridges || []
-            : auxiliary[index - 1]?.pathNextBridges || [];
-          const digits = bridgeList
-            .map(bridge => bridge.digit)
-            .filter(digit => digit != null);
-          const center = (digits.length - 1) / 2;
-          for (const [digitIndex, digit] of digits.entries()) {
-            const pair = anchorPair(left, right, digit, digit);
-            if (!pair) continue;
-            drawArc(
-              svg,
-              pair.from,
-              pair.to,
-              'chain-weak-line',
-              -4.5,
-              (index - (pathSides.length - 2) / 2) * 1.2
-                + (digitIndex - center) * .7,
-            );
-          }
-        }
-        boardEl.appendChild(svg);
-        return;
-      }
-      for (const [index, node] of auxiliary.entries()) {
-        const side = { cells: node.cells || [], digits: node.digits || [] };
-
-        const aBridgeDigits = (node.aBridges || [])
-          .map(bridge => bridge.digit)
-          .filter(digit => digit != null);
-        const weakDigits = aBridgeDigits.length
-          ? [...new Set(aBridgeDigits)]
-          : node.rccDigits?.length
-            ? node.rccDigits
-            : [node.rccDigit ?? null].filter(digit => digit != null);
-        const digitCenter = (weakDigits.length - 1) / 2;
-        for (const [digitIndex, weakDigit] of weakDigits.entries()) {
-          const pair = anchorPair(hubSide, side, weakDigit, weakDigit);
-          if (!pair) continue;
-          drawArc(
-            svg,
-            pair.from,
-            pair.to,
-            'chain-weak-line',
-            -4.5,
-            (index - center) * 1.2 + (digitIndex - digitCenter) * .7,
-          );
-        }
-
-        // Endpoint C is the second half of an ALS-DOF chain. Its RCCs are
-        // stored separately from the A-side bridges, so paint those links
-        // from each auxiliary to C instead of stopping at the midpoint.
-        if (endpointSide) {
-          const terminalDigits = (node.cBridges || [])
-            .map(bridge => bridge.digit)
-            .filter(digit => digit != null);
-          const terminalCenter = (terminalDigits.length - 1) / 2;
-          for (const [digitIndex, terminalDigit] of terminalDigits.entries()) {
-            const pair = anchorPair(side, endpointSide, terminalDigit, terminalDigit);
-            if (!pair) continue;
-            drawArc(
-              svg,
-              pair.from,
-              pair.to,
-              'chain-weak-line',
-              -4.5,
-              (index - center) * 1.2 + (digitIndex - terminalCenter) * .7,
-            );
-          }
-        }
-      }
-
-      boardEl.appendChild(svg);
+      return alsDofOverlayRenderer.render(record, vantage);
     }
 
     function renderHydraAlsDofOverlay(record, vantage = false) {
-      if (!record || !record.primaryA) return;
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('class', 'chain-overlay als-dof-overlay hydra-als-dof-overlay');
-      svg.setAttribute('viewBox', '0 0 100 100');
-      svg.setAttribute('aria-hidden', 'true');
-
-      // Hydra's auxiliary is represented by its attached AIC branch.  The
-      // ordinary ALS-DOF RCC arcs are deliberately not drawn here: they are
-      // internal verification links, not the explanation of the Hydra move.
-      const hubSide = {
-        cells: record.primaryA.cells || record.primaryA.alsAllCells || [],
-        digits: record.primaryA.digits || record.primaryA.alsDigits || [],
-      };
-      const branchesById = new Map((record.auxiliary || []).map(node => [
-        node.hydraParticipantId,
-        { cells: node.cells || node.alsAllCells || [], digits: node.digits || node.alsDigits || [] },
-      ]));
-      for (const branch of record.hydraBranches || []) {
-        const side = branchesById.get(branch.participantId);
-        const digit = branch.rcc?.digit;
-        if (!side || digit == null) continue;
-        const pair = (vantage ? vantageClosestAnchorPair : groupedAnchorPair)(
-          hubSide,
-          side,
-          digit,
-          digit,
-        );
-        if (!pair) continue;
-        drawArc(svg, pair.from, pair.to, 'chain-weak-line', -4.5, 0);
-      }
-      boardEl.appendChild(svg);
+      return alsDofOverlayRenderer.renderHydra(record, vantage);
     }
-
-    function chainHighlights(chain) {
-      const marks = new Set();
-      const xorEntryMarks = new Set();
-      const xorExitMarks = new Set();
-      const weakMarks = new Set();
-      const alsMarks = new Set();
-      const alsStyleByCell = new Map();
-      const alsStyleByAtom = new Map();
-      const ahsMarks = new Set();
-      const ahsStyleByCell = new Map();
-      const ahsStyleByAtom = new Map();
-      const startMarks = new Set();
-      const endMarks = new Set();
-      const cells = new Set();
-      const alsCells = new Set();
-      const ahsCells = new Set();
-      const alsEntryCells = new Set();
-      const alsExitCells = new Set();
-      const startCells = new Set();
-      const endCells = new Set();
-      const orderByCell = new Map();
-
-      if (!chain) {
-        return {
-          marks,
-          xorEntryMarks,
-          xorExitMarks,
-          weakMarks,
-          alsMarks,
-          alsStyleByCell,
-          alsStyleByAtom,
-          ahsMarks,
-          ahsStyleByCell,
-          ahsStyleByAtom,
-          startMarks,
-          endMarks,
-          cells,
-          alsCells,
-          ahsCells,
-          alsEntryCells,
-          alsExitCells,
-          startCells,
-          endCells,
-          orderByCell,
-        };
-      }
-
-      const alsColors = alsColorMapForChain(chain);
-      const ahsColors = ahsColorMapForChain(chain);
-      const displaySteps = orientedDisplayChainSteps(chain.steps);
-      for (let index = 0; index < displaySteps.length; index++) {
-        const step = displaySteps[index];
-        // The selected chain is an explanation of the pre-application state.
-        // Keep its node atoms visible even if Next already removed them from
-        // the live candidate grid; this does not mutate candidates.
-        addChainSideMarks(step.entry, marks, cells, orderByCell, index + 1, false);
-        addChainSideMarks(step.exit, marks, cells, orderByCell, index + 1, false);
-        for (const atom of chainSideAtoms(step.entry, null, false)) xorEntryMarks.add(atom);
-        for (const atom of chainSideAtoms(step.exit, null, false)) xorExitMarks.add(atom);
-
-        if (index > 0) {
-          const fromSide = visibleChainExitSide(displaySteps[index - 1]);
-          const toSide = visibleChainEntrySide(step);
-          const weakFromDigit = step.weakFromDigit ?? step.weakDigit;
-          const weakToDigit = step.weakToDigit ?? step.weakDigit;
-          const directAlc = chain?.alcXz && displaySteps.length === 2;
-          if (directAlc) {
-            for (const contact of chain.alcXz.contacts || []) {
-              for (const pair of contact.pairs || []) {
-                weakMarks.add(atomKey(pair[0], Number(contact.digit)));
-                weakMarks.add(atomKey(pair[1], Number(contact.digit)));
-              }
-            }
-          } else {
-            const resolved = resolvedWeakDigits(fromSide, toSide, weakFromDigit, weakToDigit);
-            addWeakDigitMarks(weakMarks, fromSide, resolved.fromDigit, false);
-            addWeakDigitMarks(weakMarks, toSide, resolved.toDigit, false);
-            const pair = groupedAnchorPair(
-              fromSide,
-              toSide,
-              resolved.fromDigit,
-              resolved.toDigit,
-            );
-            if (pair && weakFromDigit == null && weakToDigit == null) {
-              weakMarks.add(atomKey(pair.from.cell, pair.from.digit));
-              weakMarks.add(atomKey(pair.to.cell, pair.to.digit));
-            }
-          }
-        }
-
-        if (isAlsVisualStep(step)) {
-          const moduleSides = moduleVisualSides(step);
-          const entryColor = alsColorForSide(step, moduleSides.entry, 'entry', alsColors);
-          const exitColor = alsColorForSide(step, moduleSides.exit, 'exit', alsColors);
-          for (const cell of moduleSides.entry.cells || []) {
-            alsCells.add(cell);
-            alsEntryCells.add(cell);
-            alsStyleByCell.set(cell, entryColor);
-          }
-          for (const cell of moduleSides.exit.cells || []) {
-            alsCells.add(cell);
-            alsExitCells.add(cell);
-            alsStyleByCell.set(cell, exitColor);
-          }
-          for (const atom of chainSideAtoms(moduleSides.entry, null, false)) {
-            alsMarks.add(atom);
-            alsStyleByAtom.set(atom, entryColor);
-          }
-          for (const atom of chainSideAtoms(moduleSides.exit, null, false)) {
-            alsMarks.add(atom);
-            alsStyleByAtom.set(atom, exitColor);
-          }
-
-          if (step.module?.common) {
-            const common = step.module.common;
-            const weakDigits = common.restrictedDigits?.length
-              ? common.restrictedDigits
-              : (common.digits || []);
-            for (const digit of weakDigits) {
-              for (const atom of chainSideAtoms(moduleSides.entry, digit, false)) weakMarks.add(atom);
-              for (const atom of chainSideAtoms(moduleSides.exit, digit, false)) weakMarks.add(atom);
-            }
-          }
-        }
-
-        if (isAhsVisualStep(step)) {
-          const moduleSides = moduleVisualSides(step);
-          for (const [role, side] of [['entry', moduleSides.entry], ['exit', moduleSides.exit]]) {
-            const ahsColor = ahsColorForSide(step, side, role, ahsColors);
-            for (const cell of side?.cells || []) {
-              ahsCells.add(cell);
-              ahsStyleByCell.set(cell, ahsColor);
-            }
-            for (const atom of chainSideAtoms(side, null, false)) {
-              ahsMarks.add(atom);
-              ahsStyleByAtom.set(atom, ahsColor);
-            }
-          }
-          if (step.module?.common) {
-            const common = step.module.common;
-            const weakDigits = common.restrictedDigits?.length
-              ? common.restrictedDigits
-              : (common.digits || []);
-            for (const digit of weakDigits) {
-              for (const atom of chainSideAtoms(moduleSides.entry, digit, false)) weakMarks.add(atom);
-              for (const atom of chainSideAtoms(moduleSides.exit, digit, false)) weakMarks.add(atom);
-            }
-          }
-        }
-      }
-
-      const firstEntry = visibleChainEntrySide(displaySteps[0]) || {};
-      for (const atom of chainSideAtoms(firstEntry, null, false)) startMarks.add(atom);
-      for (const cell of firstEntry.cells || []) startCells.add(cell);
-
-      const terminal = visibleChainExitSide(displaySteps[displaySteps.length - 1]) || {};
-      for (const atom of chainSideAtoms(terminal, null, false)) endMarks.add(atom);
-      for (const cell of terminal.cells || []) endCells.add(cell);
-
-      if (chain.isRing && displaySteps.length) {
-        const ringFrom = visibleChainExitSide(displaySteps[displaySteps.length - 1]);
-        const ringTo = visibleChainEntrySide(displaySteps[0]);
-        if (chain?.alcXz && displaySteps.length === 2) {
-          for (const contact of chain.alcXz.contacts || []) {
-            for (const pair of contact.pairs || []) {
-              weakMarks.add(atomKey(pair[0], Number(contact.digit)));
-              weakMarks.add(atomKey(pair[1], Number(contact.digit)));
-            }
-          }
-        } else {
-          const ringFromDigit = chain.ringWeakFromDigit ?? chain.ringWeakDigit;
-          const ringToDigit = chain.ringWeakToDigit ?? chain.ringWeakDigit;
-          addWeakDigitMarks(weakMarks, ringFrom, ringFromDigit);
-          addWeakDigitMarks(weakMarks, ringTo, ringToDigit);
-          const pair = groupedAnchorPair(
-            ringFrom,
-            ringTo,
-            ringFromDigit,
-            ringToDigit,
-          );
-          if (pair && ringFromDigit == null && ringToDigit == null) {
-            weakMarks.add(atomKey(pair.from.cell, pair.from.digit));
-            weakMarks.add(atomKey(pair.to.cell, pair.to.digit));
-          }
-        }
-      }
-
-      return {
-        marks,
-        xorEntryMarks,
-        xorExitMarks,
-        weakMarks,
-        alsMarks,
-        alsStyleByCell,
-        alsStyleByAtom,
-        startMarks,
-        endMarks,
-        cells,
-        alsCells,
-        ahsCells,
-        alsEntryCells,
-        alsExitCells,
-        ahsMarks,
-        ahsStyleByCell,
-        ahsStyleByAtom,
-        startCells,
-        endCells,
-        orderByCell,
-      };
-    }
-
+    const chainHighlightBuilder = appNamespace.chainHighlightBuilder.create({
+      alsColorMapForChain,
+      ahsColorMapForChain,
+      orientedDisplayChainSteps,
+      addChainSideMarks,
+      chainSideAtoms,
+      visibleChainEntrySide,
+      visibleChainExitSide,
+      atomKey,
+      resolvedWeakDigits,
+      groupedAnchorPair,
+      isAlsVisualStep,
+      moduleVisualSides,
+      alsColorForSide,
+      isAhsVisualStep,
+      ahsColorForSide,
+    });
+    const chainHighlights = chainHighlightBuilder.chainHighlights;
     const colouringNodeKey = appNamespace.colouringModel.colouringNodeKey;
     const selectedColouringRecord = method => appNamespace.colouringModel.selectedColouringRecord({
       simpleColoringReport,
       selectedSimpleColoringIndex,
       multiColoringReport,
       selectedMultiColoringIndex,
-      superMultiColoringReport,
-      selectedSuperMultiColoringIndex,
       threeDMedusaReport,
       selectedThreeDMedusaIndex,
       threeDMedusaMultiReport,
@@ -3032,7 +2304,6 @@
       appNamespace.colouringModel.buildColouringHighlightMarks({
         ...options,
         atomKeyFn: atomKey,
-        cellHasCandidateFn: cellHasCandidate,
       });
 
     const buildActiveStepHighlightContext = options =>
@@ -3064,56 +2335,19 @@
     const mergeChainHighlightView = (target, source) =>
       appNamespace.highlightContext.mergeChainHighlightView(target, source);
 
-    function updateColouringSequenceControls() {
-      for (const method of Object.keys(colouringSequenceState)) {
-        const state = colouringSequenceState[method];
-        const info = colouringSequenceInfo(selectedColouringRecord(method), method);
-        const prefix = method === 'medusaMulti' ? 'threeDMedusaMulti' : method === 'medusa' ? 'threeDMedusa' : method;
-        const record = selectedColouringRecord(method);
-        const label = document.getElementById(`${prefix}BreadthLabel`);
-        const eliminationLabel = document.getElementById(`${prefix}EliminationLabel`);
-        const previous = document.querySelector(`[data-colouring-step="${method}"][data-step="-1"]`);
-        const next = document.querySelector(`[data-colouring-step="${method}"][data-step="1"]`);
-        if (label) label.textContent = state.enabled ? `Step ${info.breadth} of ${info.max}` : 'Full';
-        if (eliminationLabel) {
-          const display = displayColouringRecord(record, method);
-          eliminationLabel.textContent = `Eliminations visible: ${display?.eliminations?.length || 0}`;
-        }
-        if (previous) previous.disabled = !state.enabled || info.breadth <= 1;
-        if (next) next.disabled = !state.enabled || info.breadth >= info.max;
-      }
-    }
-
-    function setColouringSequenceEnabled(method, enabled) {
-      appNamespace.colouringModel.setColouringSequenceEnabled(
-        colouringSequenceState,
-        method,
-        enabled,
-      );
-      updateColouringSequenceControls();
-      renderBoard();
-    }
-
-    function stepColouringSequence(method, delta) {
-      appNamespace.colouringModel.stepColouringSequence(
-        colouringSequenceState,
-        method,
-        delta,
-        selectedMethod => colouringSequenceInfo(selectedColouringRecord(selectedMethod), selectedMethod),
-      );
-      updateColouringSequenceControls();
-      renderBoard();
-    }
-
-    for (const input of document.querySelectorAll('[data-colouring-sequential]')) {
-      input.addEventListener('change', () =>
-        setColouringSequenceEnabled(input.dataset.colouringSequential, input.checked));
-    }
-    for (const button of document.querySelectorAll('[data-colouring-step]')) {
-      button.addEventListener('click', () =>
-        stepColouringSequence(button.dataset.colouringStep, Number(button.dataset.step)));
-    }
-
+    const colouringSequenceControls = appNamespace.colouringSequenceControls.create({
+      documentRef: document,
+      state: colouringSequenceState,
+      selectedRecord: selectedColouringRecord,
+      sequenceInfo: colouringSequenceInfo,
+      displayRecord: displayColouringRecord,
+      setSequenceEnabled: (method, enabled) => appNamespace.colouringModel.setColouringSequenceEnabled(colouringSequenceState, method, enabled),
+      stepSequence: (method, delta, infoFn) => appNamespace.colouringModel.stepColouringSequence(colouringSequenceState, method, delta, infoFn),
+      renderBoard,
+    });
+    const updateColouringSequenceControls = colouringSequenceControls.render;
+    const setColouringSequenceEnabled = colouringSequenceControls.enable;
+    const stepColouringSequence = colouringSequenceControls.step;
     function currentHighlights() {
       const selectedDofRecord = selectedAlsDofRecord();
       const hydraRecord = selectedDofRecord?.hasHydra ? selectedDofRecord : selectedHydraRecord();
@@ -3174,14 +2408,12 @@
         blocked: Boolean((activeStep && activeStep.tech !== 'colouring') || chain || alsRecord || alsDofRecord
           || ahsRecord || ahsDofRecord || strongLink),
         reports: {
-          superMulti: superMultiColoringReport,
           medusaMulti: threeDMedusaMultiReport,
           multi: multiColoringReport,
           medusa: threeDMedusaReport,
           simple: simpleColoringReport,
         },
         indices: {
-          superMulti: selectedSuperMultiColoringIndex,
           medusaMulti: selectedThreeDMedusaMultiIndex,
           multi: selectedMultiColoringIndex,
           medusa: selectedThreeDMedusaIndex,
@@ -3189,13 +2421,6 @@
         },
       });
       const {
-        raw: {
-          superMulti: superMultiColoringRawRecord,
-          medusaMulti: threeDMedusaMultiRawRecord,
-          multi: multiColoringRawRecord,
-          medusa: threeDMedusaRawRecord,
-        },
-        superMulti: superMultiColoringRecord,
         medusaMulti: threeDMedusaMultiRecord,
         multi: multiColoringRecord,
         medusa: threeDMedusaRecord,
@@ -3338,8 +2563,6 @@
         simpleColoringElimMarks,
         isMultiColoring: !!activeMultiColoringRecord,
         multiColoringRecord: activeMultiColoringRecord,
-        isSuperMultiColoring: !!superMultiColoringRecord,
-        superMultiColoringRecord,
         multiColoringMarks,
         multiColoringElimMarks,
         isThreeDMedusa: !!colouringRecord,
@@ -3372,357 +2595,21 @@
     }
 
     const renderGridViewHeaders = () => {
-      vantageView.renderHeaders({
-        view: gridView,
-        selector: gridViewSelector,
-        title: gridColumnTitleEl,
-        numbers: gridColumnNumbersEl,
-        rows: gridRowHeaderEl,
-      });
+      gridViewController.renderHeaders();
     };
 
     function setGridView(view) {
-      vantageView.switchView(view, {
-        setView: nextView => {
-          gridView = nextView;
-          gridViewSelector.value = gridView;
-        },
-        renderHeaders: renderGridViewHeaders,
-        renderBoard,
-      });
+      gridViewController.switchView(view);
     }
 
     function extractGridViewSlice(view) {
-      return vantageView.extractSlice({
-        view,
-        cand,
-        puzzle,
-        core,
-        showFixed: showFixedInVantage,
-        vantageCellFromSlot,
-      });
+      return gridViewController.extractSlice(view);
     }
 
-    function renderVantageBoard(view, highlights = currentHighlights()) {
-      vantageView.renderBoard({
-        view,
-        slice: extractGridViewSlice(view),
-        highlights,
-        boardEl,
-        cand,
-        puzzle,
-        showFixed: showFixedInVantage,
-        vantageCellFromSlot,
-        atomKey,
-        digitHighlightIsVisible,
-        candidateSizeFilterDigitMatches,
-        cellHasCandidate,
-        applyCandidateSizeFilterStyle,
-        applyMultiColoringStyle,
-        applyAlsColorVars,
-        applyAhsColorVars,
-        selectedPlayerCell,
-        bindPlayerDigitElement,
-        renderVantageChainOverlay,
-        renderHydraAlsDofOverlay,
-        renderAlsDofOverlay,
-        renderVantageStrongLinkOverlay,
-        renderSuperMultiGroupOverlay,
-      });
-    }
-
+    let boardRenderer;
+    let renderCycle;
     function renderBoard() {
-      boardEl.textContent = '';
-      updateColouringSequenceControls();
-      boardEl.classList.toggle('vantage-board', gridView !== 'RC');
-      boardEl.classList.toggle('vantage-rn', gridView === 'Rn');
-      boardEl.classList.toggle('vantage-cn', gridView === 'Cn');
-      boardEl.classList.toggle('vantage-bn', gridView === 'Bn');
-      boardEl.setAttribute('role', 'grid');
-      boardEl.setAttribute('aria-rowcount', '9');
-      boardEl.setAttribute('aria-colcount', '9');
-      boardEl.tabIndex = gridView === 'RC' ? -1 : 0;
-      boardEl.setAttribute('aria-label', gridView === 'RC'
-        ? 'Sudoku candidate grid'
-        : `Sudoku ${gridView} candidate view`);
-      const highlights = currentHighlights();
-      if (gridView !== 'RC') {
-        renderVantageBoard(gridView, highlights);
-        return;
-      }
-
-      for (let cell = 0; cell < 81; cell++) {
-       const el = document.createElement('div');
-       el.className = 'cell';
-       if (originalPuzzle[cell]) el.classList.add('given');
-       if (promotedValues[cell]) el.classList.add('solved');
-       el.classList.add(...variantCellClasses(cell, variantSettings));
-       if (highlights.candidateSizeFilterCells.has(cell)) {
-         el.classList.add('candidate-size-filter-cell');
-         applyCandidateSizeFilterStyle(el, highlights.candidateSizeFilterStyle);
-       }
-       const fixedDigit = puzzle[cell] || promotedValues[cell] || 0;
-       if (fixedDigit && digitHighlightIsVisible(cell, fixedDigit)) {
-         el.classList.add('digit-focus-cell', 'digit-focus-' + fixedDigit);
-       }
-        if (highlights.isChromatic && highlights.chromaticCells.has(cell)) {
-          el.classList.add('chromatic-cell');
-          if (highlights.chromaticCoreCells.has(cell)) el.classList.add('chromatic-core-cell');
-          if (highlights.chromaticGuardians.has(cell)) el.classList.add('chromatic-guardian-cell');
-        }
-        if (highlights.isFish && highlights.fishCells.has(cell)) el.classList.add('fish-intersection');
-        if (highlights.isMsls && highlights.mslsBaseCells.has(cell)) el.classList.add('msls-base');
-        if (highlights.isMsls && highlights.mslsCoverCells.has(cell)) el.classList.add('msls-cover');
-        if (highlights.isFish && highlights.fins.has(cell) && !highlights.vertices.has(cell)) {
-          el.classList.add('fish-fin');
-        }
-        if (highlights.isSubset && !highlights.isHiddenSubset && highlights.vertices.has(cell)) {
-          el.classList.add('subset-vertex');
-        }
-        if (highlights.isFish && highlights.vertices.has(cell)) el.classList.add('fish-vertex');
-        if (highlights.isChain && highlights.chainAlsCells.has(cell)) {
-          el.classList.add('chain-als-cell');
-          applyAlsColorVars(el, highlights.chainAlsStyleByCell.get(cell));
-        }
-        if (highlights.isChain && highlights.chainAhsCells.has(cell)) {
-          el.classList.add('ahs-record-cell');
-          applyAhsColorVars(el, highlights.chainAhsStyleByCell.get(cell));
-        }
-        if (highlights.isAlsRecord && highlights.alsRecordCells.has(cell)) {
-          el.classList.add('chain-als-cell');
-          applyAlsColorVars(el, highlights.alsRecordColor);
-        }
-        if (highlights.isAlsDof && highlights.alsDofCells.has(cell)) {
-          el.classList.add('chain-als-cell');
-          applyAlsPartitionColors(el, highlights.alsDofStylesByCell.get(cell));
-        }
-        if (highlights.isNonConsecutiveAlsDof && highlights.alsDofClauseCells.has(cell)) {
-          el.classList.add('chain-als-cell');
-        }
-        if (highlights.isAhsRecord && highlights.ahsRecordCells.has(cell)) {
-          el.classList.add('ahs-record-cell');
-          applyAhsColorVars(el, highlights.ahsRecordColor);
-        }
-        if (highlights.isAhsDof && highlights.ahsDofRecordCells.has(cell)) {
-          el.classList.add('ahs-record-cell');
-          applyAhsColorVars(el, highlights.ahsDofRecordColor);
-        }
-        if (highlights.isChain && highlights.chainAlsEntryCells.has(cell)) el.classList.add('chain-als-entry');
-        if (highlights.isChain && highlights.chainAlsExitCells.has(cell)) el.classList.add('chain-als-exit');
-        if (highlights.isStrongLink && highlights.strongLink.activeCells?.includes(cell)) {
-          el.classList.add('strong-link-active-cell');
-        }
-        if (highlights.isStrongLink && highlights.strongLink.linkedCells?.includes(cell)) {
-          el.classList.add('strong-link-linked-cell');
-        }
-        const strongLinkPartition = highlights.strongLinkPartitionByCell.get(cell);
-        if (strongLinkPartition === 'active') el.classList.add('strong-link-partition-active');
-        if (strongLinkPartition === 'linked') el.classList.add('strong-link-partition-linked');
-        if (strongLinkPartition === 'empty') el.classList.add('strong-link-partition-empty');
-
-        bindPlayerCellElement(el, cell);
-
-       if (puzzle[cell]) {
-         el.textContent = String(puzzle[cell]);
-       } else {
-          const marks = document.createElement('div');
-          marks.className = 'marks';
-
-          for (let digit = 1; digit <= 9; digit++) {
-            const mark = document.createElement('span');
-            mark.className = 'mark';
-            const atomKey = `${cell}:${digit}`;
-            const isAlsDofElim = highlights.alsDofElimMarks.has(atomKey);
-            const isAhsDofElim = highlights.ahsDofRecordElimMarks.has(atomKey);
-            const isSimpleColoringElim = highlights.simpleColoringElimMarks.has(atomKey);
-            const isMultiColoringElim = highlights.multiColoringElimMarks.has(atomKey);
-            const isThreeDMedusaElim = highlights.threeDMedusaElimMarks.has(atomKey);
-            const isThreeDMedusaInvalid = highlights.threeDMedusaInvalidMarks.has(atomKey);
-            const isElim = highlights.removedMarks.has(atomKey) || isAlsDofElim || isAhsDofElim || isSimpleColoringElim
-              || isMultiColoringElim || isThreeDMedusaElim;
-            const isSetDigit = highlights.isSubset && highlights.patternDigits.has(digit) && highlights.vertices.has(cell);
-            const isAlsDofClauseDigit = highlights.alsDofClauseDigit === digit
-              && highlights.alsDofClauseCells.has(cell)
-              && cellHasCandidate(cell, digit);
-            const isFishVertexDigit = highlights.isFish && highlights.patternDigits.has(digit) && highlights.vertices.has(cell);
-            const isFishFinDigit = highlights.isFish && highlights.patternDigits.has(digit)
-              && highlights.fins.has(cell) && !highlights.vertices.has(cell);
-            const isFishIntersection = highlights.isFish
-              && highlights.patternDigits.has(digit)
-              && highlights.fishCells.has(cell);
-            const isFishBaseIntersection = isFishIntersection
-              && (highlights.fishBaseIntersections.has(cell)
-                || highlights.fishPeersOfBaseIntersection.has(cell));
-            const isFishBase = highlights.isFish
-              && highlights.patternDigits.has(digit)
-              && highlights.baseCells.has(cell)
-              && !highlights.fishCells.has(cell);
-            const isFishCover = highlights.isFish
-              && highlights.patternDigits.has(digit)
-              && highlights.coverCells.has(cell)
-              && !highlights.fishCells.has(cell);
-            const isFishDoubleCover = isFishCover && highlights.fishDoubleCover.has(cell);
-            const isFishTripleCover = isFishCover && highlights.fishTripleCover.has(cell);
-            const isFishEndofinDigit = highlights.isFish && highlights.patternDigits.has(digit)
-              && highlights.endofins.has(cell);
-            const isFishDigit = isFishVertexDigit || isFishFinDigit
-              || isFishBase || isFishBaseIntersection || isFishCover;
-            const hasCandidate = cellHasCandidate(cell, digit);
-            const isChainExplanation = highlights.isChain
-              && highlights.chainMarks.has(atomKey);
-            const hasChainCandidate = highlights.isChain
-              && (chainCandidateIsVisible(cell, digit) || isChainExplanation);
-            const isChromaticDigit = highlights.isChromatic
-              && highlights.chromaticCells.has(cell)
-              && highlights.chromaticDigits.has(digit)
-              && hasCandidate;
-            const isMslsDigit = highlights.isMsls && highlights.mslsCoverAtoms.has(atomKey);
-            const isChainDigit = highlights.isChain && highlights.chainMarks.has(atomKey);
-            const isChainXorEntryDigit = highlights.isChain && highlights.chainXorEntryMarks.has(atomKey);
-            const isChainXorExitDigit = highlights.isChain && highlights.chainXorExitMarks.has(atomKey);
-            const isChainWeakDigit = highlights.isChain && highlights.chainWeakMarks.has(atomKey);
-            const isChainAlsDigit = highlights.isChain && highlights.chainAlsMarks.has(atomKey);
-            const isChainAhsDigit = highlights.isChain && highlights.chainAhsMarks.has(atomKey);
-            const isAlsRecordDigit = highlights.isAlsRecord && highlights.alsRecordMarks.has(atomKey);
-            const isAlsDofDigit = highlights.isAlsDof && highlights.alsDofMarks.has(atomKey);
-            const isAhsRecordDigit = highlights.isAhsRecord && highlights.ahsRecordMarks.has(atomKey);
-            const isAhsDofRecordDigit = highlights.isAhsDof && highlights.ahsDofRecordMarks.has(atomKey);
-            const isChainStartDigit = highlights.isChain && highlights.chainStartMarks.has(atomKey);
-            const isChainEndDigit = highlights.isChain && highlights.chainEndMarks.has(atomKey);
-            const strongLinkPartitionStartDigit = highlights.isStrongLink
-              && strongLinkPartition === 'active'
-              && (highlights.strongLink.startingDigits || []).includes(digit)
-              && cellHasCandidate(cell, digit);
-            const strongLinkPartitionEndDigit = highlights.isStrongLink
-              && strongLinkPartition === 'linked'
-              && (highlights.strongLink.linkDigits || []).includes(digit)
-              && cellHasCandidate(cell, digit);
-            const isStrongLinkStartDigit = highlights.isStrongLink
-              && (highlights.strongLinkStartMarks.has(atomKey) || strongLinkPartitionStartDigit);
-            const isStrongLinkEndDigit = highlights.isStrongLink
-              && (highlights.strongLinkEndMarks.has(atomKey) || strongLinkPartitionEndDigit);
-           const isStrongLinkDigit = isStrongLinkStartDigit || isStrongLinkEndDigit;
-           const simpleColoringRole = highlights.simpleColoringMarks.get(atomKey);
-           const isSimpleColoringDigit = !!simpleColoringRole;
-           const multiColoringTokens = highlights.multiColoringMarks.get(atomKey);
-           const isMultiColoringDigit = !!multiColoringTokens;
-           const threeDMedusaRole = highlights.threeDMedusaMarks.get(atomKey);
-           const isThreeDMedusaDigit = !!threeDMedusaRole;
-           const isDigitFocus = hasCandidate && digitHighlightIsVisible(cell, digit);
-           const isCandidateSizeFilter = candidateSizeFilterDigitMatches(cell, digit);
-           const isHiddenGhostDigit =
-              highlights.isHiddenSubset &&
-              highlights.baseCells.has(cell) &&
-              highlights.patternDigits.has(digit) &&
-              !highlights.vertices.has(cell) &&
-              !(cand[cell] || []).includes(digit) &&
-              !isElim;
-
-            const chainDisplayDigit = isElim
-              || ((hasCandidate || isChainExplanation)
-                && (isFishDigit || isFishEndofinDigit || isChainDigit || isChainWeakDigit || isStrongLinkDigit
-                  || isAlsRecordDigit || isAlsDofDigit || isAhsRecordDigit || isAhsDofRecordDigit || isChainAhsDigit || isDigitFocus
-                  || isCandidateSizeFilter || isSimpleColoringDigit || isMultiColoringDigit || isThreeDMedusaDigit
-                  || isMslsDigit || isChromaticDigit));
-            mark.textContent = markFor(cell, digit)
-              || (chainDisplayDigit ? digit : '');
-           if (isDigitFocus) mark.classList.add('digit-focus', 'digit-focus-' + digit);
-           if (isCandidateSizeFilter) {
-             mark.classList.add('candidate-size-filter-digit');
-             applyCandidateSizeFilterStyle(mark, highlights.candidateSizeFilterStyle);
-           }
-           if (isSetDigit) mark.classList.add('set-digit');
-           if (isAlsDofClauseDigit) {
-             mark.classList.add('als-dof-clause-digit');
-             mark.title = 'N clause';
-           }
-           if (isHiddenGhostDigit) mark.classList.add('hidden-ghost-digit');
-            if (isFishDigit) mark.classList.add('fish-digit');
-            if (isFishFinDigit) mark.classList.add('fish-fin-digit');
-            if (isFishBase) mark.classList.add('fish-base-digit');
-            if (isFishBaseIntersection) mark.classList.add('fish-base-intersection-digit');
-            if (isFishCover) mark.classList.add('fish-cover-digit');
-            if (isFishDoubleCover) mark.classList.add('fish-cover-double-digit');
-            if (isFishTripleCover) mark.classList.add('fish-cover-triple-digit');
-            if (isMslsDigit) mark.classList.add('fish-digit');
-            if (isFishEndofinDigit) mark.classList.add('fish-endofin-digit');
-            if (isChromaticDigit) mark.classList.add('chromatic-digit', `chromatic-digit-${digit}`);
-            if (isChainDigit && hasChainCandidate) mark.classList.add('chain-digit');
-            if (isChainXorEntryDigit && hasChainCandidate) mark.classList.add('chain-xor-entry-digit');
-            if (isChainXorExitDigit && hasChainCandidate) mark.classList.add('chain-xor-exit-digit');
-            // Weak links are represented by the dashed connector. Do not add
-            // a second blue badge to the candidate mini-grid.
-            if (isChainAlsDigit && hasChainCandidate) {
-              mark.classList.add('chain-als-digit');
-              applyAlsColorVars(mark, highlights.chainAlsStyleByAtom.get(atomKey));
-            }
-            if (isChainAhsDigit && hasChainCandidate) {
-              mark.classList.add('ahs-record-digit');
-              applyAhsColorVars(mark, highlights.chainAhsStyleByAtom.get(atomKey));
-            }
-            if (isAlsRecordDigit) {
-              mark.classList.add('chain-als-digit');
-              applyAlsColorVars(mark, highlights.alsRecordColor);
-            }
-            if (isAlsDofDigit) {
-              mark.classList.add('chain-als-digit');
-              applyAlsColorVars(mark, highlights.alsDofStyleByAtom.get(atomKey));
-            }
-            if (isAhsRecordDigit) {
-              mark.classList.add('ahs-record-digit');
-              applyAhsColorVars(mark, highlights.ahsRecordColor);
-            }
-            if (isAhsDofRecordDigit) {
-              mark.classList.add('ahs-record-digit');
-              applyAhsColorVars(mark, highlights.ahsDofRecordColor);
-            }
-            if (isChainStartDigit && hasChainCandidate) mark.classList.add('chain-start-digit');
-            if (isChainEndDigit && hasChainCandidate) mark.classList.add('chain-end-digit');
-            if (isStrongLinkDigit && hasCandidate) mark.classList.add('strong-link-digit');
-            if (isStrongLinkStartDigit && hasCandidate) mark.classList.add('strong-link-start-digit');
-            if (isStrongLinkEndDigit && hasCandidate) mark.classList.add('strong-link-end-digit');
-            if (isSimpleColoringDigit) {
-              mark.classList.add('simple-colouring-digit', 'simple-colouring-' + simpleColoringRole + '-digit');
-            }
-            if (isSimpleColoringElim) mark.classList.add('simple-colouring-elim-digit');
-            if (isMultiColoringDigit) applyMultiColoringStyle(mark, multiColoringTokens);
-            if (isMultiColoringElim) {
-              mark.classList.add('multi-colouring-elim-digit', 'simple-colouring-three-d-elim-digit');
-            }
-            if (isThreeDMedusaDigit) {
-              mark.classList.add('simple-colouring-digit', 'simple-colouring-' + threeDMedusaRole + '-digit');
-            }
-            if (isThreeDMedusaInvalid) mark.classList.add('simple-colouring-invalid-digit');
-            if (isThreeDMedusaElim) mark.classList.add('simple-colouring-three-d-elim-digit');
-            if (isElim && !isThreeDMedusaElim && !isMultiColoringElim) {
-              mark.classList.add('elim-digit');
-            }
-            bindPlayerDigitElement(mark, cell, digit);
-            marks.appendChild(mark);
-          }
-
-          el.appendChild(marks);
-        }
-
-        boardEl.appendChild(el);
-      }
-
-      if (highlights.isSubset) renderSectorFrames(activeStep?.base);
-      if (highlights.isChain) renderChainOverlay(highlights.chain);
-      for (const hydraChain of highlights.hydraChains || []) {
-        if (hydraChain !== highlights.chain) renderChainOverlay(hydraChain);
-      }
-      if (highlights.isAlsDof) {
-        if (highlights.alsDofRecord?.mode === 'hydra') {
-          renderHydraAlsDofOverlay(highlights.alsDofRecord);
-        } else {
-          renderAlsDofOverlay(highlights.alsDofRecord);
-        }
-      }
-      if (highlights.isStrongLink) renderStrongLinkOverlay(highlights.strongLink);
-      if (highlights.isSuperMultiColoring) {
-        renderSuperMultiGroupOverlay(highlights.superMultiColoringRecord);
-      }
+      return boardRenderer.render();
     }
 
     const gridTextView = appNamespace.gridTextView.create({
@@ -3907,34 +2794,27 @@
 
     function renderSolutionActions() {
       const hasHighlightedMove = !!highlightedEurekaText();
-      if (solutionCopyEurekaEl) solutionCopyEurekaEl.disabled = !hasHighlightedMove;
-      if (solutionCopyListEl) solutionCopyListEl.disabled = logEntries.length === 0;
-      if (applyHighlightedMoveEl) {
-        applyHighlightedMoveEl.disabled = !highlightedMoveCanApply(highlightedMoveStep());
-      }
-    }
-
-    function openReportPanel(resultEl) {
-      let panel = resultEl?.closest?.('.pom-panel');
-      while (panel) {
-        panel.open = true;
-        panel = panel.parentElement?.closest?.('.pom-panel') || null;
-      }
-    }
-
-    function focusMap() {
-      const map = boardEl?.closest?.('.grid-frame') || boardEl;
-      requestAnimationFrame(() => {
-        map?.scrollIntoView?.({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      solutionActionsView.render({
+        hasHighlightedMove,
+        hasLogEntries: logEntries.length > 0,
+        canApply: highlightedMoveCanApply(highlightedMoveStep()),
       });
     }
 
+    function openReportPanel(resultEl) {
+      panelNavigationView.openReportPanel(resultEl);
+    }
+
+    function focusMap() {
+      panelNavigationView.focusMap();
+    }
+
     function hideSolution() {
-      if (solutionPanelEl) solutionPanelEl.open = false;
+      panelNavigationView.hideSolution();
     }
 
     function showLoadWarning(message) {
-      window.alert(message);
+      panelNavigationView.showLoadWarning(message);
     }
 
     const { eureka: chromaticGraphEureka, stepFromResult: chromaticStepFromResult,
@@ -3975,42 +2855,13 @@
     }
 
     function render() {
-      renderDigitFocusButtons();
-      renderBoard();
-      renderStrings();
-      renderRatingReport();
-      renderLog();
-      renderSolutionActions();
-      renderPomReport();
-      renderAlsReport();
-      renderAlsLinkReport();
-      renderAhsReport();
-      renderAhsLinkReport();
-      renderStrongLinkReport();
-      renderSimpleColoringReport();
-      renderThreeDMedusaReport();
-      renderMultiColoringReport();
-      renderSuperMultiColoringReport();
-      renderThreeDMedusaMultiReport();
-      renderChromaticGraphReport();
-      renderChromaticAlsGraphReport();
-      renderFishReport();
-      renderMslsReport();
-      renderAlsDofReport();
-      renderAlsHydraReport();
-      renderNakedSubsetReport();
-      renderBoxLineReport();
-      renderHiddenSubsetReport();
-       renderChainReport();
-      updateHistoryButtons();
+      return renderCycle.render();
     }
 
     const { displayTech, constructDisplayName } = appNamespace.displayNames;
 
     const ratingData = appNamespace.ratingData;
     const RATING_CATEGORY_RANKS = ratingData.ranks;
-    const RATING_CATEGORY_SCORE_BANDS = ratingData.scoreBands;
-    const RATING_CATEGORY_COLORS = ratingData.colors;
 
     const ratingRuntime = appNamespace.ratingRuntime.create(ratingData);
     const { ratingCategoryColorClass, normalizeRatingCategory, ratingCategoryForValue,
@@ -4018,15 +2869,376 @@
     const { unknownRating, fishScoreForSize } = appNamespace.ratingScoring.create(ratingData);
     const { chainLengthOf, chainUniqueDigitCount, chainMathScore, pureXyChainDepth,
       depthScaledChainRating } = appNamespace.chainScoring;
+    const { isTransportAlsXyRingShape, normalizedChainStructureName } = appNamespace.chainClassification;
     const { chainLinkScoreModifier } = appNamespace.chainModifiers.create(
       module => chainModuleSubsets(module));
+    const chainDisplay = appNamespace.chainDisplay.create({
+      normalizedChainStructureName,
+      openXWingSubclass,
+      chainText,
+    });
+    const chainTextView = appNamespace.chainText.create({
+      core,
+      displayChainForUi: chain => chainDisplay.displayChainForUi(chain),
+      alsSizeOneChainInfo,
+      barnsChainInfo,
+      barnsTransportChainInfo,
+    });
     const { fromResult: chainStepFromResult } = appNamespace.chainStep.create({
       core,
-      displayChainForUi,
+      displayChainForUi: chain => chainDisplay.displayChainForUi(chain),
       chainText,
       defaultCandidateGrid: cand,
     });
-    const { isTransportAlsXyRingShape, normalizedChainStructureName } = appNamespace.chainClassification;
+    const chainReportView = appNamespace.chainReportView.create({
+      documentRef: document,
+      chainText,
+      selectChain: index => selectChain(index),
+      getSelectedChainIndex: () => selectedChainIndex,
+      setSelectedChainIndex: value => { selectedChainIndex = value; },
+      getChainFolderInfos: chain => chainFolderInfos(chain),
+      folderChainText: (chain, folder) => folderChainText(chain, folder),
+      chainResultsEl,
+      copyText: text => appNamespace.clipboard.copyText(text),
+      setStatus,
+      core,
+      getChainReport: () => chainReport,
+      getChainSafetyFlags: chain => chainSafetyFlags(chain),
+      showDebug: () => SHOW_AIC_DEBUG,
+      chainOutputEl,
+      illegalChainResultsEl,
+      illegalChainAreaEl,
+      illegalChainHeadingEl,
+    });
+    const chainSearchView = appNamespace.chainSearchView.create({
+      documentRef: document,
+      chainText,
+      getSelectedChainIndex: () => selectedChainIndex,
+    });
+    const alsDofView = appNamespace.alsDofView.create({
+      documentRef: document,
+      core,
+      getSelectedSource: () => selectedAlsDofSource,
+      getSelectedIndex: () => selectedAlsDofIndex,
+      setSelectedIndex: value => { selectedAlsDofIndex = value; },
+      onSelect: (index, source) => {
+        selectedAlsDofIndex = index;
+        selectedAlsDofSource = source;
+        selectedAlsDof = null;
+        selectedAlsHydraIndex = null;
+        selectedAlsId = null;
+        selectedChainIndex = null;
+        selectedStrongLinkType = null;
+        selectedStrongLinkIndex = null;
+        activeStep = null;
+        lastRemoved = [];
+        renderBoard();
+        renderAlsDofReport();
+        focusMap();
+        setStatus(`ALS-DOF result ${index + 1} displayed.`, 'ok');
+      },
+    });
+    const hydraView = appNamespace.hydraView.create({
+      documentRef: document,
+      formatHydraResult,
+      getSelectedFamily: () => selectedHydraFamily,
+      getSelectedIndex: () => selectedAlsHydraIndex,
+      onSelect: (report, container, family, index) => {
+        if (family === 'AHS') ahsHydraReport = report;
+        else if (family === 'ALC') alcHydraReport = report;
+        else alsHydraReport = report;
+        selectedHydraFamily = family;
+        selectedAlsHydraIndex = index;
+        selectedAlsDof = null;
+        selectedAlsDofIndex = null;
+        selectedAlsDofSource = 'net';
+        selectedAlsId = null;
+        selectedChainIndex = null;
+        selectedStrongLinkType = null;
+        selectedStrongLinkIndex = null;
+        activeStep = null;
+        lastRemoved = [];
+        renderBoard();
+        hydraView.renderReport(report, container, family);
+        focusMap();
+        setStatus(`${family}-Hydra result ${index + 1} displayed.`, 'ok');
+      },
+    });
+    const ahsDofView = appNamespace.ahsDofView.create({
+      documentRef: document,
+      core,
+      getNetIndex: () => selectedAhsDofNetIndex,
+      getChainIndex: () => selectedAhsDofChainIndex,
+      onNetSelect: (index, report, container) => {
+        selectedAhsDofNetIndex = index;
+        selectedAhsDof = null;
+        selectedAhsId = null;
+        selectedAlsId = null;
+        selectedAlsDofIndex = null;
+        selectedChainIndex = null;
+        selectedStrongLinkType = null;
+        selectedStrongLinkIndex = null;
+        activeStep = null;
+        lastRemoved = [];
+        renderBoard();
+        ahsDofView.renderNet(report, container);
+        openReportPanel(ahsDofResultsEl);
+        focusMap();
+        setStatus(`AHS-DOF result ${index + 1} displayed.`, 'ok');
+      },
+      onChainSelect: (index, report, container) => {
+        selectedAhsDofChainIndex = index;
+        selectedAhsDofNetIndex = null;
+        selectedAhsDof = null;
+        selectedAhsId = null;
+        selectedAlsId = null;
+        selectedAlsDofIndex = null;
+        selectedChainIndex = null;
+        selectedStrongLinkType = null;
+        selectedStrongLinkIndex = null;
+        activeStep = null;
+        lastRemoved = [];
+        renderBoard();
+        ahsDofView.renderChain(report, container);
+        openReportPanel(ahsDofChainResultsEl);
+        focusMap();
+        setStatus(`AHS-DOF chain ${index + 1} displayed.`, 'ok');
+      },
+    });
+    const dofGroupView = appNamespace.dofGroupView.create({ documentRef: document });
+    const auxiliaryLinkView = appNamespace.auxiliaryLinkView.create({
+      documentRef: document,
+      core,
+    });
+    const auxiliaryRecordView = appNamespace.auxiliaryRecordView.create({
+      documentRef: document,
+      dofGroupView,
+      core,
+    });
+    const strongLinkView = appNamespace.strongLinkView.create({
+      documentRef: document,
+      core,
+      getGroups: () => strongLinkDisplayGroups(),
+      getSelectedType: () => selectedStrongLinkType,
+      getSelectedIndex: () => selectedStrongLinkIndex,
+      onTypeSelect: index => {
+        selectedStrongLinkType = index;
+        selectedAlsId = null;
+        selectedAhsId = null;
+        selectedStrongLinkIndex = null;
+        selectedChainIndex = null;
+        selectedFishKey = null;
+        selectedNakedSubsetKey = null;
+        selectedHiddenSubsetKey = null;
+        activeStep = null;
+        lastRemoved = [];
+        renderBoard();
+        renderStrongLinkReport();
+      },
+      onLinkSelect: index => selectStrongLink(index),
+    });
+    const colouringReportView = appNamespace.colouringReportView.create({ documentRef: document });
+    const fishView = appNamespace.fishView.create({
+      documentRef: document,
+      core,
+      getSelectedCategory: () => selectedFishCategory,
+      getSelectedSize: () => selectedFishSize,
+      getSelectedKey: () => selectedFishKey,
+      onSelect: (category, index) => selectFishReport(category, index),
+    });
+    const stepListView = appNamespace.stepListView.create({ documentRef: document });
+    const subsetView = appNamespace.subsetView.create({ documentRef: document });
+    const solutionActionsView = appNamespace.solutionActionsView.create({
+      eurekaButton: solutionCopyEurekaEl,
+      listButton: solutionCopyListEl,
+      applyButton: applyHighlightedMoveEl,
+    });
+    const panelNavigationView = appNamespace.panelNavigationView.create({
+      boardEl,
+      solutionPanel: solutionPanelEl,
+    });
+    const gridViewController = appNamespace.gridViewController.create({
+      vantageView,
+      getView: () => gridView,
+      setView: view => {
+        gridView = view;
+        gridViewSelector.value = view;
+      },
+      selector: gridViewSelector,
+      title: gridColumnTitleEl,
+      numbers: gridColumnNumbersEl,
+      rows: gridRowHeaderEl,
+      renderBoard,
+      getCandidates: () => cand,
+      getPuzzle: () => puzzle,
+      core,
+      getShowFixed: () => showFixedInVantage,
+      vantageCellFromSlot,
+    });
+    const boardContainerView = appNamespace.boardContainerView.create({
+      boardEl,
+      updateColouringSequenceControls,
+    });
+    const boardCellView = appNamespace.boardCellView.create({
+      variantCellClasses,
+      applyCandidateSizeFilterStyle,
+      digitHighlightIsVisible,
+      applyAlsColorVars,
+      applyAhsColorVars,
+      applyAlsPartitionColors,
+      bindPlayerCellElement,
+    });
+    const boardCandidateView = appNamespace.boardCandidateView.create({ documentRef: document });
+    const boardOverlayView = appNamespace.boardOverlayView.create({
+      renderSectorFrames,
+      renderChainOverlay,
+      renderHydraAlsDofOverlay,
+      renderAlsDofOverlay,
+      renderStrongLinkOverlay,
+    });
+    chainSectorFrameRenderer = appNamespace.chainSectorFrameRenderer.create({
+      documentRef: document,
+      chainSectorFrameData,
+    });
+    chainOverlayRenderer = appNamespace.chainOverlayRenderer.create({
+      boardEl,
+      documentRef: document,
+      orientedDisplayChainSteps,
+      isModuleVisualStep,
+      isAlmostFishVisualStep,
+      drawAlmostFishOverlay,
+      drawSideDigitBoxes,
+      drawGroupedEndpointBox,
+      visibleChainExitSide,
+      visibleChainEntrySide,
+      drawChainSectorFrames,
+      drawDirectAlcContacts,
+      drawWeakConnection,
+      moduleVisualSides,
+      drawAhsXzBridgeConnections,
+      drawWeakConnections,
+      drawStrongConnection,
+    });
+    vantageOverlayRenderer = appNamespace.vantageOverlayRenderer.create({
+      boardEl,
+      documentRef: document,
+      orientedDisplayChainSteps,
+      visibleChainExitSide,
+      visibleChainEntrySide,
+      isAlsVisualStep,
+      moduleVisualSides,
+      isAlmostFishVisualStep,
+      drawVantageWeakConnection,
+      drawVantageWeakConnections,
+      drawVantageStrongConnection,
+      drawVantageSideBoxes,
+      vantageClosestAnchorPair,
+      drawArc,
+    });
+    strongLinkOverlayRenderer = appNamespace.strongLinkOverlayRenderer.create({
+      boardEl,
+      documentRef: document,
+      drawSideDigitBoxes,
+      closestAnchorPair,
+      drawArc,
+    });
+    alsDofOverlayRenderer = appNamespace.alsDofOverlayRenderer.create({
+      boardEl,
+      documentRef: document,
+      drawArc,
+      vantageClosestAnchorPair,
+      groupedAnchorPair,
+    });
+    boardRenderer = appNamespace.boardRenderer.create({
+      boardEl,
+      boardContainerView,
+      boardCellView,
+      boardCandidateView,
+      boardOverlayView,
+      vantageView,
+      extractGridViewSlice,
+      documentRef: document,
+      getCurrentHighlights: () => currentHighlights(),
+      getGridView: () => gridView,
+      getActiveStep: () => activeStep,
+      getPuzzle: () => puzzle,
+      getOriginalPuzzle: () => originalPuzzle,
+      getPromotedValues: () => promotedValues,
+      getCandidates: () => cand,
+      getVariantSettings: () => variantSettings,
+      getShowFixedInVantage: () => showFixedInVantage,
+      vantageCellFromSlot,
+      atomKey,
+      digitHighlightIsVisible,
+      candidateSizeFilterDigitMatches,
+      cellHasCandidate,
+      applyCandidateSizeFilterStyle,
+      applyMultiColoringStyle,
+      applyAlsColorVars,
+      applyAhsColorVars,
+      getSelectedPlayerCell: () => selectedPlayerCell,
+      bindPlayerDigitElement,
+      markFor,
+      chainCandidateIsVisible,
+      renderVantageChainOverlay,
+      renderHydraAlsDofOverlay,
+      renderAlsDofOverlay,
+      renderVantageStrongLinkOverlay,
+    });
+    const chainSafety = appNamespace.chainSafety.create({
+      core,
+      getCandidates: () => cand,
+      getSolution: () => solution,
+      getPuzzle: () => puzzle,
+    });
+    const chainNaming = appNamespace.chainNaming.create();
+    const chainSingleDigit = appNamespace.chainSingleDigit.create({
+      core,
+      openXWingSubclass,
+    });
+    const chainNodeAnalysis = appNamespace.chainNodeAnalysis.create({
+      chainModuleSubsets,
+    });
+    const chainAlsInfo = appNamespace.chainAlsInfo.create({
+      alsChainNodes,
+    });
+    const chainBarnsInfo = appNamespace.chainBarnsInfo.create({
+      alsChainNodes,
+      chainModuleSubsets,
+    });
+    const chainXyInfo = appNamespace.chainXyInfo.create({
+      chainModuleSubsets,
+      core,
+    });
+    const chainFolderInfoView = appNamespace.chainFolderInfo.create();
+    const chainLocationDedupe = appNamespace.chainLocationDedupe.create();
+    const chainFolderX = appNamespace.chainFolderX.create({
+      xChainType,
+      chainUniqueDigitCount,
+    });
+    const chainFolderWings = appNamespace.chainFolderWings.create({
+      wChainType,
+      splitChainType,
+      strongChainType,
+      inversionChainType,
+    });
+    const chainFolderAls = appNamespace.chainFolderAls.create({
+      barnsChainInfo,
+      barnsTransportChainInfo,
+      hiddenXyChainInfo,
+      alsOnlyChainInfo,
+      alsNamedChainInfo,
+      ahsXzChainInfo,
+      alsSizeOneChainInfo,
+    });
+    const chainFolderOrchestrator = appNamespace.chainFolderOrchestrator.create({
+      chainEriCount,
+      chainFolderInfo,
+      chainFolderAls,
+      chainFolderX,
+      chainFolderWings,
+      chainLocationDedupe,
+    });
     const { alsDofScore, alsDofMoveKey, alsDofMoveEnabled } = appNamespace.dofRating;
 
     const RATING_TAGS = ratingTags;
@@ -4462,46 +3674,6 @@
       return true;
     }
 
-    function simulateSolver(grid, expectedSolution, profile = null) {
-      const simulationCand = core.allCandidates(grid);
-      const simulationGrid = [...grid];
-      const steps = [];
-      const maxCycles = 100;
-
-      for (let count = 0; count < maxCycles; count++) {
-        const choice = chooseSolverStep(
-          simulationCand,
-          simulationGrid,
-          'generator',
-          expectedSolution,
-          profile,
-        );
-        if (!choice?.step) break;
-
-        const items = core.eliminationItems(choice.step.elim, simulationCand);
-        if (!items.length) {
-          if (choice.step.tech !== 'last-man-standing'
-            || !applySimulationPromotion(simulationCand, simulationGrid, choice.step)) break;
-          steps.push({ ...choice.step, elim: { items: [] } });
-          continue;
-        }
-        const removed = core.applyEliminations(simulationCand, { items });
-        if (!removed.length) break;
-
-        steps.push({
-          ...choice.step,
-          elim: { items: removed },
-        });
-      }
-
-      return {
-        cand: simulationCand,
-        grid: simulationGrid,
-        steps,
-        cycles: steps.length,
-      };
-    }
-
     async function simulateSolverInWorker(
       grid,
       expectedSolution,
@@ -4572,24 +3744,6 @@
         steps,
         cycles: steps.length,
       };
-    }
-
-    function rateGeneratedPuzzle(grid, expectedSolution, targetCategory = 'any') {
-      try {
-        const profile = generationTechniqueProfile(targetCategory);
-        const simulation = simulateSolver(grid, expectedSolution, profile);
-        const rating = ratingFromSteps(simulation.steps, 'generated');
-        return ratingWithSolvedState(
-          rating,
-          candidateGridIsSolved(simulation.cand, simulation.grid, expectedSolution),
-        );
-      } catch (error) {
-        return {
-          ...unknownRating('Rating check failed.'),
-          source: 'generated',
-          solved: false,
-        };
-      }
     }
 
     async function rateGeneratedPuzzleInWorker(
@@ -4685,127 +3839,15 @@
     const solutionEurekaText = () => solutionLogView.solutionEurekaText(logEntries);
 
     const { renderList: renderPomList } = appNamespace.pomView.create(pomResultsEl);
+    const pomReportView = appNamespace.pomReportView.create({
+      container: pomResultsEl,
+      renderList: (title, items) => renderPomList(title, items),
+      formatPomOmission: core.formatPomOmission,
+      cellGroupName: cells => core.cellGroupName(cells),
+    });
 
     function renderPomReport() {
-      pomResultsEl.textContent = '';
-      if (!pomReport) {
-        pomResultsEl.textContent = 'No POM check has been run.';
-        return;
-      }
-
-      const initialTotal = pomReport.initialTemplateCounts.reduce((total, count) => total + count, 0);
-      const finalTotal = pomReport.templateCounts.reduce((total, count) => total + count, 0);
-      const totalReports = pomReport.omissions.length
-        + pomReport.hiddenSubsets.length
-          pomReport.nakedSubsets.length ? 'Naked subset reports' : '',
-        + pomReport.tkDeletes.length;
-      const deletedTemplates = Math.max(0, initialTotal - finalTotal);
-      const digitCountText = counts => {
-        const nonZero = counts
-          .map((count, index) => count ? `${index + 1}:${count}` : '')
-          .filter(Boolean);
-        return nonZero.length ? nonZero.join(' ') : 'none';
-      };
-      const phaseText = summary => {
-        if (summary.phase === 'omissions') return 'Omissions (digits 1-9)';
-        if (summary.phase === 'hidden-subset') return `Hidden subset size ${summary.size}`;
-        if (summary.phase === 'naked-subset') return `Naked subset size ${summary.size}`;
-        return `T${summary.size}-delete`;
-      };
-
-      renderPomList(
-        'Templates by digit (pre-POM)',
-        pomReport.initialTemplateCounts.map((count, index) => `Digit ${index + 1}: ${count}`),
-      );
-      renderPomList(
-        'Templates by digit (final)',
-        pomReport.templateCounts.map((count, index) => `Digit ${index + 1}: ${count}`),
-      );
-      renderPomList(
-        'Progression',
-        pomReport.passSummaries.filter(summary => summary.reports > 0).map(summary =>
-          `Cycle ${summary.pass}: ${phaseText(summary)} => ${summary.reports} reports, `
-          + `${summary.templatesBefore} -> ${summary.templatesAfter} templates `
-          + `(${summary.templateDeletes} deleted); per digit ${digitCountText(summary.digitCounts)}`
-        ),
-      );
-      renderPomList(
-        'Totals',
-        [
-          totalReports ? `Reports: ${totalReports}` : '',
-          pomReport.omissions.length ? `Omissions: ${pomReport.omissions.length}` : '',
-          pomReport.hiddenSubsets.length ? `Hidden subset reports: ${pomReport.hiddenSubsets.length}` : '',
-          pomReport.nakedSubsets.length ? 'Naked subset reports' : '',
-          pomReport.tkDeletes.length ? `TK-delete reports: ${pomReport.tkDeletes.length}` : '',
-          `Templates: ${initialTotal} -> ${finalTotal}${deletedTemplates ? ` (${deletedTemplates} deleted)` : ''}`,
-        ].filter(Boolean),
-      );
-      renderPomList(
-        'Omissions',
-        pomReport.omissions.map(core.formatPomOmission),
-      );
-      renderPomList(
-        'Hidden subset template eliminations',
-        pomReport.hiddenSubsets.map(item =>
-          `Hidden ${item.size}: (${item.digits.join('')}) ${item.sector} ${core.cellGroupName(item.cells)} => digit ${item.digit}, templates ${item.templateIds.join(',')}`
-        ),
-      );
-      renderPomList(
-        'Naked subset template eliminations',
-        pomReport.nakedSubsets.map(item =>
-          
-          'Naked subset template elimination',
-        ),
-      );
-      renderPomList(
-        'TK-delete',
-        pomReport.tkDeletes.map(item =>
-          `T${item.size + 1}: base digit ${item.digit}, template ${item.templateIds.join(',')}; `
-          + `companions ${item.companionDigits.length ? `{${item.companionDigits.join(',')}}` : 'none'}; `
-          + `chosen digits {${[item.digit, ...item.companionDigits].join(',')}}`
-        ),
-      );
-    }
-
-    function dofGroups(records, key) {
-      const groups = new Map();
-      for (const record of records || []) {
-        const dof = Number(record[key]);
-        if (!Number.isInteger(dof)) continue;
-        const bucket = groups.get(dof) || [];
-        bucket.push(record);
-        groups.set(dof, bucket);
-      }
-      return [...groups.entries()].sort((left, right) => left[0] - right[0]);
-    }
-
-    function validSelectedDof(groups, selected) {
-      if (!groups.length || selected === null || selected === undefined) return null;
-      return groups.some(([dof]) => dof === selected) ? selected : null;
-    }
-
-    function appendDofButtons(container, groups, selected, onSelect) {
-      const row = document.createElement('div');
-      row.className = 'dof-buttons';
-
-      for (const [dof, records] of groups) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'dof-button';
-        if (dof === selected) button.classList.add('current');
-        button.textContent = `DOF ${dof} (${records.length})`;
-        button.addEventListener('click', () => onSelect(dof));
-        row.appendChild(button);
-      }
-
-      container.appendChild(row);
-    }
-
-    function rememberOpenSizeGroups(container, openGroups) {
-      for (const panel of container.querySelectorAll('details.chain-category[data-size-group]')) {
-        if (panel.open) openGroups.add(panel.dataset.sizeGroup);
-        else openGroups.delete(panel.dataset.sizeGroup);
-      }
+      pomReportView.render(pomReport);
     }
 
     function selectAlsRecord(als) {
@@ -4828,246 +3870,58 @@
     }
 
     function renderAlsReport() {
-      rememberOpenSizeGroups(alsResultsEl, openAlsSizeGroups);
-      alsResultsEl.textContent = '';
-      if (!alsReport) {
-        alsResultsEl.textContent = 'No LS / ALS build has been run.';
-        return;
-      }
-
-      const summary = document.createElement('p');
-      summary.textContent = `${alsReport.length} LS / ALS records.`;
-      alsResultsEl.appendChild(summary);
-
-      const groups = dofGroups(alsReport, 'alsDOF');
-      selectedAlsDof = validSelectedDof(groups, selectedAlsDof);
-      appendDofButtons(alsResultsEl, groups, selectedAlsDof, dof => {
-        selectedAlsDof = dof;
-        selectedAlsId = null;
-        selectedAhsId = null;
-        renderBoard();
-        renderAlsReport();
+      auxiliaryRecordView.render({
+        report: alsReport,
+        container: alsResultsEl,
+        family: 'ALS',
+        label: 'LS / ALS',
+        noReportText: 'No LS / ALS build has been run.',
+        dofKey: 'alsDOF', sizeKey: 'alsSize', foxKey: 'alsFOX',
+        allCellsKey: 'alsAllCells', sectorKey: 'alsSector', digitsKey: 'alsDigits',
+        selectedDof: selectedAlsDof,
+        selectedId: selectedAlsId,
+        openSizeGroups: openAlsSizeGroups,
+        setSelectedDof: value => { selectedAlsDof = value; },
+        onDofSelect: dof => {
+          selectedAlsDof = dof;
+          selectedAlsId = null;
+          selectedAhsId = null;
+          renderBoard();
+          renderAlsReport();
+        },
+        onSelectRecord: selectAlsRecord,
       });
-
-      if (selectedAlsDof === null) return;
-
-      const selectedRecords = groups.find(([dof]) => dof === selectedAlsDof)?.[1] || [];
-      const sizeGroups = new Map();
-      for (const als of selectedRecords) {
-        const bucket = sizeGroups.get(als.alsSize) || [];
-        bucket.push(als);
-        sizeGroups.set(als.alsSize, bucket);
-      }
-      for (const [zeroSize, records] of [...sizeGroups.entries()].sort((a, b) => a[0] - b[0])) {
-        const sizePanel = document.createElement('details');
-        sizePanel.className = 'chain-category';
-        sizePanel.dataset.sizeGroup = `${selectedAlsDof}:${zeroSize}`;
-        sizePanel.open = openAlsSizeGroups.has(sizePanel.dataset.sizeGroup);
-        const sizeSummary = document.createElement('summary');
-        sizeSummary.textContent = `Size ${zeroSize + 1} (${records.length})`;
-        sizePanel.appendChild(sizeSummary);
-
-        const list = document.createElement('ul');
-        const visible = records.slice(0, 200);
-        for (const als of visible) {
-          const item = document.createElement('li');
-          const button = document.createElement('button');
-          button.type = 'button';
-          button.className = 'chain-result';
-          if (selectedAlsId === als.uniqueID) button.classList.add('selected');
-          button.textContent = `ALS: DOF(${als.alsDOF}) size(${als.alsSize + 1}) FOX(${als.alsFOX + 1}) `
-            + `cells:${core.cellGroupName(als.alsAllCells)} `
-            + `in ${core.sectorGroupName([als.alsSector])} `
-            + `digits {${als.alsDigits.join('')}}`;
-          button.addEventListener('click', () => selectAlsRecord(als));
-          item.appendChild(button);
-          list.appendChild(item);
-        }
-        if (records.length > visible.length) {
-          const more = document.createElement('li');
-          more.textContent = `Showing ${visible.length} of ${records.length} Size ${zeroSize + 1} records.`;
-          list.appendChild(more);
-        }
-        sizePanel.appendChild(list);
-        alsResultsEl.appendChild(sizePanel);
-      }
-    }
-
-    function endpointText(endpoint) {
-      return `(${endpoint.digit}) ${core.cellGroupName(endpoint.cells)}`
-        + ` in ${core.sectorGroupName(endpoint.sectors)}`;
-    }
-
-    function alsNodeText(node) {
-      if (!node) return 'none';
-      return `LS#${node.uniqueID} ${core.cellGroupName(node.cells)} `
-        + `in ${core.sectorGroupName([node.sector])} digits {${node.digits.join('')}}`;
-    }
-
-    function endpointElims(endpoint) {
-      const removals = endpoint.potentialElim.map(cell => ({ cell, digit: endpoint.digit }));
-      return core.formatRemovals(removals) || 'none';
-    }
-
-    function bridgeText(bridge) {
-      if (!bridge) return 'C none';
-      const digits = (bridge.digits && bridge.digits.length ? bridge.digits : [bridge.digit])
-        .filter(Boolean)
-        .join('');
-      const cells = [...new Set([...(bridge.leftCells || []), ...(bridge.rightCells || [])])]
-        .sort((a, b) => a - b);
-      return `C(${digits || '?'}) ${core.cellGroupName(cells)} in ${core.sectorGroupName(bridge.sectors || [])}`;
     }
 
     function renderAlsLinkReport() {
-      alsLinkResultsEl.textContent = '';
-      if (!alsLinkReport) {
-        alsLinkResultsEl.textContent = 'No ALS link build has been run.';
-        return;
-      }
-
-      const links = core.flattenAlsLinks(alsLinkReport);
-      const alsRccCount = alsLinkReport[core.ALS_RCC]?.length || 0;
-      const summary = document.createElement('p');
-      summary.textContent = `${links.length} ALS graph links: ALS_RCC ${alsRccCount}. `
-        + `Size-1 Bivalve ALS nodes are listed under Strong Links as ALS.`;
-      alsLinkResultsEl.appendChild(summary);
-
-      const list = document.createElement('ul');
-      const visible = links.slice(0, 200);
-      for (const link of visible) {
-        const item = document.createElement('li');
-        const bridge = bridgeText(link.C);
-        item.textContent = `${link.linkTypeName}: RCC_L ${endpointText(link.RCC_Left)} / `
-          + `${alsNodeText(link.LS_R)} / ${bridge} / ${alsNodeText(link.LS_L)} / `
-          + `RCC_R ${endpointText(link.RCC_Right)}; `
-          + `L-elims ${endpointElims(link.RCC_Left)}; R-elims ${endpointElims(link.RCC_Right)}`;
-        list.appendChild(item);
-      }
-
-      if (links.length > visible.length) {
-        const more = document.createElement('li');
-        more.textContent = `Showing ${visible.length} of ${links.length} records.`;
-        list.appendChild(more);
-      }
-
-      alsLinkResultsEl.appendChild(list);
+      auxiliaryLinkView.renderAls(alsLinkReport, alsLinkResultsEl);
     }
 
     function renderAhsReport() {
-      rememberOpenSizeGroups(ahsResultsEl, openAhsSizeGroups);
-      ahsResultsEl.textContent = '';
-      if (!ahsReport) {
-        ahsResultsEl.textContent = 'No HS / AHS build has been run.';
-        return;
-      }
-
-      const summary = document.createElement('p');
-      summary.textContent = `${ahsReport.length} HS / AHS records.`;
-      ahsResultsEl.appendChild(summary);
-
-      const groups = dofGroups(ahsReport, 'ahsDOF');
-      selectedAhsDof = validSelectedDof(groups, selectedAhsDof);
-      appendDofButtons(ahsResultsEl, groups, selectedAhsDof, dof => {
-        selectedAhsDof = dof;
-        selectedAhsId = null;
-        renderBoard();
-        renderAhsReport();
+      auxiliaryRecordView.render({
+        report: ahsReport,
+        container: ahsResultsEl,
+        family: 'AHS',
+        label: 'HS / AHS',
+        noReportText: 'No HS / AHS build has been run.',
+        dofKey: 'ahsDOF', sizeKey: 'ahsSize', foxKey: 'ahsFOX',
+        allCellsKey: 'ahsAllCells', sectorKey: 'ahsSector', digitsKey: 'ahsDigits',
+        selectedDof: selectedAhsDof,
+        selectedId: selectedAhsId,
+        openSizeGroups: openAhsSizeGroups,
+        setSelectedDof: value => { selectedAhsDof = value; },
+        onDofSelect: dof => {
+          selectedAhsDof = dof;
+          selectedAhsId = null;
+          renderBoard();
+          renderAhsReport();
+        },
+        onSelectRecord: selectAhsRecord,
       });
-
-      if (selectedAhsDof === null) return;
-
-      const selectedRecords = groups.find(([dof]) => dof === selectedAhsDof)?.[1] || [];
-      const sizeGroups = new Map();
-      for (const ahs of selectedRecords) {
-        const bucket = sizeGroups.get(ahs.ahsSize) || [];
-        bucket.push(ahs);
-        sizeGroups.set(ahs.ahsSize, bucket);
-      }
-      for (const [zeroSize, records] of [...sizeGroups.entries()].sort((a, b) => a[0] - b[0])) {
-        const sizePanel = document.createElement('details');
-        sizePanel.className = 'chain-category';
-        sizePanel.dataset.sizeGroup = `${selectedAhsDof}:${zeroSize}`;
-        sizePanel.open = openAhsSizeGroups.has(sizePanel.dataset.sizeGroup);
-        const sizeSummary = document.createElement('summary');
-        sizeSummary.textContent = `Size ${zeroSize + 1} (${records.length})`;
-        sizePanel.appendChild(sizeSummary);
-
-        const list = document.createElement('ul');
-        const visible = records.slice(0, 200);
-        for (const ahs of visible) {
-          const item = document.createElement('li');
-          const button = document.createElement('button');
-          button.type = 'button';
-          button.className = 'chain-result';
-          if (selectedAhsId === ahs.uniqueID) button.classList.add('selected');
-          button.textContent = `AHS: DOF(${ahs.ahsDOF}) size(${ahs.ahsSize + 1}) FOX(${ahs.ahsFOX + 1}) `
-            + `cells:${core.cellGroupName(ahs.ahsAllCells)} `
-            + `in ${core.sectorGroupName([ahs.ahsSector])} `
-            + `digits {${ahs.ahsDigits.join('')}}`;
-          button.addEventListener('click', () => selectAhsRecord(ahs));
-          item.appendChild(button);
-          list.appendChild(item);
-        }
-        if (records.length > visible.length) {
-          const more = document.createElement('li');
-          more.textContent = `Showing ${visible.length} of ${records.length} Size ${zeroSize + 1} records.`;
-          list.appendChild(more);
-        }
-        sizePanel.appendChild(list);
-        ahsResultsEl.appendChild(sizePanel);
-      }
     }
 
     function renderAhsLinkReport() {
-      ahsLinkResultsEl.textContent = '';
-      if (!ahsLinkReport) {
-        ahsLinkResultsEl.textContent = 'No AHS link build has been run.';
-        return;
-      }
-      const links = core.flattenAhsLinks(ahsLinkReport);
-      const summary = document.createElement('p');
-      summary.textContent = `${links.length} AHS graph link${links.length === 1 ? '' : 's'} built.`;
-      ahsLinkResultsEl.appendChild(summary);
-      const list = document.createElement('ul');
-      for (const link of links.slice(0, 200)) {
-        const item = document.createElement('li');
-        const cells = value => core.cellGroupName(value || []);
-        const branches = Array.isArray(link.overlapBranches)
-          ? `; branches ${link.overlapBranches.map(branch => `${branch.value}: `
-            + `${cells(branch.left?.cells)}[${(branch.left?.digits || []).join('')}] / `
-            + `${cells(branch.right?.cells)}[${(branch.right?.digits || []).join('')}]`
-            + `${(branch.hsRestrictions?.length)
-              ? ` => ${branch.hsRestrictions.map(restriction => `${cells(restriction.cells)}<>${restriction.digits.join('')}`).join(', ')}`
-              : ''}`
-            + `${(branch.dofRestrictions?.length)
-              ? `; ${branch.dofRestrictions.map(restriction => `${cells(restriction.cells)}<>${restriction.digits.join('')}`).join(', ')}`
-              : ''}`
-            + `${(branch.sectorRestrictions?.length)
-              ? `; ${branch.sectorRestrictions.map(restriction => `${cells(restriction.cells)}<>${restriction.digits.join('')}`).join(', ')}`
-              : ''}`
-            + `${(branch.left?.eliminations?.length || branch.right?.eliminations?.length)
-              ? `; ${core.formatRemovals([...(branch.left?.eliminations || []), ...(branch.right?.eliminations || [])])}`
-              : ''}`).join(' | ')}`
-          : '';
-        const intrinsic = Array.isArray(link.intrinsicEliminations) && link.intrinsicEliminations.length
-          ? `; elims ${core.formatRemovals(link.intrinsicEliminations)}`
-          : '';
-        const bridgeExclusions = Array.isArray(link.bridgeCellExclusions) && link.bridgeCellExclusions.length
-          ? `; bridge ${cells([link.xzBridgeCell])}<>${link.bridgeCellExclusions.join('')}`
-          : '';
-        item.textContent = `${link.moduleKind || link.linkTypeName}: RCC_L ${cells(link.RCC_Left?.rccCells || link.RCC_Left?.cells)} / `
-          + `HS_L ${cells(link.HS_L?.cells)} / C ${cells(link.C?.leftCells || link.C?.cells)} / `
-          + `HS_R ${cells(link.HS_R?.cells)} / RCC_R ${cells(link.RCC_Right?.rccCells || link.RCC_Right?.cells)}`
-          + branches + intrinsic + bridgeExclusions;
-        list.appendChild(item);
-      }
-      if (links.length > 200) {
-        const more = document.createElement('li');
-        more.textContent = `Showing 200 of ${links.length} records.`;
-        list.appendChild(more);
-      }
-      ahsLinkResultsEl.appendChild(list);
+      auxiliaryLinkView.renderAhs(ahsLinkReport, ahsLinkResultsEl);
     }
 
     const runAhsLinkBuild = appNamespace.ahsLinkBuild.create({
@@ -5093,100 +3947,11 @@
     });
 
     function renderAhsDofResults(report) {
-      ahsDofResultsEl.textContent = '';
-      if (!report) {
-        ahsDofResultsEl.textContent = 'No AHS-DOF search has been run.';
-        return;
-      }
-      const results = report.results || report.links || [];
-      const summary = document.createElement('p');
-      const rejected = report.rejectedResults?.length || 0;
-      summary.textContent = `${results.length} verified AHS-DOF net${results.length === 1 ? '' : 's'} found.`
-        + (rejected ? ` ${rejected} rejected by verification.` : '');
-      ahsDofResultsEl.appendChild(summary);
-      if (!results.length) return;
-      const list = document.createElement('ol');
-      list.className = 'chain-list';
-      results.slice(0, 200).forEach((link, index) => {
-        const item = document.createElement('li');
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'chain-result';
-        if (selectedAhsDofNetIndex === index) button.classList.add('selected');
-        button.textContent = `${index + 1}. AHS-DOF: ${core.formatAhsDofNet(link)}`;
-        button.title = 'Display this AHS-DOF net on the grid';
-        button.addEventListener('click', event => {
-          event.preventDefault();
-          event.stopPropagation();
-          selectedAhsDofNetIndex = index;
-          selectedAhsDof = null;
-          selectedAhsId = null;
-          selectedAlsId = null;
-          selectedAlsDofIndex = null;
-          selectedChainIndex = null;
-          selectedStrongLinkType = null;
-          selectedStrongLinkIndex = null;
-          activeStep = null;
-          lastRemoved = [];
-          renderBoard();
-          renderAhsDofResults(ahsDofReport);
-          openReportPanel(ahsDofResultsEl);
-          focusMap();
-          setStatus(`AHS-DOF result ${index + 1} displayed.`, 'ok');
-        });
-        item.appendChild(button);
-        list.appendChild(item);
-      });
-      ahsDofResultsEl.appendChild(list);
+      ahsDofView.renderNet(report, ahsDofResultsEl);
     }
 
     function renderAhsDofChainResults(report) {
-      ahsDofChainResultsEl.textContent = '';
-      if (!report) {
-        ahsDofChainResultsEl.textContent = 'No AHS-DOF chain search has been run.';
-        return;
-      }
-      const results = report.results || report.links || [];
-      const summary = document.createElement('p');
-      summary.textContent = `${results.length} verified AHS-DOF chain${results.length === 1 ? '' : 's'} found.`
-        + ` ${report.stats?.nets || 0} nets, ${report.stats?.bridges || 0} bridges checked`
-        + `${report.stats?.truncated ? '; result limit reached.' : '.'}`;
-      ahsDofChainResultsEl.appendChild(summary);
-      if (!results.length) return;
-      const list = document.createElement('ol');
-      list.className = 'chain-list';
-      results.slice(0, 200).forEach((chain, index) => {
-        const item = document.createElement('li');
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'chain-result';
-        if (selectedAhsDofChainIndex === index) button.classList.add('selected');
-        button.textContent = `${index + 1}. AHS-DOF Chain: ${core.formatAhsDofChain(chain)}`;
-        button.title = 'Display this AHS-DOF chain on the grid';
-        button.addEventListener('click', event => {
-          event.preventDefault();
-          event.stopPropagation();
-          selectedAhsDofChainIndex = index;
-          selectedAhsDofNetIndex = null;
-          selectedAhsDof = null;
-          selectedAhsId = null;
-          selectedAlsId = null;
-          selectedAlsDofIndex = null;
-          selectedChainIndex = null;
-          selectedStrongLinkType = null;
-          selectedStrongLinkIndex = null;
-          activeStep = null;
-          lastRemoved = [];
-          renderBoard();
-          renderAhsDofChainResults(ahsDofChainReport);
-          openReportPanel(ahsDofChainResultsEl);
-          focusMap();
-          setStatus(`AHS-DOF chain ${index + 1} displayed.`, 'ok');
-        });
-        item.appendChild(button);
-        list.appendChild(item);
-      });
-      ahsDofChainResultsEl.appendChild(list);
+      ahsDofView.renderChain(report, ahsDofChainResultsEl);
     }
 
     const runAhsDofBuild = appNamespace.ahsDofBuild.create({
@@ -5326,169 +4091,26 @@
     }
 
     function renderStrongLinkReport() {
-      strongLinkResultsEl.textContent = '';
-      if (!strongLinkReport) {
-        return;
-      }
-
-      const groups = strongLinkDisplayGroups();
-      const links = [...new Set(groups.flat())];
-      const counts = groups.map(group => group.length);
-      const typeNames = [
-        'Bi-Local',
-        'Cell <=> Group',
-        'Group <=> Group',
-        'ERI',
-        'BIVALVE (Size-1 ALS)',
-      ];
-      const summary = document.createElement('p');
-      summary.textContent = `${links.length} unique strong links.`;
-      strongLinkResultsEl.appendChild(summary);
-
-      const buttonRow = document.createElement('div');
-      buttonRow.className = 'dof-buttons';
-      typeNames.forEach((name, index) => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'dof-button';
-        if (selectedStrongLinkType === index) button.classList.add('current');
-        button.textContent = `${name} (${counts[index]})`;
-        button.addEventListener('click', () => {
-          selectedStrongLinkType = index;
-          selectedAlsId = null;
-          selectedAhsId = null;
-          selectedStrongLinkIndex = null;
-          selectedChainIndex = null;
-          selectedFishKey = null;
-          selectedNakedSubsetKey = null;
-          selectedHiddenSubsetKey = null;
-          activeStep = null;
-          lastRemoved = [];
-          renderBoard();
-          renderStrongLinkReport();
-        });
-        buttonRow.appendChild(button);
-      });
-      strongLinkResultsEl.appendChild(buttonRow);
-
-      if (selectedStrongLinkType === null) return;
-
-      const selectedGroup = groups[selectedStrongLinkType] || [];
-      const maxVisible = 200;
-      const list = document.createElement('ul');
-      list.className = 'log';
-      const visible = selectedGroup.slice(0, maxVisible);
-      for (let index = 0; index < visible.length; index++) {
-        const link = visible[index];
-        const item = document.createElement('li');
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'chain-result';
-        if (selectedStrongLinkIndex === index) button.classList.add('selected');
-        const secondaryTypeIndexes = {
-          BILOCAL: 0,
-          CELL_TO_GROUP: 1,
-          GROUP_TO_GROUP: 2,
-          ERI: 3,
-          ALS: 4,
-        };
-        const secondaryTypes = [...new Set(link.secondaryTypes || [])];
-        const secondary = secondaryTypes.length
-          ? ` [${secondaryTypes.join(' / ')}]`
-          : '';
-        const originalTypeName = typeNames[link.linkType] || link.linkTypeName;
-        button.textContent = `${originalTypeName}${secondary}: (${link.startingDigits.join('')}) `
-          + `${core.cellGroupName(link.activeCells)} = (${link.linkDigits.join('')}) `
-          + `${core.cellGroupName(link.linkedCells)} `
-          + `in ${core.sectorGroupName(link.originSector)}`;
-        button.addEventListener('click', () => selectStrongLink(index));
-        item.appendChild(button);
-        list.appendChild(item);
-      }
-
-      if (visible.length < selectedGroup.length) {
-        const more = document.createElement('li');
-        more.textContent = `Showing ${visible.length} of ${selectedGroup.length} records.`;
-        list.appendChild(more);
-      }
-      strongLinkResultsEl.appendChild(list);
+      strongLinkView.render(strongLinkReport, strongLinkResultsEl);
     }
 
-    function simpleColoringCellsText(cells) {
-      return core.cellGroupName([...(cells || [])].sort((a, b) => a - b)) || 'none';
-    }
-
-    function simpleColoringEureka(record) {
-      const blue = simpleColoringCellsText(record.blueCells);
-      const purple = simpleColoringCellsText(record.purpleCells);
-      const eliminations = core.formatRemovals(record.eliminations || []) || 'none';
-      const closure = record.tech !== 'super-multi-colouring'
-        && record.terminalClosure?.cells?.length
-        ? ` -> terminal ${core.cellGroupName(record.terminalClosure.cells)}`
-        : '';
-      const witnesses = [];
-      for (const conflict of record.sectorParityConflicts || []) {
-        const colour = conflict.color === 0 ? 'Blue' : 'Purple';
-        witnesses.push(
-          `${colour} repeats in ${core.sectorGroupName([conflict.sector])}`
-          + ` (${core.cellGroupName(conflict.cells || [])})`,
-        );
-      }
-      for (const sector of record.mixedSectors || []) {
-        witnesses.push(`both parities in ${core.sectorGroupName([sector])}`);
-      }
-      if ((record.bothParityPeerEliminations || []).length) {
-        witnesses.push(
-          `candidate sees both parities at ${core.cellGroupName(record.bothParityPeerEliminations)}`,
-        );
-      }
-      for (const conflict of record.terminalTruthConflicts || []) {
-        witnesses.push(
-          `terminal truths conflict at ${core.cellGroupName(conflict.cells || [])}`,
-        );
-      }
-      const witness = witnesses.length ? ` [${witnesses.join(' ; ')}]` : '';
-      return `Simple Colouring: (${record.digit}) Blue ${blue} - Purple ${purple}${closure}${witness} => ${eliminations}`;
-    }
+    const simpleColoringEureka = record =>
+      appNamespace.colouringModel.simpleColoringEureka(core, record);
 
     function renderSimpleColoringReport() {
-      simpleColoringResultsEl.textContent = '';
-      if (!simpleColoringReport) {
-        simpleColoringResultsEl.textContent = 'No Simple Colouring search has been run.';
-        return;
-      }
-
-      const summary = document.createElement('p');
-      summary.textContent = `${simpleColoringReport.length} Simple Colouring result${simpleColoringReport.length === 1 ? '' : 's'}.`;
-      simpleColoringResultsEl.appendChild(summary);
-      if (!simpleColoringReport.length) {
-        const empty = document.createElement('p');
-        empty.textContent = 'No legal eliminations were found using strong-link type 0.';
-        simpleColoringResultsEl.appendChild(empty);
-        return;
-      }
-
-      const list = document.createElement('ul');
-      list.className = 'log';
-      for (let index = 0; index < simpleColoringReport.length; index++) {
-        const record = simpleColoringReport[index];
-        const safetyFlags = record.safetyFlags || [];
-        const item = document.createElement('li');
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'chain-result';
-        if (safetyFlags.length) button.classList.add('chain-result-flagged');
-        if (selectedSimpleColoringIndex === index) button.classList.add('selected');
-        button.textContent = `${safetyFlags.length ? '[FLAGGED] ' : ''}${simpleColoringEureka(record)}`;
-        button.title = safetyFlags.length
-          ? `Flagged for inspection: ${safetyFlags.join('; ')}`
-          : 'Highlight this Simple Colouring result on the grid';
-        button.addEventListener('click', () => {
+      colouringReportView.render({
+        report: simpleColoringReport,
+        container: simpleColoringResultsEl,
+        label: 'Simple Colouring',
+        emptyText: 'No Simple Colouring search has been run.',
+        noResultText: 'No legal eliminations were found using strong-link type 0.',
+        eureka: simpleColoringEureka,
+        selectedIndex: selectedSimpleColoringIndex,
+        onSelect: index => {
           selectedSimpleColoringIndex = index;
           colouringSequenceState.simple.breadth = 1;
           selectedThreeDMedusaIndex = null;
           selectedMultiColoringIndex = null;
-          selectedSuperMultiColoringIndex = null;
           selectedThreeDMedusaMultiIndex = null;
           selectedAlsId = null;
           selectedAhsId = null;
@@ -5505,170 +4127,27 @@
           renderThreeDMedusaReport();
           setStatus(`Simple Colouring result ${index + 1} selected.`, 'ok');
           focusMap();
-        });
-        item.appendChild(button);
-        list.appendChild(item);
-      }
-      simpleColoringResultsEl.appendChild(list);
-    }
-
-    function threeDMedusaNodeText(nodes) {
-      const labels = (nodes || []).map(node => {
-        const colors = node.colors?.length > 1
-          ? 'both'
-          : node.colors?.[0] === 0
-            ? 'blue'
-            : node.colors?.[0] === 1
-              ? 'purple'
-              : 'uncoloured';
-        return `(${node.digit})${core.cellGroupName([node.cell])} ${colors}`;
+        },
       });
-      return labels.join(', ') || 'none';
     }
 
-    function threeDMedusaEdgeText(edge) {
-      const colour = node => node.colors?.length > 1
-        ? 'both'
-        : node.colors?.[0] === 0
-          ? 'blue'
-          : node.colors?.[0] === 1
-            ? 'purple'
-            : 'uncoloured';
-        const operator = edge.kind === 'bivalve-transition'
-          ? ' = '
-          : edge.kind === 'weak-peer'
-            ? ' - '
-            : ' = ';
-      return `(${edge.left.digit})${core.cellGroupName([edge.left.cell])} ${colour(edge.left)}`
-        + `${operator}(${edge.right.digit})${core.cellGroupName([edge.right.cell])} ${colour(edge.right)}`;
-    }
-
-    function threeDMedusaEdgesText(record) {
-      return (record.edges || []).map(threeDMedusaEdgeText).join(' ; ') || 'none';
-    }
-
-    function threeDMedusaDigitColoursText(record) {
-      return (record.digitColours || []).map(item => {
-        const blue = core.cellGroupName(item.blue || []) || 'none';
-        const purple = core.cellGroupName(item.purple || []) || 'none';
-        return `${item.digit}[B:${blue}; P:${purple}]`;
-      }).join(' | ') || 'none';
-    }
-
-    function threeDMedusaEureka(record) {
-      const eliminations = core.formatRemovals(record.eliminations || []) || 'none';
-      const closure = record.terminalClosure?.cells?.length
-        ? ` -> terminal ${core.cellGroupName(record.terminalClosure.cells)}`
-        : record.ring ? ' -> ring' : '';
-      const alsDofRule = [...new Set((record.alsDofConflicts || []).map(conflict => {
-        const colour = conflict.color === 0 ? 'blue' : 'purple';
-        const cells = core.cellGroupName(conflict.cells || []) || 'unknown cells';
-        const removed = (conflict.colouredDigits || []).join('') || 'none';
-        const remaining = (conflict.remainingDigits || []).join('') || 'none';
-        return `ALS-DOF ${colour} false ${cells} -${removed} leaves ${remaining}`;
-      }))].join(' ; ');
-      const ahsDofRule = (record.ahsDofConflicts || []).map(conflict => {
-        const colour = conflict.color === 0 ? 'blue' : 'purple';
-        const cells = core.cellGroupName(conflict.ahsCells || []) || 'unknown cells';
-        const removed = core.cellGroupName(conflict.removedCells || []) || 'none';
-        const digits = (conflict.ahsDigits || []).join('') || 'none';
-        return `AHS-DOF ${colour} false ${cells} digits ${digits} -cells ${removed}`;
-      }).join(' ; ');
-      const cellParityRule = (record.cellParityConflicts || [])
-        .map(conflict => {
-          const colour = conflict.color === 0 ? 'blue' : 'purple';
-          return `cell ${core.cellGroupName([conflict.cell])} has multiple digits in ${colour} parity`
-            + ` (${(conflict.digits || []).join('')})`;
-        }).join(' ; ');
-      const sectorParityRule = (record.conflicts || [])
-        .filter(conflict => conflict.kind === 'sector')
-        .map(conflict => {
-          const colour = conflict.color === 0 ? 'blue' : 'purple';
-          return `${colour} parity repeats digit ${conflict.digit}`
-            + ` in ${core.sectorGroupName([conflict.sector])}`;
-        }).join(' ; ');
-      const sameParityPeerRule = (record.conflicts || [])
-        .filter(conflict => conflict.kind === 'peer')
-        .map(conflict => {
-          const colour = conflict.color === 0 ? 'blue' : 'purple';
-          return `${colour} same-digit peers conflict at `
-            + `${core.cellGroupName([conflict.left.cell, conflict.right.cell])}`;
-        }).join(' ; ');
-      const bothParityPeerRule = (record.conflicts || [])
-        .filter(conflict => conflict.kind === 'coloured-cell-sees-both')
-        .map(conflict =>
-          `${core.cellGroupName([conflict.cell])} sees both parities for ${conflict.digit}`,
-        ).join(' ; ');
-      const sectorPeerRule = (record.conflicts || [])
-        .filter(conflict => conflict.kind === 'sector-peer-union')
-        .map(conflict => {
-          const colour = conflict.color === 0 ? 'blue' : 'purple';
-          const sector = core.sectorGroupName([conflict.sector]);
-          const cells = core.cellGroupName(conflict.viableCells || []) || 'none';
-          return `sector union ${sector} digit ${conflict.digit} ${colour} false: peers cover ${cells}`;
-        }).join(' ; ');
-      const form = record.kind === 'bivalve-ring'
-        ? ' Bivalve Ring'
-        : record.kind === 'bivalve-chain'
-          ? ' Bivalve Chain'
-          : '';
-      const oppositeParityRule = (record.rules || []).includes('opposite-parity-peer')
-        ? 'uncoloured candidate sees the opposite parity of a coloured clue'
-        : '';
-      const witnessText = [
-        alsDofRule,
-        ahsDofRule,
-        cellParityRule,
-        sectorParityRule,
-        sameParityPeerRule,
-        bothParityPeerRule,
-        sectorPeerRule,
-        oppositeParityRule,
-      ]
-        .filter(Boolean)
-        .join(' ; ');
-      const witness = witnessText ? ` [${witnessText}]` : '';
-      return `3D - Medusa {Simple}${form}: ${threeDMedusaNodeText(record.nodes)}${closure}${witness} => ${eliminations}`;
-    }
+    const threeDMedusaEureka = record =>
+      appNamespace.colouringModel.threeDMedusaEureka(core, record);
 
     function renderThreeDMedusaReport() {
-      threeDMedusaResultsEl.textContent = '';
-      if (!threeDMedusaReport) {
-        threeDMedusaResultsEl.textContent = 'No 3D-Medusa search has been run.';
-        return;
-      }
-
-      const summary = document.createElement('p');
-      summary.textContent = `${threeDMedusaReport.length} 3D-Medusa {Simple} result${threeDMedusaReport.length === 1 ? '' : 's'}.`;
-      threeDMedusaResultsEl.appendChild(summary);
-      if (!threeDMedusaReport.length) {
-        const empty = document.createElement('p');
-        empty.textContent = 'No legal eliminations were found using strong-link types 0 and 4.';
-        threeDMedusaResultsEl.appendChild(empty);
-        return;
-      }
-
-      const list = document.createElement('ul');
-      list.className = 'log';
-      for (let index = 0; index < threeDMedusaReport.length; index++) {
-        const record = threeDMedusaReport[index];
-        const safetyFlags = record.safetyFlags || [];
-        const item = document.createElement('li');
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'chain-result';
-        if (safetyFlags.length) button.classList.add('chain-result-flagged');
-        if (selectedThreeDMedusaIndex === index) button.classList.add('selected');
-        button.textContent = `${safetyFlags.length ? '[FLAGGED] ' : ''}${threeDMedusaEureka(record)}`;
-        button.title = safetyFlags.length
-          ? `Flagged for inspection: ${safetyFlags.join('; ')}`
-          : 'Highlight this 3D-Medusa result on the grid';
-        button.addEventListener('click', () => {
+      colouringReportView.render({
+        report: threeDMedusaReport,
+        container: threeDMedusaResultsEl,
+        label: '3D-Medusa {Simple}',
+        emptyText: 'No 3D-Medusa search has been run.',
+        noResultText: 'No legal eliminations were found using strong-link types 0 and 4.',
+        eureka: threeDMedusaEureka,
+        selectedIndex: selectedThreeDMedusaIndex,
+        onSelect: index => {
           selectedThreeDMedusaIndex = index;
           colouringSequenceState.medusa.breadth = 1;
           selectedSimpleColoringIndex = null;
           selectedMultiColoringIndex = null;
-          selectedSuperMultiColoringIndex = null;
           selectedThreeDMedusaMultiIndex = null;
           selectedAlsId = null;
           selectedAhsId = null;
@@ -5685,13 +4164,9 @@
           renderThreeDMedusaReport();
           setStatus(`3D-Medusa result ${index + 1} selected.`, 'ok');
           focusMap();
-        });
-        item.appendChild(button);
-        list.appendChild(item);
-      }
-      threeDMedusaResultsEl.appendChild(list);
+        },
+      });
     }
-
     const MULTI_COLOUR_STYLES = {
       purple: { ink: '#7e22ce', fill: 'rgba(233, 213, 255, .9)', stroke: '#7e22ce' },
       blue: { ink: '#1d4ed8', fill: 'rgba(191, 219, 254, .9)', stroke: '#2563eb' },
@@ -5748,6 +4223,7 @@
       { ink: '#4d4d4d', fill: 'rgba(180, 180, 180, .72)', stroke: '#4d4d4d' },
       { ink: '#b22222', fill: 'rgba(213, 94, 0, .54)', stroke: '#b22222' },
     ];
+
 
     function multiColoringTokenClass(token) {
       return String(token || '').toLowerCase().replace(/[^a-z0-9-]/g, '-');
@@ -5806,136 +4282,8 @@
           `${core.cellGroupName([endpoint.cell])} ${multiColoringInnerText(endpoint.colors || endpoint.innerColor, endpoint.colourTokens)}`,
         ).join(', ');
         const pair = (link.pairColours || []).join(' | ');
-        const typeLabel = record.tech === 'super-multi-colouring'
-          ? `T${link.linkType ?? 0} `
-          : '';
-        return `${link.label}${typeLabel}[${core.cellGroupName(link.cells)}] ${pair || multiColoringOuterText(link.colors)} {${endpoints}}`;
+        return `${link.label}[${core.cellGroupName(link.cells)}] ${pair || multiColoringOuterText(link.colors)} {${endpoints}}`;
       }).join(' ; ') || 'none';
-    }
-
-    function superMultiColoringGroupText(record) {
-      return (record.groupColours || []).map(group => {
-        const sides = (group.sides || []).map(side => {
-          const colours = side.colourTokens?.length
-            ? side.colourTokens.join(' + ')
-            : multiColoringInnerText(side.colors);
-          return `{${core.cellGroupName(side.cells || [])}} ${colours}`;
-        }).join(' = ');
-        const shared = group.sharedCells?.length
-          ? ` (I-cell ${core.cellGroupName(group.sharedCells)} excluded from colour graph)`
-          : '';
-        return `${group.label}[T${group.linkType ?? 0}] ${sides}${shared}`;
-      }).join(' ; ') || 'none';
-    }
-
-    function multiColoringEdgesText(record) {
-      return (record.edges || [])
-        .filter(edge => edge.kind === 'weak-inference')
-        .map(edge => {
-          const pair = edge.pairs?.[0];
-          if (!pair) return `${edge.left.label} - ${edge.right.label}`;
-          return `${edge.left.label}:${core.cellGroupName([pair.leftCell])}`
-            + ` - ${edge.right.label}:${core.cellGroupName([pair.rightCell])}`;
-        })
-        .join(' ; ') || 'none';
-    }
-
-    function multiColoringBoundNodesText(record) {
-      return (record.linkColours || []).map(link => {
-        const endpoints = (link.endpoints || []).map(endpoint =>
-          `${core.cellGroupName([endpoint.cell])} ${multiColoringInnerText(endpoint.colors || endpoint.innerColor, endpoint.colourTokens)}`,
-        ).join(' / ');
-        return `${link.label}[${core.cellGroupName(link.cells)} ${(
-          link.pairColours || []
-        ).join(' | ')}] ${endpoints}`;
-      }).join(' ; ') || 'none';
-    }
-
-    function multiColoringChecksText(record) {
-      return (record.colourChecks || []).map(check =>
-        `${check.colours.join(' & ')} @ ${core.cellGroupName([check.left.cell, check.right.cell])}`,
-      ).join(' ; ') || 'none';
-    }
-
-    function multiColoringTopText(record) {
-      return (record.topColourCells || []).map((cells, color) =>
-        `${color === 0 ? 'A' : 'B'}[${core.cellGroupName(cells)}]`,
-      ).join(' ; ') || 'none';
-    }
-
-    function multiColoringRuleText(record) {
-      const rules = new Set(record.rules || []);
-      if (rules.has('cycle-return-truth')) {
-        return 'a shared candidate returned with opposite parity and is true; its cell and peers are reduced';
-      }
-      if (rules.has('sector-cleared-contradiction')) {
-        return 'one parity directly clears every viable same-digit placement in a sector; that parity is false';
-      }
-      if (rules.has('als-dof-colour-contradiction')) {
-        return 'one colour removes too many digits from an ALS-DOF set; that parity is false';
-      }
-      if (rules.has('ahs-dof-colour-contradiction')) {
-        return 'one colour removes too many cells from an AHS-DOF set; that parity is false';
-      }
-      if (rules.has('cell-same-parity-contradiction')) {
-        return 'one cell carries different digits in the same colour parity; that parity is false';
-      }
-      if (rules.has('sector-peer-union-contradiction')) {
-        return 'one parity same-digit peer union covers every viable cell in a sector; that parity is false';
-      }
-      if (rules.has('sector-same-parity')) {
-        if ((record.invalidColors || []).length > 1) {
-          return 'both parities repeat in a sector; the component is contradictory and no parity is asserted';
-        }
-        return 'a sector contains the same digit parity twice; the opposite parity is true';
-      }
-      if (rules.has('both-parities-peer')) {
-        const closure = record.terminalClosure?.cells?.length
-          ? `; terminal closure at ${core.cellGroupName(record.terminalClosure.cells)}`
-          : '';
-        return `the candidate sees both logical parities and the strong/weak network proves it false${closure}`;
-      }
-      if (rules.has('ring-inner-colour-bound')) {
-        return 'a cell seeing a ring-bound colour pair for the digit loses the digit';
-      }
-      if (rules.has('colour-bound-walk')) {
-        return 'a cell seeing a colour-bound pair for the digit loses the digit';
-      }
-      return 'no elimination triggered';
-    }
-
-    function multiColoringParityConflictText(record) {
-      return (record.parityConflicts || []).map(conflict =>
-        `${core.sectorGroupName([conflict.sector])} parity ${conflict.parity === 0 ? 'A' : 'B'} `
-        + `(${core.cellGroupName(conflict.cells)})`,
-      ).join(' ; ') || 'none';
-    }
-
-    function multiColoringParityStateText(record) {
-      const invalid = record.invalidColors || [];
-      if (invalid.length > 1) return 'both parities invalid; no true branch';
-      if (invalid.length === 1) return `parity ${invalid[0] === 0 ? 'A' : 'B'} invalid; parity ${invalid[0] === 0 ? 'B' : 'A'} true`;
-      return 'no sector parity conflict';
-    }
-
-    function multiColoringCellText(record) {
-      return (record.cellColours || []).map(item => {
-        const link = (record.linkColours || []).find(entry => entry.id === item.linkId);
-        return `${link?.label || '?'}:${core.cellGroupName([item.cell])} `
-          + `${multiColoringInnerText(item.colors || item.innerColor, item.colourTokens)}`;
-      }).join(', ') || 'none';
-    }
-
-    function multiColoringTerminalText(record) {
-      return (record.terminalTruth || []).map(item =>
-        `${core.cellGroupName([item.cell])} = ${record.digit}`,
-      ).join(', ') || 'none';
-    }
-
-    function multiColoringFalseLinksText(record) {
-      return (record.falseLinks || []).map(item =>
-        `link ${item.id} (${core.cellGroupName(item.cells)})`,
-      ).join(', ') || 'none';
     }
 
     function multiColoringEureka(record) {
@@ -5992,50 +4340,24 @@
         );
       }
       const witness = witnesses.length ? ` [${witnesses.join(' ; ')}]` : '';
-      const linkText = record.tech === 'super-multi-colouring'
-        ? superMultiColoringGroupText(record)
-        : multiColoringLinkText(record);
+      const linkText = multiColoringLinkText(record);
       return `Multi-colouring: (${digitLabel || 'graph'}) ${linkText}${closure}${witness} => ${eliminations}.`;
     }
 
     function renderMultiColoringReport() {
-      multiColoringResultsEl.textContent = '';
-      if (!multiColoringReport) {
-        multiColoringResultsEl.textContent = 'No Multi-colouring search has been run.';
-        return;
-      }
-
-      const summary = document.createElement('p');
-      summary.textContent = `${multiColoringReport.length} Multi-colouring result${multiColoringReport.length === 1 ? '' : 's'}.`;
-      multiColoringResultsEl.appendChild(summary);
-      if (!multiColoringReport.length) {
-        const empty = document.createElement('p');
-        empty.textContent = 'No Multi-colouring results were found using type-0 strong-link nodes.';
-        multiColoringResultsEl.appendChild(empty);
-        return;
-      }
-
-      const list = document.createElement('ul');
-      list.className = 'log';
-      for (let index = 0; index < multiColoringReport.length; index++) {
-        const record = multiColoringReport[index];
-        const safetyFlags = record.safetyFlags || [];
-        const item = document.createElement('li');
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'chain-result';
-        if (safetyFlags.length) button.classList.add('chain-result-flagged');
-        if (selectedMultiColoringIndex === index) button.classList.add('selected');
-        button.textContent = `${safetyFlags.length ? '[FLAGGED] ' : ''}${multiColoringEureka(record)}`;
-        button.title = safetyFlags.length
-          ? `Flagged for inspection: ${safetyFlags.join('; ')}`
-          : 'Highlight this Multi-colouring result on the grid';
-        button.addEventListener('click', () => {
+      colouringReportView.render({
+        report: multiColoringReport,
+        container: multiColoringResultsEl,
+        label: 'Multi-colouring',
+        emptyText: 'No Multi-colouring search has been run.',
+        noResultText: 'No Multi-colouring results were found using type-0 strong-link nodes.',
+        eureka: multiColoringEureka,
+        selectedIndex: selectedMultiColoringIndex,
+        onSelect: index => {
           selectedMultiColoringIndex = index;
           colouringSequenceState.multi.breadth = 1;
           selectedSimpleColoringIndex = null;
           selectedThreeDMedusaIndex = null;
-          selectedSuperMultiColoringIndex = null;
           selectedThreeDMedusaMultiIndex = null;
           selectedAlsId = null;
           selectedAhsId = null;
@@ -6051,26 +4373,12 @@
           renderSimpleColoringReport();
           renderThreeDMedusaReport();
           renderMultiColoringReport();
-          renderSuperMultiColoringReport();
           renderThreeDMedusaMultiReport();
           setStatus(`Multi-colouring result ${index + 1} selected.`, 'ok');
           focusMap();
-        });
-        item.appendChild(button);
-        list.appendChild(item);
-      }
-      multiColoringResultsEl.appendChild(list);
+        },
+      });
     }
-
-    function superMultiColoringEureka(record) {
-      return multiColoringEureka(record)
-        .replace(/^Multi-colouring:/, 'Super Multi-colouring:');
-    }
-
-    function renderSuperMultiColoringReport() {
-      return;
-    }
-
     function threeDMedusaMultiEureka(record) {
       if (record.source === 'multi') {
         const bivalveTruth = (record.bivalveTruth || [])
@@ -6087,41 +4395,15 @@
     }
 
     function renderThreeDMedusaMultiReport() {
-      threeDMedusaMultiResultsEl.textContent = '';
-      if (!threeDMedusaMultiReport) {
-        threeDMedusaMultiResultsEl.textContent = 'No 3D-Medusa {Multi-colouring} search has been run.';
-        return;
-      }
-
-      const summary = document.createElement('p');
-      summary.textContent = String(threeDMedusaMultiReport.length)
-        + ' 3D-Medusa {Multi-colouring} result'
-        + (threeDMedusaMultiReport.length === 1 ? '' : 's') + '.';
-      threeDMedusaMultiResultsEl.appendChild(summary);
-      if (!threeDMedusaMultiReport.length) {
-        const empty = document.createElement('p');
-        empty.textContent = 'No legal 3D-Medusa Multi-colouring constructions were found.';
-        threeDMedusaMultiResultsEl.appendChild(empty);
-        return;
-      }
-
-      const list = document.createElement('ul');
-      list.className = 'log';
-      for (let index = 0; index < threeDMedusaMultiReport.length; index++) {
-        const record = threeDMedusaMultiReport[index];
-        const safetyFlags = record.safetyFlags || [];
-        const item = document.createElement('li');
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'chain-result';
-        if (safetyFlags.length) button.classList.add('chain-result-flagged');
-        if (selectedThreeDMedusaMultiIndex === index) button.classList.add('selected');
-        button.textContent = (safetyFlags.length ? '[FLAGGED] ' : '')
-          + threeDMedusaMultiEureka(record);
-        button.title = safetyFlags.length
-          ? 'Flagged for inspection: ' + safetyFlags.join('; ')
-          : 'Highlight this 3D-Medusa Multi-colouring result on the grid';
-        button.addEventListener('click', () => {
+      colouringReportView.render({
+        report: threeDMedusaMultiReport,
+        container: threeDMedusaMultiResultsEl,
+        label: '3D-Medusa {Multi-colouring}',
+        emptyText: 'No 3D-Medusa {Multi-colouring} search has been run.',
+        noResultText: 'No legal 3D-Medusa Multi-colouring constructions were found.',
+        eureka: threeDMedusaMultiEureka,
+        selectedIndex: selectedThreeDMedusaMultiIndex,
+        onSelect: index => {
           selectedThreeDMedusaMultiIndex = index;
           colouringSequenceState.medusaMulti.breadth = 1;
           selectedSimpleColoringIndex = null;
@@ -6141,103 +4423,14 @@
           renderSimpleColoringReport();
           renderThreeDMedusaReport();
           renderMultiColoringReport();
-          renderSuperMultiColoringReport();
           renderThreeDMedusaMultiReport();
           setStatus('3D-Medusa Multi-colouring result ' + (index + 1) + ' selected.', 'ok');
           focusMap();
-        });
-        item.appendChild(button);
-        list.appendChild(item);
-      }
-      threeDMedusaMultiResultsEl.appendChild(list);
-    }
-
-    function renderFishReport() {
-      fishResultsEl.textContent = '';
-      if (!fishReport) return;
-
-      const categories = ['Basic', 'Franken', 'Mutant'];
-      const groups = categories.map(category => fishReport.filter(fish => fish.category === category));
-      const summary = document.createElement('p');
-      summary.textContent = `${fishReport.length} N x (N + K) fish reports.`
-        + ` ${categories.map((category, index) => `${category} ${groups[index].length}`).join(', ')}.`;
-      fishResultsEl.appendChild(summary);
-      const categoriesEl = document.createElement('div');
-      categoriesEl.className = 'chain-categories';
-      categories.forEach((category, categoryIndex) => {
-        const records = groups[categoryIndex];
-        const categoryPanel = document.createElement('details');
-        categoryPanel.className = 'chain-category';
-        categoryPanel.open = selectedFishCategory === category;
-
-        const categorySummary = document.createElement('summary');
-        const categoryName = document.createElement('strong');
-        categoryName.className = 'chain-category-name';
-        categoryName.textContent = category;
-        const categoryCount = document.createElement('span');
-        categoryCount.className = 'chain-category-count';
-        categoryCount.textContent = `${records.length} ${records.length === 1 ? 'fish' : 'fish'}`;
-        categorySummary.appendChild(categoryName);
-        categorySummary.appendChild(categoryCount);
-        categoryPanel.appendChild(categorySummary);
-
-        if (!records.length) {
-          categoriesEl.appendChild(categoryPanel);
-          return;
-        }
-
-        const sizes = [...new Set(records.map(fish => fish.size))].sort((a, b) => a - b);
-        const sizePanels = document.createElement('div');
-        sizePanels.className = 'chain-subcategories';
-        for (const size of sizes) {
-          const sizeRecords = records.filter(fish => fish.size === size);
-          const sizePanel = document.createElement('details');
-          sizePanel.className = 'chain-subcategory';
-          sizePanel.open = selectedFishCategory === category && selectedFishSize === size;
-
-          const sizeSummary = document.createElement('summary');
-          const sizeName = document.createElement('strong');
-          sizeName.textContent = `Size ${size}`;
-          const sizeCount = document.createElement('span');
-          sizeCount.className = 'chain-category-count';
-          sizeCount.textContent = `${sizeRecords.length} ${sizeRecords.length === 1 ? 'fish' : 'fish'}`;
-          sizeSummary.appendChild(sizeName);
-          sizeSummary.appendChild(sizeCount);
-          sizePanel.appendChild(sizeSummary);
-
-          const list = document.createElement('ul');
-          list.className = 'chain-list';
-          const visible = sizeRecords.slice(0, 200);
-          for (const fish of visible) {
-            const index = records.indexOf(fish);
-            const item = document.createElement('li');
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.className = 'chain-result';
-            const key = `${category}:${index}`;
-            if (selectedFishKey === key) button.classList.add('selected');
-            const removals = fish.cells.map(cell => ({ cell, digit: fish.digit }));
-            button.textContent = `${fish.name}: (${fish.digit}) `
-              + `${core.sectorGroupName(fish.baseSectors)} / `
-              + `${core.sectorGroupName(fish.coverSectors)} => `
-              + `${core.formatRemovals(removals)}`;
-        const select = () => selectFishReport(category, index);
-        button.addEventListener('click', select);
-        item.appendChild(button);
-        list.appendChild(item);
-          }
-          if (sizeRecords.length > visible.length) {
-            const more = document.createElement('li');
-            more.textContent = `Showing ${visible.length} of ${sizeRecords.length} ${category} records.`;
-            list.appendChild(more);
-          }
-          sizePanel.appendChild(list);
-          sizePanels.appendChild(sizePanel);
-        }
-        categoryPanel.appendChild(sizePanels);
-        categoriesEl.appendChild(categoryPanel);
+        },
       });
-      fishResultsEl.appendChild(categoriesEl);
+    }
+    function renderFishReport() {
+      fishView.render(fishReport, fishResultsEl);
     }
 
     function fishStepFromReport(fish) {
@@ -6287,25 +4480,14 @@
     }
 
     function renderBoxLineReport() {
-      boxLineResultsEl.textContent = '';
-      if (!boxLineReport) return;
-      const summary = document.createElement('p');
-      summary.textContent = `${boxLineReport.length} Box Line Reduction reports.`;
-      boxLineResultsEl.appendChild(summary);
-      const list = document.createElement('ul');
-      list.className = 'chain-list';
-      boxLineReport.forEach((step, index) => {
-        const item = document.createElement('li');
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'chain-result';
-        if (selectedBoxLineIndex === index) button.classList.add('selected');
-        button.textContent = `${index + 1}. ${step.desc}`;
-        button.addEventListener('click', () => selectBoxLineReport(index));
-        item.appendChild(button);
-        list.appendChild(item);
+      stepListView.render({
+        report: boxLineReport,
+        container: boxLineResultsEl,
+        label: 'Box Line Reduction reports',
+        selectedIndex: selectedBoxLineIndex,
+        descriptionFor: step => step.desc,
+        onSelect: index => selectBoxLineReport(index),
       });
-      boxLineResultsEl.appendChild(list);
     }
 
     function selectBoxLineReport(index) {
@@ -6334,68 +4516,19 @@
       const hidden = kind === 'hidden';
       const resultsEl = hidden ? hiddenSubsetResultsEl : nakedSubsetResultsEl;
       const report = hidden ? hiddenSubsetReport : nakedSubsetReport;
-      resultsEl.textContent = '';
-      if (!report) return;
-
-      const summary = document.createElement('p');
-      summary.textContent = `${report.length} ${hidden ? 'hidden' : 'naked'} subset reports.`;
-      resultsEl.appendChild(summary);
-      const groups = new Map();
-      for (const item of report) {
-        const bucket = groups.get(item.size) || [];
-        bucket.push(item);
-        groups.set(item.size, bucket);
-      }
       const selected = hidden ? selectedHiddenSubsetSize : selectedNakedSubsetSize;
-
-      const sizeGroups = document.createElement('div');
-      sizeGroups.className = 'chain-categories';
-      for (const [size, records] of [...groups.entries()].sort((a, b) => a[0] - b[0])) {
-        const sizePanel = document.createElement('details');
-        sizePanel.className = 'chain-category';
-        sizePanel.open = selected === size;
-
-        const sizeSummary = document.createElement('summary');
-        const sizeName = document.createElement('strong');
-        sizeName.className = 'chain-category-name';
-        sizeName.textContent = `Size ${size} - ${subsetSizeName(size)}`;
-        const sizeCount = document.createElement('span');
-        sizeCount.className = 'chain-category-count';
-        sizeCount.textContent = `${records.length} ${records.length === 1 ? 'subset' : 'subsets'}`;
-        sizeSummary.appendChild(sizeName);
-        sizeSummary.appendChild(sizeCount);
-        sizePanel.appendChild(sizeSummary);
-
-        const list = document.createElement('ul');
-        list.className = 'chain-list';
-        const visible = records.slice(0, 200);
-        for (const item of visible) {
-          const label = `${item.locked ? 'Locked ' : ''}${hidden ? 'Hidden' : 'Naked'} ${subsetSizeName(item.size)}`;
-          const entry = document.createElement('li');
-          const button = document.createElement('button');
-          button.type = 'button';
-          button.className = 'chain-result';
-          const index = records.indexOf(item);
-          const key = `${size}:${index}`;
-          const selectedKey = hidden ? selectedHiddenSubsetKey : selectedNakedSubsetKey;
-          if (selectedKey === key) button.classList.add('selected');
-          button.textContent = `${label}: (${item.digits.join('')}) `
-            + `${core.cellGroupName(item.cells)} in ${core.sectorGroupName([item.sector])} => `
-            + `${core.formatRemovals(item.removals)}`;
-          const select = () => selectSubsetReport(kind, index, size);
-          button.addEventListener('click', select);
-          entry.appendChild(button);
-          list.appendChild(entry);
-        }
-        if (records.length > visible.length) {
-          const more = document.createElement('li');
-          more.textContent = `Showing ${visible.length} of ${records.length} ${subsetSizeName(size)} records.`;
-          list.appendChild(more);
-        }
-        sizePanel.appendChild(list);
-        sizeGroups.appendChild(sizePanel);
-      }
-      resultsEl.appendChild(sizeGroups);
+      const selectedKey = hidden ? selectedHiddenSubsetKey : selectedNakedSubsetKey;
+      subsetView.render({
+        report,
+        container: resultsEl,
+        kind,
+        selectedKey,
+        subsetSizeName,
+        cellGroupName: cells => core.cellGroupName(cells),
+        sectorGroupName: sectors => core.sectorGroupName(sectors),
+        formatRemovals: removals => core.formatRemovals(removals),
+        onSelect: (index, size) => selectSubsetReport(kind, index, size),
+      });
     }
 
     function subsetStepFromReport(kind, item) {
@@ -6470,36 +4603,7 @@
     }
 
     function chainText(chain, verbose = false) {
-      if (chain?.alcXz && core.formatAlcXz) {
-        return core.formatAlcXz(chain);
-      }
-      if (chain.ahsXy) {
-        return core.formatChainEureka(chain);
-      }
-      let displayChain = displayChainForUi(chain);
-      const bivalentInfo = alsSizeOneChainInfo(displayChain);
-      const barnsInfo = barnsChainInfo(displayChain);
-      const barnsTransportInfo = barnsTransportChainInfo(displayChain);
-      if (barnsInfo) {
-        displayChain = {
-          ...displayChain,
-          structureName: `${barnsInfo.sizeName} ${barnsInfo.form}`,
-        };
-      } else if (barnsTransportInfo) {
-        displayChain = {
-          ...displayChain,
-          structureName: `T - ${barnsTransportInfo.sizeName} ${barnsTransportInfo.form}`,
-        };
-      }
-      const text = verbose && core.formatChainVerbose
-        ? core.formatChainVerbose(displayChain)
-        : core.formatChainEureka
-          ? core.formatChainEureka(displayChain)
-          : core.formatChain(displayChain);
-      // Preserve the structural AIC + ALS identity in the proof text. The
-      // folder renderer supplies the more specific ALS alias only where that
-      // proof is being grouped in the hierarchy.
-      return text;
+      return chainTextView.format(chain, verbose);
     }
 
     function openXWingSubclass(chain) {
@@ -6542,1015 +4646,110 @@
     }
 
     function displayChainForUi(chain) {
-      const structureName = normalizedChainStructureName(chain);
-      let displayChain = structureName === chain?.structureName
-        ? chain
-        : { ...chain, structureName };
-      if (/^(?:X-Chain|AIC)$/i.test(structureName)) {
-        const subclass = openXWingSubclass(chain);
-        if (subclass) displayChain = { ...displayChain, structureName: subclass };
-      }
-
-      return displayChain;
+      return chainDisplay.displayChainForUi(chain);
     }
 
     function folderChainText(chain, folder) {
-      // A proof can legitimately belong to more than one structural class.
-      // Keep the proof itself shared, but use the name of the folder in which
-      // it is being rendered instead of letting chainText() globally choose
-      // the B.A.R.N.S. alias for every location.
-      if (folder?.displayName) return folder.displayName;
-      return chainText(chain);
+      return chainDisplay.folderChainText(chain, folder);
     }
     function chainFolderInfo(chain) {
-      if (chain.structureFamily && chain.structureWing && chain.structureRank) {
-        return {
-          family: chain.structureFamily,
-          wing: chain.structureWing,
-          rank: chain.structureRank,
-          subclass: chain.structureSubclass || chain.structureName || null,
-        };
-      }
-
-      const name = String(chain.structureName || (chain.isRing ? 'Ring' : 'AIC'));
-      if (/^T\s*-\s*ALS\s*-\s*(?:XZ|XY)(?:\s+Ring)?$/i.test(name)) {
-        const suffix = /XY$/i.test(name) ? 'XY' : 'XZ';
-        return {
-          family: 'Transport',
-          wing: `ALS-${suffix}`,
-          rank: chain.isRing ? 'Ring' : 'Wing',
-          subclass: `T-ALS-${suffix}`,
-        };
-      }
-      const aicAlsMatch = name.match(/^AIC\s*\+\s*ALS\s*-\s*(.+)$/i);
-      if (aicAlsMatch) {
-        return {
-          family: 'AIC + ALS',
-          wing: aicAlsMatch[1].trim(),
-          rank: null,
-          subclass: null,
-        };
-      }
-      // Ordinary AIC names carry L(n)/M(n)/H(n); named ALS/AHS/ALC
-      // variants intentionally omit the numeric designator.
-      const match = name.match(/^(.*?)(L|M|H)(?:\((\d+)\))?\s*-\s*(.+)$/i);
-      if (!match) return { family: name, wing: null, rank: null, subclass: null };
-
-      const prefix = match[1].trim().replace(/\s*-\s*$/, '');
-      const rankType = match[2].toUpperCase();
-      const rank = match[3] ? `(${match[3]})` : '';
-      const label = match[4].trim();
-      const kind = /ring/i.test(label) || chain.isRing ? 'Ring' : 'Wing';
-      const designator = prefix ? `${prefix} ${rankType}` : null;
-      const structuralSubclass = label.toLowerCase() === kind.toLowerCase() ? null : label;
-      const subclass = designator
-        ? structuralSubclass ? `${designator} - ${structuralSubclass}` : designator
-        : structuralSubclass;
-      return {
-        family: rankType === 'M'
-          ? 'M - Wing | Ring'
-          : rankType === 'H'
-            ? 'Hybrid - Wing | Ring'
-            : 'Local - Wing | Ring',
-        wing: kind,
-        rank: `${rankType}${rank}`,
-        subclass,
-      };
+      return chainFolderInfoView.chainFolderInfo(chain);
     }
 
     function chainEriCount(chain) {
-      const steps = chain.steps || [];
-      if (!steps.length) return 0;
-
-      const allDigits = new Set();
-      let count = 0;
-      let allStepsAreEri = true;
-
-      for (const step of steps) {
-        const names = Array.isArray(step.linkTypeNames)
-          ? step.linkTypeNames
-          : [step.linkTypeName];
-        const chainDigits = [
-          ...(step.entry?.digits || []),
-          ...(step.exit?.digits || []),
-          step.weakDigit,
-          step.weakFromDigit,
-          step.weakToDigit,
-        ].filter(Number.isInteger);
-        for (const digit of chainDigits) {
-          if (Number.isInteger(digit)) allDigits.add(digit);
-        }
-        const isEri = step.linkType === core.ERI
-          || names.some(name => String(name || '').toUpperCase() === 'ERI');
-        if (!isEri) {
-          allStepsAreEri = false;
-          continue;
-        }
-        if (!chainDigits.length) return 0;
-        count += 1;
-      }
-
-      return allStepsAreEri && count > 0 && allDigits.size === 1 ? count : 0;
+      return chainSingleDigit.chainEriCount(chain);
     }
 
     function isEriOnlyXChain(chain) {
-      const steps = chain?.steps || [];
-      if (!steps.length) return false;
-
-      const digits = new Set();
-      for (const step of steps) {
-        for (const digit of [
-          ...(step.entry?.digits || []),
-          ...(step.exit?.digits || []),
-          step.weakDigit,
-          step.weakFromDigit,
-          step.weakToDigit,
-        ]) {
-          if (Number.isInteger(digit)) digits.add(digit);
-        }
-      }
-      if (digits.size !== 1) return false;
-
-      return steps.every(step => {
-        const names = [
-          step.linkTypeName,
-          ...(Array.isArray(step.linkTypeNames) ? step.linkTypeNames : []),
-        ].map(name => String(name || '').toUpperCase());
-        return step.family === 'SL'
-          && (step.linkType === core.ERI || names.includes('ERI'));
-      });
+      return chainSingleDigit.isEriOnlyXChain(chain);
     }
 
     function xChainType(chain, eriCount) {
-      const rawName = String(chain.structureName || '');
-      // The core walker keeps generic X-chain names on the record. Resolve
-      // the short named subclass here as well as in the display formatter so
-      // folder membership does not depend on which rendering path ran first.
-      const subclass = /^(?:X-Chain|AIC)$/i.test(rawName)
-        ? openXWingSubclass(chain)
-        : null;
-      const name = String(subclass || rawName)
-        .replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS)\s*-\s*/i, '');
-      // X-Wing is filed under the structural Ring folder, but it is not an X-Ring.
-      if (/^X-Wing$/i.test(name)) return 'X-Wing';
-      if (/^(?:L\(1\)-(?:Wing|Ring)|L1-(?:Wing|Ring)|Dual Empty Rectangle|Rec'T Kite|Bridged ERI|Bridged Empty Rectangle)$/i.test(name)) {
-        return 'L(1)';
-      }
-      if (/^\d+x ERI$/i.test(name) || (eriCount > 0 && isEriOnlyXChain(chain))) {
-        return 'ERI Chain';
-      }
-      if (emptyRectangleChain(chain)) {
-        return 'Empty Rectangle';
-      }
-      if (/^(?:Finned|Sashimi) X-Wing$/i.test(name)) return name;
-      if (/^(?:2-String Kite|Skyscraper|X-Wing)$/i.test(name)) return name;
-      return null;
+      return chainSingleDigit.xChainType(chain, eriCount);
     }
 
     function emptyRectangleChain(chain) {
-      const steps = chain.steps || [];
-      if (steps.length !== 2) return false;
-      const digits = new Set();
-      let eriCount = 0;
-      for (const step of steps) {
-        for (const digit of [
-          ...(step.entry?.digits || []),
-          ...(step.exit?.digits || []),
-          step.weakDigit,
-        ]) {
-          if (Number.isInteger(digit)) digits.add(digit);
-        }
-        const names = [step.linkTypeName, ...(step.linkTypeNames || [])]
-          .map(name => String(name || '').toUpperCase());
-        if (step.linkType === core.ERI || names.includes('ERI')) eriCount += 1;
-      }
-      return digits.size === 1 && eriCount === 1;
+      return chainSingleDigit.emptyRectangleChain(chain);
     }
 
     function chainNameWithoutAffix(chain) {
-      return String(chain.structureName || '')
-        .replace(/^\s*(?:(?:AIC\s*\+\s*)?(?:ALS|AHS)|ALC)\s*-\s*/i, '');
+      return chainNaming.chainNameWithoutAffix(chain);
     }
 
     function wChainType(chain) {
-      const name = chainNameWithoutAffix(chain);
-      if (/^W-Wing$/i.test(name)) return 'Wing';
-      if (/^W-Ring$/i.test(name)) return 'Ring';
-      if (/^(?:T\s*-\s*)?Transport$/i.test(name)) return 'Transport';
-
-      return null;
+      return chainNaming.wChainType(chain);
     }
 
     function splitChainType(chain) {
-      const steps = chain.steps || [];
-      if (steps.length !== 3) return null;
-      const isStrong = step => step.family === 'SL'
-        && step.linkType !== 4
-        && String(step.linkTypeName || '').toUpperCase() !== 'ALS';
-      return isStrong(steps[0])
-        && ['ALS', 'AHS'].includes(steps[1].family)
-        && ['ALS_RCC', 'AHS_RCC'].includes(String(steps[1].linkTypeName || '').toUpperCase())
-        && isStrong(steps[2])
-        ? 'Wing'
-        : null;
+      return chainNaming.splitChainType(chain);
     }
 
     function strongChainType(chain) {
-      const name = chainNameWithoutAffix(chain);
-      const match = name.match(/^Strong[- ](Wing|Ring)$/i);
-      return match ? match[1][0].toUpperCase() + match[1].slice(1).toLowerCase() : null;
+      return chainNaming.strongChainType(chain);
     }
 
     function inversionChainType(chain) {
-      const name = chainNameWithoutAffix(chain);
-      return /^i[SWMLH](?:\d+)?-(?:Wing|Ring)$/i.test(name) ? name : null;
+      return chainNaming.inversionChainType(chain);
     }
 
     function alsChainNodes(chain) {
-      const steps = chain.steps || [];
-      const isAlsRcc = step => step.family === 'ALS'
-        && (
-          String(step.linkTypeName || '').toUpperCase() === 'ALS_RCC'
-          || chainModuleSubsets(step.module).length === 2
-        );
-      const isBivalentAls = step => step.family === 'SL'
-        && Number(step.linkType) === 4
-        && step.entry?.cells?.length === 1
-        && step.exit?.cells?.length === 1
-        && step.entry.cellKey === step.exit.cellKey;
-      const isGroupedAls = step => {
-        if (!['SL', 'ALS'].includes(step.family)) return false;
-        if (step.family === 'SL' && Number(step.linkType) !== 4) return false;
-        const cells = new Set([
-          ...(step.entry?.cells || []),
-          ...(step.exit?.cells || []),
-        ]);
-        const digits = new Set([
-          ...(step.entry?.digits || []),
-          ...(step.exit?.digits || []),
-        ]);
-        return cells.size > 1 && digits.size === cells.size + 1;
-      };
-      if (!steps.length || !steps.every(step =>
-        isAlsRcc(step) || isBivalentAls(step) || isGroupedAls(step)
-      )) return null;
-
-      // One ALS_RCC record joins two ALS modules. Count the unique modules,
-      // rather than the graph records, so XZ/XY classifications use the
-      // actual ALS node count.
-      const nodes = [];
-      const seen = new Set();
-      for (const step of steps) {
-        if (isBivalentAls(step) || isGroupedAls(step)) {
-          const cells = [...new Set([
-            ...(step.entry.cells || []),
-            ...(step.exit.cells || []),
-          ])].sort((a, b) => a - b);
-          const digits = [...new Set([
-            ...(step.entry.digits || []),
-            ...(step.exit.digits || []),
-          ])].sort((a, b) => a - b);
-          const key = `BIVALVE|${cells.join(',')}|${digits.join('')}`;
-          if (!seen.has(key)) {
-            seen.add(key);
-            nodes.push({ id: key, cells, digits });
-          }
-          continue;
-        }
-        const module = step.module;
-        for (const subset of chainModuleSubsets(module)) {
-          if (!subset) return null;
-          const key = [
-            subset.id ?? '',
-            subset.cells.join(','),
-            subset.digits.join(''),
-          ].join('|');
-          if (!seen.has(key)) {
-            seen.add(key);
-            nodes.push(subset);
-          }
-        }
-      }
-      return nodes.length ? nodes : null;
+      return chainNodeAnalysis.alsChainNodes(chain);
     }
 
     function alsOnlyChainInfo(chain) {
-      const nodes = alsChainNodes(chain);
-      if (!nodes || nodes.length < 2) return null;
-
-      const nodeCount = nodes.length;
-      if (nodeCount === 2) {
-        return {
-          category: 'ALS - XZ rule',
-          subcategory: chain.isRing
-            ? '(2) RCC Rule - Double Linked Rule'
-            : '(1) RCC Rule',
-          subclass: null,
-        };
-      }
-      if (nodeCount === 3) {
-        return {
-          category: 'ALS - XY rule',
-          subcategory: chain.isRing
-            ? '(3) RCC Rule - Triple Link Rule'
-            : '(2) RCC Rule',
-          subclass: null,
-        };
-      }
-
-      return {
-        category: 'ALS - Chain',
-        subcategory: chain.isRing
-          ? 'N ALS / N RCC Rule'
-          : 'N ALS / N - 1 RCC Rule',
-        subclass: chain.isRing ? 'Ring' : null,
-      };
+      return chainAlsInfo.alsOnlyChainInfo(chain);
     }
 
     function alsNamedChainInfo(chain) {
-      const match = String(chain.structureName || '').match(/^ALS\s*-\s*(XZ|XY|Chain)$/i);
-      if (!match) return null;
-
-      const name = match[1].toUpperCase();
-      if (name === 'XZ') {
-        return {
-          category: 'ALS - XZ rule',
-          subcategory: chain.isRing
-            ? '(2) RCC Rule - Double Linked Rule'
-            : '(1) RCC Rule',
-          subclass: null,
-        };
-      }
-      if (name === 'XY') {
-        return {
-          category: 'ALS - XY rule',
-          subcategory: chain.isRing
-            ? '(3) RCC Rule - Triple Link Rule'
-            : '(2) RCC Rule',
-          subclass: null,
-        };
-      }
-      return {
-        category: 'ALS - Chain',
-        subcategory: chain.isRing
-          ? 'N ALS / N RCC Rule'
-          : 'N ALS / N - 1 RCC Rule',
-        subclass: chain.isRing ? 'Ring' : null,
-      };
+      return chainAlsInfo.alsNamedChainInfo(chain);
     }
 
     function ahsXzChainInfo(chain) {
-      const steps = chain.steps || [];
-      if (steps.length !== 1) return null;
-      const step = steps[0];
-      if (step.family !== 'AHS'
-        || String(step.linkTypeName || '').toUpperCase() !== 'AHS_RCC') {
-        return null;
-      }
-
-      const moduleKind = String(step.module?.moduleKind || '').toUpperCase();
-      if (!['AHS_XZ', 'AHS_XZ_RING'].includes(moduleKind)) return null;
-
-      const doubleRcc = moduleKind === 'AHS_XZ_RING'
-        || (step.module?.ringRccCells || []).length === 2;
-      return {
-        category: 'AHS - XZ rule',
-        subcategory: doubleRcc
-          ? '{2} RCC Rule - Double Linked Rule'
-          : '(1) RCC Rule',
-        subclass: doubleRcc ? '2 RCC' : null,
-      };
+      return chainAlsInfo.ahsXzChainInfo(chain);
     }
 
     function barnsSizeName(size) {
-      if (!Number.isInteger(size) || size < 1 || size > 26) return null;
-      return 'abcdefghijklmnopqrstuvwxyz'.slice(-size);
+      return chainBarnsInfo.barnsSizeName(size);
     }
 
     function barnsChainInfo(chain) {
-      // B.A.R.N.S. size is defined from two actual ALS nodes and their RCC.
-      // A four-node type-4 XY chain is not a WXYZ B.A.R.N.S. construction.
-      const nodes = alsChainNodes(chain);
-      if (!nodes || nodes.length !== 2) return null;
-
-      const cells = new Set(nodes.flatMap(node => node.cells));
-      const digits = new Set(nodes.flatMap(node => node.digits));
-      // The RCC is part of the B.A.R.N.S. digit inventory even though the
-      // compact node sides print it on the other side of the equals sign.
-      for (const step of chain.steps || []) {
-        const module = step.module;
-        for (const digit of [
-          module?.common?.digit,
-          ...(module?.common?.digits || []),
-          module?.displayLeftRcc,
-          module?.displayRightRcc,
-        ]) {
-          if (Number.isInteger(digit)) digits.add(digit);
-        }
-      }
-      if (cells.size !== digits.size) return null;
-
-      const sizeName = barnsSizeName(cells.size);
-      if (!sizeName) return null;
-
-      return {
-        form: chain.isRing ? 'Ring' : 'Wing',
-        sizeName,
-      };
+      return chainBarnsInfo.barnsChainInfo(chain);
     }
 
     function barnsTransportChainInfo(chain) {
-      const steps = chain.steps || [];
-      if (steps.length !== 2) return null;
-
-      const alsSteps = steps.filter(step =>
-        step.family === 'ALS'
-        && String(step.linkTypeName || '').toUpperCase() === 'ALS_RCC'
-      );
-      const strongSteps = steps.filter(step =>
-        step.family === 'SL'
-        && String(step.linkTypeName || '').toUpperCase() !== 'ALS'
-      );
-      if (alsSteps.length !== 1 || strongSteps.length !== 1) return null;
-
-      const module = alsSteps[0].module;
-      const subsets = chainModuleSubsets(module);
-      if (!subsets.every(subset => subset?.cells?.length && subset?.digits?.length)) {
-        return null;
-      }
-
-      const cells = new Set(subsets.flatMap(subset => subset.cells));
-      const digits = new Set(subsets.flatMap(subset => subset.digits));
-      if (cells.size !== digits.size) return null;
-
-      const sizeName = barnsSizeName(cells.size);
-      if (!sizeName) return null;
-
-      return {
-        form: chain.isRing ? 'Ring' : 'Wing',
-        sizeName,
-      };
+      return chainBarnsInfo.barnsTransportChainInfo(chain);
     }
 
     function alsSizeOneChainInfo(chain) {
-      const steps = chain.steps || [];
-      if (!steps.length) return null;
-
-      // XY-Chains and Remote Pairs are built only from type-4 bivalent
-      // strong links. ALS_RCC or any other node family belongs to AIC/ALS
-      // classification and must never be folded into this helper.
-      if (!steps.every(step =>
-        step.family === 'SL' && Number(step.linkType) === 4
-      )) return null;
-
-      // A bivalent XY structure uses type-4 cell ALS links instead of
-      // ALS_RCC modules. Build the same one-cell node view for both forms so
-      // XY-Wing/XY-Chain classification does not discard pure bivalent paths.
-      const nodes = [];
-      const seen = new Set();
-      for (const step of steps) {
-        const isBivalent = step.family === 'SL'
-          && Number(step.linkType) === 4
-          && step.entry?.cells?.length === 1
-          && step.exit?.cells?.length === 1
-          && step.entry.cellKey === step.exit.cellKey;
-        if (isBivalent) {
-          const cell = step.entry.cells[0];
-          const digits = [...new Set([
-            ...(step.entry.digits || []),
-            ...(step.exit.digits || []),
-          ])].sort((a, b) => a - b);
-          const key = `BIVALENT|${cell}|${digits.join('')}`;
-          if (!seen.has(key)) {
-            seen.add(key);
-            nodes.push({ cells: [cell], digits });
-          }
-          continue;
-        }
-
-        if (step.family !== 'ALS'
-          || String(step.linkTypeName || '').toUpperCase() !== 'ALS_RCC') return null;
-        const module = step.module;
-        for (const subset of chainModuleSubsets(module)) {
-          if (!subset) return null;
-          const key = [
-            subset.id ?? '',
-            (subset.cells || []).join(','),
-            (subset.digits || []).join(''),
-          ].join('|');
-          if (!seen.has(key)) {
-            seen.add(key);
-            nodes.push(subset);
-          }
-        }
-      }
-
-      if (!nodes.length || nodes.some(node => node.cells.length !== 1)) return null;
-
-      const nodeDigits = nodes.map(node => [...node.digits].sort((a, b) => a - b));
-      // Remote Pair is exclusively a type-4 bivalent strong-link chain.
-      // ALS_RCC sides can be single cells too, but they are not Remote Pair
-      // nodes and must never inherit this classification.
-      const pureType4 = steps.every(step =>
-        step.family === 'SL' && Number(step.linkType) === 4
-      );
-      const remotePair = pureType4 && nodeDigits.every(digits =>
-        digits.length === 2
-        && digits.join(',') === nodeDigits[0].join(',')
-      );
-      const breakdown = remotePair
-        ? 'Remote Pair'
-        : nodes.length === 3
-          ? 'XY-Wing'
-          : 'XY-Chain';
-      const allBivalve = nodeDigits.every(digits => digits.length === 2);
-
-      return {
-        breakdown,
-        remotePair,
-        nodeCount: nodes.length,
-        allBivalve,
-        subclass: chain.isRing ? 'Ring' : null,
-      };
+      return chainXyInfo.alsSizeOneChainInfo(chain);
     }
 
     function hiddenXyChainInfo(chain) {
-      const steps = chain.steps || [];
-      if (steps.length < 2 || !steps.every(step =>
-        step.family === 'SL' && step.linkType === core.BILOCAL
-      )) return null;
-
-      const linkDigits = steps.map(step => {
-        const digits = new Set([
-          ...(step.entry?.digits || []),
-          ...(step.exit?.digits || []),
-        ]);
-        return digits.size === 1 ? [...digits][0] : null;
-      });
-      if (linkDigits.some(digit => !Number.isInteger(digit))) return null;
-
-      const uniqueDigits = new Set(linkDigits);
-      // A Hidden XY-Chain must contain more than one digit. A repeated
-      // single-digit bilocal chain remains an ordinary X-Chain.
-      if (uniqueDigits.size < 2) return null;
-      const alternates = uniqueDigits.size === 2
-        && linkDigits.every((digit, index) => index === 0 || digit !== linkDigits[index - 1])
-        && (!chain.isRing || linkDigits[0] !== linkDigits[linkDigits.length - 1]);
-
-      return {
-        remotePair: alternates,
-        form: chain.isRing ? 'Ring' : 'Wing',
-      };
+      return chainXyInfo.hiddenXyChainInfo(chain);
     }
 
     function chainFolderInfos(chain) {
-      const eriCount = chainEriCount(chain);
-      const primary = chainFolderInfo(chain);
-      const locations = [];
-      const barnsInfo = barnsChainInfo(chain);
-      const barnsTransportInfo = barnsTransportChainInfo(chain);
-      const hiddenXyInfo = hiddenXyChainInfo(chain);
-      const alsInfo = alsOnlyChainInfo(chain) || alsNamedChainInfo(chain);
-      const namedAlsWing = String(chain.structureName || '').match(
-        /^(?:AIC\s*\+\s*)?ALS\s*-\s*([LMH])(?:\(\d+\))?\s*-\s*(Wing|Ring)$/i,
-      );
-
-      // Keep the existing structural folder. ERI chains can also belong to
-      // Local/M/Hybrid folders, so the same chain may have more than one UI location.
-      const genericXFamily = /^X\s*-\s*Chains?$/i.test(String(primary.family || ''))
-        || /^X\s*Chains?$/i.test(String(primary.family || ''));
-      if (!genericXFamily
-        && !/^ALS$/i.test(String(primary.family || ''))
-        && !namedAlsWing
-        && !/^Local(?: -)? Wing \| Ring$/i.test(String(primary.family || ''))
-        && primary.family !== 'ERI - Chain'
-        && ((primary.family === 'AIC + ALS' && primary.wing) || (primary.wing && primary.rank))) {
-        locations.push(primary);
-      }
-
-      const localRank = String(primary.rank || '').match(/^L(?:\((\d+)\)|(\d+))$/i);
-      if (/^Local(?: -)? Wing \| Ring$/i.test(String(primary.family || ''))
-        && localRank
-        && Number(localRank[1] || localRank[2]) >= 2) {
-        locations.push({
-          family: 'Hidden XY-Chain',
-          wing: 'Local Wing | Ring',
-          rank: primary.rank,
-          subclass: null,
-        });
-      }
-
-      // Named ALS wings/rings are A.I.C. subclasses. Keep the structural
-      // proof shared, but place the named view in the A.I.C. hierarchy.
-      if (namedAlsWing) {
-        const rankType = namedAlsWing[1].toUpperCase();
-        const form = namedAlsWing[2][0].toUpperCase() + namedAlsWing[2].slice(1).toLowerCase();
-        const namedForm = `${rankType}-Wing/Ring`;
-        locations.push({
-          family: 'A.I.C',
-          wing: namedForm,
-          rank: null,
-          subclass: `ALS - ${namedForm}`,
-          displayName: `ALS - ${namedForm}`,
-        });
-      }
-
-      // A B.A.R.N.S. chain owns its own folder. Do not also duplicate it
-      // under the generic Almost Locked Sets / ALS-XZ branch.
-      if (alsInfo && !barnsInfo) {
-        locations.push({
-          family: 'Almost Locked Sets',
-          wing: alsInfo.category,
-          rank: alsInfo.subcategory,
-          subclass: alsInfo.subclass,
-        });
-      }
-
-      const ahsInfo = ahsXzChainInfo(chain);
-      if (ahsInfo) {
-        locations.push({
-          family: 'Almost Hidden Sets',
-          wing: ahsInfo.category,
-          rank: ahsInfo.subcategory,
-          subclass: ahsInfo.subclass,
-        });
-      }
-
-      if (barnsInfo) {
-        locations.push({
-          family: 'Almost Locked Sets',
-          wing: 'ALS - XZ rule',
-          rank: null,
-          subclass: null,
-          path: ['ALS - XZ rule', 'B.A.R.N.S.', barnsInfo.sizeName],
-        });
-      }
-      if (barnsTransportInfo) {
-        locations.push({
-          family: 'Almost Locked Sets',
-          wing: 'ALS - XZ rule',
-          rank: null,
-          subclass: null,
-          displayName: `T - ${barnsTransportInfo.sizeName} ${barnsTransportInfo.form}`,
-          path: [
-            'ALS - XZ rule',
-            'B.A.R.N.S.',
-            'Transport',
-            `T - ${barnsTransportInfo.sizeName} ${barnsTransportInfo.form}`,
-          ],
-        });
-      }
-
-      if (hiddenXyInfo?.remotePair) {
-        locations.push({
-          family: 'Hidden XY-Chain',
-          wing: 'Hidden Remote Pair',
-          rank: hiddenXyInfo.form === 'Ring' ? 'Ring' : null,
-          subclass: null,
-        });
-      }
-
-      const xyChainInfo = alsSizeOneChainInfo(chain);
-      if (xyChainInfo) {
-        const type4Only = (chain.steps || []).length > 0
-          && (chain.steps || []).every(step =>
-            step.family === 'SL' && Number(step.linkType) === 4
-          );
-        if (type4Only) {
-          const xyBranch = xyChainInfo.remotePair
-            ? 'Remote Pair'
-            : xyChainInfo.breakdown === 'XY-Wing'
-              ? 'XY - Wing'
-              : 'Generic';
-          locations.push({
-            family: 'XY - Chain',
-            wing: xyBranch,
-            rank: null,
-            subclass: null,
-            path: [xyBranch, chain.isRing ? 'Ring' : null].filter(Boolean),
-          });
-        } else if (!xyChainInfo.remotePair) {
-          locations.push({
-            family: 'Almost Locked Sets',
-            wing: 'XY - Chain',
-            rank: xyChainInfo.breakdown,
-            subclass: xyChainInfo.subclass,
-          });
-        } else {
-          locations.push({
-            family: 'Remote Pair',
-            wing: chain.isRing ? 'Ring' : 'Wing',
-            rank: null,
-            subclass: null,
-          });
-        }
-      }
-
-      const xType = xChainType(chain, eriCount);
-      if (xType) {
-        const isEriFamily = xType === 'Empty Rectangle';
-        const name = String(chain.structureName || '')
-          .replace(/^\s*(?:ALS|AHS)\s*-\s*/i, '');
-        const finnedSashimi = name.match(/^(Finned|Sashimi) X-Wing$/i);
-        const eriSubclass = /^(?:Dual Empty Rectangle|Rec'T Kite|Bridged ERI|Bridged Empty Rectangle|3x ERI)$/i.test(name)
-          ? name.replace(/^Bridged Empty Rectangle$/i, 'Bridged ERI')
-          : null;
-        const l1Subclass = /^Dual Empty Rectangle$/i.test(name)
-          ? 'Dual Empty Rectangle'
-          : /^Rec'T Kite$/i.test(name)
-            ? "Rec'T Kite"
-            : /^(?:Bridged ERI|Bridged Empty Rectangle)$/i.test(name)
-              ? 'Bridged Rectangles'
-              : null;
-        const shortXChain = /^(?:2-String Kite|Empty Rectangle|Finned X-Wing|Sashimi X-Wing|Skyscraper|X-Wing|ERI Chain|L\(1\))$/i.test(xType);
-        const namedPath = xType === 'L(1)'
-          ? ['Local Wing | Ring', 'L(1)', chain.isRing ? 'Ring' : null, l1Subclass].filter(Boolean)
-          : shortXChain
-            ? [xType]
-          : [
-              shortXChain ? null : 'Single Digit Named Chains',
-              xType,
-              finnedSashimi
-                ? `${finnedSashimi[1][0].toUpperCase()}${finnedSashimi[1].slice(1).toLowerCase()} X-Wing`
-                : xType === 'X-Wing' ? null
-                  : isEriFamily && eriSubclass
-                    ? eriSubclass
-                    : null,
-            ].filter(Boolean);
-        locations.push({
-          family: 'X-Chains',
-          wing: xType,
-          rank: xType === 'L(1)' && l1Subclass
-            ? l1Subclass
-            : xType === 'ERI Chain'
-              ? `ERI(${eriCount})`
-              : finnedSashimi
-            ? `${finnedSashimi[1][0].toUpperCase()}${finnedSashimi[1].slice(1).toLowerCase()} X-Wing`
-            : xType === 'X-Wing' ? null
-            : isEriFamily && eriSubclass
-              ? eriSubclass
-              : null,
-          subclass: null,
-          path: namedPath,
-        });
-      } else if (/^(?:X-Chain|AIC)$/i.test(String(chain.structureName || '').trim())) {
-        const genericSteps = chain.steps || [];
-        const usesOnlyAicTypes = genericSteps.length > 0
-          && genericSteps.every(step => Number(step.linkType) >= 1 && Number(step.linkType) <= 4);
-        if (chainUniqueDigitCount(chain) > 1 && usesOnlyAicTypes) {
-          locations.push({
-            family: 'A.I.C',
-            wing: null,
-            rank: null,
-            subclass: null,
-            path: [],
-          });
-        } else if (chainUniqueDigitCount(chain) === 1) {
-          locations.push({
-            family: 'X-Chains',
-            wing: 'Generic',
-            rank: null,
-            subclass: null,
-            path: ['Generic'],
-          });
-        }
-      }
-
-      const wType = wChainType(chain);
-      if (wType) {
-        locations.push({
-          family: 'W - Wing | Ring',
-          wing: wType,
-          rank: null,
-          subclass: null,
-          path: chain.isRing ? ['Ring'] : [],
-        });
-      }
-
-
-      const splitType = splitChainType(chain);
-      if (splitType) {
-        locations.push({
-          family: 'Split - Wing',
-          wing: splitType,
-          rank: null,
-          subclass: null,
-          path: chain.isRing ? ['Ring'] : [],
-        });
-      }
-
-      const strongType = strongChainType(chain);
-      if (strongType) {
-        locations.push({
-          family: 'Strong Wing | Ring',
-          wing: strongType,
-          rank: null,
-          subclass: null,
-          path: chain.isRing ? ['Ring'] : [],
-        });
-        locations.push({
-          family: 'Hidden XY-Chain',
-          wing: 'Strong Wing | Ring',
-          rank: strongType,
-          subclass: null,
-          path: [strongType],
-        });
-      }
-
-      const inversionType = inversionChainType(chain);
-      if (inversionType) {
-        locations.push({
-          family: 'Inversion',
-          wing: inversionType,
-          rank: null,
-          subclass: null,
-        });
-      }
-
-      if (!locations.length) locations.push(primary);
-
-      const seen = new Set();
-      return locations.filter(location => {
-        const key = [location.family, location.wing, location.rank, location.subclass].join('|');
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
+      return chainFolderOrchestrator.chainFolderInfos(chain);
     }
 
     function appendChainList(container, entries) {
-      const list = document.createElement('ul');
-      list.className = 'chain-list';
-      for (const entry of entries) {
-        const { chain, index } = entry;
-        const item = document.createElement('li');
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'chain-result';
-        if (index === selectedChainIndex) button.classList.add('selected');
-        button.textContent = `${index + 1}. ${entry.displayName || chainText(chain)}`;
-        if (core.formatChainVerbose) button.title = chainText(chain, true);
-        const select = () => selectChain(index);
-        button.addEventListener('click', select);
-        item.appendChild(button);
-        list.appendChild(item);
-      }
-      container.appendChild(list);
+      chainReportView.appendChainList(container, entries);
     }
 
     function appendChainSubclasses(container, entries) {
-      const subclassGroups = new Map();
-      for (const entry of entries) {
-        const subclass = entry.subclass || '';
-        const subclassEntries = subclassGroups.get(subclass) || [];
-        subclassEntries.push(entry);
-        subclassGroups.set(subclass, subclassEntries);
-      }
-
-      if (subclassGroups.size === 1 && subclassGroups.has('')) {
-        appendChainList(container, entries);
-        return;
-      }
-
-      const subclasses = document.createElement('div');
-      subclasses.className = 'chain-subcategories';
-      for (const [subclass, subclassEntries] of subclassGroups) {
-        const subcategory = document.createElement('details');
-        subcategory.className = 'chain-subcategory';
-        subcategory.open = subclassEntries.some(({ index }) => index === selectedChainIndex);
-        const subSummary = document.createElement('summary');
-        const subName = document.createElement('strong');
-        subName.textContent = subclass || 'General';
-        const subCount = document.createElement('span');
-        subCount.className = 'chain-category-count';
-        subCount.textContent = `${subclassEntries.length} ${subclassEntries.length === 1 ? 'chain' : 'chains'}`;
-        subSummary.appendChild(subName);
-        subSummary.appendChild(subCount);
-        subcategory.appendChild(subSummary);
-        appendChainList(subcategory, subclassEntries);
-        subclasses.appendChild(subcategory);
-      }
-      container.appendChild(subclasses);
+      chainReportView.appendChainSubclasses(container, entries);
     }
 
     function chainFolderPath(folder) {
-      if (Array.isArray(folder.path)) return folder.path.filter(Boolean);
-      if (/^Transport$/i.test(String(folder.family || ''))) {
-        return [folder.wing, folder.rank === 'Ring' ? 'Ring' : null].filter(Boolean);
-      }
-      if (/^(?:Hybrid|M) - Wing \| Ring$/i.test(String(folder.family || ''))
-        && /^[MH]\(\d+\)$/i.test(String(folder.rank || ''))) {
-        return [folder.rank, folder.wing === 'Ring' ? 'Ring' : null].filter(Boolean);
-      }
-      return [folder.wing, folder.rank, folder.subclass].filter(Boolean);
+      return chainReportView.chainFolderPath(folder);
     }
 
     function appendChainFolderTree(container, entries, depth, selectedFolderKeys) {
-      const pathGroups = new Map();
-      for (const entry of entries) {
-        const label = entry.path[depth] || '';
-        const branch = pathGroups.get(label) || [];
-        branch.push(entry);
-        pathGroups.set(label, branch);
-      }
-
-      for (const [label, branchEntries] of pathGroups) {
-        if (!label) {
-          appendChainList(container, branchEntries);
-          continue;
-        }
-
-        const panel = document.createElement('details');
-        panel.className = 'chain-subcategory';
-        panel.open = branchEntries.some(({ folderKey }) => selectedFolderKeys.has(folderKey));
-        const summary = document.createElement('summary');
-        const name = document.createElement('strong');
-        name.textContent = label;
-        const count = document.createElement('span');
-        count.className = 'chain-category-count';
-        count.textContent = `${branchEntries.length} ${branchEntries.length === 1 ? 'chain' : 'chains'}`;
-        summary.appendChild(name);
-        summary.appendChild(count);
-        panel.appendChild(summary);
-
-        const terminal = branchEntries.filter(entry => entry.path.length <= depth + 1);
-        if (terminal.length) appendChainList(panel, terminal);
-
-        const deeper = branchEntries.filter(entry => entry.path.length > depth + 1);
-        if (deeper.length) {
-          const children = document.createElement('div');
-          children.className = 'chain-subcategories';
-          appendChainFolderTree(children, deeper, depth + 1, selectedFolderKeys);
-          panel.appendChild(children);
-        }
-        container.appendChild(panel);
-      }
+      chainReportView.appendChainFolderTree(container, entries, depth, selectedFolderKeys);
     }
 
     function chainSafetyFlags(chain, candidateGrid = cand, expectedSolution = solution, fixedGrid = puzzle) {
-      if (!Array.isArray(expectedSolution) || expectedSolution.length !== 81) return [];
-
-      const remaining = candidateGrid.map(values => new Set(values || []));
-      // Candidate grids can be imported or edited independently of the puzzle
-      // solution.  In that case an old solution must not veto otherwise-valid
-      // chain eliminations merely because it contains a digit that the current
-      // candidate grid has already discarded.  Keep the independent empty-cell
-      // and unit checks below, but use solution-specific checks only when the
-      // solution is actually compatible with the current candidate state.
-      const solutionFitsCandidates = expectedSolution.every((digit, cell) => {
-        const values = candidateGrid[cell] || [];
-        return !values.length || values.includes(digit);
-      });
-      const fixedGridFitsCandidates = fixedGrid.every((digit, cell) => {
-        if (!digit) return true;
-        const values = candidateGrid[cell] || [];
-        return !values.length || values.includes(digit);
-      });
-      const reasons = [];
-      const seen = new Set();
-      const addReason = (key, text) => {
-        if (seen.has(key)) return;
-        seen.add(key);
-        reasons.push(text);
-      };
-
-      for (const item of chain.eliminations || []) {
-        const cell = Number(item.cell);
-        const digit = Number(item.digit);
-        if (!Number.isInteger(cell) || cell < 0 || cell >= 81) continue;
-        if (!Number.isInteger(digit) || digit < 1 || digit > 9) continue;
-
-        if (solutionFitsCandidates && expectedSolution[cell] === digit) {
-          addReason(
-            `solution:${cell}:${digit}`,
-            `removes solution ${digit} from ${core.cellName(cell)}`,
-          );
-        }
-        remaining[cell]?.delete(digit);
-      }
-
-      for (let cell = 0; cell < 81; cell++) {
-        if ((candidateGrid[cell] || []).length > 0 && remaining[cell].size === 0) {
-          addReason(`empty-cell:${cell}`, `empties ${core.cellName(cell)}`);
-        }
-      }
-
-      // Imported candidate grids may be edited independently of the original
-      // givens.  A stale fixed grid must not make a valid chain look unsafe by
-      // hiding a placement that the current candidate state still represents.
-      if (fixedGridFitsCandidates) {
-        for (let sector = 0; sector < core.UNITS.length; sector++) {
-          const unit = core.UNITS[sector];
-          for (let digit = 1; digit <= 9; digit++) {
-            if (unit.some(cell => fixedGrid[cell] === digit)) continue;
-            if (unit.some(cell => remaining[cell].has(digit))) continue;
-            const name = core.sectorGroupName([sector]);
-            addReason(`sector:${sector}:${digit}`, `leaves ${name} with no place for ${digit}`);
-          }
-        }
-      }
-
-      return reasons;
+      return chainSafety.flags(chain, candidateGrid, expectedSolution, fixedGrid);
     }
 
     const colouringStep = appNamespace.colouringStep.create({
@@ -7564,7 +4763,6 @@
         simple: simpleColoringEureka,
         medusa: threeDMedusaEureka,
         multi: multiColoringEureka,
-        superMulti: superMultiColoringEureka,
         medusaMulti: threeDMedusaMultiEureka,
       },
     });
@@ -7947,7 +5145,6 @@
       chainSearchPhasePlan,
     );
 
-    const chainAlsNodeCount = chain => appNamespace.solverPhase.alsNodeCount(chain, chainModuleSubsets);
 
     const chainMatchesSearchPhase = (chain, phase) => appNamespace.solverPhase.matchesSearchPhase(chain, phase, {
       chainUniqueDigitCount,
@@ -8219,13 +5416,6 @@
     }).bestFromReport;
     const bestChainFromReport = (...args) =>
       modularBestChainFromReport(...args) || legacyBestChainFromReport(...args);
-
-    function chooseLowerScoringMove(simple, chainResult) {
-      return chooseBestSolverMove([
-        simple ? { step: simple, chain: null } : null,
-        chainResult,
-      ]);
-    }
 
     const bestAlsDofMoveFromReport = (candidateGrid, report, enabledTypes, profile = null) => {
       return appNamespace.alsDofSelection.bestMove(
@@ -8525,13 +5715,6 @@
       return bestMslsMoveFromReport(candidateGrid, report, profile);
     }
 
-    const chainPhaseMinimumRating = appNamespace.solverPhase.minimumRating;
-
-    const solverAlsMaxDigits = appNamespace.solverPhase.alsMaxDigits;
-    const solverAlsDigitPasses = appNamespace.solverPhase.alsDigitPasses;
-
-    const solverAhsMaxDigits = (phase, profile = null) =>
-      appNamespace.solverPhase.ahsMaxDigits(phase, profile, chainNodeLimitOptions);
     const solverAhsMaxCells = (phase, profile = null) =>
       appNamespace.solverPhase.ahsMaxCells(phase, profile, chainNodeLimitOptions);
     const solverAhsCellPasses = (phase, profile = null) =>
@@ -8551,14 +5734,11 @@
         ahsCellPasses: solverAhsCellPasses,
         ahsMaxCells: solverAhsMaxCells,
       });
-    const solverAlsMinimumNodeCount = appNamespace.solverPhase.alsMinimumNodeCount;
     const solverAlsMaxCells = (phase, profile = null) =>
       appNamespace.solverPhase.alsMaxCells(phase, profile, chainNodeLimitOptions);
 
     const solverAlsPassCanStop = appNamespace.solverPhase.alsPassCanStop;
     const solverAhsPassCanStop = appNamespace.solverPhase.ahsPassCanStop;
-
-    const chainPhaseDepthForCeiling = appNamespace.solverPhase.depthForCeiling;
 
     function findSolverChainMove(
       candidateGrid = cand,
@@ -9789,7 +6969,7 @@
             mutantEnabled: category === 'Mutant',
             priorityMode: true,
           };
-          const step = core.subsetOrFishStep(candidateGrid, fishOptions);
+          const step = core.genericSubsetOrFishStep(candidateGrid, fishOptions);
           if (!step) continue;
           step.rating = ratingForStep(step);
           if (profile?.maxRank !== undefined && step.rating.rank > profile.maxRank) continue;
@@ -9816,7 +6996,7 @@
             // it out of the generic subset dispatcher so a subset-size-1
             // result cannot consume or hide the BLR pass.
             ? core.boxLineStep(candidateGrid)
-            : core.subsetOrFishStep(candidateGrid, {
+            : core.genericSubsetOrFishStep(candidateGrid, {
                   enabledTechniques: new Set([spec.type]),
                 });
         if (!step) continue;
@@ -9896,67 +7076,6 @@
       return result;
     }
 
-    function solverPhaseMinimumRating(phase) {
-      if (phase?.kind === 'chain' || phase?.kind === 'alc') {
-        return chainPhaseMinimumRating(phase.chainPhase);
-      }
-      if (phase?.kind === 'als-dof') return 12;
-      if (phase?.kind === 'ahs-dof') return 12.25;
-      if (phase?.kind === 'als-dof-chain') return 14;
-      if (phase?.kind === 'ahs-dof-chain') return 14;
-      if (phase?.kind === 'msls') return 13;
-      const name = String(phase?.name || '').toLowerCase();
-      if (name === 'lulz') return 0;
-      if (name.includes('extremely-easy')) return 1;
-      if (name.includes('very-easy')) return 2;
-      if (name.includes('modestly-easy')) return 2.25;
-      if (name.includes('easy-')) return 3;
-      if (name.includes('moderate-')) return 3.25;
-      if (name.includes('tough-')) return 4;
-      if (name.includes('advanced-')) return 5;
-      if (name.includes('irritating-')) return 5;
-      if (name.includes('frustrating-')) return 6;
-      if (name.includes('hard-')) return 7;
-      if (name.includes('demanding-')) return 8;
-      if (name.includes('expert-')) return 9;
-      if (name.includes('brutal-')) return 10;
-      if (name.includes('nightmare-')) return 11;
-      if (name.includes('abyssal-')) return 12.5;
-      return 0;
-    }
-
-    function solverHasCheaperCandidate(best, phase) {
-      if (!best?.step) return false;
-      const score = Number(best.step.rating?.value);
-      const floor = Number(solverPhaseMinimumRating(phase));
-      return Number.isFinite(score) && Number.isFinite(floor) && score < floor - 1e-9;
-    }
-
-    function solverPhaseBand(name) {
-      const value = String(name || '').toLowerCase();
-      const bands = [
-        ['lulz', 0],
-        ['extremely-easy', 10],
-        ['very-easy', 20],
-        ['modestly-easy', 30],
-        ['easy-', 40],
-        ['moderate-', 50],
-        ['tough-', 60],
-        ['challenging-', 70],
-        ['irritating-', 80],
-        ['frustrating-', 90],
-        ['hard-', 100],
-        ['demanding-', 110],
-        ['expert-', 120],
-        ['brutal-', 130],
-        ['nightmare-', 140],
-        ['abyssal-', 150],
-        ['msls-', 160],
-        ['ahs-dof-chain-', 170],
-        ['als-dof-chain-', 170],
-      ];
-      return bands.find(([prefix]) => value.startsWith(prefix))?.[1] ?? 0;
-    }
     function chooseSolverStep(
       candidateGrid = cand,
       fixedGrid = puzzle,
@@ -10131,107 +7250,24 @@
       return null;
     }
 
-    function chooseBasicStep(candidateGrid = cand, fixedGrid = puzzle) {
-      const basicMoveTypes = new Set([
-        'last-man-standing',
-        'hidden-single', 'naked-single',
-        'box-line',
-        'hidden-pair', 'naked-pair',
-        'hidden-triple', 'naked-triple',
-        'hidden-quad', 'naked-quad',
-        'x-wing', 'swordfish', 'jellyfish',
-      ]);
-      return core.subsetOrFishStep(candidateGrid, {
-        ...currentPomFishOptions(),
-        grid: [...fixedGrid],
-        omissionFishSearch: core.omissionFishStep,
-        enabledTechniques: basicMoveTypes,
-        fishSizes: [2, 3, 4],
-        minSize: 2,
-        maxSize: 4,
-        minK: 0,
-        maxK: 0,
-        basicsEnabled: true,
-        frankenEnabled: false,
-        mutantEnabled: false,
-      });
-    }
-
     function flaggedChainEntries(verbose = false) {
-      if (!chainReport) return [];
-      return chainReport.chains
-        .map((chain, index) => ({
-          chain,
-          index,
-          reasons: chainSafetyFlags(chain),
-        }))
-        .filter(entry => entry.reasons.length > 0)
-        .map(entry => ({
-          ...entry,
-          text: chainText(entry.chain, verbose),
-        }));
+      return chainReportView.flaggedChainEntries(verbose);
     }
 
     function chainOutput(verbose = false) {
-      if (!chainReport) return '';
-      const allChains = chainReport.chains
-        .map((chain, index) => `${index + 1}. ${chainText(chain, verbose)}`)
-        .join('\n');
-      const flagged = flaggedChainEntries(verbose);
-      if (!flagged.length) return allChains;
-
-      const flaggedText = [
-        `FLAGGED CHAINS (${flagged.length})`,
-        ...flagged.flatMap(entry => [
-          `${entry.index + 1}. ${entry.text}`,
-          ...entry.reasons.map(reason => `   ! ${reason}`),
-        ]),
-        '',
-        'ALL CHAINS',
-      ].join('\n');
-      return `${flaggedText}\n${allChains}`;
+      return chainReportView.chainOutput(verbose);
     }
 
     function renderChainOutput() {
-      chainOutputEl.value = chainOutput(false);
+      chainReportView.renderChainOutput();
     }
 
     function renderIllegalChainReport() {
-      illegalChainResultsEl.textContent = '';
-      illegalChainAreaEl.hidden = !SHOW_AIC_DEBUG;
-      if (!SHOW_AIC_DEBUG) return;
-
-      const flagged = flaggedChainEntries();
-      illegalChainAreaEl.hidden = flagged.length === 0;
-      if (!flagged.length) return;
-
-      illegalChainHeadingEl.textContent = `Flagged / Illegal Chains (${flagged.length})`;
-      for (const entry of flagged) {
-        const item = document.createElement('li');
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'chain-result chain-result-flagged';
-        button.textContent = `${entry.index + 1}. ${entry.text} [${entry.reasons.join('; ')}]`;
-        button.title = entry.reasons.join('; ');
-        button.addEventListener('click', () => selectChain(entry.index));
-        item.appendChild(button);
-        illegalChainResultsEl.appendChild(item);
-      }
+      chainReportView.renderIllegalChainReport();
     }
 
     async function copyChainOutput(verbose = false) {
-      const text = chainOutput(verbose);
-      if (!text) {
-        setStatus('No chain output to copy.', 'warn');
-        return;
-      }
-
-      chainOutputEl.value = text;
-      chainOutputEl.focus();
-      chainOutputEl.select();
-
-      const copied = await appNamespace.clipboard.copyText(text);
-      setStatus(copied ? 'Chain output copied.' : 'Chain output selected.', 'ok');
+      return chainReportView.copyChainOutput(verbose);
     }
 
     function clearHighlightedMove() {
@@ -10255,14 +7291,9 @@
       selectedSimpleColoringIndex = null;
       selectedThreeDMedusaIndex = null;
       selectedMultiColoringIndex = null;
-      selectedSuperMultiColoringIndex = null;
           selectedThreeDMedusaMultiIndex = null;
       render();
       setStatus('Highlighted move cleared.', 'ok');
-    }
-
-    function clearChainSelection() {
-      clearHighlightedMove();
     }
 
     function selectChain(index) {
@@ -10289,207 +7320,63 @@
     }
 
     function renderChainReport() {
-      chainResultsEl.textContent = '';
-      renderChainOutput();
-      renderIllegalChainReport();
-      if (!chainReport) {
-        selectedChainIndex = null;
-        chainResultsEl.textContent = 'No chain search has been run.';
-        return;
-      }
-
-      const { chains } = chainReport;
-      if (selectedChainIndex !== null && selectedChainIndex >= chains.length) selectedChainIndex = null;
-      const summary = document.createElement('p');
-      summary.textContent = `${chains.length} chains with eliminations.`;
-      chainResultsEl.appendChild(summary);
-
-      // Keep the panel bounded, but do not let a large mixed ALS search hide
-      // an entire technique family behind the global first-200 slice.
-      const visibleIndexes = new Set(
-        Array.from({ length: Math.min(200, chains.length) }, (_, index) => index),
-      );
-      const firstFamilyIndexes = new Map();
-      for (let index = 0; index < chains.length; index++) {
-        for (const folder of chainFolderInfos(chains[index])) {
-          if (!firstFamilyIndexes.has(folder.family)) firstFamilyIndexes.set(folder.family, index);
-        }
-      }
-      for (const index of firstFamilyIndexes.values()) visibleIndexes.add(index);
-      const visible = [...visibleIndexes]
-        .sort((left, right) => left - right)
-        .map(index => ({ chain: chains[index], index }));
-      const groups = new Map();
-      const folderMemberships = new Map();
-      for (const { chain, index } of visible) {
-        for (const folder of chainFolderInfos(chain)) {
-          const path = chainFolderPath(folder);
-          const folderKey = [folder.family, ...path]
-            .map(value => value ?? '')
-            .join('|');
-          const folderLabel = [folder.family, ...path]
-            .filter(Boolean)
-            .join(' / ');
-          const memberships = folderMemberships.get(index) || [];
-          if (!memberships.some(location => location.key === folderKey)) {
-            memberships.push({ key: folderKey, label: folderLabel });
-            folderMemberships.set(index, memberships);
-          }
-          const group = groups.get(folder.family) || [];
-          group.push({
-            chain,
-            index,
-            folderKey,
-            path,
-            displayName: folderChainText(chain, folder),
-          });
-          groups.set(folder.family, group);
-        }
-      }
-
-      const selectedFolderKeys = new Set(
-        (folderMemberships.get(selectedChainIndex) || []).map(location => location.key),
-      );
-      const selectedLocations = folderMemberships.get(selectedChainIndex) || [];
-      if (SHOW_AIC_DEBUG && selectedLocations.length) {
-        const locations = document.createElement('p');
-        locations.className = 'chain-memberships';
-        locations.textContent = `Selected chain folders: ${selectedLocations.map(location => location.label).join(' | ')}`;
-        chainResultsEl.appendChild(locations);
-      }
-
-      const categories = document.createElement('div');
-      categories.className = 'chain-categories';
-      for (const [name, entries] of groups) {
-        const category = document.createElement('details');
-        category.className = 'chain-category';
-        // A chain can have several folder locations; open every selected path.
-        category.open = entries.some(({ folderKey }) => selectedFolderKeys.has(folderKey));
-
-        const categorySummary = document.createElement('summary');
-        const categoryName = document.createElement('strong');
-        categoryName.className = 'chain-category-name';
-        categoryName.textContent = name;
-        const categoryCount = document.createElement('span');
-        categoryCount.className = 'chain-category-count';
-        categoryCount.textContent = `${entries.length} ${entries.length === 1 ? 'chain' : 'chains'}`;
-        categorySummary.appendChild(categoryName);
-        categorySummary.appendChild(categoryCount);
-        category.appendChild(categorySummary);
-
-        const folderTree = document.createElement('div');
-        folderTree.className = 'chain-subcategories';
-        appendChainFolderTree(folderTree, entries, 0, selectedFolderKeys);
-        category.appendChild(folderTree);
-        categories.appendChild(category);
-      }
-
-      chainResultsEl.appendChild(categories);
-      if (chains.length > visible.length) {
-        const moreText = document.createElement('p');
-        moreText.textContent = `Showing ${visible.length} of ${chains.length} records.`;
-        chainResultsEl.appendChild(moreText);
-      }
+      chainReportView.renderChainReport();
     }
 
     function renderAlsSearchResults() {
-      alsSearchResultsEl.textContent = '';
-      if (!alsSearchFamily || !chainReport) {
-        alsSearchResultsEl.textContent = 'No dedicated ALS search has been run.';
-        return;
-      }
-
-      const summary = document.createElement('p');
-      summary.textContent = `${chainReport.chains.length} ${alsSearchFamily.toUpperCase()} result${chainReport.chains.length === 1 ? '' : 's'}.`;
-      alsSearchResultsEl.appendChild(summary);
-      if (!chainReport.chains.length) return;
-
-      const list = document.createElement('div');
-      list.className = 'chain-list';
-      chainReport.chains.slice(0, 200).forEach((chain, index) => {
-        const item = document.createElement('li');
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = `chain-result${index === selectedChainIndex ? ' selected' : ''}`;
-        button.textContent = `${index + 1}. ${chainText(chain)}`;
-        const select = () => {
+      chainSearchView.renderReport({
+        container: alsSearchResultsEl,
+        report: alsSearchFamily && chainReport ? chainReport : null,
+        emptyText: 'No dedicated ALS search has been run.',
+        label: alsSearchFamily?.toUpperCase() || 'ALS result',
+        listTag: 'div',
+        summaryText: chains => `${chains.length} ${alsSearchFamily.toUpperCase()} result${chains.length === 1 ? '' : 's'}.`,
+        onSelect: index => {
           selectChain(index);
           openReportPanel(chainResultsEl);
-        };
-        button.addEventListener('click', select);
-        item.appendChild(button);
-        list.appendChild(item);
+        },
       });
-      alsSearchResultsEl.appendChild(list);
-      if (chainReport.chains.length > 200) {
-        const moreText = document.createElement('p');
-        moreText.textContent = `Showing 200 of ${chainReport.chains.length} records.`;
-        alsSearchResultsEl.appendChild(moreText);
-      }
     }
 
     function renderAhsSearchResults() {
-      ahsSearchResultsEl.textContent = '';
-      if (!ahsSearchFamily || !chainReport) {
-        ahsSearchResultsEl.textContent = 'No AHS search has been run.';
-        return;
-      }
-
-      const summary = document.createElement('p');
       const label = ahsSearchFamily === 'ahs-xy'
         ? 'AHS-XY'
         : ahsSearchFamily === 'ahs-chain' ? 'AHS-Chain' : 'AHS-XZ';
-      summary.textContent = `${chainReport.chains.length} ${label} result${chainReport.chains.length === 1 ? '' : 's'} found.`;
-      if (ahsSearchFamily === 'ahs-xy' && chainReport.stats?.truncated) {
-        summary.textContent += ` Checked ${chainReport.stats.triplesChecked.toLocaleString()} three-set paths; search limit reached.`;
-      }
-      ahsSearchResultsEl.appendChild(summary);
-      if (!chainReport.chains.length) return;
-
-      const list = document.createElement('ul');
-      list.className = 'chain-list';
-      chainReport.chains.slice(0, 200).forEach((chain, index) => {
-        const item = document.createElement('li');
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = `chain-result${index === selectedChainIndex ? ' selected' : ''}`;
-        button.textContent = `${index + 1}. ${chainText(chain)}`;
-        button.addEventListener('click', () => {
+      chainSearchView.renderReport({
+        container: ahsSearchResultsEl,
+        report: ahsSearchFamily && chainReport ? chainReport : null,
+        emptyText: 'No AHS search has been run.',
+        label,
+        listTag: 'ul',
+        summaryText: chains => {
+          let text = `${chains.length} ${label} result${chains.length === 1 ? '' : 's'} found.`;
+          if (ahsSearchFamily === 'ahs-xy' && chainReport.stats?.truncated) {
+            text += ` Checked ${chainReport.stats.triplesChecked.toLocaleString()} three-set paths; search limit reached.`;
+          }
+          return text;
+        },
+        onSelect: index => {
           selectChain(index);
           openReportPanel(chainResultsEl);
-        });
-        item.appendChild(button);
-        list.appendChild(item);
+        },
       });
-      ahsSearchResultsEl.appendChild(list);
     }
 
     function renderAlcXzResults() {
-      alcSearchResultsEl.textContent = '';
-      if (!alcXzReport) {
-        alcSearchResultsEl.textContent = 'No ALC-XZ search has been run.';
-        return;
-      }
-      const chains = alcXzReport.chains || [];
-      const summary = document.createElement('p');
-      summary.textContent = `${chains.length} ALC-XZ result${chains.length === 1 ? '' : 's'} found.`
-        + (alcXzReport.stats?.truncated ? ' Search limit reached.' : '');
-      alcSearchResultsEl.appendChild(summary);
-      if (!chains.length) return;
-
-      const list = document.createElement('ol');
-      list.className = 'chain-list';
-      chains.slice(0, 200).forEach((chain, index) => {
-        const item = document.createElement('li');
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = `chain-result${index === selectedChainIndex ? ' selected' : ''}`;
-        button.textContent = `${index + 1}. ${chainText(chain)}`;
-        const contacts = chain.alcXz?.contacts || [];
-        button.title = chain.alcXz
-          ? `ALS + AHS; ${contacts.length} weak digit contact${contacts.length === 1 ? '' : 's'}`
-          : 'ALC-XZ chain-engine result';
-        button.addEventListener('click', () => {
+      chainSearchView.renderReport({
+        container: alcSearchResultsEl,
+        report: alcXzReport,
+        emptyText: 'No ALC-XZ search has been run.',
+        label: 'ALC-XZ result',
+        summaryText: (chains, report) => `${chains.length} ALC-XZ result${chains.length === 1 ? '' : 's'} found.`
+          + (report.stats?.truncated ? ' Search limit reached.' : ''),
+        titleForChain: chain => {
+          const contacts = chain.alcXz?.contacts || [];
+          return chain.alcXz
+            ? `ALS + AHS; ${contacts.length} weak digit contact${contacts.length === 1 ? '' : 's'}`
+            : 'ALC-XZ chain-engine result';
+        },
+        onSelect: index => {
           selectedChainIndex = index;
           activeStep = null;
           lastRemoved = [];
@@ -10498,36 +7385,20 @@
           renderBoard();
           openReportPanel(alcSearchResultsEl);
           focusMap();
-        });
-        item.appendChild(button);
-        list.appendChild(item);
+        },
       });
-      alcSearchResultsEl.appendChild(list);
     }
 
     function renderAlcXyResults() {
-      alcSearchResultsEl.textContent = '';
-      if (!alcXyReport) {
-        alcSearchResultsEl.textContent = 'No ALC-XY search has been run.';
-        return;
-      }
-      const chains = alcXyReport.chains || [];
-      const summary = document.createElement('p');
-      summary.textContent = `${chains.length} ALC-XY result${chains.length === 1 ? '' : 's'} found.`
-        + (alcXyReport.stats?.truncated ? ' Search limit reached.' : '');
-      alcSearchResultsEl.appendChild(summary);
-      if (!chains.length) return;
-
-      const list = document.createElement('ol');
-      list.className = 'chain-list';
-      chains.slice(0, 200).forEach((chain, index) => {
-        const item = document.createElement('li');
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = `chain-result${index === selectedChainIndex ? ' selected' : ''}`;
-        button.textContent = `${index + 1}. ${chainText(chain)}`;
-        button.title = 'Mixed ALC-XY: at least one ALS, one AHS, and one additional node';
-        button.addEventListener('click', () => {
+      chainSearchView.renderReport({
+        container: alcSearchResultsEl,
+        report: alcXyReport,
+        emptyText: 'No ALC-XY search has been run.',
+        label: 'ALC-XY result',
+        summaryText: (chains, report) => `${chains.length} ALC-XY result${chains.length === 1 ? '' : 's'} found.`
+          + (report.stats?.truncated ? ' Search limit reached.' : ''),
+        titleForChain: () => 'Mixed ALC-XY: at least one ALS, one AHS, and one additional node',
+        onSelect: index => {
           selectedChainIndex = index;
           activeStep = null;
           lastRemoved = [];
@@ -10536,36 +7407,20 @@
           renderBoard();
           openReportPanel(alcSearchResultsEl);
           focusMap();
-        });
-        item.appendChild(button);
-        list.appendChild(item);
+        },
       });
-      alcSearchResultsEl.appendChild(list);
     }
 
     function renderAlcChainResults() {
-      alcSearchResultsEl.textContent = '';
-      if (!alcChainReport) {
-        alcSearchResultsEl.textContent = 'No ALC-Chain search has been run.';
-        return;
-      }
-      const chains = alcChainReport.chains || [];
-      const summary = document.createElement('p');
-      summary.textContent = `${chains.length} ALC-Chain result${chains.length === 1 ? '' : 's'} found.`
-        + (alcChainReport.stats?.truncated ? ' Search limit reached.' : '');
-      alcSearchResultsEl.appendChild(summary);
-      if (!chains.length) return;
-
-      const list = document.createElement('ol');
-      list.className = 'chain-list';
-      chains.slice(0, 200).forEach((chain, index) => {
-        const item = document.createElement('li');
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = `chain-result${index === selectedChainIndex ? ' selected' : ''}`;
-        button.textContent = `${index + 1}. ${chainText(chain)}`;
-        button.title = 'Mixed ALC-Chain: at least one ALS, one AHS, and one additional node';
-        button.addEventListener('click', () => {
+      chainSearchView.renderReport({
+        container: alcSearchResultsEl,
+        report: alcChainReport,
+        emptyText: 'No ALC-Chain search has been run.',
+        label: 'ALC-Chain result',
+        summaryText: (chains, report) => `${chains.length} ALC-Chain result${chains.length === 1 ? '' : 's'} found.`
+          + (report.stats?.truncated ? ' Search limit reached.' : ''),
+        titleForChain: () => 'Mixed ALC-Chain: at least one ALS, one AHS, and one additional node',
+        onSelect: index => {
           selectedChainIndex = index;
           activeStep = null;
           lastRemoved = [];
@@ -10574,35 +7429,20 @@
           renderBoard();
           openReportPanel(alcSearchResultsEl);
           focusMap();
-        });
-        item.appendChild(button);
-        list.appendChild(item);
+        },
       });
-      alcSearchResultsEl.appendChild(list);
     }
 
     function renderAlcDofResults() {
-      alcSearchResultsEl.textContent = '';
-      if (!alcDofReport) {
-        alcSearchResultsEl.textContent = 'No ALC-DOF Chain search has been run.';
-        return;
-      }
-      const chains = alcDofReport.chains || [];
-      const summary = document.createElement('p');
-      summary.textContent = `${chains.length} ALC-DOF Chain result${chains.length === 1 ? '' : 's'} found.`
-        + (alcDofReport.stats?.truncated ? ' Search limit reached.' : '');
-      alcSearchResultsEl.appendChild(summary);
-      if (!chains.length) return;
-      const list = document.createElement('ol');
-      list.className = 'chain-list';
-      chains.slice(0, 200).forEach((chain, index) => {
-        const item = document.createElement('li');
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = `chain-result${index === selectedChainIndex ? ' selected' : ''}`;
-        button.textContent = `${index + 1}. ${chainText(chain)}`;
-        button.title = `ALC-DOF Chain rooted in ${chain.alcDof?.rootType || 'DOF'} and extended with ALS/AHS modules`;
-        button.addEventListener('click', () => {
+      chainSearchView.renderReport({
+        container: alcSearchResultsEl,
+        report: alcDofReport,
+        emptyText: 'No ALC-DOF Chain search has been run.',
+        label: 'ALC-DOF Chain result',
+        summaryText: (chains, report) => `${chains.length} ALC-DOF Chain result${chains.length === 1 ? '' : 's'} found.`
+          + (report.stats?.truncated ? ' Search limit reached.' : ''),
+        titleForChain: chain => `ALC-DOF Chain rooted in ${chain.alcDof?.rootType || 'DOF'} and extended with ALS/AHS modules`,
+        onSelect: index => {
           selectedChainIndex = index;
           activeStep = null;
           lastRemoved = [];
@@ -10611,226 +7451,12 @@
           renderBoard();
           openReportPanel(alcSearchResultsEl);
           focusMap();
-        });
-        item.appendChild(button);
-        list.appendChild(item);
+        },
       });
-      alcSearchResultsEl.appendChild(list);
-    }
-
-    function alsDofTechniqueInfo(result) {
-      const mode = result?.mode === 'dds'
-        ? 'Disjointed Distributed Subset'
-        : result?.mode === 'almost-dds'
-          ? 'Almost Disjointed Distributed Subset'
-          : result?.mode === 'chain'
-            ? (result.hasHydra ? 'Hydra ALS DOF Chain' : 'ALS DOF Chain')
-          : 'ALS DOF';
-      const form = result?.isRing
-        ? (result.ringForm === 'single-auxiliary'
-          ? 'Ring / Single Auxiliary'
-          : result.ringForm === 'fluid-auxiliary'
-            ? 'Ring / Fluid Auxiliary'
-            : result.ringForm === 'collection'
-              ? 'Ring / Collection'
-              : result.ringForm === 'almost-dds'
-                ? 'Ring'
-                : 'Ring')
-        : 'Open';
-      return {
-        family: mode,
-        form,
-        dof: Number.isInteger(result?.size) ? result.size : 0,
-        label: `${mode} - ${form}`,
-      };
-    }
-
-    function renderAlsDofResultList(container, results, source = 'net') {
-      const familyGroups = new Map();
-      results.filter(result => result && typeof result === 'object').forEach((result, index) => {
-        const info = alsDofTechniqueInfo(result);
-        const family = familyGroups.get(info.family) || new Map();
-        const form = family.get(info.form) || new Map();
-        const dof = form.get(info.dof) || [];
-        dof.push({ result, index, info });
-        form.set(info.dof, dof);
-        family.set(info.form, form);
-        familyGroups.set(info.family, family);
-      });
-
-      const categories = document.createElement('div');
-      categories.className = 'chain-categories';
-
-      for (const [familyName, formGroups] of familyGroups) {
-        const familyEntries = [...formGroups.values()].flatMap(dofGroups =>
-          [...dofGroups.values()].flat(),
-        );
-        const familyPanel = document.createElement('details');
-        familyPanel.className = 'chain-category';
-        familyPanel.open = selectedAlsDofSource === source
-          && familyEntries.some(({ index }) => index === selectedAlsDofIndex);
-
-        const familySummary = document.createElement('summary');
-        const familyLabel = document.createElement('strong');
-        familyLabel.className = 'chain-category-name';
-        familyLabel.textContent = familyName;
-        const familyCount = document.createElement('span');
-        familyCount.className = 'chain-category-count';
-        familyCount.textContent = `${familyEntries.length} ${familyEntries.length === 1 ? 'result' : 'results'}`;
-        familySummary.appendChild(familyLabel);
-        familySummary.appendChild(familyCount);
-        familyPanel.appendChild(familySummary);
-
-        const forms = document.createElement('div');
-        forms.className = 'chain-subcategories';
-        for (const [formName, dofGroups] of formGroups) {
-          const formEntries = [...dofGroups.values()].flat();
-          const formPanel = document.createElement('details');
-          formPanel.className = 'chain-subcategory';
-          formPanel.open = selectedAlsDofSource === source
-            && formEntries.some(({ index }) => index === selectedAlsDofIndex);
-
-          const formSummary = document.createElement('summary');
-          const formLabel = document.createElement('strong');
-          formLabel.textContent = formName;
-          const formCount = document.createElement('span');
-          formCount.className = 'chain-category-count';
-          formCount.textContent = `${formEntries.length} ${formEntries.length === 1 ? 'result' : 'results'}`;
-          formSummary.appendChild(formLabel);
-          formSummary.appendChild(formCount);
-          formPanel.appendChild(formSummary);
-
-          const dofPanels = document.createElement('div');
-          dofPanels.className = 'chain-subcategories';
-          for (const [dof, entries] of dofGroups) {
-            const dofPanel = document.createElement('details');
-            dofPanel.className = 'chain-subcategory';
-            dofPanel.open = selectedAlsDofSource === source
-              && entries.some(({ index }) => index === selectedAlsDofIndex);
-
-            const dofSummary = document.createElement('summary');
-            const dofLabel = document.createElement('strong');
-            dofLabel.textContent = `DOF ${dof}`;
-            const dofCount = document.createElement('span');
-            dofCount.className = 'chain-category-count';
-            dofCount.textContent = `${entries.length} ${entries.length === 1 ? 'result' : 'results'}`;
-            dofSummary.appendChild(dofLabel);
-            dofSummary.appendChild(dofCount);
-            dofPanel.appendChild(dofSummary);
-
-            const list = document.createElement('ul');
-            list.className = 'chain-list';
-            for (const { result, index, info } of entries.slice(0, 200)) {
-              const item = document.createElement('li');
-              const button = document.createElement('button');
-              button.type = 'button';
-              button.className = 'chain-result';
-              if (selectedAlsDofSource === source && selectedAlsDofIndex === index) {
-                button.classList.add('selected');
-              }
-              button.textContent = `${index + 1}. ${info.label}: ${core.formatAlsDof(result)}`;
-              button.title = 'Display this ALS-DOF result on the grid';
-              const select = () => {
-                selectedAlsDofIndex = index;
-                selectedAlsDofSource = source;
-                selectedAlsDof = null;
-                selectedAlsHydraIndex = null;
-                selectedAlsId = null;
-                selectedChainIndex = null;
-                selectedStrongLinkType = null;
-                selectedStrongLinkIndex = null;
-                activeStep = null;
-                lastRemoved = [];
-                renderBoard();
-                renderAlsDofReport();
-                focusMap();
-                setStatus(`ALS-DOF result ${index + 1} displayed.`, 'ok');
-              };
-              button.addEventListener('click', select);
-              item.appendChild(button);
-              list.appendChild(item);
-            }
-            if (entries.length > 200) {
-              const more = document.createElement('li');
-              more.textContent = `Showing 200 of ${entries.length} DOF ${dof} records.`;
-              list.appendChild(more);
-            }
-            dofPanel.appendChild(list);
-            dofPanels.appendChild(dofPanel);
-          }
-          formPanel.appendChild(dofPanels);
-          forms.appendChild(formPanel);
-        }
-        familyPanel.appendChild(forms);
-        categories.appendChild(familyPanel);
-      }
-
-      container.appendChild(categories);
     }
 
     function renderAlsDofSection(container, report, source, label) {
-      container.textContent = '';
-      if (!report) {
-        container.textContent = 'No ' + label + ' search has been run.';
-        return;
-      }
-      if (selectedAlsDofSource === source
-        && selectedAlsDofIndex !== null
-        && selectedAlsDofIndex >= report.results.length) {
-        selectedAlsDofIndex = null;
-      }
-
-      const summary = document.createElement('p');
-      if (source === 'chain') {
-        summary.textContent = `${report.results.length} ALS-DOF chain result${report.results.length === 1 ? '' : 's'}. `
-          + `${report.stats.alsRecords} ALS records checked`
-          + `; ${report.stats.hydraChainResults || 0} Hydra chains`
-          + `; digit/DOF limit ${report.options.maxDigits}`
-          + `; ${report.stats.constructionCandidates || 0} complete two-endpoint constructions checked`
-          + `, ${report.stats.zeroEliminationCandidates || 0} had no eliminations`
-          + `, ${report.stats.verifierRejected || 0} rejected by verifier`
-          + `; ${report.stats.aicChainsChecked || 0} AIC branches checked`
-          + `${report.stats.truncated ? '; result limit reached.' : '.'}`;
-      } else {
-        summary.textContent = `${report.results.length} ALS-DOF net result${report.results.length === 1 ? '' : 's'}. `
-          + `${report.stats.alsRecords} ALS records checked`
-          + `; ALS DOF ${report.stats.hubNets || 0}`
-          + `, Disjointed Distributed Subset ${report.stats.ddsNets || 0}`
-          + `, Almost Disjointed Distributed Subset ${report.stats.almostDdsNets || 0}`
-          + `${report.stats.truncated ? '; result limit reached.' : '.'}`;
-      }
-      container.appendChild(summary);
-
-      const rejected = report.rejectedResults || [];
-      if (rejected.length) {
-        const flaggedArea = document.createElement('section');
-        flaggedArea.className = 'chain-safety-warning';
-        const flaggedHeading = document.createElement('h3');
-        flaggedHeading.textContent = `Flagged / Rejected ${label} (${rejected.length})`;
-        flaggedArea.appendChild(flaggedHeading);
-        const flaggedList = document.createElement('ul');
-        for (const entry of rejected) {
-          const item = document.createElement('li');
-          const detail = document.createElement('div');
-          detail.className = 'chain-result chain-result-flagged';
-          const notation = core.formatAlsDof(entry.result);
-          const reasons = entry.verification?.errors?.join('; ') || 'Verifier rejected the record.';
-          detail.textContent = `${notation} [${reasons}]`;
-          detail.title = reasons;
-          item.appendChild(detail);
-          flaggedList.appendChild(item);
-        }
-        flaggedArea.appendChild(flaggedList);
-        container.appendChild(flaggedArea);
-      }
-      if (!report.results.length) return;
-
-      renderAlsDofResultList(container, report.results, source);
-      if (report.results.length > 500) {
-        const more = document.createElement('p');
-        more.textContent = `Showing the first 500 records in the technique lists.`;
-        container.appendChild(more);
-      }
+      alsDofView.renderSection(container, report, source, label);
     }
 
     function renderAlsDofReport() {
@@ -10839,59 +7465,7 @@
     }
 
     function renderHydraReport(report, container, family) {
-      container.textContent = '';
-      if (!report) {
-        container.textContent = `No ${family}-Hydra search has been run.`;
-        return;
-      }
-      const results = report.results || [];
-      const summary = document.createElement('p');
-      summary.textContent = `${results.length} ${family}-Hydra result${results.length === 1 ? '' : 's'}. `
-        + `${report.stats?.aicChainsChecked || 0} verified AIC chain${(report.stats?.aicChainsChecked || 0) === 1 ? '' : 's'} checked; `
-        + `${report.stats?.hydraParticipants || 0} ${family}-chain participant${(report.stats?.hydraParticipants || 0) === 1 ? '' : 's'} tested.`;
-      container.appendChild(summary);
-      if (!results.length) {
-        const empty = document.createElement('p');
-        empty.textContent = 'No verified Hydra continuation was found.';
-        container.appendChild(empty);
-        return;
-      }
-      const list = document.createElement('ul');
-      list.className = 'chain-list';
-      results.slice(0, 500).forEach((result, index) => {
-        const item = document.createElement('li');
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'chain-result';
-        if (selectedHydraFamily === family && selectedAlsHydraIndex === index) {
-          button.classList.add('selected');
-        }
-        button.textContent = `${index + 1}. ${formatHydraResult(result)}`;
-        button.title = `Display this Hydra ${family}-DOF continuation on the grid`;
-        button.addEventListener('click', () => {
-          if (family === 'AHS') ahsHydraReport = report;
-          else if (family === 'ALC') alcHydraReport = report;
-          else alsHydraReport = report;
-          selectedHydraFamily = family;
-          selectedAlsHydraIndex = index;
-          selectedAlsDof = null;
-          selectedAlsDofIndex = null;
-          selectedAlsDofSource = 'net';
-          selectedAlsId = null;
-          selectedChainIndex = null;
-          selectedStrongLinkType = null;
-          selectedStrongLinkIndex = null;
-          activeStep = null;
-          lastRemoved = [];
-          renderBoard();
-          renderHydraReport(report, container, family);
-          focusMap();
-          setStatus(`${family}-Hydra result ${index + 1} displayed.`, 'ok');
-        });
-        item.appendChild(button);
-        list.appendChild(item);
-      });
-      container.appendChild(list);
+      hydraView.renderReport(report, container, family);
     }
 
     function renderAlsHydraReport() {
@@ -11456,12 +8030,10 @@
       if (preserveColouringMethod !== 'medusa') threeDMedusaReport = null;
       if (preserveColouringMethod !== 'medusaMulti') threeDMedusaMultiReport = null;
       if (preserveColouringMethod !== 'multi') multiColoringReport = null;
-      if (preserveColouringMethod !== 'superMulti') superMultiColoringReport = null;
       if (preserveColouringMethod !== 'simple') selectedSimpleColoringIndex = null;
       if (preserveColouringMethod !== 'medusa') selectedThreeDMedusaIndex = null;
       if (preserveColouringMethod !== 'medusaMulti') selectedThreeDMedusaMultiIndex = null;
       if (preserveColouringMethod !== 'multi') selectedMultiColoringIndex = null;
-      if (preserveColouringMethod !== 'superMulti') selectedSuperMultiColoringIndex = null;
       // Dedicated ALS/AHS/ALC result panes are rendered only by their own
       // search handlers, so clear their visible lists explicitly as well.
       for (const [element, message] of [
@@ -11498,22 +8070,6 @@
           ? Math.min(9, Math.max(1, configuredAuxiliary))
           : 5,
       };
-    }
-
-    function applyNextCycle() {
-      syncVariantSettingsFromControls();
-      core.configureVariants(variantSettings);
-      const before = snapshotState();
-      const promoted = applyQueuedPromotions();
-      if (boardIsComplete()) return applyCycleChoice(before, promoted, null);
-      const choice = chooseSolverStep(
-        cand,
-        puzzle,
-        'interactive',
-        solution,
-        interactiveTechniqueProfile(),
-      );
-      return applyCycleChoice(before, promoted, choice);
     }
 
     async function chooseInteractiveStep({
@@ -11605,10 +8161,6 @@
       }
 
       return applyCycleChoice(before, promoted, choice);
-    }
-
-    function advanceCycle() {
-      return applyNextCycle();
     }
 
     async function nextCycle() {
@@ -11941,7 +8493,6 @@
         set selectedSimpleColoringIndex(value) { selectedSimpleColoringIndex = value; },
         set selectedThreeDMedusaIndex(value) { selectedThreeDMedusaIndex = value; },
         set selectedMultiColoringIndex(value) { selectedMultiColoringIndex = value; },
-        set selectedSuperMultiColoringIndex(value) { selectedSuperMultiColoringIndex = value; },
         set selectedThreeDMedusaMultiIndex(value) { selectedThreeDMedusaMultiIndex = value; },
         set activeStep(value) { activeStep = value; },
         set lastRemoved(value) { lastRemoved = value; },
@@ -11971,7 +8522,6 @@
         set selectedThreeDMedusaIndex(value) { selectedThreeDMedusaIndex = value; },
         set selectedSimpleColoringIndex(value) { selectedSimpleColoringIndex = value; },
         set selectedMultiColoringIndex(value) { selectedMultiColoringIndex = value; },
-        set selectedSuperMultiColoringIndex(value) { selectedSuperMultiColoringIndex = value; },
         set selectedThreeDMedusaMultiIndex(value) { selectedThreeDMedusaMultiIndex = value; },
         set activeStep(value) { activeStep = value; },
         set lastRemoved(value) { lastRemoved = value; },
@@ -12001,7 +8551,6 @@
         set selectedMultiColoringIndex(value) { selectedMultiColoringIndex = value; },
         set selectedSimpleColoringIndex(value) { selectedSimpleColoringIndex = value; },
         set selectedThreeDMedusaIndex(value) { selectedThreeDMedusaIndex = value; },
-        set selectedSuperMultiColoringIndex(value) { selectedSuperMultiColoringIndex = value; },
         set selectedThreeDMedusaMultiIndex(value) { selectedThreeDMedusaMultiIndex = value; },
         set activeStep(value) { activeStep = value; },
         set lastRemoved(value) { lastRemoved = value; },
@@ -12015,7 +8564,6 @@
         renderSimpleColoringReport,
         renderThreeDMedusaReport,
         renderMultiColoringReport,
-        renderSuperMultiColoringReport,
         renderThreeDMedusaMultiReport,
         renderBoard,
         openReportPanel,
@@ -12035,7 +8583,6 @@
         set selectedSimpleColoringIndex(value) { selectedSimpleColoringIndex = value; },
         set selectedThreeDMedusaIndex(value) { selectedThreeDMedusaIndex = value; },
         set selectedMultiColoringIndex(value) { selectedMultiColoringIndex = value; },
-        set selectedSuperMultiColoringIndex(value) { selectedSuperMultiColoringIndex = value; },
         set activeStep(value) { activeStep = value; },
         set lastRemoved(value) { lastRemoved = value; },
       },
@@ -12048,7 +8595,6 @@
         renderSimpleColoringReport,
         renderThreeDMedusaReport,
         renderMultiColoringReport,
-        renderSuperMultiColoringReport,
         renderThreeDMedusaMultiReport,
         renderBoard,
         openReportPanel,
@@ -12765,210 +9311,14 @@
       }, 20);
     }
 
-    async function recognizeSudokuImage(file) {
-      const image = new Image();
-      const url = URL.createObjectURL(file);
-      try {
-        await new Promise((resolve, reject) => {
-          image.onload = resolve;
-          image.onerror = () => reject(new Error('The selected image could not be read.'));
-          image.src = url;
-        });
-        const detected = appNamespace.ocrGrid.detectBounds(image);
-        const Tesseract = await appNamespace.ocrGrid.withTimeout(
-          appNamespace.ocrAssets.loadTesseract(),
-          'The local OCR library could not start.',
-        );
-        const worker = await appNamespace.ocrGrid.withTimeout(Tesseract.createWorker('eng', 1, {
-          workerPath: './src/ocr/worker.min.js',
-          langPath: './src/ocr',
-          corePath: './src/ocr/tesseract-core.wasm.js',
-          // Blob workers are blocked by some browsers for file:// pages.
-          // Use the bundled worker directly in that mode.
-          workerBlobURL: location.protocol !== 'file:',
-          logger: message => {
-            if (message.status) ocrStatusEl.textContent = `OCR: ${message.status} ${Math.round((message.progress || 0) * 100)}%`;
-          },
-          errorHandler: error => {
-            ocrStatusEl.textContent = `OCR worker error: ${error.message || error}`;
-          },
-        }), 'The OCR worker could not start. Direct file pages may block browser workers.');
-        await worker.setParameters({
-          tessedit_char_whitelist: '123456789',
-          tessedit_pageseg_mode: '10',
-        });
-        const result = [];
-        for (let row = 0; row < 9; row++) {
-          for (let col = 0; col < 9; col++) {
-            const left = detected.xs[col];
-            const top = detected.ys[row];
-            const width = detected.xs[col + 1] - left;
-            const height = detected.ys[row + 1] - top;
-            const crop = document.createElement('canvas');
-            // Sudoku screenshots often contain pencilmarks around the cell
-            // edges. Large givens are centered, so isolate the middle glyph
-            // before sending each cell to OCR.
-            const padX = width * .24;
-            const padY = height * .24;
-            const scale = 4;
-            crop.width = Math.max(32, Math.round((width - padX * 2) * scale));
-            crop.height = Math.max(32, Math.round((height - padY * 2) * scale));
-            const cropContext = crop.getContext('2d');
-            cropContext.fillStyle = '#ffffff';
-            cropContext.fillRect(0, 0, crop.width, crop.height);
-            cropContext.drawImage(detected.canvas, left + padX, top + padY,
-              width - padX * 2, height - padY * 2, 0, 0, crop.width, crop.height);
-            const pixels = cropContext.getImageData(0, 0, crop.width, crop.height).data;
-            let ink = 0;
-            for (let pixel = 0; pixel < pixels.length; pixel += 4) {
-              const gray = (pixels[pixel] * 299 + pixels[pixel + 1] * 587 + pixels[pixel + 2] * 114) / 1000;
-              if (gray < 170) ink += 1;
-            }
-            // Pencilmarks are much smaller than the centered given glyph.
-            // Skip low-ink cells so a single candidate cannot become a clue.
-            if (ink / (crop.width * crop.height) < .025) {
-              result.push('.');
-              continue;
-            }
-            const recognized = await worker.recognize(crop);
-            const digit = (recognized.data.text || '').replace(/[^1-9]/g, '');
-            result.push(digit.length === 1 ? digit : '.');
-          }
-        }
-        await worker.terminate();
-        return result.join('');
-      } finally {
-        URL.revokeObjectURL(url);
-      }
-    }
-
-    async function recognizeSudokuImageWithOcrad(file) {
-      await appNamespace.ocrAssets.loadOcrad();
-      if (typeof OCRAD !== 'function') throw new Error('The local file OCR engine did not load.');
-      const image = new Image();
-      const url = URL.createObjectURL(file);
-      try {
-        await new Promise((resolve, reject) => {
-          image.onload = resolve;
-          image.onerror = () => reject(new Error('The selected image could not be read.'));
-          image.src = url;
-        });
-        const detected = appNamespace.ocrGrid.detectBounds(image);
-        const result = [];
-        const readCrop = (left, top, width, height, padFraction) => {
-          const padX = width * padFraction;
-          const padY = height * padFraction;
-          const scale = 4;
-          const crop = document.createElement('canvas');
-          crop.width = Math.max(32, Math.round((width - padX * 2) * scale));
-          crop.height = Math.max(32, Math.round((height - padY * 2) * scale));
-          const context = crop.getContext('2d', { willReadFrequently: true });
-          context.fillStyle = '#ffffff';
-          context.fillRect(0, 0, crop.width, crop.height);
-          context.drawImage(detected.canvas, left + padX, top + padY,
-            width - padX * 2, height - padY * 2, 0, 0, crop.width, crop.height);
-          const pixels = context.getImageData(0, 0, crop.width, crop.height).data;
-          let ink = 0;
-          const dark = new Uint8Array(crop.width * crop.height);
-          for (let pixel = 0; pixel < pixels.length; pixel += 4) {
-            const gray = (pixels[pixel] * 299 + pixels[pixel + 1] * 587 + pixels[pixel + 2] * 114) / 1000;
-            if (gray < 170) {
-              const index = pixel / 4;
-              dark[index] = 1;
-              ink += 1;
-            }
-          }
-          let largestArea = 0;
-          let largestHeight = 0;
-          const visited = new Uint8Array(dark.length);
-          for (let start = 0; start < dark.length; start++) {
-            if (!dark[start] || visited[start]) continue;
-            const stack = [start];
-            visited[start] = 1;
-            let area = 0;
-            let minY = crop.height;
-            let maxY = -1;
-            while (stack.length) {
-              const index = stack.pop();
-              const x = index % crop.width;
-              const y = Math.floor(index / crop.width);
-              area += 1;
-              minY = Math.min(minY, y);
-              maxY = Math.max(maxY, y);
-              for (let dy = -1; dy <= 1; dy++) {
-                for (let dx = -1; dx <= 1; dx++) {
-                  if (!dx && !dy) continue;
-                  const nx = x + dx;
-                  const ny = y + dy;
-                  if (nx < 0 || nx >= crop.width || ny < 0 || ny >= crop.height) continue;
-                  const neighbor = ny * crop.width + nx;
-                  if (dark[neighbor] && !visited[neighbor]) {
-                    visited[neighbor] = 1;
-                    stack.push(neighbor);
-                  }
-                }
-              }
-            }
-            largestArea = Math.max(largestArea, area);
-            largestHeight = Math.max(largestHeight, maxY - minY + 1);
-          }
-          if (ink / (crop.width * crop.height) < .04
-            || largestArea / (crop.width * crop.height) < .006
-            || largestHeight / crop.height < .30) return '';
-          const direct = OCRAD(crop).replace(/[^1-9]/g, '');
-          if (direct.length === 1) return direct;
-          const binary = document.createElement('canvas');
-          binary.width = crop.width;
-          binary.height = crop.height;
-          const binaryContext = binary.getContext('2d', { willReadFrequently: true });
-          binaryContext.drawImage(crop, 0, 0);
-          const binaryPixels = binaryContext.getImageData(0, 0, binary.width, binary.height);
-          for (let pixel = 0; pixel < binaryPixels.data.length; pixel += 4) {
-            const gray = (binaryPixels.data[pixel] * 299 + binaryPixels.data[pixel + 1] * 587 + binaryPixels.data[pixel + 2] * 114) / 1000;
-            const value = gray < 205 ? 0 : 255;
-            binaryPixels.data[pixel] = value;
-            binaryPixels.data[pixel + 1] = value;
-            binaryPixels.data[pixel + 2] = value;
-            binaryPixels.data[pixel + 3] = 255;
-          }
-          binaryContext.putImageData(binaryPixels, 0, 0);
-          return OCRAD(binary).replace(/[^1-9]/g, '');
-        };
-        for (let row = 0; row < 9; row++) {
-          for (let col = 0; col < 9; col++) {
-            const left = detected.xs[col];
-            const top = detected.ys[row];
-            const width = detected.xs[col + 1] - left;
-            const height = detected.ys[row + 1] - top;
-            const readings = [.20, .24, .28, .32, .36]
-              .map(pad => readCrop(left, top, width, height, pad));
-            const votes = new Map();
-            for (const reading of readings) {
-              if (reading.length === 1) votes.set(reading, (votes.get(reading) || 0) + 1);
-            }
-            let digit = '';
-            let voteCount = 0;
-            for (const [candidate, count] of votes) {
-              if (count > voteCount) {
-                digit = candidate;
-                voteCount = count;
-              }
-            }
-            result.push(voteCount >= 1 ? digit : '.');
-            ocrStatusEl.textContent = `OCR: scanning cell ${row * 9 + col + 1} of 81`;
-          }
-        }
-        return result.join('');
-      } finally {
-        URL.revokeObjectURL(url);
-      }
-    }
-
-    function ocrPuzzleIsLoadable(text) {
-      const grid = core.decode(text);
-      return Boolean(grid && core.countSolutionsDlx(grid, 1) > 0);
-    }
-
+    const ocrScan = appNamespace.ocrScan.create({
+      documentRef: document,
+      ImageCtor: Image,
+      URLRef: URL,
+      locationRef: location,
+      statusEl: ocrStatusEl,
+      core,
+    });
     const ocrController = appNamespace.ocrController.create({
       dialog: ocrDialogEl,
       imageInput: ocrImageInputEl,
@@ -12977,9 +9327,9 @@
       status: ocrStatusEl,
       preview: ocrPreviewEl,
       recognize: file => location.protocol === 'file:'
-        ? recognizeSudokuImageWithOcrad(file)
-        : recognizeSudokuImage(file),
-      isLoadable: ocrPuzzleIsLoadable,
+        ? ocrScan.recognizeSudokuImageWithOcrad(file)
+        : ocrScan.recognizeSudokuImage(file),
+      isLoadable: ocrScan.ocrPuzzleIsLoadable,
     });
 
     async function importPuzzle() {
@@ -13287,11 +9637,43 @@
       cancel: ocrCancelEl,
       dialog: ocrDialogEl,
       controller: ocrController,
-      isLoadable: ocrPuzzleIsLoadable,
+      isLoadable: ocrScan.ocrPuzzleIsLoadable,
       setStatus: text => { ocrStatusEl.textContent = text; },
       loadPuzzle: text => {
         inputEl.value = text;
         loadPuzzle();
+      },
+    });
+    playerKeyboard = appNamespace.playerKeyboard.create({
+      boardEl,
+      documentRef: document,
+      state: {
+        get selectedCell() { return selectedPlayerCell; },
+        set selectedCell(value) { selectedPlayerCell = value; },
+        get selectedDigit() { return selectedPlayerDigit; },
+        set selectedDigit(value) { selectedPlayerDigit = value; },
+        get promotionMode() { return playerPromotionMode; },
+        set promotionMode(value) { playerPromotionMode = value; },
+        get ctrlDigitRemovesCandidate() { return ctrlDigitRemovesCandidate; },
+        get puzzle() { return puzzle; },
+        get promoted() { return promotedValues; },
+      },
+      actions: {
+        isBusy: () => busy,
+        renderBoard,
+        setStatus,
+        removePlayerDigit,
+        undoCycle,
+        redoCycle,
+        solvePlayerCell,
+        addPlayerCandidate,
+        clearPlayerSolvedCell,
+        nextCycle,
+        runAll,
+        basics: applyBasics,
+        apply: applyHighlightedMove,
+        stop: stopActiveSearch,
+        setGridView,
       },
     });
     appNamespace.boardEvents.install({
@@ -13340,6 +9722,35 @@
     difficultyInfo.renderFlow(DIFFICULTY_TABLE_GROUPS);
     difficultyInfo.renderTable(DIFFICULTY_TABLE_GROUPS);
     renderGridViewHeaders();
+    renderCycle = appNamespace.renderCycle.create({
+      renderDigitFocusButtons,
+      renderBoard,
+      renderStrings,
+      renderRatingReport,
+      renderLog,
+      renderSolutionActions,
+      renderPomReport,
+      renderAlsReport,
+      renderAlsLinkReport,
+      renderAhsReport,
+      renderAhsLinkReport,
+      renderStrongLinkReport,
+      renderSimpleColoringReport,
+      renderThreeDMedusaReport,
+      renderMultiColoringReport,
+      renderThreeDMedusaMultiReport,
+      renderChromaticGraphReport,
+      renderChromaticAlsGraphReport,
+      renderFishReport,
+      renderMslsReport,
+      renderAlsDofReport,
+      renderAlsHydraReport,
+      renderNakedSubsetReport,
+      renderBoxLineReport,
+      renderHiddenSubsetReport,
+      renderChainReport,
+      updateHistoryButtons,
+    });
     render();
     const linkedInput = linkState.linkedPuzzleInput();
     if (linkedInput !== null) {

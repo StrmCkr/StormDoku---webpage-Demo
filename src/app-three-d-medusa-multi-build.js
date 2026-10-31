@@ -18,13 +18,11 @@
           state.selectedSimpleColoringIndex = null;
           state.selectedThreeDMedusaIndex = null;
           state.selectedMultiColoringIndex = null;
-          state.selectedSuperMultiColoringIndex = null;
           state.activeStep = null;
           state.lastRemoved = [];
           actions.renderSimpleColoringReport();
           actions.renderThreeDMedusaReport();
           actions.renderMultiColoringReport();
-          actions.renderSuperMultiColoringReport();
           actions.renderThreeDMedusaMultiReport();
           actions.renderBoard();
           actions.openReportPanel(elements.results);

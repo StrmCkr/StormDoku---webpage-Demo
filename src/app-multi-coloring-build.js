@@ -17,14 +17,12 @@
           state.selectedMultiColoringIndex = state.multiColoringReport.length ? 0 : null;
           state.selectedSimpleColoringIndex = null;
           state.selectedThreeDMedusaIndex = null;
-          state.selectedSuperMultiColoringIndex = null;
           state.selectedThreeDMedusaMultiIndex = null;
           state.activeStep = null;
           state.lastRemoved = [];
           actions.renderSimpleColoringReport();
           actions.renderThreeDMedusaReport();
           actions.renderMultiColoringReport();
-          actions.renderSuperMultiColoringReport();
           actions.renderThreeDMedusaMultiReport();
           actions.renderBoard();
           actions.openReportPanel(elements.results);
@@ -38,7 +36,6 @@
           if (actions.isSearchCancelled(error)) return;
           state.multiColoringReport = null;
           state.selectedMultiColoringIndex = null;
-          state.selectedSuperMultiColoringIndex = null;
           state.selectedThreeDMedusaMultiIndex = null;
           actions.renderMultiColoringReport();
           actions.renderThreeDMedusaMultiReport();

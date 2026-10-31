@@ -2463,19 +2463,6 @@
       stroke: rgba(5, 150, 105, .84);
     }
 
-    .super-multi-group-box {
-      stroke-width: .8;
-      vector-effect: non-scaling-stroke;
-      pointer-events: none;
-    }
-
-    .super-multi-group-shared-box {
-      stroke: #334155;
-      stroke-width: 1.05;
-      vector-effect: non-scaling-stroke;
-      pointer-events: none;
-    }
-
     .panel,
     .report-stack {
       display: grid;
@@ -3296,6 +3283,15 @@
       gap: 1px;
     }
 
+    .toy-minilex-transformation {
+      grid-column: 1 / -1;
+      padding: 5px 6px;
+      background: var(--gunmetal-panel);
+      color: var(--gunmetal-ink);
+      font: 700 10px/1.3 ui-monospace, SFMono-Regular, Consolas, monospace;
+      overflow-wrap: anywhere;
+    }
+
     .toy-minilex-grid-panel {
       margin-top: 7px;
     }
@@ -3449,33 +3445,20 @@
     }
 
     .overlay-information-key {
-      border-top: 1px solid var(--line);
-      padding-top: 8px;
+      width: min(560px, calc(100vw - 32px));
+      max-height: min(78vh, 620px);
+      overflow: auto;
+      margin: 0;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 14px;
+      background: var(--panel);
+      color: var(--ink);
+      box-shadow: 0 8px 24px rgba(22, 22, 22, .22);
     }
 
-    .overlay-information-key summary {
-      color: var(--gunmetal-ink);
-      cursor: pointer;
-      font-size: 12px;
-      font-weight: 800;
-      list-style: none;
-      user-select: none;
-    }
-
-    .overlay-information-key summary::-webkit-details-marker {
-      display: none;
-    }
-
-    .overlay-information-key summary::before {
-      display: inline-block;
-      width: 16px;
-      color: #1f6feb;
-      content: "+";
-      font-weight: 900;
-    }
-
-    .overlay-information-key[open] summary::before {
-      content: "-";
+    .overlay-information-key::backdrop {
+      background: rgba(22, 22, 22, .08);
     }
 
     .overlay-key-grid {
@@ -4119,7 +4102,8 @@
     .chain-settings-popover,
     .move-type-popover,
     .fish-settings-popover,
-    .difficulty-settings-popover {
+    .difficulty-settings-popover,
+    .overlay-information-key {
       border-color: var(--gunmetal-line);
       background: var(--gunmetal-solid);
       color: var(--gunmetal-ink);
@@ -4128,6 +4112,8 @@
     .chain-settings-popover label,
     .move-type-popover label,
     .fish-settings-popover label,
+    .overlay-information-key label,
+    .overlay-information-key .overlay-key-item,
     .difficulty-settings-popover label,
     .difficulty-settings-popover .difficulty-table-header,
     .difficulty-settings-popover .difficulty-item,

@@ -347,6 +347,7 @@
   function miniLexCanonicalize(values, columnMaps, orders, helpers) {
     const orientedRows = [helpers.orientedRows(values, false), helpers.orientedRows(values, true)];
     let bestPattern = null; let bestKey = null; let bestValues = null; let bestOrientation = 0;
+    let bestRowMap = null; let bestColumnMap = null; let bestDigitMap = null;
     for (let orientation = 0; orientation < orientedRows.length; orientation++) {
       const rows = orientedRows[orientation];
       for (const columnMap of columnMaps) {
@@ -362,11 +363,23 @@
           const key = normalized.join(''); const pattern = bestRows.pattern;
           if (bestPattern === null || pattern < bestPattern || (pattern === bestPattern && (bestKey === null || key < bestKey))) {
             bestPattern = pattern; bestKey = key; bestValues = normalized; bestOrientation = orientation;
+            bestRowMap = [...rowMap]; bestColumnMap = [...columnMap];
+            bestDigitMap = [...normalizedDetails.mapping];
           }
         }
       }
     }
-    return bestValues ? { key: bestKey, values: bestValues, orientation: bestOrientation } : null;
+    return bestValues ? {
+      key: bestKey,
+      values: bestValues,
+      orientation: bestOrientation,
+      transformation: {
+        transposed: bestOrientation === 1,
+        rowMap: bestRowMap,
+        columnMap: bestColumnMap,
+        digitMap: bestDigitMap,
+      },
+    } : null;
   }
   function findNamedAutomorphMatches(records, families, source, target, searchTarget, helpers) {
     const normalizedTargetKey = helpers.normalizedKey(target); const matches = new Map(); let tested = 0;

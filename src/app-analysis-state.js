@@ -9,7 +9,6 @@
       'selectedThreeDMedusaIndex',
       'selectedThreeDMedusaMultiIndex',
       'selectedMultiColoringIndex',
-      'selectedSuperMultiColoringIndex',
       'selectedChromaticGraphIndex',
       'selectedChromaticAlsGraphIndex',
       'selectedAlsDof',

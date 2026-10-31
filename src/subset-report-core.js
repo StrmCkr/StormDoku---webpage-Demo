@@ -211,6 +211,66 @@
     };
   }
 
+  // Unified basic-step dispatcher.  The old browser-core subsetOrFishStep
+  // mixed its legacy subset/fish implementations with the newer report
+  // engines.  Keep the hierarchy ordering here, but route every subset
+  // size through the generic subset reports and every fish through POM.
+  function genericSubsetOrFishStep(cand, options = {}) {
+    const enabled = options.enabledTechniques;
+    const isEnabled = type => !enabled
+      || (typeof enabled.has === 'function' ? enabled.has(type) : enabled.includes(type));
+    const subsetKinds = [
+      ['hidden', 'hidden-single', 1],
+      ['naked', 'naked-single', 1],
+      ['hidden', 'hidden-pair', 2],
+      ['naked', 'naked-pair', 2],
+      ['hidden', 'hidden-triple', 3],
+      ['naked', 'naked-triple', 3],
+      ['hidden', 'hidden-quad', 4],
+      ['naked', 'naked-quad', 4],
+      ['hidden', 'hidden-quintuple', 5],
+      ['naked', 'naked-quintuple', 5],
+      ['hidden', 'hidden-sextuple', 6],
+      ['naked', 'naked-sextuple', 6],
+      ['hidden', 'hidden-septuple', 7],
+      ['naked', 'naked-septuple', 7],
+      ['hidden', 'hidden-octuple', 8],
+      ['naked', 'naked-octuple', 8],
+      ['hidden', 'hidden-nontuple', 9],
+      ['naked', 'naked-nontuple', 9],
+    ];
+
+    if (isEnabled('last-man-standing') && typeof core.lastManStandingStep === 'function') {
+      const lastMan = core.lastManStandingStep(cand);
+      if (lastMan) return lastMan;
+    }
+
+    if (isEnabled('box-line') || isEnabled('pointing') || isEnabled('claiming')) {
+      const boxLine = typeof core.boxLineStep === 'function' ? core.boxLineStep(cand) : null;
+      if (boxLine && (!enabled || isEnabled('box-line') || isEnabled('pointing') || isEnabled('claiming'))) {
+        return boxLine;
+      }
+    }
+
+    for (const [kind, type, size] of subsetKinds) {
+      if (!isEnabled(type)) continue;
+      const report = subsetStep(cand, {
+        ...options,
+        kind,
+        size: Math.floor(size / 2) + 1,
+      });
+      if (report) return report;
+    }
+
+    if (typeof core.omissionFishStep === 'function') {
+      const fishSizes = options.fishSizes || [2, 3, 4];
+      const fish = core.omissionFishStep(cand, fishSizes, options);
+      if (fish) return fish;
+    }
+    return null;
+  }
+
   core.findGenericSubsetReports = findGenericSubsetReports;
   core.genericSubsetStep = subsetStep;
+  core.genericSubsetOrFishStep = genericSubsetOrFishStep;
 })(globalThis);

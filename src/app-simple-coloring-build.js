@@ -17,7 +17,6 @@
           state.selectedSimpleColoringIndex = state.simpleColoringReport.length ? 0 : null;
           state.selectedThreeDMedusaIndex = null;
           state.selectedMultiColoringIndex = null;
-          state.selectedSuperMultiColoringIndex = null;
           state.selectedThreeDMedusaMultiIndex = null;
           state.activeStep = null;
           state.lastRemoved = [];

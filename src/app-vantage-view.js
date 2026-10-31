@@ -57,7 +57,7 @@
     applyAlsColorVars, applyAhsColorVars, selectedPlayerCell,
     bindPlayerDigitElement, renderVantageChainOverlay,
     renderHydraAlsDofOverlay, renderAlsDofOverlay,
-    renderVantageStrongLinkOverlay, renderSuperMultiGroupOverlay,
+    renderVantageStrongLinkOverlay,
   }) {
     const axis = view === 'Rn' ? 'R' : view === 'Cn' ? 'C' : 'B';
     const positionPrefix = view === 'Rn' ? 'c' : view === 'Cn' ? 'r' : 'p';
@@ -213,7 +213,6 @@
       else renderAlsDofOverlay(highlights.alsDofRecord, true);
     }
     if (highlights.isStrongLink) renderVantageStrongLinkOverlay(highlights.strongLink);
-    if (highlights.isSuperMultiColoring) renderSuperMultiGroupOverlay(highlights.superMultiColoringRecord, true);
   }
 
   app.vantageView = { renderHeaders, extractSlice, switchView, renderBoard };

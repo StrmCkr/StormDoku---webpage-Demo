@@ -179,35 +179,6 @@
     return null;
   }
 
-  const POPC = new Uint8Array(512);
-  for (let i = 1; i < POPC.length; i++) POPC[i] = POPC[i >> 1] + (i & 1);
-
-  const IDX = new Int8Array(512);
-  for (let i = 0; i < 9; i++) IDX[1 << i] = i;
-
-  const SUBSET_NAMES = ['single', 'pair', 'triple', 'quad', 'quintuple', 'sextuple', 'septuple', 'octuple', 'nontuple'];
-  const NAKED_TECH = Object.fromEntries(SUBSET_NAMES.map((name, index) => [index + 1, `naked-${name}`]));
-  const HIDDEN_TECH = Object.fromEntries(SUBSET_NAMES.map((name, index) => [index + 1, `hidden-${name}`]));
-  const FISH_NAME = {
-    2: 'X-Wing', 3: 'SwordFish', 4: 'JellyFish', 5: 'StarFish {Squirmbag}',
-    6: 'Whale', 7: 'Leviathan', 8: 'Kraken', 9: 'Colossus',
-  };
-  const COMBOS = Object.fromEntries(Array.from({ length: 9 }, (_, index) => [index + 1, combosIdx(index + 1)]));
-  const TECH_NAME = {
-    'last-man-standing': 'Last Man Standing',
-    'naked-single': 'Naked Single',
-    'hidden-single': 'Hidden Single',
-    'naked-pair': 'Naked Pair',
-    'hidden-pair': 'Hidden Pair',
-    'naked-triple': 'Naked Triple',
-    'hidden-triple': 'Hidden Triple',
-    'naked-quad': 'Naked Quad',
-    'hidden-quad': 'Hidden Quad',
-    pointing: 'Box - Line Reduction',
-    claiming: 'Box - Line Reduction',
-    fish: 'Fish',
-  };
-
   function peersOf(cell) {
     return PEERS[cell] || [];
   }
@@ -635,41 +606,6 @@
     return { M, given };
   }
 
-  function bits(mask) {
-    const out = [];
-    for (let x = mask; x; x &= x - 1) out.push(IDX[x & -x]);
-    return out;
-  }
-
-  function combos(n, k) {
-    const out = [];
-    const cur = [];
-
-    const rec = start => {
-      if (cur.length === k) {
-        out.push([...cur]);
-        return;
-      }
-
-      for (let i = start; i < n; i++) {
-        cur.push(i);
-        rec(i + 1);
-        cur.pop();
-      }
-    };
-
-    rec(0);
-    return out;
-  }
-
-  function combosIdx(k) {
-    return combos(9, k);
-  }
-
-  function digitCombos(k) {
-    return COMBOS[k].map(combo => combo.map(i => i + 1));
-  }
-
   function houseRef(unitIndex) {
     if (unitIndex < 9) return { type: 'row', indices: [unitIndex] };
     if (unitIndex < 18) return { type: 'col', indices: [unitIndex - 9] };
@@ -680,13 +616,6 @@
       indices: [unitIndex],
       name,
     };
-  }
-
-  function houseLabel(unitIndex) {
-    if (unitIndex < 9) return `row ${unitIndex + 1}`;
-    if (unitIndex < 18) return `column ${unitIndex - 8}`;
-    if (unitIndex < 27) return `box ${unitIndex - 17}`;
-    return variantUnitName(unitIndex) || `sector ${unitIndex + 1}`;
   }
 
   function houseRefLabel(ref) {
@@ -884,19 +813,6 @@
     return out;
   }
 
-  function formatSubsetReport(tech, digits, cells, sector, removals) {
-    return `${TECH_NAME[tech]}: (${digits.join('')}) ${cellGroupName(cells)} in ${sector} => ${formatRemovals(removals)}`;
-  }
-
-  function formatSingleReport(tech, digits, cells, removals) {
-    return `${TECH_NAME[tech]}: (${digits.join('')}) ${cellGroupName(cells)} => ${formatRemovals(removals)}`;
-  }
-
-  function fishReport(name, digit, baseSectors, coverSectors, elimCells) {
-    const eliminations = elimCells.map(cell => ({ cell, digit }));
-    return `${name}: (${digit}) ${sectorGroupName(baseSectors)} / ${sectorGroupName(coverSectors)} => ${formatRemovals(eliminations)}`;
-  }
-
   function peerSubsetEliminations(cand, cells, digits) {
     const sourceCellSet = new Set(cells);
     const seen = new Set();
@@ -942,41 +858,6 @@
       (left === a && right === b) || (left === b && right === a));
   }
 
-  function positionalHouse(h) {
-    if (h < 9) return { cells: Rset[h], label: `row ${h + 1}`, ref: { type: 'row', indices: [h] } };
-    if (h < 18) return { cells: Cset[h - 9], label: `column ${h - 8}`, ref: { type: 'col', indices: [h - 9] } };
-    if (h < 27) return { cells: Bset[h - 18], label: `box ${h - 17}`, ref: { type: 'box', indices: [h - 18] } };
-    const name = variantUnitName(h) || `sector ${h + 1}`;
-    const refType = name === 'D1'
-      ? 'diagonal'
-      : name === 'AD1'
-        ? 'anti-diagonal'
-        : 'variant-sector';
-    return { cells: UNITS[h], label: name, ref: { type: refType, indices: [h] } };
-  }
-
-  function nakedSingleStep(cand) {
-    for (let cell = 0; cell < 81; cell++) {
-      if (cand[cell].length !== 1) continue;
-
-      const digit = cand[cell][0];
-      const eliminations = peerSubsetEliminations(cand, [cell], [digit]);
-
-      if (!eliminations.length) continue;
-
-      return {
-        tech: 'naked-single',
-        desc: formatSingleReport('naked-single', [digit], [cell], eliminations),
-        elim: { items: eliminations },
-        digits: [digit],
-        at: [cell],
-        vertices: [cell],
-      };
-    }
-
-    return null;
-  }
-
   function lastManStandingStep(cand) {
     for (let cell = 0; cell < 81; cell++) {
       if (cand[cell].length !== 1) continue;
@@ -996,98 +877,6 @@
     }
 
     return null;
-  }
-
-  function nakedSubsetStep(cand, k) {
-    if (k === 1) return nakedSingleStep(cand);
-
-    for (let unitIndex = 0; unitIndex < UNITS.length; unitIndex++) {
-      const unit = UNITS[unitIndex];
-      const subsetCells = unit.filter(cell =>
-        cand[cell].length >= 2 && cand[cell].length <= k
-      );
-
-      for (const selected of combos(subsetCells.length, k)) {
-        const cells = selected.map(i => subsetCells[i]);
-        const digits = [...new Set(cells.flatMap(cell => cand[cell]))].sort((a, b) => a - b);
-        if (digits.length !== k) continue;
-
-        const eliminations = peerSubsetEliminations(cand, cells, digits);
-
-        if (!eliminations.length) continue;
-
-        return {
-          tech: NAKED_TECH[k],
-          desc: formatSubsetReport(NAKED_TECH[k], digits, cells, houseLabel(unitIndex), eliminations),
-          elim: { items: eliminations },
-          digits,
-          at: cells,
-          base: houseRef(unitIndex),
-          vertices: cells,
-        };
-      }
-    }
-
-    return null;
-  }
-
-  function hiddenStepM(cand, k) {
-    const { M } = buildSpaces(cand);
-
-    for (let h = 0; h < UNITS.length; h++) {
-      const currentHouse = positionalHouse(h);
-
-      for (const digits of digitCombos(k)) {
-        let union = 0;
-        let hasMissingDigit = false;
-
-        for (const digit of digits) {
-          const mask = M[h][digit - 1];
-          if (!mask) {
-            hasMissingDigit = true;
-            break;
-          }
-          union |= mask;
-        }
-
-        if (hasMissingDigit || POPC[union] !== k) continue;
-
-        const cells = bits(union).map(position => currentHouse.cells[position]);
-        const items = [];
-
-        for (const cell of cells) {
-          for (const digit of cand[cell]) {
-            if (!digits.includes(digit)) items.push({ cell, digit });
-          }
-        }
-
-        items.push(...peerSubsetEliminations(cand, cells, digits));
-
-        if (!items.length) continue;
-
-        return {
-          tech: HIDDEN_TECH[k],
-          desc: formatSubsetReport(HIDDEN_TECH[k], digits, cells, currentHouse.label, items),
-          elim: { items },
-          digits,
-          at: cells,
-          base: currentHouse.ref,
-          vertices: cells,
-        };
-      }
-    }
-
-    return null;
-  }
-
-  function hiddenSubsetStep(cand, k) {
-    const hint = withActualEliminations(hiddenStepM(cand, k), cand);
-    if (!hint || !hint.digits || !hint.at) return hint;
-
-    return {
-      ...hint,
-      desc: formatSubsetReport(hint.tech, hint.digits, hint.at, houseRefLabel(hint.base), eliminationItems(hint.elim)),
-    };
   }
 
   function boxLineReport(digit, base, cover, removals) {
@@ -1933,134 +1722,6 @@
     return antiChessBoxLineStepM(cand);
   }
 
-  function moveTypeEnabled(enabledTypes, type) {
-    if (!enabledTypes) return true;
-    if (typeof enabledTypes.has === 'function') return enabledTypes.has(type);
-    return Array.isArray(enabledTypes) && enabledTypes.includes(type);
-  }
-
-  function fishMoveType(step) {
-    const size = Number(step?.size);
-    const k = Number(step?.k || 0);
-    if (k > 0) return `${size}x${size}+k-fish`;
-    return ({ 2: 'x-wing', 3: 'swordfish', 4: 'jellyfish' })[size] || `${size}x${size}-fish`;
-  }
-
-  function fishStepAllowed(step, enabledTypes) {
-    return !!step && moveTypeEnabled(enabledTypes, fishMoveType(step));
-  }
-
-  function fishStepM(cand, sizes = [2, 3, 4], options = {}) {
-    const omissionFishSearch = options.omissionFishSearch || global.StormDoku.omissionFishStep;
-    const enabledTypes = options.enabledTechniques;
-    const configuredMaxK = Number(options.maxK ?? 2);
-    const maxK = Number.isFinite(configuredMaxK) ? Math.max(0, configuredMaxK) : 2;
-
-    for (const size of sizes) {
-      const omissionFish = omissionFishSearch?.(cand, [size], {
-        ...options,
-        minSize: size,
-        maxSize: size,
-        minK: 0,
-        maxK,
-        priorityMode: true,
-      });
-      if (fishStepAllowed(omissionFish, enabledTypes)) return omissionFish;
-    }
-
-    return null;
-  }
-
-  function fishByRows(M, d0, digit, k) {
-    for (const baseRows of COMBOS[k]) {
-      let coverMask = 0;
-      for (const row of baseRows) coverMask |= M[row][d0];
-      if (POPC[coverMask] !== k || baseRows.some(row => M[row][d0] === 0)) continue;
-
-      const coverCols = bits(coverMask);
-      const eliminations = [];
-
-      for (const col of coverCols) {
-        for (let row = 0; row < 9; row++) {
-          if (!baseRows.includes(row) && (M[row][d0] & (1 << col))) {
-            eliminations.push(Rset[row][col]);
-          }
-        }
-      }
-
-      if (!eliminations.length) continue;
-
-      const vertices = baseRows.flatMap(row =>
-        coverCols
-          .filter(col => M[row][d0] & (1 << col))
-          .map(col => Rset[row][col])
-      );
-
-      return {
-        tech: 'fish',
-        name: FISH_NAME[k],
-        category: 'Basic',
-        size: k,
-        k: 0,
-        desc: fishReport(FISH_NAME[k], digit, baseRows, coverCols.map(col => 9 + col), eliminations),
-        elim: { cells: eliminations, digits: [digit] },
-        digits: [digit],
-        base: { type: 'row', indices: [...baseRows] },
-        cover: { type: 'col', indices: coverCols },
-        vertices,
-      };
-    }
-
-    return null;
-  }
-
-  function fishByCols(M, d0, digit, k) {
-    for (const baseCols of COMBOS[k]) {
-      let coverMask = 0;
-      for (const col of baseCols) coverMask |= M[9 + col][d0];
-      if (POPC[coverMask] !== k || baseCols.some(col => M[9 + col][d0] === 0)) continue;
-
-      const coverRows = bits(coverMask);
-      const eliminations = [];
-
-      for (const row of coverRows) {
-        for (let col = 0; col < 9; col++) {
-          if (!baseCols.includes(col) && (M[9 + col][d0] & (1 << row))) {
-            eliminations.push(Cset[col][row]);
-          }
-        }
-      }
-
-      if (!eliminations.length) continue;
-
-      const vertices = baseCols.flatMap(col =>
-        coverRows
-          .filter(row => M[9 + col][d0] & (1 << row))
-          .map(row => Cset[col][row])
-      );
-
-      return {
-        tech: 'fish',
-        name: FISH_NAME[k],
-        category: 'Basic',
-        size: k,
-        k: 0,
-        desc: fishReport(FISH_NAME[k], digit, baseCols.map(col => 9 + col), coverRows, eliminations),
-        elim: { cells: eliminations, digits: [digit] },
-        digits: [digit],
-        base: { type: 'col', indices: [...baseCols] },
-        cover: { type: 'row', indices: coverRows },
-        vertices,
-      };
-    }
-
-    return null;
-  }
-
-  function fishStep(cand, sizes = [2, 3, 4], options = {}) {
-    return withActualEliminations(fishStepM(cand, sizes, options), cand);
-  }
-
   function boxLineStep(cand) {
     // The fast solver path must respect the BLR hierarchy instead of building
     // every report (including the expensive Gap/N-Peer pass) before choosing
@@ -2194,90 +1855,12 @@
     return reports.map(step => withActualEliminations(step, cand));
   }
 
-  function subsetStepForSizes(cand, sizes, enabledTypes = null) {
-    for (const k of sizes) {
-      const hiddenType = HIDDEN_TECH[k];
-      if (moveTypeEnabled(enabledTypes, hiddenType)) {
-        const hidden = hiddenSubsetStep(cand, k);
-        if (hidden) return hidden;
-
-        // The generic ALS/AHS report remains available as a fallback, but it
-        // must not run before the bounded native subset search. On dense
-        // candidate grids its constructor can enumerate a very large number
-        // of sets before returning the same ordinary subset result.
-        if (k === 1) {
-          const genericHidden = global.StormDoku.genericSubsetStep?.(cand, {
-            kind: 'hidden',
-            size: k,
-          });
-          if (genericHidden) return genericHidden;
-        }
-      }
-
-      const nakedType = NAKED_TECH[k];
-      if (moveTypeEnabled(enabledTypes, nakedType)) {
-        const naked = withActualEliminations(nakedSubsetStep(cand, k), cand);
-        if (naked) return naked;
-
-        if (k === 1) {
-          const genericNaked = global.StormDoku.genericSubsetStep?.(cand, {
-            kind: 'naked',
-            size: k,
-          });
-          if (genericNaked) return genericNaked;
-        }
-      }
-    }
-
-    return null;
-  }
-
-  function subsetStep(cand, options = {}) {
-    return subsetStepForSizes(cand, [1, 2, 3, 4, 5, 6, 7, 8, 9], options.enabledTechniques);
-  }
-
-  function subsetOrFishStep(cand, fishOptions = {}) {
-    const enabledTypes = fishOptions.enabledTechniques;
-    if (moveTypeEnabled(enabledTypes, 'last-man-standing')) {
-      const lastMan = lastManStandingStep(cand);
-      if (lastMan) return lastMan;
-    }
-    const singles = subsetStepForSizes(cand, [1], enabledTypes);
-    if (singles) return singles;
-
-    if (moveTypeEnabled(enabledTypes, 'box-line')) {
-      const boxLine = boxLineStep(cand);
-      if (boxLine) return boxLine;
-    }
-
-    const fishSizes = Array.isArray(fishOptions.fishSizes)
-      ? fishOptions.fishSizes
-      : [2, 3, 4, 5, 6, 7, 8, 9];
-    for (const size of fishSizes) {
-      const subset = subsetStepForSizes(cand, [size], enabledTypes);
-      if (subset) return subset;
-
-      const fish = fishStep(cand, [size], fishOptions);
-      if (fish) return fish;
-    }
-
-    return null;
-  }
-
-  function hintFor(grid, fishOptions = {}) {
-    return subsetOrFishStep(allCandidates(grid), { ...fishOptions, grid });
-  }
-
   function eliminationItems(elim, cand) {
     const items = elim.items
       ? elim.items
       : elim.cells.flatMap(cell => elim.digits.map(digit => ({ cell, digit })));
 
     return items.filter(({ cell, digit }) => !cand || (cand[cell] || []).includes(digit));
-  }
-
-  function hasEliminations(hint, cand) {
-    return hint !== null && eliminationItems(hint.elim, cand).length > 0;
   }
 
   function applyEliminations(cand, elim) {
@@ -2295,28 +1878,6 @@
 
   function cloneCandidates(cand) {
     return cand.map(cell => [...cell]);
-  }
-
-  function reduceCandidates(cand, maxCycles = 100, fishOptions = {}) {
-    return reduceCandidatesInPlace(cloneCandidates(cand), maxCycles, fishOptions);
-  }
-
-  function reduceCandidatesInPlace(cand, maxCycles = 100, fishOptions = {}) {
-    const steps = [];
-    const removed = [];
-
-    for (let cycle = 0; cycle < maxCycles; cycle++) {
-      const step = subsetOrFishStep(cand, fishOptions);
-      if (!step) return { cand, steps, removed, cycles: steps.length };
-
-      const cycleRemoved = applyEliminations(cand, step.elim);
-      if (!cycleRemoved.length) return { cand, steps, removed, cycles: steps.length };
-
-      steps.push({ ...step, elim: { items: cycleRemoved } });
-      removed.push(...cycleRemoved);
-    }
-
-    return { cand, steps, removed, cycles: steps.length };
   }
 
   function withActualEliminations(hint, cand) {
@@ -2472,7 +2033,6 @@
     COLS,
     BOXES,
     UNITS,
-    POPC,
     buildSpaces,
     peersOf,
     shuffle,
@@ -2484,22 +2044,12 @@
     solveDlx,
     solveFully,
     generate,
-    nakedSingleStep,
-    nakedSubsetStep,
-    hiddenSubsetStep,
     lastManStandingStep,
     boxLineStep,
     findBoxLineReports,
-    subsetStep,
-    fishStep,
-    subsetOrFishStep,
-    hintFor,
     eliminationItems,
-    hasEliminations,
     applyEliminations,
     cloneCandidates,
-    reduceCandidates,
-    reduceCandidatesInPlace,
     encode,
     decode,
     parse729Data,

@@ -4,25 +4,25 @@
  * the page and returns structured-cloneable search results to the UI thread.
  */
 importScripts(
-  './browser-core.js?v=20261029-01',
-  './set-tools-core.js?v=20261029-01',
-  './pom-core.js?v=20261029-01',
-  './als-core.js?v=20261029-01',
-  './als-dof-core.js?v=20261029-01',
-  './hydra-core.js?v=20261029-01',
-  './als-link-core.js?v=20261029-01',
-  './ahs-core.js?v=20261029-01',
-  './ahs-link-core.js?v=20261029-01',
-  './subset-report-core.js?v=20261029-01',
-  './mini-sectors-core.js?v=20261029-01',
-  './strong-link-core.js?v=20261029-01',
-  './chain-core.js?v=20261029-01',
-  './alc-core.js?v=20261029-01',
-  './ahs-xy-core.js?v=20261029-01',
-  './ahs-dof-core.js?v=20261029-01',
-  './msls-core.js?v=20261029-01',
-  './chromatic-core.js?v=20261029-01',
-  './chromatic-als-core.js?v=20261029-01',
+  './browser-core.js?v=20261031-01',
+  './set-tools-core.js?v=20261031-01',
+  './pom-core.js?v=20261031-01',
+  './als-core.js?v=20261031-01',
+  './als-dof-core.js?v=20261031-01',
+  './hydra-core.js?v=20261031-01',
+  './als-link-core.js?v=20261031-01',
+  './ahs-core.js?v=20261031-01',
+  './ahs-link-core.js?v=20261031-01',
+  './subset-report-core.js?v=20261031-01',
+  './mini-sectors-core.js?v=20261031-01',
+  './strong-link-core.js?v=20261031-01',
+  './chain-core.js?v=20261031-01',
+  './alc-core.js?v=20261031-01',
+  './ahs-xy-core.js?v=20261031-01',
+  './ahs-dof-core.js?v=20261031-01',
+  './msls-core.js?v=20261031-01',
+  './chromatic-core.js?v=20261031-01',
+  './chromatic-als-core.js?v=20261031-01',
 );
 
 const core = globalThis.StormDoku;
@@ -197,7 +197,7 @@ function runSimple(payload) {
   }
   if (payload.subsetOnly) {
     const enabledTechniques = new Set(payload.moveTypes || []);
-    return core.subsetOrFishStep(payload.candidateGrid, { enabledTechniques });
+    return core.genericSubsetOrFishStep(payload.candidateGrid, { enabledTechniques });
   }
   const fishOptions = {
     ...(payload.fishOptions || {}),
@@ -205,7 +205,7 @@ function runSimple(payload) {
     omissionFishSearch: core.omissionFishStep,
     enabledTechniques: new Set(payload.moveTypes || []),
   };
-  return core.subsetOrFishStep(payload.candidateGrid, fishOptions);
+  return core.genericSubsetOrFishStep(payload.candidateGrid, fishOptions);
 }
 
 function runFish(payload) {

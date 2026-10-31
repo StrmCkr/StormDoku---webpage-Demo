@@ -27,7 +27,6 @@
         simple: 'Simple Colouring',
         medusa: '3D-Medusa',
         multi: 'Multi-colouring',
-        superMulti: 'Super Multi-colouring',
         medusaMulti: '3D-Medusa {Multi-colouring}',
       };
       const name = names[method] || 'Colouring';
