@@ -10,7 +10,7 @@
       let worker;
       try {
         worker = workerRuntime.createWorker(
-          './src/generator-worker.js?v=20261031-02',
+          './src/generator-worker.js?v=20261103-02',
           { type: 'classic' },
         );
       } catch (error) {

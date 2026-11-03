@@ -3943,10 +3943,16 @@
       // the chain walk. If the current entry is the handoff to the next
       // entry, reverse only this link so the notation reads, for example,
       // (4)r9c5=(4)r7c4 - (3)r7c4 ... rather than backwards.
-      const entryAligned = sameEurekaLocation(current.entry, next.entry)
-        || sideSees(current.entry, next.entry);
-      const exitAligned = sameEurekaLocation(current.exit, next.entry)
-        || sideSees(current.exit, next.entry);
+      // An exact shared endpoint is stronger than a peer relationship.  In
+      // grouped links both ends can see the next entry through a box/sector;
+      // using peer visibility first can therefore leave the first strong link
+      // backwards even though its exit is the actual handoff cell.
+      const entryExact = sameEurekaLocation(current.entry, next.entry);
+      const exitExact = sameEurekaLocation(current.exit, next.entry);
+      const entryAligned = entryExact
+        || (!exitExact && sideSees(current.entry, next.entry));
+      const exitAligned = exitExact
+        || (!entryExact && sideSees(current.exit, next.entry));
       if (entryAligned && !exitAligned) {
         display[index] = {
           ...current,

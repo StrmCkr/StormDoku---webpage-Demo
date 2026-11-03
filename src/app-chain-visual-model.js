@@ -211,10 +211,16 @@
     for (let index = 0; index < display.length - 1; index += 1) {
       const current = display[index];
       const next = display[index + 1];
-      const entryAligned = sameLocation(current.entry, next.entry)
-        || sideSees(current.entry, next.entry);
-      const exitAligned = sameLocation(current.exit, next.entry)
-        || sideSees(current.exit, next.entry);
+      // Prefer the actual shared endpoint over peer visibility.  A grouped
+      // link can see the next entry from both ends through a box or sector;
+      // peer visibility alone must not prevent the first link from reversing
+      // to match the chain handoff.
+      const entryExact = sameLocation(current.entry, next.entry);
+      const exitExact = sameLocation(current.exit, next.entry);
+      const entryAligned = entryExact
+        || (!exitExact && sideSees(current.entry, next.entry));
+      const exitAligned = exitExact
+        || (!entryExact && sideSees(current.exit, next.entry));
       if (entryAligned && !exitAligned) {
         display[index] = {
           ...current,
