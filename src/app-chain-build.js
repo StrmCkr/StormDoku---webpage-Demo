@@ -33,7 +33,6 @@
           state.alsLinkReport = includeAlsRcc ? await actions.runCoreSearch('buildAlsLinks', state.cand, {
             alsList: state.alsReport,
             strictSingleCommon: true,
-            maxLinks: 5000,
           }) : null;
           const ahsList = includeAhs ? (await actions.runCoreSearch('ahsConstructor', state.cand, {
             maxSize: nodeLimits.ahsMaxDigits ?? 8,
@@ -83,7 +82,7 @@
             maxStates: 300000,
             maxQueue: 300000,
             maxBranching: 500,
-            maxAlsLinks: 5000,
+            maxAlsLinks: Number.MAX_SAFE_INTEGER,
           });
 
           state.alsSearchFamily = null;

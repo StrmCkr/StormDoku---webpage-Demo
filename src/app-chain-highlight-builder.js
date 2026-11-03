@@ -56,6 +56,12 @@
           }
     
           const alsColors = alsColorMapForChain(chain);
+          const addAlsColor = (map, key, color) => {
+            const previous = map.get(key);
+            const colors = previous ? (Array.isArray(previous) ? previous : [previous]) : [];
+            if (!colors.some(item => item.bg === color.bg)) colors.push(color);
+            map.set(key, colors.length === 1 ? colors[0] : colors);
+          };
           const ahsColors = ahsColorMapForChain(chain);
           const displaySteps = orientedDisplayChainSteps(chain.steps);
           for (let index = 0; index < displaySteps.length; index++) {
@@ -105,20 +111,20 @@
               for (const cell of moduleSides.entry.cells || []) {
                 alsCells.add(cell);
                 alsEntryCells.add(cell);
-                alsStyleByCell.set(cell, entryColor);
+                addAlsColor(alsStyleByCell, cell, entryColor);
               }
               for (const cell of moduleSides.exit.cells || []) {
                 alsCells.add(cell);
                 alsExitCells.add(cell);
-                alsStyleByCell.set(cell, exitColor);
+                addAlsColor(alsStyleByCell, cell, exitColor);
               }
               for (const atom of chainSideAtoms(moduleSides.entry, null, false)) {
                 alsMarks.add(atom);
-                alsStyleByAtom.set(atom, entryColor);
+                addAlsColor(alsStyleByAtom, atom, entryColor);
               }
               for (const atom of chainSideAtoms(moduleSides.exit, null, false)) {
                 alsMarks.add(atom);
-                alsStyleByAtom.set(atom, exitColor);
+                addAlsColor(alsStyleByAtom, atom, exitColor);
               }
     
               if (step.module?.common) {
@@ -159,12 +165,17 @@
             }
           }
     
-          const firstEntry = visibleChainEntrySide(displaySteps[0]) || {};
-          for (const atom of chainSideAtoms(firstEntry, null, false)) startMarks.add(atom);
+          const firstEntry = displaySteps[0].entry || {};
+          const endpointDigits = new Set((chain.eliminations || []).map(item => item.digit));
+          for (const atom of chainSideAtoms(firstEntry, null, false)) {
+            if (!isAlsVisualStep(displaySteps[0])) startMarks.add(atom);
+          }
           for (const cell of firstEntry.cells || []) startCells.add(cell);
     
-          const terminal = visibleChainExitSide(displaySteps[displaySteps.length - 1]) || {};
-          for (const atom of chainSideAtoms(terminal, null, false)) endMarks.add(atom);
+          const terminal = displaySteps[displaySteps.length - 1].exit || {};
+          for (const atom of chainSideAtoms(terminal, null, false)) {
+            if (!isAlsVisualStep(displaySteps[displaySteps.length - 1])) endMarks.add(atom);
+          }
           for (const cell of terminal.cells || []) endCells.add(cell);
     
           if (chain.isRing && displaySteps.length) {

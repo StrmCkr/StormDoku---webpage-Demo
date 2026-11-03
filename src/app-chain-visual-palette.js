@@ -54,6 +54,7 @@
 
   function applyAlsColorVars(element, color) {
     if (!color) return;
+    if (Array.isArray(color)) return applyAlsPartitionColors(element, color);
     element.style.setProperty('--chain-als-bg', color.bg);
     element.style.setProperty('--chain-als-stroke', color.stroke);
     element.style.setProperty('--chain-als-ink', color.ink);

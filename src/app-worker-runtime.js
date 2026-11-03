@@ -23,7 +23,7 @@
     }
     if (!offlineSourcePromise) {
       offlineSourcePromise = loadLocalScript(
-        './src/search-worker-source.js?v=20261031-01',
+        './src/search-worker-source.js?v=20261031-02',
         'StormDokuSearchWorkerSource',
         'Offline search worker source could not be loaded.',
       );

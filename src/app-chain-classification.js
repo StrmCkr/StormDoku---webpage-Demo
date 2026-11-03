@@ -30,7 +30,43 @@
   }
 
   function normalizedChainStructureName(chain) {
-    return isTransportAlsXyRingShape(chain) ? 'T-ALS-XY Ring' : String(chain?.structureName || 'AIC');
+    if (isTransportAlsXyRingShape(chain)) return 'T-ALS-XY Ring';
+
+    const existing = String(chain?.structureName || 'AIC').trim();
+    // Worker records can retain the broad ALS prefix even though the folder
+    // analyzer has already proved the logical ALS node count.  Resolve that
+    // fallback from the actual module interfaces so the visible name and the
+    // folder classification cannot disagree.
+    if (/^ALS$/i.test(existing)) {
+      const taggedNodes = new Set((chain?.steps || [])
+        .flatMap(step => step?.alsNodeIds || [])
+        .filter(id => id != null)
+        .map(String));
+      if (taggedNodes.size === 2) return 'ALS - XZ';
+      if (taggedNodes.size === 3) return 'ALS - XY';
+      if (taggedNodes.size > 3) return 'ALS - Chain';
+
+      const nodes = new Set();
+      for (const step of chain?.steps || []) {
+        if (step?.family !== 'ALS') return existing;
+        const subsets = [
+          step.module?.entrySideSubset,
+          step.module?.exitSideSubset,
+          step.module?.entrySubset,
+          step.module?.exitSubset,
+        ].filter(Boolean);
+        if (subsets.length !== 2) return existing;
+        for (const subset of subsets) {
+          const cells = [...new Set(subset.cells || [])].sort((a, b) => a - b);
+          const digits = [...new Set(subset.digits || [])].sort((a, b) => a - b);
+          if (cells.length && digits.length) nodes.add(`${cells.join(',')}|${digits.join('')}`);
+        }
+      }
+      if (nodes.size === 2) return 'ALS - XZ';
+      if (nodes.size === 3) return 'ALS - XY';
+      if (nodes.size > 3) return 'ALS - Chain';
+    }
+    return existing;
   }
 
   function moveKeys(chain, {

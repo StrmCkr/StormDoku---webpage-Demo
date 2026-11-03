@@ -654,7 +654,7 @@
       }
 
       try {
-        const workerPath = './src/search-worker.js?v=20261031-01';
+        const workerPath = './src/search-worker.js?v=20261031-02';
         releaseSearchWorkerBlobUrl();
         let workerUrl = new URL(workerPath, document.baseURI);
         if (document.baseURI.startsWith('file:')) {
@@ -1681,6 +1681,13 @@
       ));
       const pair = vantageClosestAnchorPair(fromSide, toSide, weakFromDigit, weakToDigit);
       if (!pair) return;
+      for (const [side, digit] of [[fromSide, weakFromDigit], [toSide, weakToDigit]]) {
+        if (digit == null) continue;
+        const cells = (side.cells || []).filter(cell =>
+          chainCandidateIsVisible(cell, digit, !allowMissing));
+        if (cells.length > 1) drawGroupedEndpointBox(svg,
+          { ...side, cells, digits: [digit] }, 'strong-link-side-box chain-weak-group');
+      }
       drawArc(svg, pair.from, pair.to, 'chain-weak-line', -4.5, 0);
     }
 
@@ -1955,6 +1962,21 @@
         allowMissing,
       );
       if (!pair) return;
+      for (const [side, digit, anchor] of [
+        [fromSide, weakFromDigit, pair.from],
+        [toSide, weakToDigit, pair.to],
+      ]) {
+        if (digit == null) continue;
+        const box = digitBoundsFromAnchors(sideAnchors(side, digit, true));
+        if (!box) continue;
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        for (const [name, value] of Object.entries({x: box.left, y: box.top,
+          width: Math.max(.9, box.right - box.left), height: Math.max(.9, box.bottom - box.top), rx: .2})) rect.setAttribute(name, String(value));
+        rect.setAttribute('class', 'strong-link-side-box strong-link-start-box');
+        svg.appendChild(rect);
+        anchor.x = (box.left + box.right) / 2;
+        anchor.y = (box.top + box.bottom) / 2;
+      }
       drawArc(svg, pair.from, pair.to, 'chain-weak-line', -4.5, 0);
     }
 
@@ -4856,9 +4878,10 @@
         : Number.isInteger(profileAlsMaxDigits) && profileAlsMaxDigits > 0
           ? profileAlsMaxDigits
           : null;
-      const profileAlsMaxSizeDOF = Number(profile?.alsMaxSizeDOF);
-      const phaseAlsMaxSizeDOF = Number(phase?.alsMaxSizeDOF);
-      const configuredAlsMaxSizeDOF = Number(nodeLimits.alsMaxSizeDOF);
+      const optionalSize = value => value == null || value === '' ? null : Number(value);
+      const profileAlsMaxSizeDOF = optionalSize(profile?.alsMaxSizeDOF);
+      const phaseAlsMaxSizeDOF = optionalSize(phase?.alsMaxSizeDOF);
+      const configuredAlsMaxSizeDOF = optionalSize(nodeLimits.alsMaxSizeDOF);
       const alsMaxSizeDOFCandidates = [
         phaseAlsMaxSizeDOF,
         profileAlsMaxSizeDOF,
@@ -4867,11 +4890,11 @@
       const baseAlsMaxSizeDOF = alsMaxSizeDOFCandidates.length
         ? Math.min(...alsMaxSizeDOFCandidates)
         : null;
-      const profileAlsMaxSizeFox = Number(profile?.alsMaxSizeFox);
-      const phaseAlsMaxSizeFox = Number(phase?.alsMaxSizeFox);
+      const profileAlsMaxSizeFox = optionalSize(profile?.alsMaxSizeFox);
+      const phaseAlsMaxSizeFox = optionalSize(phase?.alsMaxSizeFox);
       const configuredAlsMaxSizeFox = phase?.fullFoxRange
         ? null
-        : Number(nodeLimits.alsMaxSizeFox);
+        : optionalSize(nodeLimits.alsMaxSizeFox);
       const alsMaxSizeFoxCandidates = [
         phaseAlsMaxSizeFox,
         profileAlsMaxSizeFox,
@@ -8815,8 +8838,6 @@
             includeAls: true,
             maxDepth: 2,
             minDepth: 2,
-            alsLinkMode: 'xz-only',
-            alsModuleKinds: ['ALS_XZ'],
             family: 'als-xz',
           }
         : family === 'als-xy'
@@ -8828,8 +8849,8 @@
             }
           : {
               includeAls: true,
-              maxDepth: Math.max(2, Number(chainDepthEl.value) || 6),
-              minDepth: 3,
+              maxDepth: Math.max(4, Number(chainDepthEl.value) || 6),
+              minDepth: 4,
               family: 'als-chain',
             };
       const maxDepth = phase.maxDepth;
@@ -8838,6 +8859,16 @@
       // Type 4 is the Bivalve ALS node. Type 5 is supplied separately by
       // includeAlsRcc/alsLinkSet as ALS_RCC; it is not part of this array.
       const searchStrongLinkTypes = [4];
+      phase.searchLimits = {
+        maxChains: 5000,
+        maxResultAttempts: 100000,
+        maxResultAttemptsPerStart: 5000,
+        maxStates: 300000,
+        maxQueue: 300000,
+        maxBranching: Number.MAX_SAFE_INTEGER,
+        maxStartViews: Number.MAX_SAFE_INTEGER,
+        maxAlsLinks: Number.MAX_SAFE_INTEGER,
+      };
 
       const searchToken = setBusy(true);
       setStatus(family === 'als-xy'
@@ -8853,11 +8884,13 @@
             {
               includeAlsRcc: true,
               strongLinkTypes: searchStrongLinkTypes,
+              includeAhs: false,
             },
             false,
             phase,
           );
           search.strongSet = await runCoreSearch('buildStrongLinks', cand, {
+            strongLinkTypes: [4],
             includeAlmostFish: search.strongLinkTypes.includes(7),
             almostFish: { grid: [...puzzle], ...search.almostFish },
           });
@@ -8873,7 +8906,6 @@
             alsList: search.alsList,
             strictSingleCommon: true,
             xzOnly: phase.alsLinkMode === 'xz-only',
-            maxLinks: search.maxAlsLinks,
           });
           if (phase.alsModuleKinds) {
             search.alsLinkSet = search.alsLinkSet.map(bucket => bucket.filter(link =>
@@ -8886,7 +8918,8 @@
             includeAls: search.includeAlsRcc,
             includeAhs: search.includeAhs,
             strongLinkTypes: search.strongLinkTypes,
-            maxDepth: search.maxDepth,
+            minDepth: phase.minDepth,
+            maxDepth: phase.maxDepth,
             maxChains: search.maxChains,
             maxResultAttempts: search.maxResultAttempts,
             maxResultAttemptsPerStart: search.maxResultAttemptsPerStart,

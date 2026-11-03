@@ -65,6 +65,15 @@
     if (step?.view?.node?.raw?.standaloneAls) {
       return 'ALS-STANDALONE:' + String(step.view.node.graphId || step.linkId || '');
     }
+    // A traversal exposes the same ALS twice when it is the middle node of
+    // an ALS-XY chain: once through its incoming modular side and once
+    // through its outgoing modular side.  Those sides have different digit
+    // sets, but they are still one structural ALS node and must share one
+    // visual identity.  Prefer the subset's primary id before looking at
+    // the displayed side contents so the second handoff cannot recolour or
+    // overwrite the first one.
+    const primaryId = side?.id ?? side?.uniqueID;
+    if (primaryId != null) return 'ALS-NODE:' + String(primaryId);
     const entryCells = new Set(moduleVisualSides(step).entry?.cells || []);
     const exitCells = new Set(moduleVisualSides(step).exit?.cells || []);
     const overlaps = [...entryCells].some(cell => exitCells.has(cell));

@@ -18,6 +18,15 @@
       const steps = orientedDisplayChainSteps(chain.steps);
       const isPureXyChain = steps.length > 0
         && steps.every(step => step.family === 'SL' && Number(step.linkType) === 4);
+      if (steps.length) {
+        const digits = [...new Set((chain.eliminations || []).map(item => item.digit))];
+        for (const [step, side, className] of [
+          [steps[0], visibleChainEntrySide(steps[0]), 'strong-link-side-box strong-link-start-box'],
+          [steps[steps.length - 1], visibleChainExitSide(steps[steps.length - 1]), 'strong-link-side-box strong-link-end-box'],
+        ]) {
+          if (step.family === 'ALS') drawSideDigitBoxes(svg, side, className, null, digits);
+        }
+      }
 
       if (chain.ahsXy) {
         for (const [index, step] of steps.entries()) {

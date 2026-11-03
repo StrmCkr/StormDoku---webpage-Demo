@@ -86,6 +86,30 @@
     return [...atoms];
   }
 
+  function alsPrimaryIds(view) {
+    if (view?.node?.family !== 'ALS') return [];
+    const raw = view.node.raw || {};
+    return [
+      raw.LS_L?.uniqueID,
+      raw.LS_R?.uniqueID,
+      raw.standaloneEntrySubset?.uniqueID,
+      raw.standaloneExitSubset?.uniqueID,
+    ].filter(id => id != null).map(String);
+  }
+
+  function alsPrimarySideAtoms(view, ids) {
+    if (!ids.length) return [];
+    const wanted = new Set(ids);
+    const raw = view.node.raw || {};
+    const sides = [raw.LS_L, raw.LS_R, raw.standaloneEntrySubset, raw.standaloneExitSubset]
+      .filter(subset => subset?.uniqueID != null && wanted.has(String(subset.uniqueID)));
+    return sides.flatMap(subset => {
+      const cells = asNumbers(subset.cells);
+      const digits = asNumbers(subset.digits);
+      return cells.flatMap(cell => digits.map(digit => `${cell}:${digit}`));
+    });
+  }
+
   function viewUsesKnownAtom(usedAtoms, view) {
     return viewAtoms(view).some(atom => usedAtoms.has(atom));
   }
@@ -873,6 +897,7 @@
   }
 
   function localConnection(fromView, toView, cand = null) {
+    if (invalidSharedAlsConnection(fromView, toView)) return null;
     const exit = fromView.exit;
     const entry = toView.entry;
     const overlap = intersection(exit.cells, entry.cells);
@@ -945,6 +970,7 @@
   }
 
   function sectorConnection(fromView, toView, forcedDigit = null) {
+    if (invalidSharedAlsConnection(fromView, toView)) return null;
     const aNode = fromView.node;
     const bNode = toView.node;
     const aSide = fromView.exit;
@@ -1016,6 +1042,7 @@
   }
 
   function directConnection(fromView, toView, cand = null) {
+    if (invalidSharedAlsConnection(fromView, toView)) return null;
     const hydra = hydraLinkConnection(fromView, toView);
     if (hydra) return hydra;
     const modular = alsModuleConnection(fromView, toView);
@@ -1228,6 +1255,12 @@
     return hasIntersection(fromCells, toCells);
   }
 
+  function invalidSharedAlsConnection(fromView, toView) {
+    return fromView.node.family === 'ALS' && toView.node.family === 'ALS'
+      && alsModuleCompatible(alsSubsetForSide(fromView, 'exit'), alsSubsetForSide(toView, 'entry'))
+      && !alsModuleConnection(fromView, toView);
+  }
+
   function alsModuleConnection(fromView, toView) {
     if (fromView.node.family !== toView.node.family) return null;
     if (!['ALS', 'AHS'].includes(fromView.node.family)) return null;
@@ -1266,6 +1299,18 @@
     const toSubset = alsSubsetForSide(toView, 'entry');
     if (!alsModuleCompatible(fromSubset, toSubset)) return null;
 
+    // The paired traversals carry their connecting RCC in C.  Comparing
+    // only the exposed endpoint digits below misses a reversed reuse of
+    // B's module: A -(9)- B -(9)- C can have different outer endpoints.
+    // B must enter and leave through distinct RCCs, regardless of link ID
+    // or F/R orientation.
+    const incomingRcc = asNumbers(fromView.node.raw.C?.restrictedDigits?.length
+      ? fromView.node.raw.C.restrictedDigits : alsBridgeDigits(fromView.node.raw));
+    const outgoingRcc = asNumbers(toView.node.raw.C?.restrictedDigits?.length
+      ? toView.node.raw.C.restrictedDigits : alsBridgeDigits(toView.node.raw));
+    if (incomingRcc.length && outgoingRcc.length
+      && !incomingRcc.some(left => outgoingRcc.some(right => left !== right))) return null;
+
     const fromDigit = fromView.exit.digits.length === 1 ? fromView.exit.digits[0] : null;
     const toDigit = toView.entry.digits.length === 1 ? toView.entry.digits[0] : null;
     if (fromDigit == null || toDigit == null || fromDigit === toDigit) return null;
@@ -1273,18 +1318,14 @@
     // A modular handoff is still a NAND weak inference. The shared ALS module
     // may contain either edge, but the two edge cell sets may not use the same
     // physical cell for their respective RCC digits.
-    const sharedCells = intersection(
-      fromSubset?.cells || [],
-      toSubset?.cells || [],
-    );
     const fromEdgeCells = fromView.exit.cells.filter(cell => fromView.exit.digits.includes(fromDigit));
     const toEdgeCells = toView.entry.cells.filter(cell => toView.entry.digits.includes(toDigit));
     const sharedEdgeCells = intersection(fromEdgeCells, toEdgeCells);
-    if (intersection(sharedCells, fromEdgeCells).length
-      || intersection(sharedCells, toEdgeCells).length
-      || sharedEdgeCells.length) {
-      return null;
-    }
+    // The interface cells are expected to belong to the shared ALS.  They
+    // are not a reuse error: this is precisely how an ALS module hands its
+    // outgoing LS/RCC side to the next node.  Only reject the illegal case
+    // where both modular directions use the same physical RCC cell.
+    if (sharedEdgeCells.length) return null;
 
     return {
       // A modular handoff is a weak inference through the shared ALS. It
@@ -1425,30 +1466,32 @@
       const b = modules[start + 1];
       const c = modules[start + 2];
       if (hasIntersection(asNumbers(a.cells), asNumbers(b.cells))
-        || hasIntersection(asNumbers(a.cells), asNumbers(c.cells))
+        || alsModuleCompatible(a, c)
         || hasIntersection(asNumbers(b.cells), asNumbers(c.cells))) continue;
 
-      const ab = intersection(asNumbers(a.digits), asNumbers(b.digits));
-      if (!ab.length) continue;
+      // The middle module carries the two RCC/NAND links. The first and
+      // last modules are the endpoints; their common non-RCC digit is the
+      // ALS-XY eliminand. For A-B-C, the links are A-B and B-C, while the
+      // eliminand is the shared endpoint digit A-C.
+      const endpointDigits = intersection(asNumbers(a.digits), asNumbers(c.digits));
+      if (!endpointDigits.length) continue;
 
-      const abRestricted = alsRestrictedCommons(a, b);
-      const ac = alsRestrictedCommons(a, c);
-      const bc = alsRestrictedCommons(b, c);
-      if (!ac.length || !bc.length) continue;
+      const leftBridgeDigits = alsRestrictedCommons(a, b);
+      const rightBridgeDigits = alsRestrictedCommons(b, c);
+      if (!leftBridgeDigits.length || !rightBridgeDigits.length) continue;
 
-      for (const z of ab) {
-        if (abRestricted.includes(z)) continue;
+      for (const z of endpointDigits) {
         const aTargets = alsRccTargets(a, z);
-        const bTargets = alsRccTargets(b, z);
+        const bTargets = alsRccTargets(c, z);
         const targetCells = aTargets.length && bTargets.length
           ? intersection(aTargets, bTargets)
           : [];
         if (!targetCells.length) continue;
 
-        const aBridge = ac.find(digit => digit !== z);
-        const bBridge = bc.find(digit => digit !== z && digit !== aBridge);
+        const aBridge = leftBridgeDigits.find(digit => digit !== z);
+        const bBridge = rightBridgeDigits.find(digit => digit !== z && digit !== aBridge);
         if (aBridge == null || bBridge == null) continue;
-        if (!alsRccTargets(a, aBridge).length || !alsRccTargets(c, aBridge).length) continue;
+        if (!alsRccTargets(a, aBridge).length || !alsRccTargets(b, aBridge).length) continue;
         if (!alsRccTargets(b, bBridge).length || !alsRccTargets(c, bBridge).length) continue;
 
         addElimination(out, cand, z, targetCells, 'type1');
@@ -1611,6 +1654,11 @@
     const seen = new Set();
     const add = (target, weak) => {
       if (!weak || target.key === view.key) return;
+      // All transition routes must respect the shared ALS module guard.
+      // A rejected modular handoff must not re-enter through a local edge.
+      if (view.node.family === 'ALS' && target.node.family === 'ALS'
+        && alsModuleCompatible(alsSubsetForSide(view, 'exit'), alsSubsetForSide(target, 'entry'))
+        && !alsModuleConnection(view, target)) return;
       if (weak.weakType === LOCAL_WEAK
         && !weak.modular
         && (weak.fromDigit == null
@@ -2681,7 +2729,16 @@
     // their classification without restoring the removed standalone ALC search.
     if (hasAls && hasAhs) return 'ALC';
     if (hasAls) {
-      const hasNonAls = steps.some(step => !isAlsNodeStep(step));
+      // Traversal links are still ALS modules even when their public link
+      // name is carried by the module payload rather than ALS_RCC.  Keep a
+      // pure ALS walk in the ALS namespace; only an actual non-ALS edge gets
+      // the AIC + ALS prefix.
+      const hasNonAls = steps.some(step => !(
+        isAlsNodeStep(step)
+        || (step.family === 'ALS'
+          && step.module?.entrySubset
+          && step.module?.exitSubset)
+      ));
       return hasNonAls ? 'AIC + ALS' : 'ALS';
     }
     if (hasAhs) {
@@ -2692,15 +2749,35 @@
   }
 
   function alsOnlyStructureName(steps) {
+    const isGroupedAlsStep = step => {
+      // A grouped ALS_RCC traversal is still an ALS module, not one grouped
+      // strong-link node.  Only ordinary strong-link records use this
+      // fallback shape for ALS-style node classification.
+      if (step.family !== 'SL') return false;
+      if (step.family === 'SL' && Number(step.linkType) !== 4) return false;
+      const cells = sortedUnique([
+        ...(step.entry?.cells || []),
+        ...(step.exit?.cells || []),
+      ]);
+      const digits = sortedUnique([
+        ...(step.entry?.digits || []),
+        ...(step.exit?.digits || []),
+      ]);
+      return cells.length > 1 && digits.length === cells.length + 1;
+    };
+    const isLogicalAlsStep = step => isAlsNodeStep(step)
+      || isGroupedAlsStep(step)
+      || (step.family === 'ALS'
+        && step.module?.entrySubset
+        && step.module?.exitSubset);
     if (!steps.length
-      || !steps.some(step => isAlsRccStep(step))
-      || !steps.every(step => isAlsNodeStep(step)
-        && (isBivalveStep(step) || step.module))) return null;
+      || !steps.some(step => isAlsRccStep(step) || isGroupedAlsStep(step))
+      || !steps.every(isLogicalAlsStep)) return null;
 
     const seen = new Set();
     let nodeCount = 0;
     for (const step of steps) {
-      if (isBivalveStep(step)) {
+      if (isBivalveStep(step) || isGroupedAlsStep(step)) {
         const cells = sortedUnique([...step.entry.cells, ...step.exit.cells]);
         const digits = sortedUnique([...step.entry.digits, ...step.exit.digits]);
         const key = `${isBivalveStep(step) ? 'BIVALVE' : 'ALS_NODE'}|${cells.join(',')}|${digits.join('')}`;
@@ -2711,12 +2788,37 @@
         continue;
       }
 
-      for (const subset of [step.module.entrySubset, step.module.exitSubset]) {
+      // An ALS_RCC traversal can expose a type-4 cell/group handoff without
+      // carrying a module payload.  The ALS in the group and the type-4 cell
+      // are separate logical nodes.  Count both; otherwise a four-node ALS
+      // chain can be mislabelled as ALS-XY merely because it has three ALS
+      // primary IDs.
+      if (step.family === 'ALS' && isAlsRccStep(step)
+        && !step.module
+        && (step.alsNodeIds || []).length === 1) {
+        const sides = [step.entry, step.exit];
+        const groupSide = sides.find(side => (side?.cells || []).length > 1);
+        const cellSide = sides.find(side => (side?.cells || []).length === 1);
+        for (const side of [groupSide, cellSide]) {
+          if (!side?.cells?.length || !side?.digits?.length) continue;
+          const key = `${groupSide === side ? 'ALS_NODE' : 'TYPE4_NODE'}|${side.cells.join(',')}|${side.digits.join('')}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            nodeCount += 1;
+          }
+        }
+        continue;
+      }
+
+      for (const subset of [step.module?.entrySubset, step.module?.exitSubset]) {
         if (!subset) return null;
         const key = [
-          subset.id ?? '',
-          subset.cells.join(','),
-          subset.digits.join(''),
+          // Classify by the logical ALS, not by the transient link-side ID.
+          // The same ALS can be reached through multiple oriented links and
+          // those IDs are allowed to differ without creating another node.
+          subset.id != null
+            ? `ALS|${subset.id}`
+            : `${subset.cells.join(',')}|${subset.digits.join('')}`,
         ].join('|');
         if (!seen.has(key)) {
           seen.add(key);
@@ -2847,6 +2949,19 @@
     if (ahsStructureName) return ahsStructureName;
     const alsStructureName = alsOnlyStructureName(steps);
     if (alsStructureName) return alsStructureName;
+    // Some modular ALS traversals expose the shared middle subset through
+    // different oriented payloads, so their transient subset count can miss
+    // the logical three-node shape. The folder already treats this as a
+    // pure ALS-XY walk; keep the visible name consistent with that shape.
+    if (!isRing
+      && steps.length === 3
+      && steps.every(step => step.family === 'ALS' && isAlsRccStep(step))
+      && !steps.some(step => step.family === 'ALS'
+        && !step.module
+        && (step.alsNodeIds || []).length === 1
+        && [step.entry, step.exit].some(side => (side?.cells || []).length === 1))) {
+      return 'ALS - XY';
+    }
 
     if (isTransportAlsXyRing(steps, isRing)) return 'T-ALS-XY Ring';
 
@@ -3203,11 +3318,43 @@
     const publicClosureName = isTerminal
       ? null
       : ringClosureName || (ringWeak ? WEAK_TYPE_NAMES[ringWeak.weakType] : null);
-    // Use the canonical graph path for identity.  Formatting the path as
-    // text includes its starting node, which made every rotation of a ring
-    // appear as a separate result even though the proof and eliminations
-    // were identical.
-    const key = `${canonicalReportKey(steps, publicIsRing, ringWeak)}|${eliminationsKey(eliminations)}`;
+    // The graph key also carries weak inference identities and handles ring
+    // rotations; use it for structural identity rather than printed text.
+    const rendered = formatChainEureka({
+      structureName, isRing: publicIsRing, ringClosureDigit,
+      steps: publicSteps, eliminations,
+    });
+    const proof = rendered.split(' => ')[0].replace(/^[^:]+:\s*/, '');
+    const units = proof.split(' - ').map(unit => unit
+      .replace(/\((\d+)=(\d+)\)/g, (_, left, right) =>
+        `(${[left, right].sort().join('=')})`)
+      .split(/=(?!\d+\))/).sort().join('='));
+    const forwardProof = units.join(' - ');
+    const reverseProof = [...units].reverse().join(' - ');
+    const proofKey = forwardProof < reverseProof ? forwardProof : reverseProof;
+    const alsProofNodes = [];
+    const alsProofBridges = [];
+    if (steps.every(step => step.view.node.family === 'ALS')) {
+      for (const step of steps) {
+        const raw = step.view.node.raw;
+        const subsets = raw.standaloneAls
+          ? [raw.standaloneEntrySubset]
+          : [alsSubsetForSide(step.view, 'entry'), alsSubsetForSide(step.view, 'exit')];
+        for (const subset of subsets.filter(Boolean)) {
+          const identity = `${cellsKey(subset.cells)}:${asNumbers(subset.digits).join(',')}`;
+          if (alsProofNodes[alsProofNodes.length - 1] !== identity) alsProofNodes.push(identity);
+        }
+        if (!raw.standaloneAls) alsProofBridges.push(asNumbers(raw.C?.restrictedDigits || raw.C?.digits).join(','));
+      }
+    }
+    const alsForward = `${alsProofNodes.join('>')}|${alsProofBridges.join('>')}`;
+    const alsReverse = `${[...alsProofNodes].reverse().join('>')}|${[...alsProofBridges].reverse().join('>')}`;
+    const logicalAlsKey = alsProofNodes.length ? [alsForward, alsReverse].sort()[0] : null;
+    const key = logicalAlsKey && !publicIsRing
+      ? `${structureName}|${logicalAlsKey}|${eliminationsKey(eliminations)}`
+      : publicIsRing
+      ? `${canonicalReportKey(steps, true, ringWeak)}|${eliminationsKey(eliminations)}`
+      : `${structureName}|${proofKey}|${eliminationsKey(eliminations)}`;
     const existing = chainsByKey.get(key);
 
     if (existing) {
@@ -3484,13 +3631,46 @@
             && edge.target.exit.cellKey === start.entry.cellKey;
           const sharedKnownAtoms = viewAtoms(edge.target)
             .filter(atom => current.usedAtoms.has(atom));
-          const reusesNonStartAtom = sharedKnownAtoms.some(atom => !startAtoms.has(atom));
+          // A modular ALS/AHS handoff deliberately exposes the current
+          // node's exit interface again as the next node's entry interface:
+          //     A --(LS=RCC)--> B --(RCC=LS)--> C
+          // The shared boundary is not a repeated node or a repeated RCC;
+          // it is the NAND handoff that lets B be the middle node.  The old
+          // atom guard treated that boundary like an illegal reuse and
+          // discarded valid depth-3 ALS-XY walks.  Allow only the exact
+          // current-exit/target-entry interface for a modular edge.  Any
+          // other reused atom remains invalid, including reuse of a modular
+          // interface from an earlier node.
+          const modularHandoffAtoms = edge.modular
+            ? [
+              ...intersection(
+                sideAtoms(current.view.exit),
+                sideAtoms(edge.target.entry),
+              ),
+              ...alsPrimarySideAtoms(
+                current.view,
+                intersection(alsPrimaryIds(current.view), alsPrimaryIds(edge.target)),
+              ),
+            ]
+            : [];
+          const unexpectedSharedAtoms = sharedKnownAtoms
+            .filter(atom => !modularHandoffAtoms.includes(atom));
+          const reusesNonStartAtom = unexpectedSharedAtoms.some(atom => !startAtoms.has(atom));
+          const overlappingAlsEndpoints = edge.modular
+            && current.steps.length === 1
+            && current.view.node.family === 'ALS'
+            && edge.target.node.family === 'ALS'
+            && !alsModuleCompatible(
+              alsSubsetForSide(start, 'entry'),
+              alsSubsetForSide(edge.target, 'exit'),
+            );
           const closesToStart = ringWeak || ringOverlapElims !== null;
           // The start node is intentionally revisited only when this edge
           // proves a real ring closure. Other repeated nodes remain invalid.
           if (current.visited.has(edge.target.node.graphId)
             && edge.target.node.graphId !== start.node.graphId) continue;
-          if (reusesNonStartAtom || (sharedKnownAtoms.length && !closesToStart)) continue;
+          if (reusesNonStartAtom
+            || (sharedKnownAtoms.length && !closesToStart && !overlappingAlsEndpoints)) continue;
 
           stats.transitionsAccepted += 1;
           if (opts.onProgress && stats.transitionsAccepted % 64 === 0) {
@@ -3823,9 +4003,13 @@
     return [
       {
         text: `(${eurekaDigitsText(entryRemainder)}=${eurekaDigitsText(restrictedDigits)})${core.cellGroupName(entrySubset.cells)}`,
+        eurekaNodeKey: entrySubset.id,
+        eurekaContinuationText: `(${eurekaDigitsText(entryRemainder)}=${eurekaDigitsText(restrictedDigits)})`,
       },
       {
         text: `(${eurekaDigitsText(restrictedDigits)}=${eurekaDigitsText(exitSubset.digits.filter(digit => !restrictedSet.has(digit)))})${core.cellGroupName(exitSubset.cells)}`,
+        eurekaNodeKey: exitSubset.id,
+        eurekaContinuationText: `(${eurekaDigitsText(restrictedDigits)}=${eurekaDigitsText(exitSubset.digits.filter(digit => !restrictedSet.has(digit)))})`,
       },
     ];
   }
@@ -3905,6 +4089,21 @@
     for (let index = 0; index < nodes.length; index++) {
       const unit = nodes[index];
       const next = nodes[index + 1];
+
+      // A middle ALS in an XY chain is exposed by two adjacent modular
+      // handoffs.  Keep both expressions, but print the shared ALS location
+      // only once: (4=1678)r3478c3(1467=8).
+      if (next
+        && unit.eurekaNodeKey != null
+        && unit.eurekaNodeKey === next.eurekaNodeKey
+        && next.eurekaContinuationText) {
+        units.push({
+          text: unit.text + next.eurekaContinuationText,
+          endIndex: index + 1,
+        });
+        index += 1;
+        continue;
+      }
 
       // Adjacent AHS modules share one parent set. Show its two reduced
       // endpoints inside that set rather than hiding the cellular handoff.

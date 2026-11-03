@@ -263,10 +263,27 @@
     const nodes = new Set();
     for (const step of chain?.steps || []) {
       if (step.family !== 'ALS' || step.linkTypeName !== 'ALS_RCC') continue;
-      for (const subset of moduleSubsets(step.module)) {
+      const subsets = moduleSubsets(step.module);
+      if (!step.module && (step.alsNodeIds || []).length === 1) {
+        // A payload-less ALS_RCC traversal may expose one ALS group through
+        // a type-4 cell/group handoff.  The cell is a separate node and must
+        // not let a four-node walk pass the ALS-XY (three-node) phase.
+        for (const side of [step.entry, step.exit]) {
+          if (!side?.cells?.length || !side?.digits?.length) continue;
+          const kind = side.cells.length === 1 ? 'TYPE4' : 'ALS';
+          nodes.add(`${kind}|${side.cells.join(',')}|${side.digits.join('')}`);
+        }
+        continue;
+      }
+      const primaryIds = (step.alsNodeIds || []).filter(id => id != null);
+      if (primaryIds.length) {
+        for (const id of primaryIds) nodes.add(`ALS|${id}`);
+        continue;
+      }
+      for (const subset of subsets) {
         if (!subset) continue;
         nodes.add([
-          subset.id ?? '',
+          subset.id != null ? `ALS|${subset.id}` : 'ALS',
           (subset.cells || []).join(','),
           (subset.digits || []).join(''),
         ].join('|'));
