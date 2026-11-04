@@ -17,6 +17,17 @@
     return [entry, exit].filter(Boolean);
   }
 
+  function isBivalveVisualStep(step) {
+    const family = step?.family || '';
+    const linkType = Number(step?.linkType);
+    const typeName = String(step?.linkTypeName || '').toUpperCase();
+    return family === 'SL'
+      && (linkType === 4 || typeName === 'BIVALVE' || typeName === 'BIVALENT')
+      && (step.entry?.cells || []).length === 1
+      && (step.exit?.cells || []).length === 1
+      && step.entry.cells[0] === step.exit.cells[0];
+  }
+
   function isAlsVisualStep(step, alsConstant) {
     const family = step.family || '';
     const typeName = String(step.linkTypeName || '').toUpperCase();
@@ -29,14 +40,7 @@
     // Type-4 bivalves are the single-cell ALS/value nodes used by XY/YZ
     // rings.  They have no ALS module wrapper, so identify them directly for
     // the chain overlay and paint their cells with the ALS palette.
-    const isBivalve = family === 'SL'
-      && (linkType === 4 || typeName === 'BIVALVE' || typeName === 'BIVALENT')
-      && (step.entry?.cells || []).length === 1
-      && (step.exit?.cells || []).length === 1
-      && step.entry.cells[0] === step.exit.cells[0]
-      && (step.entry?.digits || []).length === 2
-      && (step.exit?.digits || []).length === 2;
-    if (isBivalve) return true;
+    if (isBivalveVisualStep(step)) return true;
     return family === 'ALS'
       || typeName === 'ALS'
       || typeName.startsWith('ALS_')
@@ -193,6 +197,13 @@
 
   function orientedDisplayChainSteps(steps, peersOf = null) {
     const display = [...(steps || [])].map(step => ({ ...step }));
+    const reverse = step => ({
+      ...step,
+      entrySide: step.exitSide,
+      exitSide: step.entrySide,
+      entry: { ...step.exit, side: 'left' },
+      exit: { ...step.entry, side: 'right' },
+    });
     const sameLocation = (left, right) => {
       const leftCells = left?.cells || [];
       const rightCells = right?.cells || [];
@@ -222,13 +233,21 @@
       const exitAligned = exitExact
         || (!entryExact && sideSees(current.exit, next.entry));
       if (entryAligned && !exitAligned) {
-        display[index] = {
-          ...current,
-          entrySide: current.exitSide,
-          exitSide: current.entrySide,
-          entry: { ...current.exit, side: 'left' },
-          exit: { ...current.entry, side: 'right' },
-        };
+        display[index] = reverse(current);
+        continue;
+      }
+
+      // Strong links are undirected. When neither end of this link reaches
+      // the next link's displayed entry, check the opposite end of that next
+      // link: the handoff may require reversing the next link instead.
+      const nextEntryExact = sameLocation(current.exit, next.entry);
+      const nextExitExact = sameLocation(current.exit, next.exit);
+      const nextEntryAligned = nextEntryExact
+        || (!nextExitExact && sideSees(current.exit, next.entry));
+      const nextExitAligned = nextExitExact
+        || (!nextEntryExact && sideSees(current.exit, next.exit));
+      if (!entryAligned && !exitAligned && nextExitAligned && !nextEntryAligned) {
+        display[index + 1] = reverse(next);
       }
     }
     return display;
@@ -236,6 +255,7 @@
 
   app.chainVisualModel = {
     chainModuleSubsets,
+    isBivalveVisualStep,
     isAlsVisualStep,
     isAhsVisualStep,
     isModuleVisualStep,

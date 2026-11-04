@@ -10,6 +10,7 @@
     const gridRowHeaderEl = document.getElementById('gridRowHeader');
     const gridViewSelector = document.getElementById('gridViewSelector');
     const showFixedInVantageEl = document.getElementById('showFixedInVantage');
+    const copy81EmptyAsZeroEl = document.getElementById('copy81EmptyAsZero');
     const givensEl = document.getElementById('givens');
     const generationDifficultyEl = document.getElementById('generationDifficulty');
     const inputEl = document.getElementById('input');
@@ -654,7 +655,7 @@
       }
 
       try {
-        const workerPath = './src/search-worker.js?v=20261103-02';
+        const workerPath = './src/search-worker.js?v=20261104-17';
         releaseSearchWorkerBlobUrl();
         let workerUrl = new URL(workerPath, document.baseURI);
         if (document.baseURI.startsWith('file:')) {
@@ -888,6 +889,7 @@
       hasCandidate: cellHasCandidate,
       getDofRecord: selectedAlsDofRecord,
       getSelectedChain: selectedChain,
+      getSelectedChainCandidateGrid: () => selectedChain() ? chainReport?.candidateGrid : null,
       getHydraRecord: selectedHydraRecord,
       getLastRemoved: () => lastRemoved,
     });
@@ -1541,6 +1543,7 @@
       );
 
     const isAlsVisualStep = step => appNamespace.chainVisualModel.isAlsVisualStep(step, core.ALS);
+    const isBivalveVisualStep = appNamespace.chainVisualModel.isBivalveVisualStep;
     const isAhsVisualStep = appNamespace.chainVisualModel.isAhsVisualStep;
     const isModuleVisualStep = step => appNamespace.chainVisualModel.isModuleVisualStep(step, core.ALS);
     const isAlmostFishVisualStep = appNamespace.chainVisualModel.isAlmostFishVisualStep;
@@ -1967,7 +1970,7 @@
         [toSide, weakToDigit, pair.to],
       ]) {
         if (digit == null) continue;
-        const box = digitBoundsFromAnchors(sideAnchors(side, digit, true));
+        const box = digitBoundsFromAnchors(sideAnchors(side, digit, !allowMissing));
         if (!box) continue;
         const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
         for (const [name, value] of Object.entries({x: box.left, y: box.top,
@@ -2089,6 +2092,7 @@
       resolvedWeakDigits,
       groupedAnchorPair,
       isAlsVisualStep,
+      isBivalveVisualStep,
       moduleVisualSides,
       alsColorForSide,
       isAhsVisualStep,
@@ -3296,7 +3300,7 @@
       if (/^AIC$/i.test(fullName)
         && (chain.steps || []).some(step => step?.family === 'ALS'
           || String(step?.linkTypeName || '').toUpperCase() === 'ALS_RCC')) {
-        return define('Nightmare', 11 + ringBonus, `AIC + ALS Chain${ringSuffix}`);
+        return define('Fiendish', 11 + ringBonus, `AIC + ALS Chain${ringSuffix}`);
       }
 
       const sizeOne = alsSizeOneChainInfo(chain);
@@ -3347,7 +3351,7 @@
       }
 
       if (/^AIC\s*\+\s*ALS(?:\s*-\s*Chain)?$/i.test(fullName)) {
-        return define('Nightmare', 11 + ringBonus, `AIC + ALS Chain${ringSuffix}`);
+        return define('Fiendish', 11 + ringBonus, `AIC + ALS Chain${ringSuffix}`);
       }
 
       if (/^ALS\s*-\s*Chain$/i.test(fullName)) {
@@ -3378,7 +3382,7 @@
         return define('Brutal', 10.5 + ringBonus, `ALC Chain${ringSuffix}`);
       }
       if (/^ALC\s*-\s*DOF\s+Chain(?:\s+Ring)?$/i.test(fullName)) {
-        return define('Abyssal', 12.5 + ringBonus, `ALC - DOF Chain${ringSuffix}`);
+        return define('Abyssal', 13.5 + ringBonus, `ALC - DOF Chain${ringSuffix}`);
       }
 
       const alcNamed = /^ALC\s*-\s*/i.test(fullName)
@@ -3396,12 +3400,15 @@
         && /^AIC$/i.test(fullName)) {
         return define('Hard', 7, `AIC${ringSuffix}`);
       }
+      if (hierarchyPhase === 'nightmare-full-aic'
+        && /^AIC$/i.test(fullName)) {
+        return define('Nightmare', 12, `AIC${ringSuffix}`);
+      }
 
       const alsNamed = (isAicAls || /^ALS\s*-/i.test(fullName))
         && /(?:Wing|Ring)$/i.test(name);
       if (alsNamed && !/^ALS\s*-\s*(?:XZ|XY|Chain)$/i.test(fullName)) {
-        const label = isAicAls ? `AIC + ALS - ${name}` : `ALS - ${name}`;
-        return define('Demanding', 8 + ringBonus, `${label}${ringSuffix}`);
+        return define('Demanding', 8 + ringBonus, `ALS - ${name}${ringSuffix}`);
       }
 
       const ahsNamed = /^AHS\s*-\s*/i.test(fullName)
@@ -3557,15 +3564,36 @@
         };
       }
       if (tech === 'als-hydra') {
-        const score = 13 + Math.max(0, (step?.hydraRecord?.participants || []).length - 1) * 0.25;
+        const score = 19 + Math.max(0, (step?.hydraRecord?.participants || []).length - 1) * 0.25;
         return {
           ...ratingDefinition(ratingCategoryForValue(score), score, 'ALS - Hydra'),
           hardestMove: step.desc || '',
         };
       }
+      if (tech === 'non-colourable-chromatic-graph'
+        || tech === 'non-colourable-chromatic-graph-als') {
+        const record = step?.chromaticRecord || {};
+        const k = Math.max(2, Number(record.k) || 2);
+        const kModifier = (k - 2) * 0.125;
+        const alsFormModifier = ({
+          1: 0.125,
+          '2a': 0.25,
+          '2b': 0.375,
+          '2c': 0.5,
+          distributed: 0.625,
+        })[record.type] || 0;
+        const score = Number((17 + kModifier + alsFormModifier).toFixed(3));
+        return {
+          ...ratingDefinition(ratingCategoryForValue(score), score,
+            record.source === 'ALS-DOF-0/1' || record.alsNodes
+              ? 'Non-Colourable Chromatic Graphs - ALS'
+              : 'Non-Colourable Chromatic Graphs'),
+          hardestMove: step.desc || '',
+        };
+      }
       if (tech === 'ahs-dof') {
         const dof = Math.max(1, Number(step?.size ?? step?.record?.dof ?? 1));
-        const score = 12.25 + (0.25 * Math.max(0, dof - 1)) + (step?.isRing ? 0.5 : 0);
+        const score = 13.25 + (0.25 * Math.max(0, dof - 1)) + (step?.isRing ? 0.5 : 0);
         return {
           ...ratingDefinition(ratingCategoryForValue(score), score,
             `AHS - DOF${step?.isRing ? ' Ring' : ''}`),
@@ -3573,7 +3601,7 @@
         };
       }
       if (tech === 'ahs-dof-chain') {
-        const score = 14 + (step?.isRing ? 0.5 : 0);
+        const score = 15 + (step?.isRing ? 0.5 : 0);
         return {
           ...ratingDefinition(ratingCategoryForValue(score), score,
             `AHS - DOF Chain${step?.isRing ? ' Ring' : ''}`),
@@ -3581,7 +3609,7 @@
         };
       }
       if (tech === 'als-dof-chain') {
-        const score = 14 + (step?.isRing ? 0.5 : 0);
+        const score = 15 + (step?.isRing ? 0.5 : 0);
         return {
           ...ratingDefinition(ratingCategoryForValue(score), score,
             `ALS - DOF Chain${step?.isRing ? ' Ring' : ''}`),
@@ -3590,7 +3618,7 @@
       }
       if (tech === 'msls') {
         return {
-          ...ratingDefinition('Ascendant', 13, 'MSLS'),
+          ...ratingDefinition('Ascendant', 14, 'MSLS'),
           hardestMove: step.desc || '',
         };
       }
@@ -5993,7 +6021,10 @@
             budget,
             searchPhase,
           );
-          const result = await runSearchWorker('chains', {
+          const workerOperation = searchPhase.dedicatedSearch === 'als-xz'
+            ? 'als-xz'
+            : 'chains';
+          const result = await runSearchWorker(workerOperation, {
             candidateGrid: config.candidateGrid,
             ...config.chain,
           }, {
@@ -6060,6 +6091,16 @@
         chainPhase: { ...chainPhase, hierarchyPhase: name },
         requiredTypes: chainPhase.requiredTypes || ['chains'],
       });
+      const addAlsXz = (name, chainPhase) => phases.push({
+        name,
+        kind: 'als-xz',
+        chainPhase: {
+          ...chainPhase,
+          dedicatedSearch: 'als-xz',
+          hierarchyPhase: name,
+        },
+        requiredTypes: chainPhase.requiredTypes || ['chains', 'als-xz'],
+      });
       const addAlsDof = name => phases.push({
         name,
         kind: 'als-dof',
@@ -6079,6 +6120,15 @@
       const addMsls = name => phases.push({
         name,
         kind: 'msls',
+      });
+      const addChromatic = (name, alsBacked) => phases.push({
+        name,
+        kind: 'chromatic',
+        alsBacked,
+      });
+      const addAlsHydra = name => phases.push({
+        name,
+        kind: 'als-hydra',
       });
       const addAlc = (name, alcType, options = {}) => phases.push({
         name,
@@ -6500,8 +6550,8 @@
         });
         addChain('frustrating-aic', {
           name: 'aic-depth-6',
-          includeAls: true,
-          includeAhs: true,
+          includeAls: false,
+          includeAhs: false,
           strongLinkTypes: [0, 1, 2, 3, 4],
           maxDepth: 8,
           minDepth: 6,
@@ -6562,10 +6612,10 @@
         addDirect('hard-basic-fish', [
           { kind: 'fish', size: 7, k: [0], categories: ['Basic'] },
         ]);
-        // Next/Run All should use the same narrow ALS-XZ route as the
-        // dedicated ALS-XZ button before opening the full mixed-link phase.
+        // Keep ALS-XZ distinct through hierarchy dispatch so the worker uses
+        // the dedicated ALS-XZ operation and its restricted link inventory.
         // Type 4 is the bivalve ALS edge; ALS_RCC supplies the other edge.
-        addChain('hard-als-xz-shortcut', {
+        addAlsXz('hard-als-xz-shortcut', {
           name: 'als-xz-shortcut',
           fullFoxRange: true,
           includeAls: true,
@@ -6579,7 +6629,7 @@
           family: 'als-xz',
           requiredTypes: ['chains', 'als-xz'],
         });
-        addChain('hard-als-xz', {
+        addAlsXz('hard-als-xz', {
           name: 'als-xz-full-depth-2',
           fullFoxRange: true,
           includeAls: true,
@@ -6938,6 +6988,21 @@
         });
       }
       if (profile?.maxRank >= 140) {
+        addChain('fiendish-aic-als', {
+          name: 'aic-als-depth-3-plus',
+          dedicatedSearch: 'aic-als',
+          includeAls: true,
+          includeAhs: false,
+          strongLinkTypes: [0, 1, 2, 3, 4],
+          maxDepth: 8,
+          minDepth: 3,
+          requireAls: true,
+          requireMixed: true,
+          family: 'aic-als',
+          requiredTypes: ['chains', 'aic-als'],
+        });
+      }
+      if (profile?.maxRank >= 150) {
         addChain('nightmare-full-aic', {
           name: 'aic-full-depth',
           includeAls: true,
@@ -6951,26 +7016,203 @@
           family: null,
         });
       }
-      addAlsDof('abyssal-als-dof-family');
-      addAhsDof('abyssal-ahs-dof-family');
-      addAlc('abyssal-alc-dof-chain', 'dof', {
-        maxDepth: 8,
-        minDepth: 3,
-        requiredTypes: ['chains'],
-      });
-      if (profile?.maxRank == null || profile.maxRank >= 160) addMsls('ascendant-msls-family');
-      addAlsDofChain('transcendent-als-dof-chain-family');
-      addAhsDofChain('transcendent-ahs-dof-chain-family');
+      if (profile?.maxRank == null || profile.maxRank >= 160) {
+        addAlsDof('abyssal-als-dof-family');
+        addAhsDof('abyssal-ahs-dof-family');
+        addAlc('abyssal-alc-dof-chain', 'dof', {
+          maxDepth: 8,
+          minDepth: 3,
+          requiredTypes: ['chains'],
+        });
+      }
+      if (profile?.maxRank == null || profile.maxRank >= 170) addMsls('ascendant-msls-family');
+      if (profile?.maxRank == null || profile.maxRank >= 180) {
+        addAlsDofChain('transcendent-als-dof-chain-family');
+        addAhsDofChain('transcendent-ahs-dof-chain-family');
+      }
+      if (profile?.maxRank == null || profile.maxRank >= 190) {
+        addChromatic('singularity-chromatic-graphs', false);
+        addChromatic('singularity-chromatic-graphs-als', true);
+      }
+      if (profile?.maxRank == null || profile.maxRank >= 200) {
+        addAlsHydra('unfathomable-als-hydra-chains');
+      }
 
       return phases.filter(phase => {
         if (profile?.maxRank == null) return true;
-        return !['chain', 'alc'].includes(phase.kind)
+        return !['chain', 'als-xz', 'alc'].includes(phase.kind)
           || profile.maxDepth >= phase.chainPhase.minDepth;
       });
     }
 
     const solverPhaseAllowsType = (phase, enabledTypes, spec = null) =>
       appNamespace.solverPhase.allowsType(phase, enabledTypes, spec, solverFishMoveType);
+
+    function chromaticSearchOptions() {
+      return {
+        unitType: chromaticUnitTypeEl.value,
+        minSectors: chromaticMinSectorsEl.value,
+        maxSectors: chromaticMaxSectorsEl.value,
+        minDigits: chromaticMinDigitsEl.value,
+        maxDigits: chromaticMaxDigitsEl.value,
+        maxCells: chromaticMaxCellsEl.value,
+        maxResults: 120,
+      };
+    }
+
+    function bestChromaticMove(report, phase, profile) {
+      let best = null;
+      for (const [index, record] of (report?.results || []).entries()) {
+        const step = chromaticStepFromResult(record);
+        step.rating = ratingForStep(step);
+        if (profile?.maxRank != null && step.rating.rank > profile.maxRank) continue;
+        step.hierarchyPhase = phase.name;
+        const candidate = { step, chain: null, priority: directMovePriority(step) };
+        if (isHigherPriorityMove(candidate, best)) best = { ...candidate, index };
+      }
+      if (!best) return null;
+      if (phase.alsBacked) {
+        chromaticAlsGraphReport = report;
+        selectedChromaticAlsGraphIndex = best.index;
+        renderChromaticAlsGraphReport();
+      } else {
+        chromaticGraphReport = report;
+        selectedChromaticGraphIndex = best.index;
+        renderChromaticGraphReport();
+      }
+      const { priority, index, ...move } = best;
+      return move;
+    }
+
+    function bestAlsHydraMove(candidateGrid, report, phase, profile) {
+      let best = null;
+      for (const [index, result] of (report?.results || []).entries()) {
+        const step = alsHydraStepFromResult(result, index, candidateGrid);
+        if (!step) continue;
+        if (profile?.maxRank != null && step.rating.rank > profile.maxRank) continue;
+        step.hierarchyPhase = phase.name;
+        const score = Number(step.rating.value) || Number.POSITIVE_INFINITY;
+        if (!best || score < best.score) best = { step, score, index };
+      }
+      if (!best) return null;
+      alsHydraReport = report;
+      selectedAlsHydraIndex = best.index;
+      renderAlsHydraReport();
+      const { step } = best;
+      return { step, chain: null };
+    }
+
+    function findSolverChromaticMove(candidateGrid, phase, profile) {
+      syncVariantSettingsFromControls();
+      core.configureVariants(variantSettings);
+      const engine = phase.alsBacked
+        ? globalThis.StormChromaticAlsCore
+        : globalThis.StormChromaticCore;
+      if (typeof engine?.find !== 'function') return null;
+      return bestChromaticMove(
+        engine.find(candidateGrid, chromaticSearchOptions()), phase, profile);
+    }
+
+    async function findSolverChromaticMoveInWorker(candidateGrid, phase, profile) {
+      const report = await runSearchWorker(phase.alsBacked ? 'chromatic-als' : 'chromatic', {
+        candidateGrid,
+        options: chromaticSearchOptions(),
+      }, { diagnosticPhase: phase.name });
+      return bestChromaticMove(report, phase, profile);
+    }
+
+    async function findSolverAlsHydraMoveInWorker(candidateGrid, phase, profile, budget) {
+      if (!alsDofHydraEnabledEl.checked) return null;
+      const configuredDigits = Number(profile?.alsMaxDigits);
+      const configuredAuxiliary = Number(profile?.alsMaxAuxiliary);
+      const report = await runSearchWorker('hydra-als-dof', {
+        candidateGrid,
+        maxDigits: Math.min(9, Math.max(2,
+          Number.isInteger(configuredDigits) && configuredDigits > 0
+            ? configuredDigits : (Number(alsDofChainMaxDigitsEl.value) || 5))),
+        maxAuxiliary: Math.min(9, Math.max(1,
+          Number.isInteger(configuredAuxiliary) && configuredAuxiliary > 0
+            ? configuredAuxiliary : (Number(alsDofChainMaxAuxiliaryEl.value) || 5))),
+        maxResults: Math.min(5000, Math.max(1,
+          budget === 'generator' ? 500 : (Number(alsDofChainMaxResultsEl.value) || 500))),
+        aicDepth: 4,
+        strongLinkTypes: [0, 1, 2, 3, 4],
+        includeHydra: true,
+        includeAhs: true,
+      }, { diagnosticPhase: phase.name });
+      return bestAlsHydraMove(candidateGrid, report, phase, profile);
+    }
+
+    function findSolverAlsHydraMove(candidateGrid, phase, profile, budget) {
+      if (!alsDofHydraEnabledEl.checked) return null;
+      const maxDigits = Math.min(9, Math.max(2,
+        Number(profile?.alsMaxDigits) || Number(alsDofChainMaxDigitsEl.value) || 5));
+      const maxAuxiliary = Math.min(9, Math.max(1,
+        Number(profile?.alsMaxAuxiliary) || Number(alsDofChainMaxAuxiliaryEl.value) || 5));
+      const maxResults = Math.min(5000, Math.max(1,
+        budget === 'generator' ? 500 : (Number(alsDofChainMaxResultsEl.value) || 500)));
+      const alsList = core.alsConstructor(candidateGrid, {
+        maxSizeDOF: maxDigits - 1,
+        maxSizeFox: maxDigits - 1,
+      });
+      const strongLinkTypes = [0, 1, 2, 3, 4];
+      const strongLinkSet = core.buildStrongLinks(candidateGrid, { strongLinkTypes });
+      const alsLinkSet = core.buildAlsLinks(candidateGrid, {
+        alsList,
+        strictSingleCommon: true,
+      });
+      const ahsList = core.ahsConstructor(candidateGrid, {
+        maxSize: Math.max(1, maxDigits - 1),
+        maxSizeFox: Math.max(1, maxDigits - 1),
+      });
+      const ahsLinkSet = core.buildAhsLinks(candidateGrid, {
+        ahsList,
+        strongLinkSet,
+        minDof: 1,
+        maxDof: 3,
+        strictSingleCommon: false,
+        maxLinks: 5000,
+      });
+      const participants = [];
+      const maxParticipants = 2000;
+      for (const auxiliary of alsList) {
+        if (participants.length >= maxParticipants) break;
+        const report = core.findAicChains(candidateGrid, {
+          strongLinkSet,
+          alsList,
+          alsLinkSet,
+          includeAls: true,
+          ahsList,
+          ahsLinkSet,
+          includeAhs: true,
+          collectAlsBranches: true,
+          maxAlsBranches: maxParticipants,
+          strongLinkTypes,
+          startNodeIds: [auxiliary.uniqueID || auxiliary.id],
+          startNodeCells: auxiliary.alsAllCells || auxiliary.cells || [],
+          maxDepth: 4,
+          maxChains: 500,
+        });
+        const chains = [...(report.chains || []), ...(report.alsBranches || [])];
+        participants.push(...core.hydraParticipantsFromAicChains(
+          candidateGrid,
+          chains,
+          alsList,
+          alsLinkSet,
+          { maxParticipants: maxParticipants - participants.length, forChaining: true },
+        ));
+      }
+      const report = core.findHydraAlsDof(candidateGrid, {
+        alsList,
+        participants,
+        maxDigits,
+        maxAuxiliary,
+        maxResults,
+        requireVerifiedParticipants: true,
+        includeHydra: true,
+      });
+      return bestAlsHydraMove(candidateGrid, report, phase, profile);
+    }
 
     function fishPhaseStep(candidateGrid, fixedGrid, spec, enabledTypes, profile) {
       let best = null;
@@ -7110,6 +7352,21 @@
       const enabledTypes = currentSolverMoveTypes(profile?.moveTypes);
       for (const phase of phases) {
         activeHierarchyPhase = phase.name;
+        if (phase.kind === 'chromatic') {
+          if (!solverPhaseAllowsType(phase, enabledTypes)) continue;
+          const chromatic = findSolverChromaticMove(candidateGrid, phase, profile);
+          if (chromatic?.step) return chromatic;
+          continue;
+        }
+        // ALS-Hydra's verified chain participants are constructed in the
+        // worker search path; the synchronous fallback cannot reproduce that
+        // inventory and must not reinterpret this as an ordinary chain phase.
+        if (phase.kind === 'als-hydra') {
+          if (!solverPhaseAllowsType(phase, enabledTypes)) continue;
+          const hydra = findSolverAlsHydraMove(candidateGrid, phase, profile, budget);
+          if (hydra?.step) return hydra;
+          continue;
+        }
         if (phase.kind === 'alc') {
           if (!solverPhaseAllowsType(phase, enabledTypes)) continue;
           const alc = findSolverAlcMove(
@@ -7122,6 +7379,21 @@
           );
           if (alc?.incomplete) return alc;
           if (alc?.step) return alc;
+          continue;
+        }
+        if (phase.kind === 'als-xz') {
+          if (!solverPhaseAllowsType(phase, enabledTypes)) continue;
+          const alsXz = findSolverChainMove(
+            candidateGrid,
+            fixedGrid,
+            budget,
+            expectedSolution,
+            profile,
+            null,
+            phase.chainPhase,
+          );
+          if (alsXz?.incomplete) return alsXz;
+          if (alsXz?.step) return alsXz;
           continue;
         }
         if (phase.kind === 'als-dof') {
@@ -7186,6 +7458,18 @@
       const enabledTypes = currentSolverMoveTypes(profile?.moveTypes);
       for (const phase of phases) {
         activeHierarchyPhase = phase.name;
+        if (phase.kind === 'chromatic') {
+          if (!solverPhaseAllowsType(phase, enabledTypes)) continue;
+          const chromatic = await findSolverChromaticMoveInWorker(candidateGrid, phase, profile);
+          if (chromatic?.step) return chromatic;
+          continue;
+        }
+        if (phase.kind === 'als-hydra') {
+          if (!solverPhaseAllowsType(phase, enabledTypes)) continue;
+          const hydra = await findSolverAlsHydraMoveInWorker(candidateGrid, phase, profile, budget);
+          if (hydra?.step) return hydra;
+          continue;
+        }
         if (phase.kind === 'alc') {
           if (!solverPhaseAllowsType(phase, enabledTypes)) continue;
           const alc = await findSolverAlcMoveInWorker(
@@ -7198,6 +7482,21 @@
           );
           if (alc?.incomplete) return alc;
           if (alc?.step) return alc;
+          continue;
+        }
+        if (phase.kind === 'als-xz') {
+          if (!solverPhaseAllowsType(phase, enabledTypes)) continue;
+          const alsXz = await findSolverChainMoveInWorker(
+            candidateGrid,
+            fixedGrid,
+            expectedSolution,
+            profile,
+            budget,
+            null,
+            phase.chainPhase,
+          );
+          if (alsXz?.incomplete) return alsXz;
+          if (alsXz?.step) return alsXz;
           continue;
         }
         if (phase.kind === 'als-dof') {
@@ -8070,7 +8369,7 @@
     }
 
     function interactiveTechniqueProfile() {
-      const profile = generationTechniqueProfile('Transcendent') || {};
+      const profile = generationTechniqueProfile('Unfathomable') || {};
       const configuredDigits = Number(alsDofMaxDigitsEl.value);
       const configuredAuxiliary = Number(alsDofMaxAuxiliaryEl.value);
       const configuredDepth = Math.min(8, Math.max(2, Number(chainDepthEl.value) || 8));
@@ -8081,7 +8380,8 @@
         ...profile,
         // Run All/Next use the same hierarchy as rating, while the checkboxes
         // still control which techniques are actually enabled interactively.
-        moveTypes: [...currentSolverMoveTypes()],
+        moveTypes: [...new Set([...currentSolverMoveTypes(),
+          'chromatic', 'chromatic-als', 'als-hydra'])],
         interactiveMaxDepth: configuredDepth,
         interactiveStrongLinkTypes: configuredStrongTypes,
         interactiveIncludeAls: chainAlsRccEl.checked,
@@ -9637,7 +9937,10 @@
       solutionEureka: solutionCopyEurekaEl,
       solutionList: solutionCopyListEl,
       copyPuzzle: copyPuzzleString,
-      encodePuzzle: () => core.encode(originalPuzzle),
+      encodePuzzle: () => {
+        const text = core.encode(originalPuzzle);
+        return copy81EmptyAsZeroEl.checked ? text.replace(/\./g, '0') : text;
+      },
       current729: current729String,
       linkPuzzle: linkState.puzzleLink,
       cleanEureka: cleanCopiedEureka,

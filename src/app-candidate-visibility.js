@@ -1,9 +1,11 @@
 /* StormDoku chain-candidate visibility rules. */
 (function installCandidateVisibility(global) {
   const app = global.StormDokuApp = global.StormDokuApp || {};
-  function create({ hasCandidate, getDofRecord, getSelectedChain, getHydraRecord, getLastRemoved }) {
+  function create({ hasCandidate, getDofRecord, getSelectedChain, getSelectedChainCandidateGrid, getHydraRecord, getLastRemoved }) {
     function isVisible(cell, digit) {
       if (hasCandidate(cell, digit)) return true;
+      const chainGrid = getSelectedChainCandidateGrid?.();
+      if ((chainGrid?.[cell] || []).includes(digit)) return true;
       const dofRecord = getDofRecord();
       const displayed = getSelectedChain() || (dofRecord?.hasHydra ? dofRecord : getHydraRecord());
       if (displayed?.hasHydra || getHydraRecord()) return false;

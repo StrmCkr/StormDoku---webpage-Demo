@@ -6,8 +6,9 @@
     Any: -1, Lulz: 0, 'Extremely Easy': 10, 'Very Easy': 20,
     'Modestly Easy': 30, Easy: 40, Moderate: 50, Tough: 60,
     Challenging: 70, Irritating: 80, Frustrating: 90, Hard: 100,
-    Demanding: 110, Expert: 120, Brutal: 130, Nightmare: 140,
-    Abyssal: 150, Ascendant: 160, Transcendent: 170,
+    Demanding: 110, Expert: 120, Brutal: 130, Fiendish: 140,
+    Nightmare: 150, Abyssal: 160, Ascendant: 170, Transcendent: 180,
+    Singularity: 190, Unfathomable: 200,
     Unknown: Number.POSITIVE_INFINITY,
   });
 
@@ -26,10 +27,13 @@
     { category: 'Demanding', min: 8, max: 8.999 },
     { category: 'Expert', min: 9, max: 9.999 },
     { category: 'Brutal', min: 10, max: 10.999 },
-    { category: 'Nightmare', min: 11, max: 11.999 },
-    { category: 'Abyssal', min: 12, max: 12.999 },
-    { category: 'Ascendant', min: 13, max: 13.999 },
-    { category: 'Transcendent', min: 14, max: 15.999 },
+    { category: 'Fiendish', min: 11, max: 11.999 },
+    { category: 'Nightmare', min: 12, max: 12.999 },
+    { category: 'Abyssal', min: 13, max: 13.999 },
+    { category: 'Ascendant', min: 14, max: 14.999 },
+    { category: 'Transcendent', min: 15, max: 16.999 },
+    { category: 'Singularity', min: 17, max: 18.999 },
+    { category: 'Unfathomable', min: 19, max: Number.POSITIVE_INFINITY },
   ]);
 
   const colors = Object.freeze({
@@ -37,8 +41,9 @@
     'Modestly Easy': 'green', Easy: 'blue', Moderate: 'blue',
     Tough: 'yellow', Challenging: 'yellow', Irritating: 'red',
     Frustrating: 'red', Hard: 'purple', Demanding: 'purple',
-    Expert: 'violet', Brutal: 'violet', Nightmare: 'brown',
+    Expert: 'violet', Brutal: 'violet', Fiendish: 'brown', Nightmare: 'brown',
     Abyssal: 'brown', Ascendant: 'black', Transcendent: 'black',
+    Singularity: 'black', Unfathomable: 'black',
     Any: 'unknown', Unknown: 'unknown',
   });
 

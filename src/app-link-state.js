@@ -16,7 +16,7 @@
       const url = new URL(global.location.href);
       url.search = '';
       url.hash = '';
-      url.searchParams.set('grid', text);
+      url.searchParams.set('grid', String(text).replace(/\./g, '0'));
       const activeVariants = Object.entries(variantSettings)
         .filter(([, enabled]) => enabled)
         .map(([name]) => variantUrlNames[name] || name);

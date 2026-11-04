@@ -41,9 +41,10 @@
       ['challenging', 'Challenging'], ['irritating', 'Irritating'],
       ['frustrating', 'Frustrating'], ['hard', 'Hard'],
       ['demanding', 'Demanding'], ['expert', 'Expert'],
-      ['brutal', 'Brutal'], ['nightmare', 'Nightmare'],
+      ['brutal', 'Brutal'], ['fiendish', 'Fiendish'], ['nightmare', 'Nightmare'],
       ['abyssal', 'Abyssal'], ['ascendant', 'Ascendant'],
       ['transcendent', 'Transcendent'],
+      ['singularity', 'Singularity'], ['unfathomable', 'Unfathomable'],
     ];
     return labels.find(([prefix]) => text.startsWith(prefix))?.[1]
       || value || 'starting';

@@ -6,6 +6,7 @@
     const { elements, state, actions } = context;
 
     return function runChainBuild() {
+      const candidateGrid = state.cand.map(candidates => [...candidates]);
       const searchToken = actions.setBusy(true);
       actions.setStatus('Walking chains...');
 
@@ -19,28 +20,28 @@
             .filter(index => index !== null);
           const includeAlmostFish = strongLinkTypes.includes(7);
 
-          state.strongLinkReport = await actions.runCoreSearch('buildStrongLinks', state.cand, {
+          state.strongLinkReport = await actions.runCoreSearch('buildStrongLinks', candidateGrid, {
             includeAlmostFish,
             almostFish: includeAlmostFish
               ? { grid: [...(state.puzzle || [])], ...actions.currentAlmostFishOptions(), fishXorOnly: true }
               : {},
           });
-          state.alsReport = includeAlsRcc ? (await actions.runCoreSearch('alsConstructor', state.cand, {
+          state.alsReport = includeAlsRcc ? (await actions.runCoreSearch('alsConstructor', candidateGrid, {
             ...(nodeLimits.alsMaxSizeDOF == null ? {} : { maxSizeDOF: nodeLimits.alsMaxSizeDOF }),
             ...(nodeLimits.alsMaxSizeFox == null ? {} : { maxSizeFox: nodeLimits.alsMaxSizeFox }),
           })).filter(als => nodeLimits.alsMaxCells == null
             || (als.alsAllCells || []).length <= nodeLimits.alsMaxCells) : null;
-          state.alsLinkReport = includeAlsRcc ? await actions.runCoreSearch('buildAlsLinks', state.cand, {
+          state.alsLinkReport = includeAlsRcc ? await actions.runCoreSearch('buildAlsLinks', candidateGrid, {
             alsList: state.alsReport,
             strictSingleCommon: true,
           }) : null;
-          const ahsList = includeAhs ? (await actions.runCoreSearch('ahsConstructor', state.cand, {
+          const ahsList = includeAhs ? (await actions.runCoreSearch('ahsConstructor', candidateGrid, {
             maxSize: nodeLimits.ahsMaxDigits ?? 8,
             maxSizeFox: nodeLimits.ahsMaxFox ?? 7,
           })).filter(ahs => nodeLimits.ahsMaxCells == null
             || (ahs.ahsAllCells || []).length <= nodeLimits.ahsMaxCells) : null;
           state.ahsReport = ahsList;
-          const ahsLinkSet = includeAhs ? await actions.runCoreSearch('buildAhsLinks', state.cand, {
+          const ahsLinkSet = includeAhs ? await actions.runCoreSearch('buildAhsLinks', candidateGrid, {
             ahsList,
             strongLinkSet: state.strongLinkReport,
             minDof: 1,
@@ -65,7 +66,7 @@
           actions.renderAlsReport();
           actions.renderAlsLinkReport();
 
-          state.chainReport = await actions.runCoreSearch('findAicChains', state.cand, {
+          state.chainReport = await actions.runCoreSearch('findAicChains', candidateGrid, {
             strongLinkSet: state.strongLinkReport,
             alsList: state.alsReport,
             alsLinkSet: state.alsLinkReport,
@@ -84,6 +85,7 @@
             maxBranching: 500,
             maxAlsLinks: Number.MAX_SAFE_INTEGER,
           });
+          state.chainReport = { ...state.chainReport, candidateGrid };
 
           state.alsSearchFamily = null;
           state.selectedChainIndex = state.chainReport.chains.length ? 0 : null;

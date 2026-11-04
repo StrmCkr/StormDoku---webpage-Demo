@@ -50,12 +50,15 @@
       addAt(100, 'als-xz', 'ahs-xz', 'alc-xz');
       addAt(100, 'remote-pair', 'hidden-xy-chain', 'hidden-remote-pair');
       addAt(110, 'als-named', 'ahs-named', 'alc-named', 't-als-xz', 't-ahs-xz', 't-alc-xz', 'als-xy', 'ahs-xy', 'alc-xy');
-      addAt(120, 't-als-xy', 't-ahs-xy', 't-alc-xy', 'aic-als');
+      addAt(120, 't-als-xy', 't-ahs-xy', 't-alc-xy');
       addAt(130, 'als-chain', 'ahs-chain', 'alc-chain');
-      addAt(150, 'als-dof', 'ahs-dof', 'alc-dof', 'dds', 'adds');
-      addAt(160, 'msls');
-      addAt(170, 'ahs-dof-chain');
-      addAt(170, 'als-dof-chain');
+      addAt(140, 'aic-als');
+      addAt(160, 'als-dof', 'ahs-dof', 'alc-dof', 'dds', 'adds');
+      addAt(170, 'msls');
+      addAt(180, 'ahs-dof-chain');
+      addAt(180, 'als-dof-chain');
+      addAt(190, 'chromatic', 'chromatic-als');
+      addAt(200, 'als-hydra');
 
       const strongLinkTypes = maxRank >= 50 ? [0, 1, 2, 3, 4]
         : maxRank >= 30 ? [0, 1, 2, 3]
@@ -67,11 +70,11 @@
 
       return { moveTypes, maxRank, maxDepth, maxFishSize, subsetSizes, basicFishSizes, strongLinkTypes,
         includeAlsRcc: maxRank >= 50,
-        alsMaxDigits: maxRank >= 170 ? 9 : maxRank >= 150 ? 5 : null,
-        alsMaxSizeDOF: maxRank >= 150 ? Math.min(8, Math.max(1, Math.floor((maxRank - 140) / 2))) : null,
-        alsMaxSizeFox: maxRank >= 150 ? Math.min(8, Math.max(2, Math.floor((maxRank - 140) / 2) + 1)) : null,
-        alsMaxAuxiliary: maxRank >= 170 ? 8 : maxRank >= 150 ? 2 : null,
-        alsSearchLimit: maxRank >= 150,
+        alsMaxDigits: maxRank >= 180 ? 9 : maxRank >= 160 ? 5 : null,
+        alsMaxSizeDOF: maxRank >= 160 ? Math.min(8, Math.max(1, Math.floor((maxRank - 150) / 2))) : null,
+        alsMaxSizeFox: maxRank >= 160 ? Math.min(8, Math.max(2, Math.floor((maxRank - 150) / 2) + 1)) : null,
+        alsMaxAuxiliary: maxRank >= 180 ? 8 : maxRank >= 160 ? 2 : null,
+        alsSearchLimit: maxRank >= 160,
         scalingTier: Math.max(0, Math.floor(maxRank / 10)) };
     }
 

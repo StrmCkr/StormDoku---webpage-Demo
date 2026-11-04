@@ -3,6 +3,10 @@
   const app = global.StormDokuApp = global.StormDokuApp || {};
 
   function allowsType(phase, enabledTypes, spec, fishMoveType) {
+    if (phase.kind === 'chromatic') {
+      return enabledTypes.has(phase.alsBacked ? 'chromatic-als' : 'chromatic');
+    }
+    if (phase.kind === 'als-hydra') return enabledTypes.has('als-hydra');
     if (phase.kind === 'als-dof') return ['als-dof', 'dds', 'adds'].some(type => enabledTypes.has(type));
     if (phase.kind === 'ahs-dof') return enabledTypes.has('ahs-dof');
     if (phase.kind === 'als-dof-chain') return enabledTypes.has('als-dof-chain');
@@ -13,6 +17,9 @@
         || (phase.requiredTypes.includes('chains')
           && phase.requiredTypes.slice(1).some(type => enabledTypes.has(type))
           && enabledTypes.has('chains'));
+    }
+    if (phase.kind === 'als-xz') {
+      return enabledTypes.has('chains') && enabledTypes.has('als-xz');
     }
     if (phase.kind === 'alc') return enabledTypes.has('alc-' + phase.alcType);
     if (spec?.kind === 'fish') {
@@ -245,14 +252,18 @@
     const configuredDepth = Number(profile?.interactiveMaxDepth);
     return {
       ...(profile || {}),
-      includeAlsRcc: phase.includeAls === true
-        && profile?.interactiveIncludeAls !== false,
-      includeAhs: phase.includeAhs === true
-        && profile?.interactiveIncludeAhs !== false,
+      includeAlsRcc: phase.dedicatedSearch === 'als-xz'
+        || phase.dedicatedSearch === 'aic-als'
+        || (phase.includeAls === true && profile?.interactiveIncludeAls !== false),
+      includeAhs: phase.dedicatedSearch === 'als-xz'
+        ? false
+        : phase.includeAhs === true && profile?.interactiveIncludeAhs !== false,
       ahsMaxCells: phase.ahsMaxCells ?? profile?.ahsMaxCells ?? null,
-      strongLinkTypes: selectedStrongTypes
-        ? phaseStrongTypes.filter(type => selectedStrongTypes.has(type))
-        : phaseStrongTypes,
+      strongLinkTypes: ['als-xz', 'aic-als'].includes(phase.dedicatedSearch)
+        ? phaseStrongTypes
+        : selectedStrongTypes
+          ? phaseStrongTypes.filter(type => selectedStrongTypes.has(type))
+          : phaseStrongTypes,
       maxDepth: Number.isInteger(configuredDepth)
         ? Math.min(phase.maxDepth, configuredDepth)
         : phase.maxDepth,

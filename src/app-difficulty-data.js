@@ -165,28 +165,44 @@
           ],
         },
         {
-          category: 'NIGHTMARE', score: '11 to 11.5', items: [
-            ['Full AIC, beyond depth 3', '11 + link / ALS_RCC / AHS_RCC modifiers'],
+          category: 'FIENDISH', score: '11 to 11.999', items: [
+            ['AIC + ALS, strong-link types 0-4 with ALS_RCC nodes', '11 + link / ALS_RCC modifiers'],
           ],
         },
         {
-          category: 'ABYSSAL', score: '12 to 12.999', items: [
-            ['ALS-DOF, progressively scaled DOF/digits', '12 + 0.25 * (DOF - 1)'],
+          category: 'NIGHTMARE', score: '12 to 12.999', items: [
+            ['Full AIC, beyond depth 3', '12 + link / ALS_RCC / AHS_RCC modifiers'],
+          ],
+        },
+        {
+          category: 'ABYSSAL', score: '13 to 13.999', items: [
+            ['ALS-DOF, progressively scaled DOF/digits', '13 + 0.25 * (DOF - 1)'],
             ['DDS ring, progressively scaled DOF/digits', 'ALS-DOF + 0.5'],
             ['ADDS, progressively scaled DOF/digits', 'DDS + 0.25'],
-            ['AHS-DOF, progressively scaled DOF/cells', '12.25 + 0.25 * (DOF - 1)'],
-            ['ALC-DOF, progressively scaled mixed roots', '12.5 + scaling'],
+            ['AHS-DOF, progressively scaled DOF/cells', '13.25 + 0.25 * (DOF - 1)'],
+            ['ALC-DOF, progressively scaled mixed roots', '13.5 + scaling'],
           ],
         },
         {
-          category: 'ASCENDANT', score: '13 to 13.999', items: [
-            ['MSLS, scaled multi-sector locked sets', '13 + link / cover modifiers'],
+          category: 'ASCENDANT', score: '14 to 14.999', items: [
+            ['MSLS, scaled multi-sector locked sets', '14 + link / cover modifiers'],
           ],
         },
         {
-          category: 'TRANSCENDENT', score: '14 to 15.999', items: [
-            ['ALS-DOF Chaining, progressively scaled depth/digits/DOF', '14+'],
-            ['AHS-DOF Chain, extended scope', '14+'],
+          category: 'TRANSCENDENT', score: '15 to 16.999', items: [
+            ['ALS-DOF Chaining, progressively scaled depth/digits/DOF', '15+'],
+            ['AHS-DOF Chain, extended scope', '15+'],
+          ],
+        },
+        {
+          category: 'SINGULARITY', score: '17 to 18.999', items: [
+            ['Non-Colourable Chromatic Graphs', '17 + 0.125 × (K − 2)'],
+            ['Non-Colourable Chromatic Graphs - ALS', 'Same K scale; ALS form adds 0.125 to 0.625'],
+          ],
+        },
+        {
+          category: 'UNFATHOMABLE', score: '19+', items: [
+            ['ALS-Hydra Chains', '19 + 0.25 per additional participant'],
           ],
         },
         {

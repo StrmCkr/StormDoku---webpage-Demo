@@ -2870,9 +2870,13 @@
   function prefixedNamedWingName(name, steps) {
     // ALS_RCC already identifies the module count; ALS named forms do not
     // need the numeric L(n)/M(n)/H(n) suffix used by ordinary AIC wings.
-    const normalised = steps.some(isAlsRccStep)
+    const hasAlsRcc = steps.some(isAlsRccStep);
+    const normalised = hasAlsRcc
       ? name.replace(/^([LMH])\(\d+\)(-Wing|-Ring)$/, '$1$2')
       : name;
+    // A named ALS wing remains in the ALS class when its chain includes
+    // ordinary links. The AIC + ALS prefix is for unclassified mixed chains.
+    if (hasAlsRcc) return `ALS - ${normalised}`;
     return prefixedStructureName(normalised, steps);
   }
 
@@ -3067,7 +3071,6 @@
     const strongWing = classifyStrongWing(steps);
     if (strongWing) return prefixedStructureName(strongWing, steps);
     if (pattern === 'VVV' && digits.length === 3) return prefixedStructureName('XY-Wing', steps);
-    if (pattern === 'VLLVLL') return prefixedStructureName('T-Transport', steps);
     if (semanticDepth === 3 && semanticPattern === 'LVL' && (isBivalveSplitWing(steps)
       || isAlsSplitWing(steps) || isAhsSplitWing(steps))) {
       return prefixedNamedWingName('S-Wing', steps);
@@ -3929,6 +3932,13 @@
 
   function orientedDisplaySteps(steps) {
     const display = [...(steps || [])].map(step => ({ ...step }));
+    const reverse = step => ({
+      ...step,
+      entrySide: step.exitSide,
+      exitSide: step.entrySide,
+      entry: { ...step.exit, side: 'left' },
+      exit: { ...step.entry, side: 'right' },
+    });
     const sideSees = (left, right) => {
       const leftCells = left?.cells || [];
       const rightCells = right?.cells || [];
@@ -3954,13 +3964,20 @@
       const exitAligned = exitExact
         || (!entryExact && sideSees(current.exit, next.entry));
       if (entryAligned && !exitAligned) {
-        display[index] = {
-          ...current,
-          entrySide: current.exitSide,
-          exitSide: current.entrySide,
-          entry: { ...current.exit, side: 'left' },
-          exit: { ...current.entry, side: 'right' },
-        };
+        display[index] = reverse(current);
+        continue;
+      }
+
+      // Orient the next undirected strong link from the endpoint that forms
+      // the weak handoff, so Eureka text and the overlay follow the same walk.
+      const nextEntryExact = sameEurekaLocation(current.exit, next.entry);
+      const nextExitExact = sameEurekaLocation(current.exit, next.exit);
+      const nextEntryAligned = nextEntryExact
+        || (!nextExitExact && sideSees(current.exit, next.entry));
+      const nextExitAligned = nextExitExact
+        || (!nextEntryExact && sideSees(current.exit, next.exit));
+      if (!entryAligned && !exitAligned && nextExitAligned && !nextEntryAligned) {
+        display[index + 1] = reverse(next);
       }
     }
     return display;

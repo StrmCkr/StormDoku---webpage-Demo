@@ -4,25 +4,25 @@
  * the page and returns structured-cloneable search results to the UI thread.
  */
 importScripts(
-  './browser-core.js?v=20261103-02',
-  './set-tools-core.js?v=20261103-02',
-  './pom-core.js?v=20261103-02',
-  './als-core.js?v=20261103-02',
-  './als-dof-core.js?v=20261103-02',
-  './hydra-core.js?v=20261103-02',
-  './als-link-core.js?v=20261103-02',
-  './ahs-core.js?v=20261103-02',
-  './ahs-link-core.js?v=20261103-02',
-  './subset-report-core.js?v=20261103-02',
-  './mini-sectors-core.js?v=20261103-02',
-  './strong-link-core.js?v=20261103-02',
-  './chain-core.js?v=20261103-02',
-  './alc-core.js?v=20261103-02',
-  './ahs-xy-core.js?v=20261103-02',
-  './ahs-dof-core.js?v=20261103-02',
-  './msls-core.js?v=20261103-02',
-  './chromatic-core.js?v=20261103-02',
-  './chromatic-als-core.js?v=20261103-02',
+  './browser-core.js?v=20261104-17',
+  './set-tools-core.js?v=20261104-17',
+  './pom-core.js?v=20261104-17',
+  './als-core.js?v=20261104-17',
+  './als-dof-core.js?v=20261104-17',
+  './hydra-core.js?v=20261104-17',
+  './als-link-core.js?v=20261104-17',
+  './ahs-core.js?v=20261104-17',
+  './ahs-link-core.js?v=20261104-17',
+  './subset-report-core.js?v=20261104-17',
+  './mini-sectors-core.js?v=20261104-17',
+  './strong-link-core.js?v=20261104-17',
+  './chain-core.js?v=20261104-17',
+  './alc-core.js?v=20261104-17',
+  './ahs-xy-core.js?v=20261104-17',
+  './ahs-dof-core.js?v=20261104-17',
+  './msls-core.js?v=20261104-17',
+  './chromatic-core.js?v=20261104-17',
+  './chromatic-als-core.js?v=20261104-17',
 );
 
 const core = globalThis.StormDoku;
@@ -313,6 +313,16 @@ function runChains(payload, onProgress = null) {
     chains: report.chains || [],
     stats: report.stats || {},
   };
+}
+
+function runAlsXz(payload, onProgress = null) {
+  return runChains({
+    ...payload,
+    includeAls: true,
+    includeAhs: false,
+    alsLinkMode: 'xz-only',
+    alsModuleKinds: ['ALS_XZ'],
+  }, onProgress);
 }
 
 function runChromaticChainLinks(payload) {
@@ -774,6 +784,7 @@ self.onmessage = event => {
     if (type === 'simple') result = runSimple(payload || {});
     else if (type === 'fish') result = runFish(payload || {});
     else if (type === 'chains') result = runChains(payload || {}, onProgress);
+    else if (type === 'als-xz') result = runAlsXz(payload || {}, onProgress);
     else if (type === 'chromatic-chain-links') result = runChromaticChainLinks(payload || {});
     else if (type === 'hydra-als-dof') result = runHydraAlsDof(payload || {}, onProgress);
     else if (type === 'hydra-ahs-dof') result = runHydraAhsDof(payload || {}, onProgress);

@@ -5,7 +5,7 @@
   function create({
     alsColorMapForChain, ahsColorMapForChain, orientedDisplayChainSteps,
     addChainSideMarks, chainSideAtoms, visibleChainEntrySide, visibleChainExitSide,
-    atomKey, resolvedWeakDigits, groupedAnchorPair, isAlsVisualStep,
+    atomKey, resolvedWeakDigits, groupedAnchorPair, isAlsVisualStep, isBivalveVisualStep,
     moduleVisualSides, alsColorForSide, isAhsVisualStep, ahsColorForSide,
   }) {
         function chainHighlights(chain) {
@@ -168,13 +168,16 @@
           const firstEntry = displaySteps[0].entry || {};
           const endpointDigits = new Set((chain.eliminations || []).map(item => item.digit));
           for (const atom of chainSideAtoms(firstEntry, null, false)) {
-            if (!isAlsVisualStep(displaySteps[0])) startMarks.add(atom);
+            if (!isAlsVisualStep(displaySteps[0]) || isBivalveVisualStep(displaySteps[0])) {
+              startMarks.add(atom);
+            }
           }
           for (const cell of firstEntry.cells || []) startCells.add(cell);
     
           const terminal = displaySteps[displaySteps.length - 1].exit || {};
           for (const atom of chainSideAtoms(terminal, null, false)) {
-            if (!isAlsVisualStep(displaySteps[displaySteps.length - 1])) endMarks.add(atom);
+            if (!isAlsVisualStep(displaySteps[displaySteps.length - 1])
+              || isBivalveVisualStep(displaySteps[displaySteps.length - 1])) endMarks.add(atom);
           }
           for (const cell of terminal.cells || []) endCells.add(cell);
     
