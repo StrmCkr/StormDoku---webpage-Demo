@@ -388,7 +388,26 @@
 
   function logicalDepth(steps) {
     return steps.reduce((depth, step, index) => {
-      if (!isExpandedRcc(step.view)) return depth + 1;
+      if (!isExpandedRcc(step.view)) {
+        const raw = step.view.node.raw;
+        if (step.view.node.family === 'ALS'
+          && raw.standaloneAls
+          && raw.standaloneEntrySubset
+          && raw.standaloneExitSubset) {
+          const alsId = raw.standaloneEntrySubset.uniqueID;
+          const hasPriorAlsNode = alsId != null && steps.slice(0, index).some(previous => {
+            const previousRaw = previous.view.node.raw;
+            return previousRaw.LS_L?.uniqueID === alsId
+              || previousRaw.LS_R?.uniqueID === alsId
+              || previousRaw.standaloneEntrySubset?.uniqueID === alsId;
+          });
+          // The standalone ALS edge exposes both the ALS node and its RCC
+          // cell/group handoff. Count the handoff independently even when
+          // its cells overlap the ALS; only an already-seen ALS ID is shared.
+          return depth + (hasPriorAlsNode ? 1 : 2);
+        }
+        return depth + 1;
+      }
       // A shared middle ALS belongs to both adjacent modules but counts once.
       if (index > 0 && alsModuleConnection(steps[index - 1].view, step.view)) {
         return depth + 1;
@@ -1922,11 +1941,13 @@
       // The ERI annotation on a Cell↔Group link identifies the grouped
       // XOR side explicitly. That side is the transversal surface; the
       // ordinary link boundary is not a replacement for it.
-      sides.push({
-        cells: [...(construction.activeCells || [])],
-        digits: [...(step.view.entry.digits || [])],
-        intersectionCell: construction.intersectionCell,
-      });
+      for (const cells of [construction.activeCells, construction.linkedCells]) {
+        sides.push({
+          cells: [...(cells || [])].sort((a, b) => a - b),
+          digits: [...(step.view.entry.digits || [])],
+          intersectionCell: construction.intersectionCell,
+        });
+      }
     }
 
     for (let leftIndex = 0; leftIndex < sides.length; leftIndex++) {
@@ -2973,7 +2994,6 @@
     const semanticPattern = isRing
       ? semanticValuePattern(steps)
       : normalisedSemanticOpenPattern(steps);
-    semanticDepth = semanticPattern.length;
     const groupedPrefix = structurePrefix(steps);
     if (isRing) {
       const pattern = chainValuePattern(steps);
@@ -3045,14 +3065,14 @@
     }
 
     const pattern = normalisedOpenPattern(steps);
-    if (isTransportWWing(steps)) return prefixedStructureName('W-Wing - Transport', steps);
+    if (isTransportWWing(steps)) return prefixedNamedWingName('W-Wing - Transport', steps);
     // A V-L-V chain with two equal bivalve endpoints is a W-Wing even when
     // the middle strong link is an ERI. Classify this before the broader
     // transport-ALS fallback, which also counts bivalves as size-1 ALS nodes.
     if (steps.length === 3
       && pattern === 'VLV'
       && hasWRingValueNodes(steps)) {
-      return prefixedStructureName('W-Wing', steps);
+      return prefixedNamedWingName('W-Wing', steps);
     }
     if (isTransportAlsXz(steps)) return 'T-ALS-XZ';
     if (isTransportAlsXy(steps)) return 'T-ALS-XY';
@@ -3314,7 +3334,7 @@
     const eriSubclass = terminalStructureName
       || classifyEriWingSubclass(publicSteps);
     const structureName = terminalStructureName
-      || classifyChain(publicSteps, publicIsRing, ringWeak?.digit ?? null, publicSteps.length);
+      || classifyChain(publicSteps, publicIsRing, ringWeak?.digit ?? null, publicDepth);
     const terminalFamily = eriSubclass ? 'Local - Wing | Ring' : null;
     const terminalWing = eriSubclass ? (isRing ? 'Ring' : 'Wing') : null;
     const terminalRank = eriSubclass ? 'L(1)' : null;
@@ -3702,7 +3722,7 @@
               const steps = nextSteps.map(publicStep);
               alsBranches.set(key, {
                 length: nextDepth,
-                structureName: classifyChain(steps, false, null, steps.length),
+                structureName: classifyChain(steps, false, null, logicalDepth(steps)),
                 isRing: false,
                 steps,
                 eliminations: openElims,
@@ -3987,6 +4007,15 @@
     return left.side && right.side && sameEurekaLocation(left.side, right.side);
   }
 
+  function eurekaAlsNodeKey(subset) {
+    if (!subset) return null;
+    const cells = sortedUnique(asNumbers(subset.cells));
+    const digits = sortedUnique(asNumbers(subset.digits));
+    return cells.length && digits.length
+      ? `ALS|${cells.join(',')}|${digits.join('')}`
+      : null;
+  }
+
   function rccSubsetEurekaUnits(step) {
     const module = step.module;
     if (step.family !== 'ALS'
@@ -4026,12 +4055,12 @@
     return [
       {
         text: `(${eurekaDigitsText(entryRemainder)}=${eurekaDigitsText(restrictedDigits)})${core.cellGroupName(entrySubset.cells)}`,
-        eurekaNodeKey: entrySubset.id,
+        eurekaNodeKey: eurekaAlsNodeKey(entrySubset),
         eurekaContinuationText: `(${eurekaDigitsText(entryRemainder)}=${eurekaDigitsText(restrictedDigits)})`,
       },
       {
         text: `(${eurekaDigitsText(restrictedDigits)}=${eurekaDigitsText(exitSubset.digits.filter(digit => !restrictedSet.has(digit)))})${core.cellGroupName(exitSubset.cells)}`,
-        eurekaNodeKey: exitSubset.id,
+        eurekaNodeKey: eurekaAlsNodeKey(exitSubset),
         eurekaContinuationText: `(${eurekaDigitsText(restrictedDigits)}=${eurekaDigitsText(exitSubset.digits.filter(digit => !restrictedSet.has(digit)))})`,
       },
     ];

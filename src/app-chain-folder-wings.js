@@ -30,13 +30,6 @@
       const strongType = strongChainType(chain);
       if (strongType) {
         result.push({
-          family: 'Strong Wing | Ring',
-          wing: strongType,
-          rank: null,
-          subclass: null,
-          path: chain.isRing ? ['Ring'] : [],
-        });
-        result.push({
           family: 'Hidden XY-Chain',
           wing: 'Strong Wing | Ring',
           rank: strongType,
@@ -48,10 +41,11 @@
       const inversionType = inversionChainType(chain);
       if (inversionType) {
         result.push({
-          family: 'Inversion',
-          wing: inversionType,
+          family: 'Hidden XY-Chain',
+          wing: 'Inversion',
           rank: null,
           subclass: null,
+          path: ['Inversion'],
         });
       }
       return result;

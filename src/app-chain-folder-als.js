@@ -17,15 +17,15 @@
       const barnsTransportInfo = barnsTransportChainInfo(chain);
       const hiddenXyInfo = hiddenXyChainInfo(chain);
       const alsInfo = alsOnlyChainInfo(chain) || alsNamedChainInfo(chain);
-      const namedAlsWing = String(chain.structureName || '').match(
-        /^(?:AIC\s*\+\s*)?ALS\s*-\s*([LMH])(?:\(\d+\))?\s*-\s*(Wing|Ring)$/i,
+      const namedAuxiliaryWing = String(chain.structureName || '').match(
+        /^(?:AIC\s*\+\s*)?(ALS|AHS|ALC)\s*-\s*([LMH](?:\(\d+\))?)\s*-\s*(Wing|Ring)$/i,
       );
 
       const genericXFamily = /^X\s*-\s*Chains?$/i.test(String(primary.family || ''))
         || /^X\s*Chains?$/i.test(String(primary.family || ''));
       if (!genericXFamily
         && !/^ALS$/i.test(String(primary.family || ''))
-        && !namedAlsWing
+        && !namedAuxiliaryWing
         && !/^Local(?: -)? Wing \| Ring$/i.test(String(primary.family || ''))
         && primary.family !== 'ERI - Chain'
         && ((primary.family === 'AIC + ALS' && primary.wing) || (primary.wing && primary.rank))) {
@@ -44,20 +44,20 @@
         });
       }
 
-      if (namedAlsWing) {
-        const rankType = namedAlsWing[1].toUpperCase();
-        const form = namedAlsWing[2][0].toUpperCase() + namedAlsWing[2].slice(1).toLowerCase();
-        const namedForm = `${rankType}-Wing/Ring`;
+      if (namedAuxiliaryWing) {
+        const auxiliaryFamily = namedAuxiliaryWing[1].toUpperCase();
+        const rank = namedAuxiliaryWing[2].toUpperCase();
+        const namedForm = `${rank}-Wing/Ring`;
         result.push({
           family: 'A.I.C',
           wing: namedForm,
           rank: null,
-          subclass: `ALS - ${namedForm}`,
-          displayName: `ALS - ${namedForm}`,
+          subclass: null,
+          path: [namedForm, auxiliaryFamily],
         });
       }
 
-      if (alsInfo && !barnsInfo) {
+      if (alsInfo && !barnsInfo && !namedAuxiliaryWing) {
         result.push({
           family: 'Almost Locked Sets',
           wing: alsInfo.category,
@@ -67,7 +67,7 @@
       }
 
       const ahsInfo = ahsXzChainInfo(chain);
-      if (ahsInfo) {
+      if (ahsInfo && !namedAuxiliaryWing) {
         result.push({
           family: 'Almost Hidden Sets',
           wing: ahsInfo.category,

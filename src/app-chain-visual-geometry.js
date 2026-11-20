@@ -222,6 +222,42 @@
     return { ...fallback, x: center.x + dx * scale, y: center.y + dy * scale };
   }
 
+  function groupedAnchorPair(
+    fromSide,
+    toSide,
+    forcedDigit = null,
+    toDigit = forcedDigit,
+    allowMissing = false,
+    callbacks,
+  ) {
+    let existingOnly = true;
+    let pair = callbacks.closestAnchorPair(fromSide, toSide, forcedDigit, toDigit, true);
+    if (!pair && allowMissing) {
+      existingOnly = false;
+      pair = callbacks.closestAnchorPair(fromSide, toSide, forcedDigit, toDigit, false);
+    }
+    if (!pair) return pair;
+
+    // A grouped strong link must terminate at the group boundary rather
+    // than at whichever member happens to be closest. Weak links already
+    // arrive here with an explicit digit; strong links need the same
+    // treatment when either side contains multiple cells for that digit.
+    const hasGroupedDigit = side => sideDigitGroups(side, callbacks.sideAnchors)
+      .some(anchors => new Set(anchors.map(anchor => anchor.cell)).size > 1);
+    if (forcedDigit == null && toDigit == null
+      && !hasGroupedDigit(fromSide) && !hasGroupedDigit(toSide)) return pair;
+
+    const fromDigit = forcedDigit == null ? pair.from.digit : forcedDigit;
+    const toDigitValue = toDigit == null ? pair.to.digit : toDigit;
+    const fromBox = digitBoundsFromAnchors(callbacks.sideAnchors(fromSide, fromDigit, existingOnly));
+    const toBox = digitBoundsFromAnchors(callbacks.sideAnchors(toSide, toDigitValue, existingOnly));
+    let from = pair.from;
+    let to = pair.to;
+    if (fromBox) from = boxEdgeAnchor(fromBox, to, from);
+    if (toBox) to = boxEdgeAnchor(toBox, from, to);
+    return { from, to };
+  }
+
   function crossDigitAnchorPair(fromSide, toSide, fromDigits, toDigits, sideAnchorsFn) {
     const fromAnchors = (fromDigits || []).flatMap(digit =>
       sideAnchorsFn(fromSide, digit, true));
@@ -276,6 +312,7 @@
     digitBoundsFromAnchors,
     groupedSideDigits,
     boxEdgeAnchor,
+    groupedAnchorPair,
     crossDigitAnchorPair,
     chainSectorFrameData,
   };

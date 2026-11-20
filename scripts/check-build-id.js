@@ -2,11 +2,14 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const expectedBuildId = '20261104-17';
+const expectedBuildId = '20261119-02';
 const files = [
   'index.html',
   'src/search-worker.js',
   'src/generator-worker.js',
+  'src/app.js',
+  'src/app-worker-runtime.js',
+  'src/app-generator-runtime.js',
 ].map(relative => ({ relative, text: fs.readFileSync(path.join(root, relative), 'utf8') }));
 
 const ids = [];

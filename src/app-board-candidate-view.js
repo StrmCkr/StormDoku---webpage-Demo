@@ -33,7 +33,10 @@
         const isThreeDMedusaInvalid = highlights.threeDMedusaInvalidMarks.has(atomKey);
         const isElim = highlights.removedMarks.has(atomKey) || isAlsDofElim || isAhsDofElim || isSimpleColoringElim
           || isMultiColoringElim || isThreeDMedusaElim;
-        const isSetDigit = highlights.isSubset && highlights.patternDigits.has(digit) && highlights.vertices.has(cell);
+        const isSetDigit = highlights.isSubset
+          && highlights.patternDigits.has(digit)
+          && highlights.vertices.has(cell)
+          && cellHasCandidate(cell, digit);
         const isAlsDofClauseDigit = highlights.alsDofClauseDigit === digit
           && highlights.alsDofClauseCells.has(cell)
           && cellHasCandidate(cell, digit);
@@ -77,8 +80,16 @@
         const isChainAlsDigit = highlights.isChain && highlights.chainAlsMarks.has(atomKey);
         const isChainAhsDigit = highlights.isChain && highlights.chainAhsMarks.has(atomKey);
         const isAlsRecordDigit = highlights.isAlsRecord && highlights.alsRecordMarks.has(atomKey);
+        const isAlsExclusionDigit = highlights.isAlsRecord && highlights.alsExclusionMarks?.has(atomKey);
+        const isUniquenessRccDigit = highlights.isAlsRecord && highlights.uniquenessRccMarks?.has(atomKey);
+        const uniquenessEliminationColors = highlights.uniquenessEliminationColorsByAtom?.get(atomKey) || [];
+        const uniquenessUrAlsColors = highlights.uniquenessUrAlsColorsByAtom?.get(atomKey) || [];
+        const uniquenessAlsLockedColor = highlights.uniquenessAlsLockedColorsByAtom?.get(atomKey) || null;
         const isAlsDofDigit = highlights.isAlsDof && highlights.alsDofMarks.has(atomKey);
         const isAhsRecordDigit = highlights.isAhsRecord && highlights.ahsRecordMarks.has(atomKey);
+        const isExternalGuardDigit = highlights.externalGuardAtoms?.has(atomKey);
+        const isForcingOnDigit = highlights.uniquenessForcingOnAtoms?.has(atomKey);
+        const isForcingOffDigit = highlights.uniquenessForcingOffAtoms?.has(atomKey);
         const isAhsDofRecordDigit = highlights.isAhsDof && highlights.ahsDofRecordMarks.has(atomKey);
         const isChainStartDigit = highlights.isChain && highlights.chainStartMarks.has(atomKey);
         const isChainEndDigit = highlights.isChain && highlights.chainEndMarks.has(atomKey);
@@ -110,12 +121,12 @@
           && !(cand[cell] || []).includes(digit)
           && !isElim;
 
-        const chainDisplayDigit = isElim
+        const chainDisplayDigit = isElim || isForcingOnDigit || isForcingOffDigit
           || ((hasCandidate || isChainExplanation || isSimpleColoringDigit)
             && (isFishDigit || isFishEndofinDigit || isChainDigit || isChainWeakDigit || isStrongLinkDigit
               || isAlsRecordDigit || isAlsDofDigit || isAhsRecordDigit || isAhsDofRecordDigit || isChainAhsDigit || isDigitFocus
               || isCandidateSizeFilter || isSimpleColoringDigit || isMultiColoringDigit || isThreeDMedusaDigit
-              || isMslsDigit || isChromaticDigit));
+              || isMslsDigit || isChromaticDigit || isExternalGuardDigit));
         mark.textContent = markFor(cell, digit) || (chainDisplayDigit ? digit : '');
         if (isDigitFocus) mark.classList.add('digit-focus', 'digit-focus-' + digit);
         if (isCandidateSizeFilter) {
@@ -151,7 +162,24 @@
         }
         if (isAlsRecordDigit) {
           mark.classList.add('chain-als-digit');
-          applyAlsColorVars(mark, highlights.alsRecordColor);
+          applyAlsColorVars(mark, highlights.alsRecordStyleByAtom?.get(atomKey) || highlights.alsRecordColor);
+        }
+        if (isAlsExclusionDigit) {
+          mark.classList.add('als-exclusion-digit');
+          mark.title = 'ALS exclusion digit';
+        }
+        if (isUniquenessRccDigit) {
+          mark.classList.add('uniqueness-rcc-digit');
+          mark.title = 'Restricted common candidate';
+        }
+        if (uniquenessUrAlsColors.length) {
+          mark.classList.add('uniqueness-ur-als-digit');
+          applyAlsColorVars(mark, uniquenessUrAlsColors);
+        }
+        if (uniquenessAlsLockedColor) {
+          mark.classList.add('uniqueness-als-locked-digit');
+          mark.title = 'Locked surplus digit in this ALS';
+          applyAlsColorVars(mark, uniquenessAlsLockedColor);
         }
         if (isAlsDofDigit) {
           mark.classList.add('chain-als-digit');
@@ -160,6 +188,17 @@
         if (isAhsRecordDigit) {
           mark.classList.add('ahs-record-digit');
           applyAhsColorVars(mark, highlights.ahsRecordColor);
+        }
+        if (isExternalGuardDigit) {
+          mark.classList.add('uniqueness-external-guard-digit');
+          mark.title = 'External Unique Rectangle guardian';
+        }
+        if (isForcingOnDigit) {
+          mark.classList.add('uniqueness-forcing-on-digit');
+          mark.title = 'ON in this forcing chain';
+        } else if (isForcingOffDigit) {
+          mark.classList.add('uniqueness-forcing-off-digit');
+          mark.title = 'OFF in this forcing chain';
         }
         if (isAhsDofRecordDigit) {
           mark.classList.add('ahs-record-digit');
@@ -183,7 +222,13 @@
         }
         if (isThreeDMedusaInvalid) mark.classList.add('simple-colouring-invalid-digit');
         if (isThreeDMedusaElim) mark.classList.add('simple-colouring-three-d-elim-digit');
-        if (isElim && !isThreeDMedusaElim && !isMultiColoringElim) mark.classList.add('elim-digit');
+        if (isElim && !isThreeDMedusaElim && !isMultiColoringElim) {
+          mark.classList.add('elim-digit');
+          if (uniquenessEliminationColors.length) {
+            mark.classList.add('uniqueness-als-elim-digit');
+            applyAlsColorVars(mark, uniquenessEliminationColors);
+          }
+        }
         bindPlayerDigitElement(mark, cell, digit);
         marks.appendChild(mark);
       }

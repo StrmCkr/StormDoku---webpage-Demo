@@ -1249,10 +1249,14 @@
     return true;
   }
 
-  function indexedBridgeRefs(entries) {
+  function indexedBridgeRefs(entries, onProgress = null) {
     const refsByKey = new Map();
 
-    for (const entry of entries) {
+    for (let entryIndex = 0; entryIndex < entries.length; entryIndex += 1) {
+      if (entryIndex % 16 === 0) {
+        onProgress?.({ stage: 'ahs-links-refs', nodesChecked: entryIndex });
+      }
+      const entry = entries[entryIndex];
       for (const endpoint of entry.endpoints) {
         for (const sector of commonSectors(endpoint.rccCells)) {
           const key = `${sector}`;
@@ -1309,14 +1313,19 @@
     return addUnique(bucket, seen, link, maxLinks);
   }
 
-  function indexedBridgePairs(entries) {
-    const refsByKey = indexedBridgeRefs(entries);
+  function indexedBridgePairs(entries, onProgress = null) {
+    const refsByKey = indexedBridgeRefs(entries, onProgress);
     const pairs = new Map();
+    let refsChecked = 0;
 
     for (const refs of refsByKey.values()) {
       for (let leftIndex = 0; leftIndex < refs.length; leftIndex++) {
         const leftRef = refs[leftIndex];
         for (let rightIndex = leftIndex + 1; rightIndex < refs.length; rightIndex++) {
+          refsChecked += 1;
+          if (refsChecked % 512 === 0) {
+            onProgress?.({ stage: 'ahs-links-index', refsChecked });
+          }
           const rightRef = refs[rightIndex];
           const bridgePair = makeBridgePair(leftRef, rightRef);
           if (!bridgePair) continue;
@@ -1329,6 +1338,7 @@
       }
     }
 
+    onProgress?.({ stage: 'ahs-links-index', refsChecked, bridgePairGroups: pairs.size });
     return pairs;
   }
 
@@ -1480,6 +1490,7 @@
 
   function buildAhsLinks(cand, options = {}) {
     nextAhsLinkId = 0;
+    const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
     const opts = {
       minDof: Number.isInteger(options.minDof) ? Math.max(1, options.minDof) : 1,
       maxDof: Number.isInteger(options.maxDof) ? Math.max(1, Math.min(3, options.maxDof)) : 3,
@@ -1487,7 +1498,9 @@
       mode: options.mode === 'xy' ? 'xy' : 'all',
       maxLinks: Number.isInteger(options.maxLinks) && options.maxLinks > 0 ? options.maxLinks : undefined,
     };
-    const ahsList = options.ahsList || core.ahsConstructor(cand, { maxSize: 8, maxSizeFox: 7 });
+    const ahsList = options.ahsList || core.ahsConstructor(cand, {
+      maxSize: 8, maxSizeFox: 7, onProgress,
+    });
     const strongSet = options.strongLinkSet
       || (core.buildStrongLinks ? core.buildStrongLinks(cand) : []);
     const strongLinks = core.flattenStrongLinks
@@ -1497,12 +1510,15 @@
         : strongSet);
     const buckets = Array.from({ length: AHS_RCC + 1 }, () => []);
     const endpointEntries = ahsList
-      .map((ahs, index) => ({
-        index,
-        ahs,
-        endpoints: buildEndpoints(cand, ahs, strongLinks)
-          .filter(endpoint => endpoint.dofKeys.some(dof => dof >= opts.minDof && dof <= opts.maxDof)),
-      }))
+      .map((ahs, index) => {
+        if (index % 16 === 0) onProgress?.({ stage: 'ahs-links-endpoints', nodesChecked: index });
+        return {
+          index,
+          ahs,
+          endpoints: buildEndpoints(cand, ahs, strongLinks)
+            .filter(endpoint => endpoint.dofKeys.some(dof => dof >= opts.minDof && dof <= opts.maxDof)),
+        };
+      })
       .filter(entry => entry.endpoints.length > 1);
     const seen = new Set();
 
@@ -1529,9 +1545,14 @@
       // and a locked-position/sector bridge. The indexed path constructs
       // those bridges first, then combines the remaining valid reductions
       // on each parent. Keep it isolated from the AHS-XZ catalogue.
-      const bridgePairs = indexedBridgePairs(endpointEntries);
+      const bridgePairs = indexedBridgePairs(endpointEntries, onProgress);
+      let bridgePairsChecked = 0;
       for (const pairs of bridgePairs.values()) {
         for (const bridgePair of pairs) {
+          bridgePairsChecked += 1;
+          if (bridgePairsChecked % 128 === 0) {
+            onProgress?.({ stage: 'ahs-links-bridges', bridgePairsChecked });
+          }
           if (!addLinksForBridgePair(
             buckets[AHS_RCC],
             seen,
@@ -1541,6 +1562,7 @@
           )) return buckets;
         }
       }
+      onProgress?.({ stage: 'ahs-links-bridges', bridgePairsChecked });
       return buckets;
     }
     // The exact RCC passes above are the AHS-XZ catalogue.  The older broad

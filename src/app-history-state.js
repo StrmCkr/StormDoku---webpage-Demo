@@ -2,7 +2,7 @@
 (function installHistoryState(global) {
   const app = global.StormDokuApp = global.StormDokuApp || {};
 
-  function create({ snapshot, restore, restoreVisual, isBusy, cancel, setStatus, render, focus }) {
+  function create({ snapshot, restore, restoreVisual, getEntry, isBusy, cancel, setStatus, render, focus }) {
     let preview = null;
 
     function leave() {
@@ -27,9 +27,14 @@
       focus();
     }
 
+    function inspectIndex(index) {
+      return inspect(index, getEntry(index));
+    }
+
     return {
       leave,
       inspect,
+      inspectIndex,
       get active() { return Boolean(preview); },
       get index() { return preview?.index ?? null; },
     };

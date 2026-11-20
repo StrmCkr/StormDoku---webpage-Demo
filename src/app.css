@@ -1819,7 +1819,7 @@
     }
 
     .cell.subset-vertex {
-      outline: 3px solid var(--dark-green);
+      outline: 3px solid #9b5de5;
       outline-offset: -4px;
     }
 
@@ -2057,6 +2057,44 @@
       color: var(--chain-als-ink, #6d28d9);
     }
 
+    .mark.chain-als-digit.als-exclusion-digit {
+      color: #422006;
+      background: #facc15;
+      border: 1px solid #a16207;
+      border-radius: 4px;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .48);
+      font-weight: 900;
+    }
+
+    .mark.chain-als-digit.uniqueness-rcc-digit {
+      color: #075985;
+      background: #bae6fd;
+      border: 1px solid #0284c7;
+      border-radius: 4px;
+      font-weight: 900;
+    }
+
+    .mark.uniqueness-ur-als-digit {
+      color: var(--chain-als-ink, #6d28d9);
+      background: var(--chain-als-bg, rgba(125, 211, 252, .34));
+      box-shadow: inset 0 0 0 1px var(--chain-als-stroke, rgba(14, 116, 144, .62));
+      border-radius: 4px;
+      font-weight: 900;
+    }
+
+    .mark.chain-als-digit.uniqueness-als-locked-digit {
+      color: var(--chain-als-ink, #6d28d9);
+      background: var(--chain-als-bg, rgba(125, 211, 252, .34));
+      border: 1px solid var(--chain-als-stroke, rgba(14, 116, 144, .62));
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .42);
+      border-radius: 4px;
+      font-weight: 900;
+    }
+
+    .mark.elim-digit.uniqueness-als-elim-digit:not(.fish-digit) {
+      color: var(--chain-als-ink, #6d28d9) !important;
+    }
+
     .mark.chain-start-digit {
       color: #1d4ed8;
       background: rgba(191, 219, 254, .36);
@@ -2104,6 +2142,33 @@
       box-shadow: inset 0 0 0 2px var(--ahs-record-stroke, rgba(29, 78, 216, .68));
       border-radius: 4px;
       font-weight: 900;
+    }
+
+    .mark.uniqueness-external-guard-digit {
+      color: #7c2d12;
+      background: rgba(251, 146, 60, .72);
+      box-shadow: inset 0 0 0 2px #c2410c;
+      border: 1px solid #f97316;
+      border-radius: 4px;
+      font-weight: 900;
+    }
+
+    .mark.uniqueness-forcing-on-digit,
+    .mark.uniqueness-forcing-off-digit {
+      border-radius: 4px;
+      font-weight: 900;
+    }
+
+    .mark.uniqueness-forcing-on-digit {
+      color: #14532d;
+      background: #bbf7d0;
+      box-shadow: inset 0 0 0 1px #15803d;
+    }
+
+    .mark.uniqueness-forcing-off-digit {
+      color: #713f12;
+      background: #fef08a;
+      box-shadow: inset 0 0 0 1px #a16207;
     }
 
     .cell.strong-link-active-cell {
@@ -2249,7 +2314,7 @@
     }
 
     /* Chain nodes keep their role graphics beneath the elimination slash. */
-    .mark.elim-digit:not(.chain-digit),
+    .mark.elim-digit:not(.chain-digit):not(.uniqueness-forcing-on-digit),
     .vantage-position.elim:not(.chain) {
       color: var(--red) !important;
       background: transparent !important;
@@ -2463,6 +2528,16 @@
       stroke: rgba(5, 150, 105, .84);
     }
 
+    .uniqueness-forcing-off-box {
+      fill: none;
+      stroke: #a16207;
+    }
+
+    .uniqueness-forcing-on-box {
+      fill: none;
+      stroke: #15803d;
+    }
+
     .panel,
     .report-stack {
       display: grid;
@@ -2595,6 +2670,7 @@
     .example-group-aic { order: 3; }
     .example-group-als { order: 4; }
     .example-group-ahs { order: 5; }
+    .example-group-uniqueness { order: 6; }
 
     .example-group > summary {
       color: var(--gunmetal-ink);
@@ -2628,6 +2704,11 @@
       font-family: Consolas, "Courier New", monospace;
       font-size: 11px;
       overflow-wrap: anywhere;
+    }
+
+    .example-note {
+      color: var(--muted);
+      font-size: 11px;
     }
 
     .solution-steps {
@@ -3423,12 +3504,72 @@
       line-height: 1;
     }
 
+    .uniqueness-family {
+      min-width: 0;
+    }
+
+    #uniquenessPanel .uniqueness-family > summary {
+      display: grid;
+      grid-template-columns: 22px minmax(0, 1fr) 22px;
+      min-height: 34px;
+      padding: 5px 8px;
+      border-bottom: 0;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .uniqueness-family > summary span { grid-column: 2; }
+
+    #uniquenessPanel .uniqueness-family > summary::after { content: "+"; }
+    #uniquenessPanel .uniqueness-family[open] > summary::after { content: "−"; }
+    #uniquenessPanel .uniqueness-family[open] > summary { border-bottom: 1px solid var(--line); }
+
+    .uniqueness-family-body {
+      padding: 7px;
+    }
+
+    .uniqueness-actions {
+      display: grid;
+      gap: 6px;
+    }
+
+    .uniqueness-actions + .pom-results {
+      margin-top: 6px;
+    }
+
+    .uniqueness-actions + #uniquenessExtendedResults {
+      margin-top: 1em;
+    }
+
+    .uniqueness-action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .uniqueness-actions .search-action {
+      margin: 0;
+      padding: 5px 8px;
+      font-size: 12px;
+      line-height: 1.1;
+    }
+
     .search-controls {
       display: flex;
       flex-wrap: wrap;
       justify-content: flex-end;
       gap: 6px;
       margin-left: auto;
+    }
+
+    .uniqueness-type3-menu {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .uniqueness-type3-menu[hidden] {
+      display: none;
     }
 
     .pom-panel summary .search-stop {

@@ -8,14 +8,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self'; img-src 'self' blob: data:; worker-src 'self' blob:; connect-src 'self' blob:; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self';">
   <title>StormDoku: on-line | off-line</title>
-  <link rel="stylesheet" href="./src/app.css?v=20261104-17">
+  <link rel="stylesheet" href="./src/app.css?v=20261119-02">
 </head>
 <body>
   <header>
     <div class="header-brand">
       <h1>StormDoku: <span title="Hosted use: the page may load its normal worker scripts and OCR resources when available.">on-line</span> | <span title="Local use: open the repository's index.html directly from file:// and use the bundled solver worker without a server or internet connection.">off-line</span></h1>
       <p class="topline">Generator, candidates, subsets, fish, chains, and structures demonstrator for regular Sudoku 9x9 grids, Sudoku X, Anti-Knight, Anti-King, Non-Consecutive, and Windoku.</p>
-      <p class="app-meta">Alpha v0.6.78 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
+      <p class="app-meta">Alpha v0.6.84 | <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noreferrer">GNU GPL-3.0-or-later</a></p>
     </div>
   </header>
 
@@ -181,6 +181,42 @@
                   <button class="secondary example-load" type="button"
                     data-example-puzzle=".8.....61..2..7.....4...8.7.....247..4.6..1..5....9.3.8..1.594...........6.3.....">Nightmare</button>
                   <code class="example-puzzle">.8.....61..2..7.....4...8.7.....247..4.6..1..5....9.3.8..1.594...........6.3.....</code>
+                </div>
+              </div>
+            </details>
+            <details class="example-group example-group-uniqueness">
+              <summary><h3>Uniqueness Arguments</h3></summary>
+              <div class="report-subsection-body">
+                <div class="example-item">
+                  <button class="secondary example-load" type="button"
+                    data-example-puzzle="57..24..1382761954....857....8.5.17.72..1..4.153497...237146.9.965.3.4178..579.6.">Unique Rectangle Type 1</button>
+                  <code class="example-puzzle">57..24..1382761954....857....8.5.17.72..1..4.153497...237146.9.965.3.4178..579.6.</code>
+                </div>
+                <div class="example-item">
+                  <button class="secondary example-load" type="button"
+                    data-example-puzzle=".3...1.6.7...4.35.4.....7..8...7..2.....32.9....8.......6..8......293.....1...4..">Unique Rectangle Type 4 | 5</button>
+                  <code class="example-puzzle">.3...1.6.7...4.35.4.....7..8...7..2.....32.9....8.......6..8......293.....1...4..</code>
+                </div>
+                <div class="example-item">
+                  <button class="secondary example-load" type="button"
+                    data-example-puzzle="9....86.......48.....65.2..3.1..............1.4.7.5.3......6....8..9..27..21...9.">Unique Rectangle Type 3 - ALS</button>
+                  <code class="example-puzzle">9....86.......48.....65.2..3.1..............1.4.7.5.3......6....8..9..27..21...9.</code>
+                </div>
+                <div class="example-item">
+                  <button class="secondary example-load" type="button"
+                    data-example-puzzle="5.6.74...84935126717..86..548.5.79..9518.37..6.71495..215438679368795...794612853">Type 3 ALS | ALS-XZ</button>
+                  <code class="example-puzzle">5.6.74...84935126717..86..548.5.79..9518.37..6.71495..215438679368795...794612853</code>
+                </div>
+                <div class="example-item">
+                  <button class="secondary example-load" type="button"
+                    data-example-puzzle=".2..86.5....75..6.568.4.....564379...9.168.35..35296...7..145..6.1.75....45.937..">Type 3 ALS-XZ</button>
+                  <code class="example-puzzle">.2..86.5....75..6.568.4.....564379...9.168.35..35296...7..145..6.1.75....45.937..</code>
+                  <small class="example-note">Also demonstrates Unique Rectangle Type 8.</small>
+                </div>
+                <div class="example-item">
+                  <button class="secondary example-load" type="button"
+                    data-example-puzzle=".....8......3...7...3.7492...271...6....3.....1...5.8.2..5.....3.198......7...5.1">Unique Rectangle Type 7</button>
+                  <code class="example-puzzle">.....8......3...7...3.7492...271...6....3.....1...5.8.2..5.....3.198......7...5.1</code>
                 </div>
               </div>
             </details>
@@ -1555,6 +1591,216 @@
             <div id="chromaticAlsGraphResults" class="pom-results">No ALS chromatic graph search has been run.</div>
           </div>
         </details>
+        <details class="pom-panel uniqueness-panel" id="uniquenessPanel">
+          <summary><h2>Uniqueness Arguments</h2></summary>
+          <div class="pom-body">
+            <details class="pom-panel uniqueness-family">
+              <summary><span>Unique Rectangle</span></summary>
+              <div class="uniqueness-family-body">
+                <div class="uniqueness-actions">
+                  <div class="uniqueness-action-row">
+                    <button id="uniquenessBuild" class="secondary search-action" type="button"
+                      title="Search Unique Rectangle Type 1 formations">Type 1</button>
+                    <button id="uniquenessType2Build" class="secondary search-action" type="button"
+                      title="Search Unique Rectangle Type 2 and Type 5 formations">Type 2,5</button>
+                    <button id="uniquenessType4Build" class="secondary search-action" type="button"
+                      title="Search Unique Rectangle Type 4 formations">Type 4</button>
+                    <button id="uniquenessType6Build" class="secondary search-action" type="button"
+                      title="Search Unique Rectangle Type 6 fish-cycle formations">Type 6</button>
+                    <button id="uniquenessType7Build" class="secondary search-action" type="button"
+                      title="Search Hidden Unique Rectangle Type 7 formations">Type 7</button>
+                    <button id="uniquenessType8Build" class="secondary search-action" type="button"
+                      title="Search External Unique Rectangle Type 8 formations">Type 8</button>
+                    <button id="uniquenessType9Build" class="secondary search-action" type="button"
+                      title="Search Unique Rectangle guardian chains and rings">Type 9</button>
+                  </div>
+                  <div class="uniqueness-action-row">
+                    <button id="uniquenessType3MenuToggle" class="secondary search-action uniqueness-type3-toggle"
+                      type="button" aria-expanded="false" aria-controls="uniquenessType3Menu"
+                      title="Open Unique Rectangle Type 3 searches">Type 3 <span aria-hidden="true">▾</span></button>
+                  </div>
+                  <div id="uniquenessType3Menu" class="uniqueness-type3-menu" hidden>
+                    <button id="uniquenessType3Build" class="secondary search-action" type="button"
+                      title="Search Type 3 using one ALS">ALS</button>
+                    <button id="uniquenessType3XzBuild" class="secondary search-action" type="button"
+                      title="Search Type 3 using an ALS-XZ connection">ALS-XZ</button>
+                    <button id="uniquenessType3XyBuild" class="secondary search-action" type="button"
+                      title="Search Type 3 using a three-ALS XY chain">ALS-XY</button>
+                    <button id="uniquenessType3ChainBuild" class="secondary search-action" type="button"
+                      title="Search Type 3 using an ALS chain of four or more distinct ALS nodes">ALS-Chain</button>
+                  </div>
+                </div>
+                <div id="uniquenessResults" class="pom-results">No Unique Rectangle search has been run.</div>
+              </div>
+            </details>
+            <details class="pom-panel uniqueness-family">
+              <summary><span>Extended Unique Rectangle</span></summary>
+              <div class="uniqueness-family-body">
+                <div class="uniqueness-actions">
+                  <div class="uniqueness-action-row">
+                    <button id="uniquenessExtendedType1Build" class="secondary search-action" type="button"
+                      title="Search Extended Unique Rectangle Type 1 formations">Type 1</button>
+                    <button id="uniquenessExtendedType2Build" class="secondary search-action" type="button"
+                      title="Search Extended Unique Rectangle Type 2 and Type 5 formations">Type 2,5</button>
+                    <button id="uniquenessExtendedType4Build" class="secondary search-action" type="button"
+                      title="Search Extended Unique Rectangle Type 4 sector locks">Type 4</button>
+                    <button id="uniquenessExtendedType6Build" class="secondary search-action" type="button"
+                      title="Search Extended Unique Rectangle Type 6 restricted fish formations">Type 6</button>
+                    <button id="uniquenessExtendedType7Build" class="secondary search-action" type="button"
+                      title="Search Hidden Extended Unique Rectangle Type 7 formations">Type 7</button>
+                    <button id="uniquenessExtendedType8Build" class="secondary search-action" type="button"
+                      title="Search External Extended Unique Rectangle Type 8 formations">Type 8</button>
+                    <button id="uniquenessExtendedType9Build" class="secondary search-action" type="button"
+                      title="Search Extended Unique Rectangle guardian chains and rings">Type 9</button>
+                  </div>
+                  <div class="uniqueness-action-row">
+                    <button id="uniquenessExtendedType3MenuToggle" class="secondary search-action uniqueness-type3-toggle"
+                      type="button" aria-expanded="false" aria-controls="uniquenessExtendedType3Menu"
+                      title="Open Extended Unique Rectangle Type 3 searches">Type 3 <span aria-hidden="true">▾</span></button>
+                  </div>
+                  <div id="uniquenessExtendedType3Menu" class="uniqueness-type3-menu" hidden>
+                    <button id="uniquenessExtendedType3Build" class="secondary search-action" type="button"
+                      title="Search Extended Unique Rectangle Type 3 using one ALS">ALS</button>
+                    <button id="uniquenessExtendedType3XzBuild" class="secondary search-action" type="button"
+                      title="Search Extended Unique Rectangle Type 3 using an ALS-XZ connection">ALS-XZ</button>
+                    <button id="uniquenessExtendedType3XyBuild" class="secondary search-action" type="button"
+                      title="Search Extended Unique Rectangle Type 3 using three ALS nodes">ALS-XY</button>
+                    <button id="uniquenessExtendedType3ChainBuild" class="secondary search-action" type="button"
+                      title="Search Extended Unique Rectangle Type 3 using four or more ALS nodes">ALS-Chain</button>
+                  </div>
+                </div>
+                <div id="uniquenessExtendedResults" class="pom-results">No Extended Unique Rectangle search has been run.</div>
+              </div>
+            </details>
+            <details class="pom-panel uniqueness-family">
+              <summary><span>Bivalve Universal Grave</span></summary>
+              <div class="uniqueness-family-body">
+                <div class="uniqueness-actions">
+                  <div class="uniqueness-action-row">
+                    <button id="bugBuild" class="secondary search-action" type="button"
+                      title="Search Bivalve Universal Grave +1, +n, and Lite constructs">Type 1</button>
+                    <button class="secondary search-action" type="button" data-bug-type="2,5">Type 2,5</button>
+                    <button class="secondary search-action" type="button" data-bug-type="6">Type 6</button>
+                    <button class="secondary search-action" type="button" data-bug-type="7">Type 7</button>
+                    <button class="secondary search-action" type="button" data-bug-type="8">Type 8</button>
+                    <button class="secondary search-action" type="button" data-bug-type="9">Type 9</button>
+                  </div>
+                  <div class="uniqueness-action-row">
+                    <button id="bugType3Toggle" class="secondary search-action" type="button"
+                      aria-expanded="false" aria-controls="bugType3Menu">Type 3 <span aria-hidden="true">▾</span></button>
+                  </div>
+                  <div id="bugType3Menu" class="uniqueness-type3-menu" hidden>
+                    <button class="secondary search-action" type="button" data-bug-type="3">ALS</button>
+                    <button class="secondary search-action" type="button" data-bug-type="3-xz">ALS-XZ</button>
+                    <button class="secondary search-action" type="button" data-bug-type="3-xy">ALS-XY</button>
+                    <button class="secondary search-action" type="button" data-bug-type="3-chain">ALS-Chain</button>
+                  </div>
+                </div>
+                <div id="bugResults" class="pom-results">No Bivalve Universal Grave search has been run.</div>
+              </div>
+            </details>
+            <details class="pom-panel uniqueness-family">
+              <summary><span>Reverse BUG</span></summary>
+              <div class="uniqueness-family-body">
+                <div class="uniqueness-actions">
+                  <div class="uniqueness-action-row">
+                    <button id="reverseBugBuild" class="secondary search-action" type="button"
+                      title="Search Reverse-BUG and Reverse-BUG-Lite">Type 1</button>
+                    <button class="secondary search-action" type="button" data-reverse-bug-type="2,5"
+                      title="Search direct and pincered Reverse-BUG deductions">Type 2,5</button>
+                    <button class="secondary search-action" type="button" data-reverse-bug-type="4"
+                      title="Search Reverse-BUG sector locks">Type 4</button>
+                    <button class="secondary search-action" type="button" data-reverse-bug-type="6"
+                      title="Search Reverse-BUG restricted fish">Type 6</button>
+                    <button class="secondary search-action" type="button" data-reverse-bug-type="7"
+                      title="Search Reverse-BUG internal strong links">Type 7</button>
+                    <button class="secondary search-action" type="button" data-reverse-bug-type="8"
+                      title="Search Reverse-BUG external guardians">Type 8</button>
+                    <button class="secondary search-action" type="button" data-reverse-bug-type="9"
+                      title="Search Reverse-BUG guardian chains and rings">Type 9</button>
+                  </div>
+                  <div class="uniqueness-action-row">
+                    <button id="reverseBugType3Toggle" class="secondary search-action" type="button"
+                      aria-expanded="false" aria-controls="reverseBugType3Menu">Type 3 <span aria-hidden="true">▾</span></button>
+                  </div>
+                  <div id="reverseBugType3Menu" class="uniqueness-type3-menu" hidden>
+                    <button class="secondary search-action" type="button" data-reverse-bug-type="3">ALS</button>
+                    <button class="secondary search-action" type="button" data-reverse-bug-type="3-xz">ALS-XZ</button>
+                    <button class="secondary search-action" type="button" data-reverse-bug-type="3-xy">ALS-XY</button>
+                    <button class="secondary search-action" type="button" data-reverse-bug-type="3-chain">ALS-Chain</button>
+                  </div>
+                </div>
+                <div id="reverseBugResults" class="pom-results">No Reverse-BUG search has been run.</div>
+              </div>
+            </details>
+            <details class="pom-panel uniqueness-family">
+              <summary><span>Multivalve Universal Grave</span></summary>
+              <div class="uniqueness-family-body">
+                <div class="uniqueness-actions">
+                  <div class="uniqueness-action-row">
+                    <button id="mugBuild" class="secondary search-action" type="button">Type 1</button>
+                    <button class="secondary search-action" type="button" data-mug-type="2,5"
+                      title="Search direct and pincered MUG deductions">Type 2,5</button>
+                    <button class="secondary search-action" type="button" data-mug-type="4"
+                      title="Search MUG sector locks">Type 4</button>
+                    <button class="secondary search-action" type="button" data-mug-type="6"
+                      title="Search MUG restricted fish">Type 6</button>
+                    <button class="secondary search-action" type="button" data-mug-type="7"
+                      title="Search MUG internal strong links">Type 7</button>
+                    <button class="secondary search-action" type="button" data-mug-type="8"
+                      title="Search MUG external guardians">Type 8</button>
+                    <button class="secondary search-action" type="button" data-mug-type="9"
+                      title="Search MUG two-way guardian chains">Type 9</button>
+                  </div>
+                  <div class="uniqueness-action-row">
+                    <button id="mugType3Toggle" class="secondary search-action" type="button"
+                      aria-expanded="false" aria-controls="mugType3Menu">Type 3 <span aria-hidden="true">▾</span></button>
+                  </div>
+                  <div id="mugType3Menu" class="uniqueness-type3-menu" hidden>
+                    <button class="secondary search-action" type="button" data-mug-type="3">ALS</button>
+                    <button class="secondary search-action" type="button" data-mug-type="3-xz">ALS-XZ</button>
+                    <button class="secondary search-action" type="button" data-mug-type="3-xy">ALS-XY</button>
+                    <button class="secondary search-action" type="button" data-mug-type="3-chain">ALS-Chain</button>
+                  </div>
+                </div>
+                <div id="mugResults" class="pom-results">No Multivalve Universal Grave search has been run.</div>
+              </div>
+            </details>
+            <details class="pom-panel uniqueness-family">
+              <summary><span>Permeable Universal Grave</span></summary>
+              <div class="uniqueness-family-body">
+                <div class="uniqueness-actions">
+                  <div class="uniqueness-action-row">
+                    <button id="pugBuild" class="secondary search-action" type="button">Type 1</button>
+                    <button class="secondary search-action" type="button" data-pug-type="2,5"
+                      title="Search direct and pincered PUG deductions">Type 2,5</button>
+                    <button class="secondary search-action" type="button" data-pug-type="4"
+                      title="Search PUG sector locks">Type 4</button>
+                    <button class="secondary search-action" type="button" data-pug-type="6"
+                      title="Search PUG restricted fish">Type 6</button>
+                    <button class="secondary search-action" type="button" data-pug-type="7"
+                      title="Search PUG internal strong links">Type 7</button>
+                    <button class="secondary search-action" type="button" data-pug-type="8"
+                      title="Search PUG external guardians">Type 8</button>
+                    <button class="secondary search-action" type="button" data-pug-type="9"
+                      title="Search PUG two-way guardian chains">Type 9</button>
+                  </div>
+                  <div class="uniqueness-action-row">
+                    <button id="pugType3Toggle" class="secondary search-action" type="button"
+                      aria-expanded="false" aria-controls="pugType3Menu">Type 3 <span aria-hidden="true">▾</span></button>
+                  </div>
+                  <div id="pugType3Menu" class="uniqueness-type3-menu" hidden>
+                    <button class="secondary search-action" type="button" data-pug-type="3">ALS</button>
+                    <button class="secondary search-action" type="button" data-pug-type="3-xz">ALS-XZ</button>
+                    <button class="secondary search-action" type="button" data-pug-type="3-xy">ALS-XY</button>
+                    <button class="secondary search-action" type="button" data-pug-type="3-chain">ALS-Chain</button>
+                  </div>
+                </div>
+                <div id="pugResults" class="pom-results">No Permeable Universal Grave search has been run.</div>
+              </div>
+            </details>
+          </div>
+        </details>
         <details class="pom-panel" id="pomPanel">
           <summary>
             <h2>Pattern Overlay Method</h2>
@@ -1614,7 +1860,7 @@
               <summary>
                 <h2 id="threeDMedusaHeading">3D - Medusa {Simple}</h2>
                 <button id="threeDMedusaBuild" class="secondary search-action" type="button"
-                  title="Search 3D-Medusa using strong-link types 0 and 4, including Bivalve chains">Search</button>
+                  title="Search 3D-Medusa using type-0 links and candidate overlaps, with type-4 bivalve links when present">Search</button>
               </summary>
               <div class="pom-body">
                 <div class="colouring-sequence-controls" role="group" aria-label="3D-Medusa Simple sequential display">
@@ -1659,213 +1905,283 @@
     </section>
   </main>
 
-    <script src="./src/browser-core.js?v=20261104-17"></script>
-  <script src="./src/set-tools-core.js?v=20261104-17"></script>
-  <script src="./src/pom-core.js?v=20261104-17"></script>
-  <script src="./src/als-core.js?v=20261104-17"></script>
-  <script src="./src/als-link-core.js?v=20261104-17"></script>
-  <script src="./src/als-dof-core.js?v=20261104-17"></script>
-  <script src="./src/hydra-core.js?v=20261104-17"></script>
-  <script src="./src/ahs-core.js?v=20261104-17"></script>
-  <script src="./src/ahs-link-core.js?v=20261104-17"></script>
-  <script src="./src/subset-report-core.js?v=20261104-17"></script>
-  <script src="./src/mini-sectors-core.js?v=20261104-17"></script>
-  <script src="./src/chromatic-core.js?v=20261104-17"></script>
-  <script src="./src/chromatic-als-core.js?v=20261104-17"></script>
-    <script src="./src/strong-link-core.js?v=20261104-17"></script>
-      <script src="./src/chain-core.js?v=20261104-17"></script>
-  <script src="./src/alc-core.js?v=20261104-17"></script>
-  <script src="./src/ahs-xy-core.js?v=20261104-17"></script>
-  <script src="./src/ahs-dof-core.js?v=20261104-17"></script>
-  <script src="./src/msls-core.js?v=20261104-17"></script>
-    <script src="./src/app-context.js?v=20261104-17"></script>
-    <script src="./src/app-worker-runtime.js?v=20261104-17"></script>
-    <script src="./src/app-generator-runtime.js?v=20261104-17"></script>
-    <script src="./src/app-ocr-assets.js?v=20261104-17"></script>
-    <script src="./src/app-ocr-grid.js?v=20261104-17"></script>
-    <script src="./src/app-ocr-controller.js?v=20261104-17"></script>
-    <script src="./src/app-clipboard.js?v=20261104-17"></script>
-    <script src="./src/app-link-state.js?v=20261104-17"></script>
-    <script src="./src/app-variant-controls.js?v=20261104-17"></script>
-    <script src="./src/app-search-control.js?v=20261104-17"></script>
-    <script src="./src/app-history-state.js?v=20261104-17"></script>
-    <script src="./src/app-ui-state.js?v=20261104-17"></script>
-    <script src="./src/app-toggle-ui.js?v=20261104-17"></script>
-    <script src="./src/app-fish-controls.js?v=20261104-17"></script>
-    <script src="./src/app-candidate-controls.js?v=20261104-17"></script>
-    <script src="./src/app-grid-text-view.js?v=20261104-17"></script>
-    <script src="./src/app-form-controls.js?v=20261104-17"></script>
-    <script src="./src/app-candidate-filter.js?v=20261104-17"></script>
-    <script src="./src/app-technique-controls.js?v=20261104-17"></script>
-    <script src="./src/app-input-loader.js?v=20261104-17"></script>
-    <script src="./src/app-basic-events.js?v=20261104-17"></script>
-    <script src="./src/app-ocr-events.js?v=20261104-17"></script>
-    <script src="./src/app-variant-events.js?v=20261104-17"></script>
-    <script src="./src/app-example-events.js?v=20261104-17"></script>
-    <script src="./src/app-board-events.js?v=20261104-17"></script>
-    <script src="./src/app-search-events.js?v=20261104-17"></script>
-    <script src="./src/app-pom-events.js?v=20261104-17"></script>
-    <script src="./src/app-als-events.js?v=20261104-17"></script>
-    <script src="./src/app-als-link-events.js?v=20261104-17"></script>
-    <script src="./src/app-ahs-events.js?v=20261104-17"></script>
-    <script src="./src/app-msls-events.js?v=20261104-17"></script>
-    <script src="./src/app-strong-link-events.js?v=20261104-17"></script>
-    <script src="./src/app-simple-coloring-events.js?v=20261104-17"></script>
-    <script src="./src/app-multi-coloring-events.js?v=20261104-17"></script>
-    <script src="./src/app-chain-events.js?v=20261104-17"></script>
-    <script src="./src/app-chain-build.js?v=20261104-17"></script>
-    <script src="./src/app-alc-build.js?v=20261104-17"></script>
-    <script src="./src/app-fish-events.js?v=20261104-17"></script>
-    <script src="./src/app-als-xz-events.js?v=20261104-17"></script>
-    <script src="./src/app-ahs-xz-events.js?v=20261104-17"></script>
-    <script src="./src/app-alc-xz-events.js?v=20261104-17"></script>
-    <script src="./src/app-alc-xy-events.js?v=20261104-17"></script>
-    <script src="./src/app-alc-chain-events.js?v=20261104-17"></script>
-    <script src="./src/app-alc-dof-events.js?v=20261104-17"></script>
-    <script src="./src/app-alc-hydra-build.js?v=20261104-17"></script>
-    <script src="./src/app-alc-hydra-events.js?v=20261104-17"></script>
-    <script src="./src/app-ahs-xy-events.js?v=20261104-17"></script>
-    <script src="./src/app-ahs-chain-events.js?v=20261104-17"></script>
-    <script src="./src/app-ahs-dof-events.js?v=20261104-17"></script>
-    <script src="./src/app-ahs-dof-build.js?v=20261104-17"></script>
-    <script src="./src/app-ahs-dof-chain-events.js?v=20261104-17"></script>
-    <script src="./src/app-ahs-dof-chain-build.js?v=20261104-17"></script>
-    <script src="./src/app-ahs-hydra-build.js?v=20261104-17"></script>
-    <script src="./src/app-als-dof-build.js?v=20261104-17"></script>
-    <script src="./src/app-als-dof-chain-build.js?v=20261104-17"></script>
-    <script src="./src/app-als-hydra-build.js?v=20261104-17"></script>
-    <script src="./src/app-ahs-link-build.js?v=20261104-17"></script>
-    <script src="./src/app-als-build.js?v=20261104-17"></script>
-    <script src="./src/app-als-link-build.js?v=20261104-17"></script>
-    <script src="./src/app-ahs-record-build.js?v=20261104-17"></script>
-    <script src="./src/app-strong-link-build.js?v=20261104-17"></script>
-    <script src="./src/app-simple-coloring-build.js?v=20261104-17"></script>
-    <script src="./src/app-three-d-medusa-build.js?v=20261104-17"></script>
-    <script src="./src/app-multi-coloring-build.js?v=20261104-17"></script>
-    <script src="./src/app-three-d-medusa-multi-build.js?v=20261104-17"></script>
-    <script src="./src/app-fish-build.js?v=20261104-17"></script>
-    <script src="./src/app-generic-subset-build.js?v=20261104-17"></script>
-    <script src="./src/app-box-line-build.js?v=20261104-17"></script>
-    <script src="./src/app-difficulty-data.js?v=20261104-17"></script>
-    <script src="./src/app-rating-data.js?v=20261104-17"></script>
-    <script src="./src/app-rating-runtime.js?v=20261104-17"></script>
-    <script src="./src/app-dof-step.js?v=20261104-17"></script>
-    <script src="./src/app-hydra-step.js?v=20261104-17"></script>
-    <script src="./src/app-player-state.js?v=20261104-17"></script>
-    <script src="./src/app-player-mode.js?v=20261104-17"></script>
-    <script src="./src/app-toy-math.js?v=20261104-17"></script>
-    <script src="./src/app-toy-catalog.js?v=20261104-17"></script>
-    <script src="./src/app-toy-minilex-view.js?v=20261104-17"></script>
-    <script src="./src/app-toy-minimizer-view.js?v=20261104-17"></script>
-    <script src="./src/app-toy-automorph-view.js?v=20261104-17"></script>
-    <script src="./src/app-toy-minimizer.js?v=20261104-17"></script>
-    <script src="./src/app-toy-controls.js?v=20261104-17"></script>
-    <script src="./src/app-toy-compatibility.js?v=20261104-17"></script>
-    <script src="./src/app-toy-state.js?v=20261104-17"></script>
-    <script src="./src/app-toy-actions.js?v=20261104-17"></script>
-    <script src="./src/app-toy-runtime.js?v=20261104-17"></script>
-    <script src="./src/app-report-selection.js?v=20261104-17"></script>
-    <script src="./src/app-candidate-state.js?v=20261104-17"></script>
-    <script src="./src/app-candidate-visibility.js?v=20261104-17"></script>
-    <script src="./src/app-sector-view.js?v=20261104-17"></script>
-    <script src="./src/app-vantage-view.js?v=20261104-17"></script>
-    <script src="./src/app-rating-scoring.js?v=20261104-17"></script>
-    <script src="./src/app-chain-scoring.js?v=20261104-17"></script>
-    <script src="./src/app-chain-step.js?v=20261104-17"></script>
-    <script src="./src/app-chain-visual-palette.js?v=20261104-17"></script>
-    <script src="./src/app-chain-visual-model.js?v=20261104-17"></script>
-    <script src="./src/app-chain-visual-geometry.js?v=20261104-17"></script>
-    <script src="./src/app-colouring-model.js?v=20261104-17"></script>
-    <script src="./src/app-highlight-context.js?v=20261104-17"></script>
-    <script src="./src/app-analysis-state.js?v=20261104-17"></script>
-    <script src="./src/app-chain-selection.js?v=20261104-17"></script>
-    <script src="./src/app-chain-report-view.js?v=20261104-17"></script>
-<script src="./src/app-chain-search-view.js?v=20261104-17"></script>
-<script src="./src/app-als-dof-view.js?v=20261104-17"></script>
-<script src="./src/app-hydra-view.js?v=20261104-17"></script>
-<script src="./src/app-ahs-dof-view.js?v=20261104-17"></script>
-<script src="./src/app-dof-group-view.js?v=20261104-17"></script>
-<script src="./src/app-auxiliary-link-view.js?v=20261104-17"></script>
-<script src="./src/app-auxiliary-record-view.js?v=20261104-17"></script>
-<script src="./src/app-strong-link-view.js?v=20261104-17"></script>
-<script src="./src/app-colouring-report-view.js?v=20261104-17"></script>
-<script src="./src/app-fish-view.js?v=20261104-17"></script>
-<script src="./src/app-step-list-view.js?v=20261104-17"></script>
-<script src="./src/app-subset-view.js?v=20261104-17"></script>
-<script src="./src/app-pom-report-view.js?v=20261104-17"></script>
-<script src="./src/app-solution-actions-view.js?v=20261104-17"></script>
-<script src="./src/app-panel-navigation-view.js?v=20261104-17"></script>
-<script src="./src/app-grid-view-controller.js?v=20261104-17"></script>
-<script src="./src/app-board-container-view.js?v=20261104-17"></script>
-<script src="./src/app-board-cell-view.js?v=20261104-17"></script>
-<script src="./src/app-board-candidate-view.js?v=20261104-17"></script>
-<script src="./src/app-board-renderer.js?v=20261104-17"></script>
-<script src="./src/app-render-cycle.js?v=20261104-17"></script>
-<script src="./src/app-ocr-scan.js?v=20261104-17"></script>
-<script src="./src/app-history-controls-view.js?v=20261104-17"></script>
-<script src="./src/app-vantage-overlay-renderer.js?v=20261104-17"></script>
-<script src="./src/app-strong-link-overlay-renderer.js?v=20261104-17"></script>
-<script src="./src/app-als-dof-overlay-renderer.js?v=20261104-17"></script>
-<script src="./src/app-colouring-sequence-controls.js?v=20261104-17"></script>
-<script src="./src/app-chain-highlight-builder.js?v=20261104-17"></script>
-<script src="./src/app-board-overlay-view.js?v=20261104-17"></script>
-<script src="./src/app-chain-sector-frame-renderer.js?v=20261104-17"></script>
-<script src="./src/app-chain-overlay-renderer.js?v=20261104-17"></script>
-<script src="./src/app-player-keyboard.js?v=20261104-17"></script>
-    <script src="./src/app-chain-safety.js?v=20261104-17"></script>
-    <script src="./src/app-solver-ranking.js?v=20261104-17"></script>
-    <script src="./src/app-als-dof-selection.js?v=20261104-17"></script>
-    <script src="./src/app-alc-search.js?v=20261104-17"></script>
-    <script src="./src/app-chain-modifiers.js?v=20261104-17"></script>
-    <script src="./src/app-chain-classification.js?v=20261104-17"></script>
-    <script src="./src/app-chain-naming.js?v=20261104-17"></script>
-    <script src="./src/app-chain-single-digit.js?v=20261104-17"></script>
-    <script src="./src/app-chain-node-analysis.js?v=20261104-17"></script>
-    <script src="./src/app-chain-als-info.js?v=20261104-17"></script>
-    <script src="./src/app-chain-barns-info.js?v=20261104-17"></script>
-    <script src="./src/app-chain-xy-info.js?v=20261104-17"></script>
-    <script src="./src/app-chain-folder-info.js?v=20261104-17"></script>
-    <script src="./src/app-chain-display.js?v=20261104-17"></script>
-    <script src="./src/app-chain-location-dedupe.js?v=20261104-17"></script>
-    <script src="./src/app-chain-folder-x.js?v=20261104-17"></script>
-    <script src="./src/app-chain-folder-wings.js?v=20261104-17"></script>
-    <script src="./src/app-chain-folder-als.js?v=20261104-17"></script>
-    <script src="./src/app-chain-folder-orchestrator.js?v=20261104-17"></script>
-    <script src="./src/app-chain-text.js?v=20261104-17"></script>
-    <script src="./src/app-dof-rating.js?v=20261104-17"></script>
-    <script src="./src/app-rating-aggregation.js?v=20261104-17"></script>
-    <script src="./src/app-rating-view.js?v=20261104-17"></script>
-    <script src="./src/app-solution-log-view.js?v=20261104-17"></script>
-    <script src="./src/app-solved-state.js?v=20261104-17"></script>
-    <script src="./src/app-display-names.js?v=20261104-17"></script>
-    <script src="./src/app-pom-view.js?v=20261104-17"></script>
-    <script src="./src/app-promotion-view.js?v=20261104-17"></script>
-    <script src="./src/app-difficulty-info.js?v=20261104-17"></script>
-    <script src="./src/app-variant-settings.js?v=20261104-17"></script>
-    <script src="./src/app-settings-runtime.js?v=20261104-17"></script>
-    <script src="./src/app-msls-view.js?v=20261104-17"></script>
-    <script src="./src/app-msls-search.js?v=20261104-17"></script>
-    <script src="./src/app-colouring-step.js?v=20261104-17"></script>
-    <script src="./src/app-chain-node-limits.js?v=20261104-17"></script>
-    <script src="./src/app-solver-phase.js?v=20261104-17"></script>
-    <script src="./src/app-phase-builder.js?v=20261104-17"></script>
-    <script src="./src/app-ahs-build.js?v=20261104-17"></script>
-    <script src="./src/app-ahs-hydra-events.js?v=20261104-17"></script>
-    <script src="./src/app-ahs-link-events.js?v=20261104-17"></script>
-    <script src="./src/app-als-xy-events.js?v=20261104-17"></script>
-    <script src="./src/app-als-chain-events.js?v=20261104-17"></script>
-    <script src="./src/app-als-dof-events.js?v=20261104-17"></script>
-    <script src="./src/app-als-dof-chain-events.js?v=20261104-17"></script>
-    <script src="./src/app-als-hydra-events.js?v=20261104-17"></script>
-    <script src="./src/app-subset-events.js?v=20261104-17"></script>
-    <script src="./src/app-copy-events.js?v=20261104-17"></script>
-    <script src="./src/app-solution-events.js?v=20261104-17"></script>
-    <script src="./src/app-toy-events.js?v=20261104-17"></script>
-    <script src="./src/app-chromatic-view.js?v=20261104-17"></script>
-    <script src="./src/app-chromatic-events.js?v=20261104-17"></script>
-    <script src="./src/app-medusa-simple-coloring-events.js?v=20261104-17"></script>
-    <script src="./src/app-medusa-multi-coloring-events.js?v=20261104-17"></script>
-    <script src="./src/app-diagnostics.js?v=20261104-17"></script>
-    <script src="./src/app.js?v=20261104-17"></script>
+    <script src="./src/browser-core.js?v=20261119-02"></script>
+  <script src="./src/set-tools-core.js?v=20261119-02"></script>
+  <script src="./src/pom-core.js?v=20261119-02"></script>
+  <script src="./src/als-core.js?v=20261119-02"></script>
+  <script src="./src/als-link-core.js?v=20261119-02"></script>
+  <script src="./src/als-dof-core.js?v=20261119-02"></script>
+  <script src="./src/hydra-core.js?v=20261119-02"></script>
+  <script src="./src/ahs-core.js?v=20261119-02"></script>
+  <script src="./src/ahs-link-core.js?v=20261119-02"></script>
+  <script src="./src/subset-report-core.js?v=20261119-02"></script>
+  <script src="./src/mini-sectors-core.js?v=20261119-02"></script>
+  <script src="./src/chromatic-core.js?v=20261119-02"></script>
+  <script src="./src/chromatic-als-core.js?v=20261119-02"></script>
+    <script src="./src/strong-link-core.js?v=20261119-02"></script>
+      <script src="./src/chain-core.js?v=20261119-02"></script>
+  <script src="./src/alc-core.js?v=20261119-02"></script>
+  <script src="./src/ahs-xy-core.js?v=20261119-02"></script>
+  <script src="./src/ahs-dof-core.js?v=20261119-02"></script>
+  <script src="./src/msls-core.js?v=20261119-02"></script>
+    <script src="./src/app-context.js?v=20261119-02"></script>
+    <script src="./src/app-worker-runtime.js?v=20261119-03"></script>
+    <script src="./src/app-generator-runtime.js?v=20261119-02"></script>
+    <script src="./src/app-puzzle-generator.js?v=20261119-02"></script>
+    <script src="./src/app-ocr-assets.js?v=20261119-02"></script>
+    <script src="./src/app-ocr-grid.js?v=20261119-02"></script>
+    <script src="./src/app-ocr-controller.js?v=20261119-02"></script>
+    <script src="./src/app-clipboard.js?v=20261119-02"></script>
+    <script src="./src/app-link-state.js?v=20261119-02"></script>
+    <script src="./src/app-variant-controls.js?v=20261119-02"></script>
+    <script src="./src/app-search-control.js?v=20261119-02"></script>
+    <script src="./src/app-search-result-reset.js?v=20261119-02"></script>
+    <script src="./src/app-history-state.js?v=20261119-02"></script>
+    <script src="./src/app-history-snapshot.js?v=20261119-02"></script>
+    <script src="./src/app-history-restore.js?v=20261119-02"></script>
+    <script src="./src/app-history-cycle.js?v=20261119-02"></script>
+    <script src="./src/app-ui-state.js?v=20261119-02"></script>
+    <script src="./src/app-toggle-ui.js?v=20261119-02"></script>
+    <script src="./src/app-fish-controls.js?v=20261119-02"></script>
+    <script src="./src/app-candidate-controls.js?v=20261119-02"></script>
+    <script src="./src/app-grid-text-view.js?v=20261119-02"></script>
+    <script src="./src/app-form-controls.js?v=20261119-02"></script>
+    <script src="./src/app-candidate-filter.js?v=20261119-02"></script>
+    <script src="./src/app-technique-controls.js?v=20261119-02"></script>
+    <script src="./src/app-input-loader.js?v=20261119-02"></script>
+    <script src="./src/app-puzzle-loader.js?v=20261119-02"></script>
+    <script src="./src/app-basic-events.js?v=20261119-02"></script>
+    <script src="./src/app-ocr-events.js?v=20261119-02"></script>
+    <script src="./src/app-variant-events.js?v=20261119-02"></script>
+    <script src="./src/app-example-events.js?v=20261119-02"></script>
+    <script src="./src/app-board-events.js?v=20261119-02"></script>
+    <script src="./src/app-search-events.js?v=20261119-02"></script>
+    <script src="./src/app-pom-events.js?v=20261119-02"></script>
+    <script src="./src/app-pom-search.js?v=20261119-02"></script>
+    <script src="./src/app-bug-search.js?v=20261119-03"></script>
+    <script src="./src/app-uniqueness-search.js?v=20261119-02"></script>
+    <script src="./src/app-als-events.js?v=20261119-02"></script>
+    <script src="./src/app-als-link-events.js?v=20261119-02"></script>
+    <script src="./src/app-ahs-events.js?v=20261119-02"></script>
+    <script src="./src/app-msls-events.js?v=20261119-02"></script>
+    <script src="./src/app-strong-link-events.js?v=20261119-02"></script>
+    <script src="./src/app-simple-coloring-events.js?v=20261119-02"></script>
+    <script src="./src/app-multi-coloring-events.js?v=20261119-02"></script>
+    <script src="./src/app-chain-events.js?v=20261119-02"></script>
+    <script src="./src/app-chain-build.js?v=20261119-02"></script>
+    <script src="./src/app-alc-build.js?v=20261119-02"></script>
+    <script src="./src/app-fish-events.js?v=20261119-02"></script>
+    <script src="./src/app-als-xz-events.js?v=20261119-02"></script>
+    <script src="./src/app-ahs-xz-events.js?v=20261119-02"></script>
+    <script src="./src/app-alc-xz-events.js?v=20261119-02"></script>
+    <script src="./src/app-alc-xy-events.js?v=20261119-02"></script>
+    <script src="./src/app-alc-chain-events.js?v=20261119-02"></script>
+    <script src="./src/app-alc-dof-events.js?v=20261119-02"></script>
+    <script src="./src/app-alc-hydra-build.js?v=20261119-02"></script>
+    <script src="./src/app-alc-hydra-events.js?v=20261119-02"></script>
+    <script src="./src/app-ahs-xy-events.js?v=20261119-02"></script>
+    <script src="./src/app-ahs-chain-events.js?v=20261119-02"></script>
+    <script src="./src/app-ahs-dof-events.js?v=20261119-02"></script>
+    <script src="./src/app-ahs-dof-build.js?v=20261119-02"></script>
+    <script src="./src/app-ahs-dof-chain-events.js?v=20261119-02"></script>
+    <script src="./src/app-ahs-dof-chain-build.js?v=20261119-02"></script>
+    <script src="./src/app-ahs-hydra-build.js?v=20261119-02"></script>
+    <script src="./src/app-als-dof-build.js?v=20261119-02"></script>
+    <script src="./src/app-als-dof-chain-build.js?v=20261119-02"></script>
+    <script src="./src/app-als-hydra-build.js?v=20261119-02"></script>
+    <script src="./src/app-ahs-link-build.js?v=20261119-02"></script>
+    <script src="./src/app-als-build.js?v=20261119-02"></script>
+    <script src="./src/app-als-link-build.js?v=20261119-02"></script>
+    <script src="./src/app-ahs-record-build.js?v=20261119-02"></script>
+    <script src="./src/app-strong-link-build.js?v=20261119-02"></script>
+    <script src="./src/app-simple-coloring-build.js?v=20261119-02"></script>
+    <script src="./src/app-three-d-medusa-build.js?v=20261119-02"></script>
+    <script src="./src/app-multi-coloring-build.js?v=20261119-02"></script>
+    <script src="./src/app-three-d-medusa-multi-build.js?v=20261119-02"></script>
+    <script src="./src/app-fish-build.js?v=20261119-02"></script>
+    <script src="./src/app-generic-subset-build.js?v=20261119-02"></script>
+    <script src="./src/app-box-line-build.js?v=20261119-02"></script>
+    <script src="./src/app-difficulty-data.js?v=20261119-02"></script>
+    <script src="./src/app-rating-data.js?v=20261119-02"></script>
+    <script src="./src/app-rating-runtime.js?v=20261119-02"></script>
+    <script src="./src/app-dof-step.js?v=20261119-02"></script>
+    <script src="./src/app-hydra-step.js?v=20261119-02"></script>
+    <script src="./src/app-player-state.js?v=20261119-02"></script>
+    <script src="./src/app-player-editing.js?v=20261119-02"></script>
+    <script src="./src/app-subset-report-controller.js?v=20261119-02"></script>
+    <script src="./src/app-player-mode.js?v=20261119-02"></script>
+    <script src="./src/app-toy-math.js?v=20261119-02"></script>
+    <script src="./src/app-toy-catalog.js?v=20261119-02"></script>
+    <script src="./src/app-toy-minilex-view.js?v=20261119-02"></script>
+    <script src="./src/app-toy-minilex-controller.js?v=20261119-02"></script>
+    <script src="./src/app-toy-minimizer-view.js?v=20261119-02"></script>
+    <script src="./src/app-toy-automorph-view.js?v=20261119-02"></script>
+    <script src="./src/app-toy-automorph-controller.js?v=20261119-02"></script>
+    <script src="./src/app-toy-minimizer.js?v=20261119-02"></script>
+    <script src="./src/app-toy-minimizer-controller.js?v=20261119-02"></script>
+    <script src="./src/app-toy-controls.js?v=20261119-02"></script>
+    <script src="./src/app-toy-compatibility.js?v=20261119-02"></script>
+    <script src="./src/app-toy-state.js?v=20261119-02"></script>
+    <script src="./src/app-toy-actions.js?v=20261119-02"></script>
+    <script src="./src/app-toy-runtime.js?v=20261119-02"></script>
+    <script src="./src/app-report-selection.js?v=20261119-02"></script>
+    <script src="./src/app-candidate-state.js?v=20261119-02"></script>
+    <script src="./src/app-candidate-visibility.js?v=20261119-02"></script>
+    <script src="./src/app-sector-view.js?v=20261119-02"></script>
+    <script src="./src/app-vantage-view.js?v=20261119-02"></script>
+    <script src="./src/app-rating-scoring.js?v=20261119-02"></script>
+    <script src="./src/app-chain-scoring.js?v=20261119-02"></script>
+    <script src="./src/app-chain-rating.js?v=20261119-02"></script>
+    <script src="./src/app-step-rating.js?v=20261119-02"></script>
+    <script src="./src/app-chain-step.js?v=20261119-02"></script>
+    <script src="./src/app-chain-visual-palette.js?v=20261119-02"></script>
+    <script src="./src/app-chain-visual-model.js?v=20261119-02"></script>
+    <script src="./src/app-chain-visual-geometry.js?v=20261119-02"></script>
+    <script src="./src/app-chain-arc-drawing.js?v=20261119-02"></script>
+    <script src="./src/app-chain-side-box-drawing.js?v=20261119-02"></script>
+    <script src="./src/app-chain-strong-link-drawing.js?v=20261119-02"></script>
+    <script src="./src/app-colouring-model.js?v=20261119-02"></script>
+    <script src="./src/app-colouring-sequence-assignments.js?v=20261119-02"></script>
+    <script src="./src/app-highlight-context.js?v=20261119-02"></script>
+    <script src="./src/app-current-highlights.js?v=20261119-02"></script>
+    <script src="./src/app-analysis-state.js?v=20261119-02"></script>
+    <script src="./src/app-chain-selection.js?v=20261119-02"></script>
+<script src="./src/app-selected-chain-controller.js?v=20261119-02"></script>
+    <script src="./src/app-chain-report-view.js?v=20261119-02"></script>
+<script src="./src/app-chain-search-view.js?v=20261119-02"></script>
+<script src="./src/app-chain-runtime.js?v=20261119-02"></script>
+<script src="./src/app-als-dof-view.js?v=20261119-02"></script>
+<script src="./src/app-hydra-view.js?v=20261119-02"></script>
+<script src="./src/app-search-results-controller.js?v=20261119-02"></script>
+<script src="./src/app-ahs-dof-view.js?v=20261119-02"></script>
+<script src="./src/app-dof-group-view.js?v=20261119-02"></script>
+<script src="./src/app-auxiliary-link-view.js?v=20261119-02"></script>
+<script src="./src/app-auxiliary-record-view.js?v=20261119-02"></script>
+<script src="./src/app-auxiliary-record-controller.js?v=20261119-02"></script>
+<script src="./src/app-strong-link-view.js?v=20261119-02"></script>
+<script src="./src/app-strong-link-report-controller.js?v=20261119-02"></script>
+<script src="./src/app-colouring-report-view.js?v=20261119-02"></script>
+<script src="./src/app-colouring-report-controller.js?v=20261119-02"></script>
+<script src="./src/app-multicoloring-style.js?v=20261119-02"></script>
+<script src="./src/app-multicoloring-text.js?v=20261119-02"></script>
+<script src="./src/app-multicoloring-report-controller.js?v=20261119-02"></script>
+<script src="./src/app-fish-view.js?v=20261119-02"></script>
+<script src="./src/app-fish-report-controller.js?v=20261119-02"></script>
+<script src="./src/app-step-list-view.js?v=20261119-02"></script>
+<script src="./src/app-box-line-report-controller.js?v=20261119-02"></script>
+<script src="./src/app-subset-view.js?v=20261119-02"></script>
+<script src="./src/app-pom-report-view.js?v=20261119-02"></script>
+<script src="./src/app-solution-actions-view.js?v=20261119-02"></script>
+<script src="./src/app-selected-result-steps.js?v=20261119-02"></script>
+<script src="./src/app-highlighted-eureka.js?v=20261119-02"></script>
+<script src="./src/app-highlighted-move.js?v=20261119-02"></script>
+<script src="./src/app-highlighted-move-actions.js?v=20261119-02"></script>
+<script src="./src/app-highlighted-move-selection.js?v=20261119-02"></script>
+<script src="./src/app-panel-navigation-view.js?v=20261119-02"></script>
+<script src="./src/app-grid-view-controller.js?v=20261119-02"></script>
+<script src="./src/app-board-container-view.js?v=20261119-02"></script>
+<script src="./src/app-board-cell-view.js?v=20261119-02"></script>
+<script src="./src/app-board-candidate-view.js?v=20261119-02"></script>
+<script src="./src/app-board-renderer.js?v=20261119-02"></script>
+<script src="./src/app-render-cycle.js?v=20261119-02"></script>
+<script src="./src/app-ocr-scan.js?v=20261119-02"></script>
+<script src="./src/app-history-controls-view.js?v=20261119-02"></script>
+<script src="./src/app-vantage-overlay-drawing.js?v=20261119-02"></script>
+<script src="./src/app-vantage-overlay-renderer.js?v=20261119-02"></script>
+<script src="./src/app-strong-link-overlay-renderer.js?v=20261119-02"></script>
+<script src="./src/app-als-dof-overlay-renderer.js?v=20261119-02"></script>
+<script src="./src/app-colouring-sequence-controls.js?v=20261119-02"></script>
+<script src="./src/app-chain-highlight-builder.js?v=20261119-02"></script>
+<script src="./src/app-board-overlay-view.js?v=20261119-02"></script>
+<script src="./src/app-board-overlay-runtime.js?v=20261119-02"></script>
+<script src="./src/app-board-view-runtime.js?v=20261119-02"></script>
+<script src="./src/app-chain-sector-frame-renderer.js?v=20261119-02"></script>
+<script src="./src/app-chain-overlay-renderer.js?v=20261119-02"></script>
+<script src="./src/app-almost-fish-overlay.js?v=20261119-02"></script>
+<script src="./src/app-run-all.js?v=20261119-02"></script>
+<script src="./src/app-cycle-controls.js?v=20261119-02"></script>
+<script src="./src/app-als-chain-search.js?v=20261119-02"></script>
+<script src="./src/app-chromatic-search.js?v=20261119-02"></script>
+<script src="./src/app-interactive-profile.js?v=20261119-02"></script>
+<script src="./src/app-player-analysis-reset.js?v=20261119-02"></script>
+<script src="./src/app-interactive-search.js?v=20261119-02"></script>
+<script src="./src/app-puzzle-reset.js?v=20261119-02"></script>
+<script src="./src/app-generated-puzzle-rating.js?v=20261119-02"></script>
+<script src="./src/app-player-keyboard.js?v=20261119-02"></script>
+<script src="./src/app-player-interaction.js?v=20261119-02"></script>
+    <script src="./src/app-chain-safety.js?v=20261119-02"></script>
+    <script src="./src/app-solver-ranking.js?v=20261119-02"></script>
+    <script src="./src/app-als-dof-selection.js?v=20261119-02"></script>
+    <script src="./src/app-alc-search.js?v=20261119-02"></script>
+    <script src="./src/app-chain-modifiers.js?v=20261119-02"></script>
+    <script src="./src/app-chain-classification.js?v=20261119-02"></script>
+    <script src="./src/app-chain-naming.js?v=20261119-02"></script>
+    <script src="./src/app-chain-single-digit.js?v=20261119-02"></script>
+    <script src="./src/app-chain-node-analysis.js?v=20261119-02"></script>
+    <script src="./src/app-chain-als-info.js?v=20261119-02"></script>
+    <script src="./src/app-chain-barns-info.js?v=20261119-02"></script>
+    <script src="./src/app-chain-xy-info.js?v=20261119-02"></script>
+    <script src="./src/app-chain-folder-info.js?v=20261119-02"></script>
+    <script src="./src/app-chain-display.js?v=20261119-02"></script>
+    <script src="./src/app-chain-location-dedupe.js?v=20261119-02"></script>
+    <script src="./src/app-chain-folder-x.js?v=20261119-02"></script>
+    <script src="./src/app-chain-folder-wings.js?v=20261119-02"></script>
+    <script src="./src/app-chain-folder-als.js?v=20261119-02"></script>
+    <script src="./src/app-chain-folder-orchestrator.js?v=20261119-02"></script>
+    <script src="./src/app-chain-text.js?v=20261119-02"></script>
+    <script src="./src/app-dof-rating.js?v=20261119-02"></script>
+    <script src="./src/app-rating-aggregation.js?v=20261119-02"></script>
+    <script src="./src/app-rating-view.js?v=20261119-02"></script>
+    <script src="./src/app-solution-log-view.js?v=20261119-02"></script>
+    <script src="./src/app-solution-step-log.js?v=20261119-02"></script>
+    <script src="./src/app-solved-state.js?v=20261119-02"></script>
+    <script src="./src/app-display-names.js?v=20261119-02"></script>
+    <script src="./src/app-pom-view.js?v=20261119-02"></script>
+    <script src="./src/app-promotion-view.js?v=20261119-02"></script>
+    <script src="./src/app-promotion-controller.js?v=20261119-02"></script>
+    <script src="./src/app-elimination-verifier.js?v=20261119-02"></script>
+    <script src="./src/app-cycle-application.js?v=20261119-02"></script>
+    <script src="./src/app-difficulty-info.js?v=20261119-02"></script>
+    <script src="./src/app-variant-settings.js?v=20261119-02"></script>
+    <script src="./src/app-settings-runtime.js?v=20261119-02"></script>
+    <script src="./src/app-msls-view.js?v=20261119-02"></script>
+    <script src="./src/app-msls-search.js?v=20261119-02"></script>
+    <script src="./src/app-colouring-step.js?v=20261119-02"></script>
+    <script src="./src/app-chain-node-limits.js?v=20261119-02"></script>
+    <script src="./src/app-chain-search-options.js?v=20261119-02"></script>
+    <script src="./src/app-chain-search-plan.js?v=20261119-02"></script>
+    <script src="./src/app-solver-phase.js?v=20261119-02"></script>
+    <script src="./src/app-solver-phase-runtime.js?v=20261119-02"></script>
+    <script src="./src/app-solver-direct-phase.js?v=20261119-02"></script>
+    <script src="./src/app-solver-chain-execution.js?v=20261119-02"></script>
+    <script src="./src/app-solver-special-search.js?v=20261119-02"></script>
+    <script src="./src/app-solver-search-config.js?v=20261119-02"></script>
+    <script src="./src/app-solver-dof-ranking.js?v=20261119-02"></script>
+    <script src="./src/app-solver-dof-search.js?v=20261119-02"></script>
+    <script src="./src/app-solver-alc-search.js?v=20261119-02"></script>
+    <script src="./src/app-solver-msls-search.js?v=20261119-02"></script>
+    <script src="./src/app-solver-runner.js?v=20261119-02"></script>
+    <script src="./src/app-solver-hierarchy.js?v=20261119-02"></script>
+    <script src="./src/app-solver-simulation.js?v=20261119-02"></script>
+    <script src="./src/app-phase-builder.js?v=20261119-02"></script>
+    <script src="./src/app-ahs-build.js?v=20261119-02"></script>
+    <script src="./src/app-ahs-hydra-events.js?v=20261119-02"></script>
+    <script src="./src/app-ahs-link-events.js?v=20261119-02"></script>
+    <script src="./src/app-als-xy-events.js?v=20261119-02"></script>
+    <script src="./src/app-als-chain-events.js?v=20261119-02"></script>
+    <script src="./src/app-als-dof-events.js?v=20261119-02"></script>
+    <script src="./src/app-als-dof-chain-events.js?v=20261119-02"></script>
+    <script src="./src/app-als-hydra-events.js?v=20261119-02"></script>
+    <script src="./src/app-subset-events.js?v=20261119-02"></script>
+    <script src="./src/app-copy-events.js?v=20261119-02"></script>
+    <script src="./src/app-solution-events.js?v=20261119-02"></script>
+    <script src="./src/app-toy-events.js?v=20261119-02"></script>
+    <script src="./src/app-chromatic-view.js?v=20261119-02"></script>
+<script src="./src/app-chromatic-report-controller.js?v=20261119-02"></script>
+    <script src="./src/app-chromatic-events.js?v=20261119-02"></script>
+    <script src="./src/app-medusa-simple-coloring-events.js?v=20261119-02"></script>
+    <script src="./src/app-medusa-multi-coloring-events.js?v=20261119-02"></script>
+    <script src="./src/app-diagnostics.js?v=20261119-02"></script>
+    <script src="./src/app.js?v=20261119-02"></script>
 </body>
 </html>

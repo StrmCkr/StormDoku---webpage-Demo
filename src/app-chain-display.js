@@ -16,8 +16,13 @@
     }
 
     function folderChainText(chain, folder) {
-      if (folder?.displayName) return folder.displayName;
-      return chainText(chain);
+      const formatted = chainText(chain);
+      if (!folder?.displayName) return formatted;
+      const separator = formatted.indexOf(':');
+      const context = separator >= 0 ? formatted.slice(separator + 1).trim() : formatted;
+      return context
+        ? `${folder.displayName}: ${context}`
+        : folder.displayName;
     }
 
     return { displayChainForUi, folderChainText };

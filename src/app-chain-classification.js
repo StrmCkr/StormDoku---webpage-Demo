@@ -69,6 +69,45 @@
     return existing;
   }
 
+  function openXWingSubclass(chain) {
+    if (chain?.isRing) return null;
+    const steps = chain?.steps || [];
+    if (steps.length !== 2 || steps.some(step => step.family !== 'SL')) return null;
+    if (steps.some(step => step.linkType !== 0 && step.linkType !== 1)) return null;
+    if (!steps.some(step => step.linkType === 0)
+      || !steps.some(step => step.linkType === 1)) return null;
+
+    const digits = new Set(steps.flatMap(step => [
+      ...(step.entry?.digits || []),
+      ...(step.exit?.digits || []),
+      ...(step.weakDigit == null ? [] : [step.weakDigit]),
+    ]));
+    if (digits.size !== 1) return null;
+
+    const kinds = steps.map(step => {
+      const sectors = step.originSectors || [];
+      return new Set(sectors.map(sector => sector < 9 ? 'R' : sector < 18 ? 'C' : 'B'));
+    });
+    const kind = ['R', 'C'].find(value => kinds.every(set => set.has(value)));
+    if (!kind) return null;
+    const linePosition = cell => kind === 'R' ? cell % 9 : Math.floor(cell / 9);
+    const bilocal = steps.find(step => step.linkType === 0);
+    const grouped = steps.find(step => step.linkType === 1);
+    const basePositions = [...new Set([
+      ...(bilocal.entry?.cells || []),
+      ...(bilocal.exit?.cells || []),
+    ].map(linePosition))].sort((a, b) => a - b);
+    const groupedPositions = [...new Set([
+      ...(grouped.entry?.cells || []),
+      ...(grouped.exit?.cells || []),
+    ].map(linePosition))].sort((a, b) => a - b);
+    if (basePositions.length !== 2) return null;
+    const aligned = basePositions.filter(position => groupedPositions.includes(position));
+    if (aligned.length === 1) return 'Sashimi X-Wing';
+    if (aligned.length === 2 && groupedPositions.length > 2) return 'Finned X-Wing';
+    return null;
+  }
+
   function moveKeys(chain, {
     chainUniqueDigitCount,
     isEriOnlyXChain,
@@ -181,6 +220,94 @@
     return rank || Number.POSITIVE_INFINITY;
   }
 
+  function legacyTieKey(chain, {
+    chainEriCount,
+    isEriOnlyXChain,
+    barnsChainInfo,
+    barnsTransportChainInfo,
+    alsSizeOneChainInfo,
+    hiddenXyChainInfo,
+  }) {
+    const fullName = String(chain?.structureName || '');
+    const name = fullName
+      .replace(/^\s*(?:(?:AIC\s*\+\s*)?ALS|AHS)\s*-\s*/i, '')
+      .trim();
+    const barnsTransport = barnsTransportChainInfo(chain);
+    const barns = barnsChainInfo(chain);
+    if (barnsTransport) {
+      return barnsTransport.sizeName.length <= 3
+        ? 'barns-xyz-transport'
+        : 'barns-wxyz-transport';
+    }
+    if (barns) return barns.sizeName.length === 3 ? 'barns' : 'barns-wxyz';
+
+    if (isEriOnlyXChain(chain)) {
+      const eriCount = chainEriCount(chain);
+      if (eriCount === 3) return '3x-eri';
+      if (eriCount === 4) return '4x-eri';
+      if (eriCount > 4) return 'eri-chain-long';
+    }
+
+    const aicAlsNamed = /^AIC\s*\+\s*ALS\s*-\s*.+(?:Wing|Ring)$/i.test(fullName);
+    if (aicAlsNamed) return 'als-named';
+    if (/^AIC\s*\+\s*ALS(?:\s*-\s*Chain)?$/i.test(fullName)) return 'aic-als';
+    if (/^ALS\s*-\s*XZ$/i.test(fullName)) return 'als-xz';
+    if (/^T\s*-\s*ALS\s*-\s*XZ(?:\s+Ring)?$/i.test(fullName)) return 't-als-xz';
+    if (/^ALS\s*-\s*XY$/i.test(fullName)) return 'als-xy';
+    if (/^ALC\s*-\s*XZ(?:\s+Ring)?$/i.test(fullName)) return 'alc-xz';
+    if (/^ALC\s*-\s*XY(?:\s+Ring)?$/i.test(fullName)) return 'alc-xy';
+    if (/^ALC\s*-\s*Chain(?:\s+Ring)?$/i.test(fullName)) return 'alc-chain';
+    if (/^ALC\s*-\s*DOF\s+Chain(?:\s+Ring)?$/i.test(fullName)) return 'alc-dof';
+    if (/^AHS\s*-\s*XZ(?:\s+Ring)?$/i.test(fullName)) return 'ahs-xz';
+    if (/^AHS\s*-\s*XY(?:\s+Ring)?$/i.test(fullName)) return 'ahs-xy';
+    if (/^AHS\s*-\s*Chain(?:\s+Ring)?$/i.test(fullName)) return 'ahs-chain';
+    if (/^T\s*-\s*ALS\s*-\s*XY(?:\s+Ring)?$/i.test(fullName)) return 't-als-xy';
+    if (/^ALS\s*-\s*Chain$/i.test(fullName)) return 'als-chain';
+    if (/^ALS\s*-/i.test(fullName) && /(?:Wing|Ring)$/i.test(name)) return 'als-named';
+    if (/^AHS\s*-/i.test(fullName) && /(?:Wing|Ring)$/i.test(name)) return 'ahs-named';
+    if (/^ALC\s*-/i.test(fullName) && /(?:Wing|Ring)$/i.test(name)) return 'alc-named';
+
+    const alsSizeOne = alsSizeOneChainInfo(chain);
+    if (alsSizeOne?.remotePair) return 'remote-pair';
+    if (alsSizeOne?.breakdown === 'XY-Wing') return 'xy-wing';
+    if (alsSizeOne) return 'xy-chain';
+
+    const hiddenXy = hiddenXyChainInfo(chain);
+    if (hiddenXy?.remotePair) return 'hidden-remote-pair';
+    if (hiddenXy && chain.isRing) return 'hidden-xy-ring';
+    if (hiddenXy) return 'hidden-xy-chain';
+
+    if (/^X-Wing$/i.test(name)) return 'aic-x-wing';
+    if (/^Skyscraper$/i.test(name)) return 'skyscraper';
+    if (/^2-String Kite$/i.test(name)) return '2-string-kite';
+    if (/^Finned X-Wing$/i.test(name)) return 'finned-x-wing';
+    if (/^Sashimi X-Wing$/i.test(name)) return 'sashimi-x-wing';
+    if (/(?:^|-\s*)Empty Rectangle$/i.test(name)) return 'empty-rectangle';
+    if (/(?:^|-\s*)Dual Empty Rectangle$/i.test(name)) return 'dual-empty-rectangle';
+    if (/(?:^|-\s*)Rec'T Kite$/i.test(name)) return 'rect-kite';
+    if (/(?:^|-\s*)Bridged (?:ERI|Empty Rectangle)$/i.test(name)) return 'bridged-eri';
+    if (/^XY-Wing$/i.test(name)) return 'xy-wing';
+    if (/^L\(1\)-Wing$|^L1-Wing$/i.test(name)) return 'l1-wing';
+    if (/^L\(2\)-Wing$|^L2-Wing$/i.test(name)) return 'l2-wing';
+    if (/^L\(3\)-Wing$|^L3-Wing$/i.test(name)) return 'l3-wing';
+    if (/^W-Wing|^W-Ring/i.test(name)) return 'w-wing';
+    if (/Transport/i.test(name)) return 'w-transport';
+    if (/^S-Wing|^S-Ring/i.test(name)) return 's-wing';
+    if (/^M(?:\(\d+\))?-Wing|^M(?:\(\d+\))?-Ring/i.test(name)) return 'm-wing';
+    if (/^H(?:\(\d+\))?-Wing|^H(?:\(\d+\))?-Ring/i.test(name)) return 'h-wing';
+
+    const length = Number(chain?.length || chain?.steps?.length || 0);
+    if (/^(?:X-Chain|AIC)(?:\s+\(Depth\s+\d+\))?$/i.test(name)) {
+      if (length <= 2) return 'x-chain-2';
+      if (length === 3) return 'x-chain-3';
+      if (length === 4) return 'x-chain-4';
+      return 'x-chain-long';
+    }
+    if (length === 4) return 'x-chain-4';
+    if (length > 4) return 'x-chain-long';
+    return 'x-chain-long';
+  }
+
   function tieKey(chain, {
     chainEriCount,
     isEriOnlyXChain,
@@ -262,8 +389,10 @@
   app.chainClassification = {
     isTransportAlsXyRingShape,
     normalizedChainStructureName,
+    openXWingSubclass,
     moveKeys,
     complexityRank,
     tieKey,
+    legacyTieKey,
   };
 })(window);

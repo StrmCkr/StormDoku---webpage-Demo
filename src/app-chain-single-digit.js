@@ -12,24 +12,25 @@
       let allStepsAreEri = true;
 
       for (const step of steps) {
-        const names = Array.isArray(step.linkTypeNames)
-          ? step.linkTypeNames
-          : [step.linkTypeName];
-        const chainDigits = [
+        const chainDigits = new Set([
           ...(step.entry?.digits || []),
           ...(step.exit?.digits || []),
           step.weakDigit,
           step.weakFromDigit,
           step.weakToDigit,
-        ].filter(Number.isInteger);
+        ].map(Number).filter(digit => Number.isInteger(digit) && digit >= 1 && digit <= 9));
         for (const digit of chainDigits) allDigits.add(digit);
-        const isEri = step.linkType === core.ERI
-          || names.some(name => String(name || '').toUpperCase() === 'ERI');
+        const typeNames = [
+          step.linkTypeName,
+          ...(Array.isArray(step.linkTypeNames) ? step.linkTypeNames : []),
+        ].map(name => String(name || '').toUpperCase());
+        const isEri = step.family === 'SL'
+          && (Number(step.linkType) === core.ERI || typeNames.includes('ERI'));
         if (!isEri) {
           allStepsAreEri = false;
           continue;
         }
-        if (!chainDigits.length) return 0;
+        if (chainDigits.size !== 1) return 0;
         count += 1;
       }
 
@@ -42,44 +43,53 @@
 
       const digits = new Set();
       for (const step of steps) {
-        for (const digit of [
+        const stepDigits = new Set();
+        for (const value of [
           ...(step.entry?.digits || []),
           ...(step.exit?.digits || []),
           step.weakDigit,
           step.weakFromDigit,
           step.weakToDigit,
         ]) {
-          if (Number.isInteger(digit)) digits.add(digit);
+          const digit = Number(value);
+          if (Number.isInteger(digit) && digit >= 1 && digit <= 9) {
+            stepDigits.add(digit);
+            digits.add(digit);
+          }
         }
-      }
-      if (digits.size !== 1) return false;
-
-      return steps.every(step => {
+        if (stepDigits.size !== 1) return false;
         const names = [
           step.linkTypeName,
           ...(Array.isArray(step.linkTypeNames) ? step.linkTypeNames : []),
         ].map(name => String(name || '').toUpperCase());
-        return step.family === 'SL'
-          && (step.linkType === core.ERI || names.includes('ERI'));
-      });
+        if (step.family !== 'SL'
+          || (Number(step.linkType) !== core.ERI && !names.includes('ERI'))) return false;
+      }
+      if (digits.size !== 1) return false;
+      return true;
     }
 
     function emptyRectangleChain(chain) {
       const steps = chain.steps || [];
-      if (steps.length !== 2) return false;
+      if (steps.length !== 2 || steps.some(step => step.family !== 'SL')) return false;
       const digits = new Set();
       let eriCount = 0;
       for (const step of steps) {
-        for (const digit of [
+        const stepDigits = new Set([
           ...(step.entry?.digits || []),
           ...(step.exit?.digits || []),
           step.weakDigit,
-        ]) {
-          if (Number.isInteger(digit)) digits.add(digit);
-        }
-        const names = [step.linkTypeName, ...(step.linkTypeNames || [])]
-          .map(name => String(name || '').toUpperCase());
-        if (step.linkType === core.ERI || names.includes('ERI')) eriCount += 1;
+        ].map(Number).filter(digit => Number.isInteger(digit) && digit >= 1 && digit <= 9));
+        for (const digit of stepDigits) digits.add(digit);
+        if (stepDigits.size !== 1) return false;
+        const names = [
+          step.linkTypeName,
+          ...(Array.isArray(step.linkTypeNames) ? step.linkTypeNames : []),
+        ].map(name => String(name || '').toUpperCase());
+        const isEri = Number(step.linkType) === core.ERI || names.includes('ERI');
+        const isBilocal = Number(step.linkType) === 0 || names.includes('BILOCAL');
+        if (isEri) eriCount += 1;
+        else if (!isBilocal) return false;
       }
       return digits.size === 1 && eriCount === 1;
     }
@@ -95,7 +105,11 @@
       if (/^(?:L\(1\)-(?:Wing|Ring)|L1-(?:Wing|Ring)|Dual Empty Rectangle|Rec'T Kite|Bridged ERI|Bridged Empty Rectangle)$/i.test(name)) {
         return 'L(1)';
       }
-      if (/^\d+x ERI$/i.test(name) || (eriCount > 0 && isEriOnlyXChain(chain))) {
+      const genericSingleDigitChain = /^(?:X-Chain|AIC)$/i.test(rawName);
+      const explicitEriName = /^\d+x ERI$/i.test(name);
+      if ((genericSingleDigitChain || explicitEriName)
+        && isEriOnlyXChain(chain)
+        && (eriCount > 0 || explicitEriName)) {
         return 'ERI Chain';
       }
       if (emptyRectangleChain(chain)) return 'Empty Rectangle';

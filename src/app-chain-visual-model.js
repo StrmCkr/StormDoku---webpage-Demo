@@ -61,6 +61,37 @@
     return step?.view?.node?.raw?.xorConstruction?.kind === 'almost-fish';
   }
 
+  function resolvedWeakDigits(fromSide, toSide, fromDigit, toDigit) {
+    if (fromDigit == null && toDigit == null
+      && (fromSide?.digits || []).length === 1
+      && (toSide?.digits || []).length === 1
+      && fromSide.digits[0] !== toSide.digits[0]) {
+      // Preserve the displayed weak inference between distinct singleton
+      // endpoints, e.g. the 4-3 handoff between adjacent AIC links.
+      return { fromDigit: fromSide.digits[0], toDigit: toSide.digits[0] };
+    }
+    if (fromDigit == null || toDigit == null || fromDigit === toDigit) {
+      return { fromDigit, toDigit };
+    }
+    const fromDigits = new Set(fromSide?.digits || []);
+    const shared = [...new Set(toSide?.digits || [])]
+      .filter(digit => fromDigits.has(digit));
+    // A grouped endpoint may carry a stale source digit from another
+    // branch. Use the single shared candidate when the handoff is clear.
+    if (shared.length === 1) return { fromDigit: shared[0], toDigit: shared[0] };
+    return { fromDigit, toDigit };
+  }
+
+  function resolvedStrongDigit(fromSide, toSide) {
+    const fromDigits = new Set(fromSide?.digits || []);
+    const shared = [...new Set(toSide?.digits || [])]
+      .filter(digit => fromDigits.has(digit));
+    // A bivalent endpoint represents separate digit anchors. When only one
+    // digit is common, select that mark instead of whichever mark happens
+    // to be geometrically closest.
+    return shared.length === 1 ? shared[0] : null;
+  }
+
   function alsVisualKey(step) {
     return step.graphId || String(step.family || '') + ':' + String(step.linkId ?? '') + ':' + String(step.linkTypeName || '');
   }
@@ -260,6 +291,8 @@
     isAhsVisualStep,
     isModuleVisualStep,
     isAlmostFishVisualStep,
+    resolvedWeakDigits,
+    resolvedStrongDigit,
     alsVisualKey,
     alsVisualSideKey,
     ahsVisualKey,

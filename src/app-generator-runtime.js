@@ -5,12 +5,16 @@
   let activeWorker = null;
   let activeReject = null;
 
-  function run(givens, variantSettings) {
+  function run(givens, variantSettings, runLocalCore) {
+    if (global.location?.protocol === 'file:') {
+      return runLocalCore('generate', givens);
+    }
+
     return new Promise((resolve, reject) => {
       let worker;
       try {
         worker = workerRuntime.createWorker(
-          './src/generator-worker.js?v=20261104-03',
+          './src/generator-worker.js?v=20261119-02',
           { type: 'classic' },
         );
       } catch (error) {

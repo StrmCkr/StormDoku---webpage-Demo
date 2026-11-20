@@ -257,7 +257,7 @@
       const report = subsetStep(cand, {
         ...options,
         kind,
-        size: Math.floor(size / 2) + 1,
+        size,
       });
       if (report) return report;
     }

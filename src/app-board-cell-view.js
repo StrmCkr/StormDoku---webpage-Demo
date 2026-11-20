@@ -38,7 +38,9 @@
       }
       if (highlights.isAlsRecord && highlights.alsRecordCells.has(cell)) {
         el.classList.add('chain-als-cell');
-        applyAlsColorVars(el, highlights.alsRecordColor);
+        const styles = highlights.alsRecordStylesByCell?.get(cell);
+        if (styles?.length > 1) applyAlsPartitionColors(el, styles);
+        else applyAlsColorVars(el, styles?.[0] || highlights.alsRecordColor);
       }
       if (highlights.isAlsDof && highlights.alsDofCells.has(cell)) {
         el.classList.add('chain-als-cell');

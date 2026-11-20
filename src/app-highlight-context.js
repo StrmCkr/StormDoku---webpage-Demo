@@ -1,5 +1,23 @@
 (function (root) {
   const app = root.StormDokuApp = root.StormDokuApp || {};
+  const ALS_LOCKED_SURPLUS_COLORS = [
+    { bg: 'rgba(250, 204, 21, .72)', stroke: '#a16207', ink: '#422006' },
+    { bg: 'rgba(244, 114, 182, .62)', stroke: '#be185d', ink: '#500724' },
+    { bg: 'rgba(74, 222, 128, .62)', stroke: '#15803d', ink: '#052e16' },
+    { bg: 'rgba(196, 181, 253, .68)', stroke: '#7c3aed', ink: '#2e1065' },
+    { bg: 'rgba(251, 146, 60, .66)', stroke: '#c2410c', ink: '#431407' },
+    { bg: 'rgba(103, 232, 249, .66)', stroke: '#0e7490', ink: '#083344' },
+  ];
+
+  function alsLockedSurplusColorAt(index) {
+    if (ALS_LOCKED_SURPLUS_COLORS[index]) return ALS_LOCKED_SURPLUS_COLORS[index];
+    const hue = 24 + ((index * 53) % 320);
+    return {
+      bg: `hsla(${hue}, 92%, 66%, .7)`,
+      stroke: `hsl(${hue}, 82%, 34%)`,
+      ink: `hsl(${hue}, 78%, 18%)`,
+    };
+  }
 
   function buildActiveStepHighlightContext({
     activeStep = null,
@@ -31,6 +49,9 @@
     const rawFins = new Set(activeStep?.fins || []);
     const endofins = new Set(activeStep?.endofins || activeStep?.endoFins || []);
     const patternDigits = new Set(activeStep?.digits || []);
+    const externalGuardAtoms = new Set(activeStep?.externalGuardAtoms || []);
+    const uniquenessForcingOnAtoms = new Set(activeStep?.uniquenessForcingOnAtoms || []);
+    const uniquenessForcingOffAtoms = new Set(activeStep?.uniquenessForcingOffAtoms || []);
     const chromaticRecord = activeStep?.chromaticRecord || null;
     const chromaticCells = new Set(chromaticRecord?.cells || []);
     const chromaticCoreCells = new Set(chromaticRecord?.coreCells || []);
@@ -73,6 +94,9 @@
       fins,
       endofins,
       patternDigits,
+      externalGuardAtoms,
+      uniquenessForcingOnAtoms,
+      uniquenessForcingOffAtoms,
       isChromatic: !!chromaticRecord,
       chromaticRecord,
       chromaticCells,
@@ -142,8 +166,15 @@
 
   function buildAlsAhsHighlightContext({
     alsRecord = null,
+    alsRecords = null,
+    alsExclusionDigits = [],
+    uniquenessRccLinks = [],
+    uniquenessEliminationsByAls = [],
+    uniquenessUrAlsLinks = [],
+    uniquenessAlsLockedCandidates = [],
     alsDofRecord = null,
     ahsRecord = null,
+    ahsRecords = null,
     ahsDofChainRecord = null,
     ahsDofRecord = null,
     alsColorAtFn = () => null,
@@ -153,15 +184,61 @@
     atomKeyFn = (cell, digit) => `${cell}:${digit}`,
     ahsRecordColor = null,
   } = {}) {
-    const alsRecordCells = new Set(alsRecord?.alsAllCells || []);
+    const activeAlsRecords = alsRecords?.length ? alsRecords : (alsRecord ? [alsRecord] : []);
+    const alsRecordCells = new Set(activeAlsRecords.flatMap(record => record.alsAllCells || []));
     const alsRecordMarks = new Set();
-    for (const cell of alsRecord?.alsAllCells || []) {
-      for (const digit of alsRecord?.alsDigits || []) {
-        if (cellHasCandidateFn(cell, digit)) alsRecordMarks.add(atomKeyFn(cell, digit));
+    const alsRecordStylesByCell = new Map();
+    const alsRecordStyleByAtom = new Map();
+    const alsExclusionMarks = new Set();
+    const uniquenessRccMarks = new Set();
+    for (const link of uniquenessRccLinks) {
+      for (const cell of [...(link.leftCells || []), ...(link.rightCells || [])]) {
+        uniquenessRccMarks.add(atomKeyFn(cell, link.digit));
       }
     }
-    const alsRecordColor = alsRecord
-      ? alsChainColors[hashStringFn(String(alsRecord.uniqueID)) % alsChainColors.length]
+    const uniquenessEliminationColorsByAtom = new Map();
+    for (const [index, eliminations] of uniquenessEliminationsByAls.entries()) {
+      const color = alsColorAtFn(index);
+      for (const item of eliminations || []) {
+        const atom = atomKeyFn(item.cell, item.digit);
+        const colors = uniquenessEliminationColorsByAtom.get(atom) || [];
+        if (!colors.includes(color)) colors.push(color);
+        uniquenessEliminationColorsByAtom.set(atom, colors);
+      }
+    }
+    const uniquenessUrAlsColorsByAtom = new Map();
+    for (const link of uniquenessUrAlsLinks) {
+      if (!Number.isInteger(link.alsIndex) || !cellHasCandidateFn(link.cell, link.digit)) continue;
+      const color = alsColorAtFn(link.alsIndex);
+      const atom = atomKeyFn(link.cell, link.digit);
+      const colors = uniquenessUrAlsColorsByAtom.get(atom) || [];
+      if (color && !colors.some(existing => existing.bg === color.bg
+        && existing.stroke === color.stroke && existing.ink === color.ink)) colors.push(color);
+      if (colors.length) uniquenessUrAlsColorsByAtom.set(atom, colors);
+    }
+    const uniquenessAlsLockedColorsByAtom = new Map();
+    for (const item of uniquenessAlsLockedCandidates) {
+      if (!Number.isInteger(item.alsIndex) || !cellHasCandidateFn(item.cell, item.digit)) continue;
+      uniquenessAlsLockedColorsByAtom.set(atomKeyFn(item.cell, item.digit),
+        alsLockedSurplusColorAt(item.alsIndex));
+    }
+    for (const [index, record] of activeAlsRecords.entries()) {
+      const color = alsColorAtFn(index);
+      for (const cell of record.alsAllCells || []) {
+        const colors = alsRecordStylesByCell.get(cell) || [];
+        if (!colors.includes(color)) colors.push(color);
+        alsRecordStylesByCell.set(cell, colors);
+        for (const digit of record.alsDigits || []) {
+          if (!cellHasCandidateFn(cell, digit)) continue;
+          const atom = atomKeyFn(cell, digit);
+          alsRecordMarks.add(atom);
+          alsRecordStyleByAtom.set(atom, color);
+          if (alsExclusionDigits.includes(digit)) alsExclusionMarks.add(atom);
+        }
+      }
+    }
+    const alsRecordColor = activeAlsRecords.length
+      ? alsColorAtFn(0) || alsChainColors[hashStringFn(String(activeAlsRecords[0].uniqueID)) % alsChainColors.length]
       : null;
     const alsDofMarks = new Set();
     const alsDofCells = new Set();
@@ -196,11 +273,14 @@
     const alsDofElimMarks = new Set(
       (alsDofRecord?.eliminations || []).map(item => atomKeyFn(item.cell, item.digit)),
     );
-    const ahsRecordCells = new Set(ahsRecord?.ahsAllCells || []);
+    const activeAhsRecords = ahsRecords?.length ? ahsRecords : [ahsRecord].filter(Boolean);
+    const ahsRecordCells = new Set(activeAhsRecords.flatMap(record => record.ahsAllCells || []));
     const ahsRecordMarks = new Set();
-    for (const cell of ahsRecord?.ahsAllCells || []) {
-      for (const digit of ahsRecord?.ahsDigits || []) {
+    for (const record of activeAhsRecords) {
+      for (const cell of record.ahsAllCells || []) {
+        for (const digit of record.ahsDigits || []) {
         if (cellHasCandidateFn(cell, digit)) ahsRecordMarks.add(atomKeyFn(cell, digit));
+        }
       }
     }
     const ahsDofRecordCells = new Set();
@@ -224,6 +304,13 @@
       alsRecordCells,
       alsRecordMarks,
       alsRecordColor,
+      alsRecordStylesByCell,
+      alsRecordStyleByAtom,
+      alsExclusionMarks,
+      uniquenessRccMarks,
+      uniquenessEliminationColorsByAtom,
+      uniquenessUrAlsColorsByAtom,
+      uniquenessAlsLockedColorsByAtom,
       alsDofMarks,
       alsDofCells,
       alsDofStyleByCell,

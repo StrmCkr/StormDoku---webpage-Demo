@@ -1,5 +1,5 @@
 /* StormDoku puzzle generator worker. */
-importScripts('./browser-core.js?v=20261104-17');
+importScripts('./browser-core.js?v=20261119-02');
 
 self.onmessage = event => {
   try {

@@ -67,11 +67,14 @@
   }
 
   function findAhsXyChains(cand, options = {}) {
+    const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
+    onProgress?.({ stage: 'ahs-xy-inventory' });
     const ahsList = (options.ahsList || core.ahsConstructor(cand, {
       maxSize: options.maxSize ?? 4,
       maxSizeFox: options.maxSizeFox ?? 4,
       searchLimit: true,
       maxResults: options.maxNodes ?? 800,
+      onProgress,
     })).filter(ahs => ahs.ahsDOF === 1 && ahs.ahsDigits.length >= 2);
     const adjacency = ahsList.map(() => []);
     const bridges = new Map();
@@ -113,6 +116,7 @@
       adjacency[b].push(a);
       bridges.set(key, bridge);
     }
+    onProgress?.({ stage: 'ahs-xy-bridges', ahsBridges: bridges.size });
 
     const maxTriples = options.maxTriples ?? 30000;
     const maxChains = options.maxChains ?? 500;
@@ -136,6 +140,10 @@
           if (++triples > maxTriples || chains.length >= maxChains) {
             truncated = true;
             break outer;
+          }
+          if (triples % 128 === 0) {
+            onProgress?.({ stage: 'ahs-xy-walk', triplesChecked: triples,
+              ahsNodes: ahsList.length, ahsBridges: bridges.size });
           }
           const first = neighbours[i];
           const last = neighbours[j];
@@ -195,11 +203,15 @@
         }
       }
     }
+    onProgress?.({ stage: 'ahs-xy-complete', triplesChecked: Math.min(triples, maxTriples),
+      chainsFound: chains.length });
     return { chains, stats: { ahsNodes: ahsList.length, ahsBridges: bridges.size,
       triplesChecked: Math.min(triples, maxTriples), truncated } };
   }
 
   function findAhsMixedChains(cand, options = {}) {
+    const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
+    onProgress?.({ stage: 'ahs-xy-mixed-inventory' });
     const isChain = options.mode === 'chain';
     const strongLinkSet = options.strongLinkSet || core.buildStrongLinks(cand);
     const ahsList = options.ahsList || core.ahsConstructor(cand, {
@@ -207,14 +219,19 @@
       maxSizeFox: isChain ? 7 : 4,
       searchLimit: !isChain,
       ...(isChain ? {} : { maxResults: 800 }),
+      onProgress,
     });
+    onProgress?.({ stage: 'ahs-xy-mixed-links', ahsNodes: ahsList.length });
     const ahsLinkSet = options.ahsLinkSet || core.buildAhsLinks(cand, {
       ahsList,
       strongLinkSet,
       minDof: 1,
       maxDof: 3,
       maxLinks: options.maxAhsLinks ?? (isChain ? 5000 : 1200),
+      mode: 'xy',
+      onProgress,
     });
+    onProgress?.({ stage: 'ahs-xy-mixed-walk', ahsLinks: ahsLinkSet.reduce((count, bucket) => count + bucket.length, 0) });
     const resultFilter = steps => {
       const ahsCount = steps.filter(step => step.view.node.family === 'AHS').length;
       const strongCount = steps.filter(step => step.view.node.family === 'SL'
@@ -239,6 +256,7 @@
       maxBranching: options.maxBranching ?? 200,
       maxAhsLinks: options.maxAhsLinks ?? (isChain ? 5000 : 1200),
       resultFilter,
+      onProgress,
     });
     return {
       ...report,

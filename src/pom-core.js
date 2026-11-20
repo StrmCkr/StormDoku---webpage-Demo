@@ -6,7 +6,7 @@
   const { combinations } = core.setTools;
   let catalog = null;
 
-  function boundedCombinations(values, size, limit = 10000) {
+  function boundedCombinations(values, size, limit = 10000, onVisit = null) {
     const out = [];
     const current = [];
     const max = Math.max(1, Number(limit) || 10000);
@@ -16,6 +16,7 @@
       if (out.length >= max) return;
       if (current.length === size) {
         out.push([...current]);
+        if (out.length % 512 === 0) onVisit?.(out.length);
         return;
       }
       for (let index = start; index < values.length && out.length < max; index += 1) {
@@ -281,6 +282,7 @@
         50000,
         Number(options.maxSearchCombinations) || 10000,
       )),
+      onProgress: typeof options.onProgress === 'function' ? options.onProgress : null,
     };
   }
 
@@ -637,6 +639,7 @@
       usableSectors,
       size,
       options.maxSearchCombinations,
+      count => options.onProgress?.({ stage: 'fish', digit, size, baseCombinations: count }),
     )) {
       if (!baseCombinationAllowed(sectors, options)) continue;
 
@@ -651,14 +654,15 @@
     return out;
   }
 
-  function filterOmissionFishCoverCombinations(state, digit, usableSectors, baseSectors, baseSaved, coverSize, triggerCells, options) {
+  function visitOmissionFishCoverCombinations(state, digit, usableSectors, baseSectors, baseSaved, coverSize, triggerCells, options, onCover) {
     const baseSet = setFrom(baseSectors);
     const candidates = usableSectors.filter(sector => {
       if (baseSet.has(sector)) return false;
       const cells = state.cellsByDigit[digit - 1][sector];
       return setIntersection(cells, baseSaved.allUsedCells).size > 0;
     });
-    const out = [];
+    let visited = 0;
+    let stop = false;
 
     // Build covers around the still-uncovered base cells instead of testing every
     // sector combination. This is the omission index's main performance path.
@@ -693,11 +697,16 @@
     };
 
     const visit = (start, chosen, covered, hasTrigger) => {
+      if (stop) return;
+      visited += 1;
+      if (visited % 2048 === 0) {
+        options.onProgress?.({ stage: 'fish', digit, coverSearchNodes: visited });
+      }
       const remaining = coverSize - chosen.length;
       if (remaining === 0) {
         if (!isSetSubset(baseSaved.allUsedCells, covered) || !hasTrigger) return;
         if (!fishTypeAllowed(fishType(baseSectors, chosen), options)) return;
-        out.push([...chosen]);
+        stop = onCover([...chosen]) === true;
         return;
       }
 
@@ -705,6 +714,7 @@
 
       const lastStart = candidates.length - remaining;
       for (let index = start; index <= lastStart; index++) {
+        if (stop) return;
         const sector = candidates[index];
         if (duplicateWithChosen(sector, chosen)) continue;
 
@@ -722,8 +732,7 @@
     };
 
     visit(0, [], new Set(), false);
-
-    return out;
+    return stop;
   }
 
   // Almost Fish uses the same sector geometry as a fish, but deliberately
@@ -765,58 +774,6 @@
       out.push([...chosen]);
     }
     return out;
-
-    const canLeaveUncovered = (start, covered) => {
-      let uncovered = 0;
-      for (const cell of baseSaved.allUsedCells) {
-        if (covered.has(cell)) continue;
-        uncovered += 1;
-        if (uncovered > maxUncovered) return false;
-        let possible = false;
-        for (let index = start; index < candidates.length; index++) {
-          if (state.cellsByDigit[digit - 1][candidates[index]].has(cell)) {
-            possible = true;
-            break;
-          }
-        }
-        if (!possible) return true;
-      }
-      return true;
-    };
-
-    const visit = (start, chosen, covered) => {
-      const remaining = coverSize - chosen.length;
-      if (remaining === 0) {
-        const missing = setDifference(baseSaved.allUsedCells, covered);
-        if (missing.size === 1 && fishTypeAllowed(fishType(baseSectors, chosen), options)) {
-          out.push([...chosen]);
-        }
-        return;
-      }
-      if (candidates.length - start < remaining || !canLeaveUncovered(start, covered)) return;
-
-      const lastStart = candidates.length - remaining;
-      for (let index = start; index <= lastStart; index++) {
-        if (out.length >= options.maxSearchCombinations) return;
-        const sector = candidates[index];
-        const cells = state.cellsByDigit[digit - 1][sector];
-        const chosenCheck = chosen.map(item => state.cellsByDigit[digit - 1][item]);
-        const check = setIntersection(cells, baseSaved.allUsedCells);
-        if (!check.size) continue;
-        if (chosenCheck.some(previous => {
-          const previousCheck = setIntersection(previous, baseSaved.allUsedCells);
-          return isSetSubset(check, previousCheck)
-            || isSetSubset(previousCheck, check)
-            || setEquals(cells, previous);
-        })) continue;
-        chosen.push(sector);
-        visit(index + 1, chosen, setUnion(covered, cells));
-        chosen.pop();
-      }
-    };
-
-    visit(0, [], new Set());
-    return out;
   }
 
   function findOmissionFishPass(cand, templatesByDigit, digitTemplates, omissionsByDigit, reports, options = {}) {
@@ -844,6 +801,7 @@
       );
 
       for (let size = opts.minSize; size <= opts.maxSize; size++) {
+        opts.onProgress?.({ stage: 'fish', digit, size });
         const baseCombinations = filterOmissionFishBaseCombinations(
           state,
           digit,
@@ -864,7 +822,7 @@
             coverSize <= size + opts.maxK && coverSize <= 9 && !stopCoverExpansion;
             coverSize++
           ) {
-            const coverCombinations = filterOmissionFishCoverCombinations(
+            visitOmissionFishCoverCombinations(
               state,
               digit,
               coverSectorsForBase,
@@ -873,9 +831,7 @@
               coverSize,
               triggerCells,
               opts,
-            );
-
-            for (const coverSectors of coverCombinations) {
+              coverSectors => {
               const match = processOmissionFishCover(
                 cand,
                 state,
@@ -887,13 +843,13 @@
                 triggerCells,
                 opts,
               );
-              if (!match) continue;
+              if (!match) return false;
 
               const cells = match.cells.filter(cell => (cand[cell] || []).includes(digit));
-              if (!cells.length) continue;
+              if (!cells.length) return false;
 
               const key = `${digit}:${match.baseSectors.join(',')}/${match.coverSectors.join(',')}:${cells.join(',')}`;
-              if (seenReports.has(key)) continue;
+              if (seenReports.has(key)) return false;
               seenReports.add(key);
 
               reports.push({
@@ -904,9 +860,11 @@
 
               if (opts.earlyTermination && fishReportEnabled(match, opts)) {
                 stopCoverExpansion = true;
-                break;
+                return true;
               }
-            }
+              return false;
+              },
+            );
           }
         }
       }
@@ -1144,6 +1102,7 @@
     const grid = options.grid;
     if (!Array.isArray(grid) || grid.length !== 81) return [];
 
+    options.onProgress?.({ stage: 'fish-catalog' });
     const templates = allTemplates();
     const templatesByDigit = [];
     const digitTemplates = [];

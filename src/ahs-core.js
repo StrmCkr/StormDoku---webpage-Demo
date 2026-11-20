@@ -77,9 +77,11 @@
 
   function ahsConstructor(cand, options = {}) {
     const opts = normaliseOptions(options);
+    const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
     const ahsList = [];
 
     for (let sector = 0; sector < core.UNITS.length; sector++) {
+      onProgress?.({ stage: 'ahs-inventory', sectorsChecked: sector });
       const sectorCells = core.UNITS[sector];
       const activeCells = sectorCells.filter(cell => (cand[cell] || []).length > 0);
       const sectorDigits = candidateDigits(cand, activeCells);
@@ -110,11 +112,17 @@
           if (cellPowerSet === undefined) continue;
           if (boxEnforcer(sector, cellPowerSet, dof)) continue;
           ahsList.push(buildAhs(cand, sector, positionSize, fox, digits, cells, digitPowerSet, cellPowerSet));
-          if (opts.maxResults && ahsList.length >= opts.maxResults) return ahsList;
+          if (opts.maxResults && ahsList.length >= opts.maxResults) {
+            onProgress?.({ stage: 'ahs-inventory', sectorsChecked: sector + 1,
+              nodesFound: ahsList.length });
+            return ahsList;
+          }
         }
       }
     }
 
+    onProgress?.({ stage: 'ahs-inventory', sectorsChecked: core.UNITS.length,
+      nodesFound: ahsList.length });
     return ahsList;
   }
 

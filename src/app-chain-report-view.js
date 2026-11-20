@@ -22,6 +22,38 @@
     copyText,
     setStatus,
   }) {
+    const aicChildFamilies = new Set([
+      'X-Chains',
+      'Transport',
+      'W - Wing | Ring',
+      'S-Wing',
+      'Hidden XY-Chain',
+      'M - Wing | Ring',
+      'Hybrid - Wing | Ring',
+    ]);
+
+    function reportFolderLocations(chain) {
+      const locations = (getChainFolderInfos(chain) || []).map(folder => {
+        const family = String(folder.family || '');
+        if (/^A\.?I\.?C$/i.test(family)) {
+          return { ...folder, family: 'A.I.C', path: chainFolderPath(folder) };
+        }
+        if (!aicChildFamilies.has(family)) return folder;
+        return {
+          ...folder,
+          family: 'A.I.C',
+          path: [family, ...chainFolderPath(folder)],
+        };
+      });
+      const seen = new Set();
+      return locations.filter(folder => {
+        const key = [folder.family, ...chainFolderPath(folder)].join('|');
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
     function flaggedChainEntries(verbose = false) {
       const report = getChainReport?.();
       if (!report) return [];
@@ -117,20 +149,23 @@
       const visibleIndexes = new Set(
         Array.from({ length: Math.min(200, chains.length) }, (_, index) => index),
       );
-      const firstFamilyIndexes = new Map();
+      const firstFolderIndexes = new Map();
       for (let index = 0; index < chains.length; index++) {
-        for (const folder of getChainFolderInfos(chains[index])) {
-          if (!firstFamilyIndexes.has(folder.family)) firstFamilyIndexes.set(folder.family, index);
+        for (const folder of reportFolderLocations(chains[index])) {
+          const key = [folder.family, ...chainFolderPath(folder)]
+            .map(value => value ?? '')
+            .join('|');
+          if (!firstFolderIndexes.has(key)) firstFolderIndexes.set(key, index);
         }
       }
-      for (const index of firstFamilyIndexes.values()) visibleIndexes.add(index);
+      for (const index of firstFolderIndexes.values()) visibleIndexes.add(index);
       const visible = [...visibleIndexes]
         .sort((left, right) => left - right)
         .map(index => ({ chain: chains[index], index }));
       const groups = new Map();
       const folderMemberships = new Map();
       for (const { chain, index } of visible) {
-        for (const folder of getChainFolderInfos(chain)) {
+        for (const folder of reportFolderLocations(chain)) {
           const path = chainFolderPath(folder);
           const folderKey = [folder.family, ...path]
             .map(value => value ?? '')

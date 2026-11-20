@@ -4,25 +4,32 @@
  * the page and returns structured-cloneable search results to the UI thread.
  */
 importScripts(
-  './browser-core.js?v=20261104-17',
-  './set-tools-core.js?v=20261104-17',
-  './pom-core.js?v=20261104-17',
-  './als-core.js?v=20261104-17',
-  './als-dof-core.js?v=20261104-17',
-  './hydra-core.js?v=20261104-17',
-  './als-link-core.js?v=20261104-17',
-  './ahs-core.js?v=20261104-17',
-  './ahs-link-core.js?v=20261104-17',
-  './subset-report-core.js?v=20261104-17',
-  './mini-sectors-core.js?v=20261104-17',
-  './strong-link-core.js?v=20261104-17',
-  './chain-core.js?v=20261104-17',
-  './alc-core.js?v=20261104-17',
-  './ahs-xy-core.js?v=20261104-17',
-  './ahs-dof-core.js?v=20261104-17',
-  './msls-core.js?v=20261104-17',
-  './chromatic-core.js?v=20261104-17',
-  './chromatic-als-core.js?v=20261104-17',
+  './browser-core.js?v=20261119-02',
+  './set-tools-core.js?v=20261119-02',
+  './pom-core.js?v=20261119-02',
+  './als-core.js?v=20261119-02',
+  './als-dof-core.js?v=20261119-02',
+  './hydra-core.js?v=20261119-02',
+  './als-link-core.js?v=20261119-02',
+  './ahs-core.js?v=20261119-02',
+  './ahs-link-core.js?v=20261119-02',
+  './subset-report-core.js?v=20261119-02',
+  './mini-sectors-core.js?v=20261119-02',
+  './strong-link-core.js?v=20261119-02',
+  './chain-core.js?v=20261119-02',
+  './alc-core.js?v=20261119-02',
+  './ahs-xy-core.js?v=20261119-02',
+  './ahs-dof-core.js?v=20261119-02',
+  './msls-core.js?v=20261119-02',
+  './chromatic-core.js?v=20261119-02',
+  './chromatic-als-core.js?v=20261119-02',
+  './uniqueness-core.js?v=20261119-02',
+  './bug-core.js?v=20261119-02',
+  './mug-core.js?v=20261119-02',
+  './bug-types-core.js?v=20261119-02',
+  './reverse-bug-core.js?v=20261119-02',
+  './reverse-bug-lite-core.js?v=20261119-02',
+  './reverse-bug-types-core.js?v=20261119-02',
 );
 
 const core = globalThis.StormDoku;
@@ -191,7 +198,7 @@ function reportError(id, error) {
   });
 }
 
-function runSimple(payload) {
+function runSimple(payload, onProgress = null) {
   if (payload.directType === 'box-line') {
     return core.boxLineStep(payload.candidateGrid);
   }
@@ -204,6 +211,7 @@ function runSimple(payload) {
     grid: [...(payload.fixedGrid || [])],
     omissionFishSearch: core.omissionFishStep,
     enabledTechniques: new Set(payload.moveTypes || []),
+    onProgress,
   };
   return core.genericSubsetOrFishStep(payload.candidateGrid, fishOptions);
 }
@@ -224,10 +232,12 @@ function runChains(payload, onProgress = null) {
       maxNodes: payload.ahsMaxNodes,
       maxTriples: payload.maxTriples,
       maxChains: payload.limits?.maxChains,
+      onProgress,
     });
     const mixed = core.findAhsMixedChains(candidateGrid, {
       mode: 'xy',
       maxChains: payload.limits?.maxChains,
+      onProgress,
     });
     return { chains: [...pure.chains, ...mixed.chains],
       stats: { ...pure.stats, mixed: mixed.stats } };
@@ -781,7 +791,41 @@ self.onmessage = event => {
     };
     onProgress({ stage: 'start' });
     let result;
-    if (type === 'simple') result = runSimple(payload || {});
+    if (type === 'simple') result = runSimple(payload || {}, onProgress);
+    else if (type === 'bug-1' || type === 'bug-n' || type === 'bug-lite') {
+      result = core.findBug(payload.candidateGrid, { mode: type.slice(4), onProgress });
+    }
+    else if (type.startsWith('bug-type-')) {
+      result = core.findBugType(payload.candidateGrid, { type: type.slice(9), onProgress });
+    }
+    else if (type === 'mug-type-1') {
+      result = core.findMugType1(payload.candidateGrid, { onProgress });
+    }
+    else if (type === 'pug-type-1') {
+      result = core.findPugType1(payload.candidateGrid, { onProgress });
+    }
+    else if (['2,5', '3', '3-xz', '3-xy', '3-chain', '4', '6', '7', '8', '9'].some(mode => type === 'pug-type-' + mode)) {
+      result = core.findMug(payload.candidateGrid, { type: type.slice('pug-type-'.length), permeable: true, onProgress });
+    }
+    else if (['2,5', '3', '3-xz', '3-xy', '3-chain', '4', '6', '7', '8', '9'].some(mode => type === 'mug-type-' + mode)) {
+      result = core.findMug(payload.candidateGrid, { type: type.slice('mug-type-'.length), onProgress });
+    }
+    else if (type === 'reverse-bug') {
+      result = core.findReverseBug(payload.candidateGrid, {
+        originalGivens: payload.originalGivens, fixedGrid: payload.fixedGrid, onProgress,
+      });
+    }
+    else if (type === 'reverse-bug-lite') {
+      result = core.findReverseBugLite(payload.candidateGrid, {
+        originalGivens: payload.originalGivens, fixedGrid: payload.fixedGrid, onProgress,
+      });
+    }
+    else if (['2,5', '3', '3-xz', '3-xy', '3-chain', '4', '6', '7', '8', '9'].some(mode => type === 'reverse-bug-type-' + mode)) {
+      result = core.findReverseBugType(payload.candidateGrid, {
+        type: type.slice('reverse-bug-type-'.length),
+        originalGivens: payload.originalGivens, fixedGrid: payload.fixedGrid, onProgress,
+      });
+    }
     else if (type === 'fish') result = runFish(payload || {});
     else if (type === 'chains') result = runChains(payload || {}, onProgress);
     else if (type === 'als-xz') result = runAlsXz(payload || {}, onProgress);
@@ -801,6 +845,73 @@ self.onmessage = event => {
     else if (type === 'core-search') result = runCoreSearch(payload || {});
     else if (type === 'chromatic') result = globalThis.StormChromaticCore.find(payload.candidateGrid, payload.options);
     else if (type === 'chromatic-als') result = globalThis.StormChromaticAlsCore.find(payload.candidateGrid, payload.options);
+    else if (type === 'uniqueness') result = core.findUniquenessType1(payload.candidateGrid, { onProgress });
+    else if (type === 'uniqueness-extended-type-1') {
+      result = core.findExtendedUniquenessType1(payload.candidateGrid, { onProgress });
+    }
+    else if (type === 'uniqueness-extended-type-2-5') {
+      result = core.findExtendedUniquenessType2And5(payload.candidateGrid, { onProgress });
+    }
+    else if (type === 'uniqueness-type-2') result = core.findUniquenessType2(payload.candidateGrid, { onProgress });
+    else if (type === 'uniqueness-type-2-5') {
+      result = core.findUniquenessType2And5(payload.candidateGrid, { onProgress });
+    }
+    else if (type === 'uniqueness-type-4') result = core.findUniquenessType4(payload.candidateGrid, { onProgress });
+    else if (type === 'uniqueness-extended-type-4') result = core.findExtendedUniquenessType4(payload.candidateGrid, { onProgress });
+    else if (type === 'uniqueness-type-6') result = core.findUniquenessType6(payload.candidateGrid, { onProgress });
+    else if (type === 'uniqueness-extended-type-6') result = core.findExtendedUniquenessType6(payload.candidateGrid, { onProgress });
+    else if (type === 'uniqueness-type-7') result = core.findUniquenessType7(payload.candidateGrid, { onProgress });
+    else if (type === 'uniqueness-extended-type-7') result = core.findExtendedUniquenessType7(payload.candidateGrid, { onProgress });
+    else if (type === 'uniqueness-type-8') result = core.findUniquenessType8(payload.candidateGrid, { onProgress });
+    else if (type === 'uniqueness-type-9') result = core.findUniquenessType9(payload.candidateGrid, { onProgress });
+    else if (type === 'uniqueness-extended-type-9') {
+      result = core.findUniquenessType9(payload.candidateGrid, { extended: true, onProgress });
+    }
+    else if (type === 'uniqueness-extended-type-8') result = core.findExtendedUniquenessType8(payload.candidateGrid, { onProgress });
+    else if (type === 'uniqueness-extended-type-3') {
+      result = core.findExtendedUniquenessType3(payload.candidateGrid, { onProgress });
+    }
+    else if (type === 'uniqueness-extended-type-3-xz') {
+      result = core.findExtendedUniquenessType3Xz(payload.candidateGrid, { onProgress });
+    }
+    else if (type === 'uniqueness-extended-type-3-xy') {
+      result = core.findExtendedUniquenessType3Xy(payload.candidateGrid, { onProgress });
+    }
+    else if (type === 'uniqueness-extended-type-3-chain') {
+      result = core.findExtendedUniquenessType3AlsChain(payload.candidateGrid, { onProgress });
+    }
+    else if (type === 'uniqueness-type-3') {
+      const alsList = core.alsConstructor(payload.candidateGrid, {
+        maxSizeDOF: 8,
+        maxSizeFox: 8,
+        searchLimit: true,
+      });
+      result = core.findUniquenessType3(payload.candidateGrid, { alsList, onProgress });
+    }
+    else if (type === 'uniqueness-type-3-xz') {
+      const alsList = core.alsConstructor(payload.candidateGrid, {
+        maxSizeDOF: 8,
+        maxSizeFox: 8,
+        searchLimit: true,
+      });
+      result = core.findUniquenessType3Xz(payload.candidateGrid, { alsList, onProgress });
+    }
+    else if (type === 'uniqueness-type-3-xy') {
+      const alsList = core.alsConstructor(payload.candidateGrid, {
+        maxSizeDOF: 8,
+        maxSizeFox: 8,
+        searchLimit: true,
+      });
+      result = core.findUniquenessType3Xy(payload.candidateGrid, { alsList, onProgress });
+    }
+    else if (type === 'uniqueness-type-3-chain') {
+      const alsList = core.alsConstructor(payload.candidateGrid, {
+        maxSizeDOF: 8,
+        maxSizeFox: 8,
+        searchLimit: true,
+      });
+      result = core.findUniquenessType3AlsChain(payload.candidateGrid, { alsList, onProgress });
+    }
     else throw new Error(`Unknown search worker operation: ${type}`);
 
     if (cancelled.has(id)) {

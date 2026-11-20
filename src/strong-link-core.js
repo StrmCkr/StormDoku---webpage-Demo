@@ -1680,6 +1680,318 @@
 
 
 
+  function findThreeDMedusaOverlapReports(cand, type0Links, type4Links, existingReports) {
+    const keyOf = (cell, digit) => `${cell}:${digit}`;
+    const candidates = new Map();
+    const weak = new Map();
+    const strong = new Map();
+    const addCandidate = (cell, digit) => {
+      if (!Number.isInteger(cell) || !(cand[cell] || []).includes(digit)) return null;
+      const key = keyOf(cell, digit);
+      candidates.set(key, { cell, digit });
+      if (!weak.has(key)) weak.set(key, []);
+      if (!strong.has(key)) strong.set(key, []);
+      return key;
+    };
+    const addWeak = (left, right, kind) => {
+      if (!left || !right || left === right) return;
+      weak.get(left).push({ key: right, kind });
+      weak.get(right).push({ key: left, kind });
+    };
+    const addStrong = (left, right, kind, linkId) => {
+      if (!left || !right || left === right) return;
+      strong.get(left).push({ key: right, kind, linkId });
+      strong.get(right).push({ key: left, kind, linkId });
+    };
+
+    for (let cell = 0; cell < 81; cell++) {
+      const digits = cand[cell] || [];
+      for (const digit of digits) addCandidate(cell, digit);
+      for (let leftIndex = 0; leftIndex < digits.length; leftIndex++) {
+        for (let rightIndex = leftIndex + 1; rightIndex < digits.length; rightIndex++) {
+          addWeak(keyOf(cell, digits[leftIndex]), keyOf(cell, digits[rightIndex]), 'overlap-weak');
+        }
+      }
+    }
+    const touchedCells = new Set();
+    for (const link of type0Links) {
+      const digit = Number(link.startingDigits?.[0] ?? link.linkDigits?.[0]);
+      const leftCell = link.activeCells?.[0];
+      const rightCell = link.linkedCells?.[0];
+      const left = addCandidate(leftCell, digit);
+      const right = addCandidate(rightCell, digit);
+      addStrong(left, right, 'same-digit', link.id);
+      if (left) touchedCells.add(leftCell);
+      if (right) touchedCells.add(rightCell);
+    }
+    for (const link of type4Links) {
+      const cell = link.activeCells?.[0] ?? link.linkedCells?.[0];
+      const left = addCandidate(cell, Number(link.startingDigits?.[0]));
+      const right = addCandidate(cell, Number(link.linkDigits?.[0]));
+      addStrong(left, right, 'bivalve-transition', link.id);
+      if (left || right) touchedCells.add(cell);
+    }
+
+    // Only strong-link endpoints are colourable. A same-cell overlap joins
+    // two such endpoints; unrelated candidates in that cell are not nodes.
+    const linkNodesByCell = new Map();
+    for (const key of strong.keys()) {
+      const node = candidates.get(key);
+      if (!node) continue;
+      const keys = linkNodesByCell.get(node.cell) || [];
+      keys.push(key);
+      linkNodesByCell.set(node.cell, keys);
+    }
+    for (const keys of linkNodesByCell.values()) {
+      for (let leftIndex = 0; leftIndex < keys.length; leftIndex++) {
+        for (let rightIndex = leftIndex + 1; rightIndex < keys.length; rightIndex++) {
+          addWeak(keys[leftIndex], keys[rightIndex], 'overlap-weak');
+        }
+      }
+    }
+    const strongEndpointKeys = new Set([...strong]
+      .filter(([, links]) => links.length)
+      .map(([key]) => key));
+    const roots = new Set(strongEndpointKeys);
+    for (const cell of touchedCells) {
+      for (const digit of cand[cell] || []) roots.add(keyOf(cell, digit));
+    }
+
+    const reports = new Map();
+    for (const rootKey of roots) {
+      for (const rootTruth of [true, false]) {
+        const states = new Map();
+        const parents = new Map();
+        const queue = [];
+        let conflict = null;
+        const stateKey = (key, truth) => `${key}|${truth ? 1 : 0}`;
+        const assign = (key, truth, fromKey = null, fromTruth = null, kind = null, linkId = null) => {
+          const assigned = states.get(key) || new Set();
+          if (assigned.has(truth)) return;
+          assigned.add(truth);
+          states.set(key, assigned);
+          parents.set(stateKey(key, truth), {
+            fromState: fromKey === null ? null : stateKey(fromKey, fromTruth),
+            kind,
+            linkId,
+          });
+          queue.push({ key, truth });
+          if (assigned.has(!truth) && !conflict) {
+            conflict = { key, truth, priorTruth: !truth, fromKey, fromTruth, kind, linkId };
+          }
+        };
+        assign(rootKey, rootTruth);
+        while (queue.length) {
+          const { key, truth } = queue.shift();
+          if (truth) {
+            for (const edge of weak.get(key) || []) {
+              assign(edge.key, false, key, truth, edge.kind);
+            }
+          }
+          for (const edge of strong.get(key) || []) {
+            assign(edge.key, !truth, key, truth, edge.kind, edge.linkId);
+          }
+        }
+        // Peer relations close a Medusa chain by contradiction; they are not
+        // walkable edges. The walk itself alternates strong links with
+        // same-cell candidate overlaps.
+        if (!conflict) {
+          const trueKeys = [...states]
+            .filter(([, assigned]) => assigned.has(true))
+            .map(([key]) => key);
+          outer: for (let leftIndex = 0; leftIndex < trueKeys.length; leftIndex++) {
+            const leftKey = trueKeys[leftIndex];
+            const leftNode = candidates.get(leftKey);
+            if (!leftNode) continue;
+            for (let rightIndex = leftIndex + 1; rightIndex < trueKeys.length; rightIndex++) {
+              const rightKey = trueKeys[rightIndex];
+              const rightNode = candidates.get(rightKey);
+              if (!rightNode || rightNode.digit !== leftNode.digit) continue;
+              if (!core.peersOf(leftNode.cell).includes(rightNode.cell)) continue;
+              conflict = {
+                kind: 'peer-closure',
+                leftKey,
+                rightKey,
+                key: leftKey,
+                truth: true,
+                priorTruth: true,
+              };
+              break outer;
+            }
+          }
+        }
+        if (!conflict) continue;
+
+        const statePath = token => {
+          const path = [];
+          const seen = new Set();
+          let current = token;
+          while (current && !seen.has(current)) {
+            seen.add(current);
+            const [key, truthValue] = current.split('|');
+            const truth = truthValue === '1';
+            const parent = parents.get(current) || {};
+            path.push({ key, truth, kind: parent.kind, linkId: parent.linkId });
+            current = parent.fromState;
+          }
+          return path.reverse();
+        };
+        let firstPath;
+        let secondPath;
+        if (conflict.kind === 'peer-closure') {
+          firstPath = statePath(stateKey(conflict.leftKey, true));
+          secondPath = statePath(stateKey(conflict.rightKey, true));
+        } else {
+          firstPath = statePath(stateKey(conflict.fromKey, conflict.fromTruth));
+          firstPath.push({
+            key: conflict.key,
+            truth: conflict.truth,
+            kind: conflict.kind,
+            linkId: conflict.linkId,
+          });
+          secondPath = statePath(stateKey(conflict.key, conflict.priorTruth));
+        }
+        const traces = [firstPath, secondPath].filter(path => path.length);
+        const root = candidates.get(rootKey);
+        if (!root) continue;
+        const forcedTruth = !rootTruth;
+        // When the assumed root is disproved, it is the elimination target,
+        // not a coloured node in the explanatory chain. Keep the full walk
+        // internally, but omit that candidate from the displayed colouring.
+        const displayTraces = !forcedTruth
+          ? traces.map(path => path.filter(step => step.key !== rootKey))
+            .filter(path => path.length)
+          : traces;
+        const trace = [...new Map(displayTraces.flat().map((step, index) => [
+          `${step.key}|${step.truth}|${step.kind || ''}|${step.linkId || ''}|${index}`,
+          step,
+        ])).values()];
+        if (new Set(trace.map(step => candidates.get(step.key)?.digit).filter(Boolean)).size < 2) continue;
+
+        const eliminations = new Map();
+        const addElimination = (cell, digit) => {
+          if ((cand[cell] || []).includes(digit)) eliminations.set(keyOf(cell, digit), { cell, digit });
+        };
+        if (!forcedTruth) {
+          addElimination(root.cell, root.digit);
+        } else {
+          for (const digit of cand[root.cell] || []) {
+            if (digit !== root.digit) addElimination(root.cell, digit);
+          }
+          for (const peer of core.peersOf(root.cell)) addElimination(peer, root.digit);
+        }
+        const colorSets = new Map();
+        for (const [key, assigned] of states) {
+          if (!strongEndpointKeys.has(key)) continue;
+          if (!forcedTruth && key === rootKey) continue;
+          const colors = new Set();
+          if (assigned.has(true)) colors.add(0);
+          if (assigned.has(false)) colors.add(1);
+          if (colors.size) colorSets.set(key, colors);
+        }
+        const dualAtoms = [...colorSets]
+          .filter(([, colors]) => colors.size > 1)
+          .map(([key]) => key);
+        for (const key of dualAtoms) {
+          const node = candidates.get(key);
+          if (!node) continue;
+          for (const digit of cand[node.cell] || []) {
+            if (digit !== node.digit) addElimination(node.cell, digit);
+          }
+          for (const peer of core.peersOf(node.cell)) addElimination(peer, node.digit);
+        }
+        if (!eliminations.size) continue;
+
+        const nodes = [...colorSets].map(([key, colors], breadth) => ({
+          ...candidates.get(key),
+          colors: [...colors].sort(),
+          breadth,
+        }));
+        const nodesByKey = new Map(nodes.map(node => [keyOf(node.cell, node.digit), node]));
+        const edges = [];
+        const seenDisplayEdges = new Set();
+        const addDisplayEdges = (source, fallbackKind) => {
+          for (const [key, links] of source) {
+            for (const link of links) {
+              const kind = link.kind || fallbackKind;
+              const left = nodesByKey.get(key);
+              const right = nodesByKey.get(link.key);
+              if (!left || !right) continue;
+              const [first, second] = [key, link.key].sort();
+              const edgeKey = `${kind}|${first}|${second}`;
+              if (seenDisplayEdges.has(edgeKey)) continue;
+              seenDisplayEdges.add(edgeKey);
+              edges.push({
+                kind,
+                linkId: link.linkId || undefined,
+                left: { cell: left.cell, digit: left.digit, colors: left.colors },
+                right: { cell: right.cell, digit: right.digit, colors: right.colors },
+              });
+            }
+          }
+        };
+        addDisplayEdges(weak, 'overlap-weak');
+        addDisplayEdges(strong, 'same-digit');
+        const eliminationItems = [...eliminations.values()]
+          .sort((left, right) => left.cell - right.cell || left.digit - right.digit);
+        const signature = eliminationItems.map(item => keyOf(item.cell, item.digit)).join('|');
+        if (reports.has(signature)) continue;
+        const conflictEndpointKey = conflict.kind === 'peer-closure'
+          ? conflict.rightKey
+          : conflict.key;
+        const conflictSourceKey = conflict.kind === 'peer-closure'
+          ? conflict.leftKey
+          : conflict.fromKey;
+        reports.set(signature, {
+          family: '3D-Medusa - Simple',
+          tech: '3d-medusa-simple',
+          source: 'overlap',
+          kind: 'overlap-chain',
+          nodes,
+          edges,
+          implicationPaths: displayTraces.map(path => path.map(step => ({
+            ...candidates.get(step.key),
+            truth: step.truth,
+            inference: step.kind || null,
+          }))),
+          links: edges.length,
+          trueAtoms: dualAtoms,
+          invalidColors: [],
+          conflicts: [{
+            kind: conflict.kind === 'peer-closure' ? 'peer-closure' : 'overlap-contradiction',
+            cell: root.cell,
+            digit: root.digit,
+            assumed: rootTruth,
+            conflictCell: candidates.get(conflictEndpointKey)?.cell,
+            conflictDigit: candidates.get(conflictEndpointKey)?.digit,
+            conflictFromCell: candidates.get(conflictSourceKey)?.cell,
+            conflictFromDigit: candidates.get(conflictSourceKey)?.digit,
+          }],
+          rules: [
+            'strong-link-and-overlap-propagation',
+            ...(dualAtoms.length ? ['duality-truth'] : []),
+          ],
+          eliminations: eliminationItems,
+        });
+      }
+    }
+
+    const alreadyReported = new Set((existingReports || []).flatMap(report =>
+      (report.eliminations || []).map(item => keyOf(item.cell, item.digit)),
+    ));
+    const accepted = [];
+    const orderedReports = [...reports.values()].sort((left, right) => left.edges.length - right.edges.length);
+    for (const report of orderedReports) {
+      const newEliminations = report.eliminations.filter(item =>
+        !alreadyReported.has(keyOf(item.cell, item.digit)),
+      );
+      if (!newEliminations.length) continue;
+      accepted.push({ ...report, eliminations: newEliminations });
+      for (const item of newEliminations) alreadyReported.add(keyOf(item.cell, item.digit));
+    }
+    return accepted;
+  }
+
   function buildThreeDMedusa(cand, strongLinkSet = null, options = {}) {
     const linkset = strongLinkSet || buildStrongLinks(cand);
     const type0Links = linkset[BILOCAL] || [];

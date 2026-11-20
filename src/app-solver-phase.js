@@ -276,12 +276,14 @@
       if (step.family !== 'ALS' || step.linkTypeName !== 'ALS_RCC') continue;
       const subsets = moduleSubsets(step.module);
       if (!step.module && (step.alsNodeIds || []).length === 1) {
-        // A payload-less ALS_RCC traversal may expose one ALS group through
-        // a type-4 cell/group handoff.  The cell is a separate node and must
-        // not let a four-node walk pass the ALS-XY (three-node) phase.
-        for (const side of [step.entry, step.exit]) {
+        // A payload-less ALS_RCC traversal exposes an ALS node and its
+        // separate cell/group handoff, even when those cells overlap.
+        const sides = [step.entry, step.exit];
+        const groupSide = sides.find(side => (side?.cells || []).length > 1);
+        const cellSide = sides.find(side => (side?.cells || []).length === 1);
+        for (const side of [groupSide, cellSide]) {
           if (!side?.cells?.length || !side?.digits?.length) continue;
-          const kind = side.cells.length === 1 ? 'TYPE4' : 'ALS';
+          const kind = side === cellSide ? 'TYPE4' : 'ALS';
           nodes.add(`${kind}|${side.cells.join(',')}|${side.digits.join('')}`);
         }
         continue;
@@ -369,7 +371,6 @@
       const sizeOne = alsSizeOneChainInfo(chain);
       return keys.has('als-xy')
         || keys.has('t-als-xy')
-        || alsCount === 3
         || sizeOne?.breakdown === 'XY-Wing';
     }
     if (phase.family === 'ahs-xy') return keys.has('ahs-xy');
